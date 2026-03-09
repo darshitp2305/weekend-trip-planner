@@ -1,0 +1,312 @@
+[
+  {
+    "id": "edmonton_staycation_ab",
+    "name": "Edmonton Staycation",
+    "region": "Alberta",
+    "home_base_city": "Edmonton",
+    "is_staycation": true,
+    "drive_time_hours_from": { "edmonton": 0.0, "calgary": 3.0 },
+    "distance_km_from": { "edmonton": 0, "calgary": 300 },
+    "cost_level": "low_mid",
+    "vibes": ["food", "culture", "relax", "family"],
+    "best_seasons": ["winter", "spring", "summer", "fall"],
+    "avoid_seasons": [],
+    "style_scores": {
+      "chill": 2,
+      "outdoors": 0,
+      "foodie": 3,
+      "solo reset": 1,
+      "adventure": 0
+    },
+    "anchor_experiences": [
+      { "title": "River Valley walk + viewpoints", "type": "nature" },
+      { "title": "Whyte Ave / Old Strathcona food crawl", "type": "food" },
+      { "title": "Museum or gallery stop", "type": "culture" }
+    ],
+    "neighborhoods": [
+      { "name": "Downtown", "reason": "Central base for attractions + restaurants" },
+      { "name": "Old Strathcona", "reason": "Walkable shops + cafés + nightlife" }
+    ]
+  },
+  {
+    "id": "elk_island_np_ab",
+    "name": "Elk Island National Park",
+    "region": "Alberta",
+    "home_base_city": "Fort Saskatchewan (area)",
+    "is_staycation": false,
+    "drive_time_hours_from": { "edmonton": 0.75, "calgary": 3.75 },
+    "distance_km_from": { "edmonton": 55, "calgary": 360 },
+    "cost_level": "low",
+    "vibes": ["nature", "relax", "family", "winter_fun"],
+    "best_seasons": ["winter", "spring", "summer", "fall"],
+    "avoid_seasons": [],
+    "style_scores": {
+      "chill": 1,
+      "outdoors": 3,
+      "foodie": 0,
+      "solo reset": 2,
+      "adventure": 1
+    },
+    "anchor_experiences": [
+      { "title": "Bison viewing loop", "type": "nature" },
+      { "title": "Easy lakeside trail walk", "type": "nature" },
+      { "title": "Stargazing (dark sky area)", "type": "relax" }
+    ],
+    "neighborhoods": [
+      { "name": "Park day trip", "reason": "Best as a day trip or paired with an Edmonton weekend" }
+    ]
+  },
+  {
+    "id": "banff_ab",
+    "name": "Banff",
+    "region": "Alberta",
+    "home_base_city": "Banff",
+    "is_staycation": false,
+    "drive_time_hours_from": { "edmonton": 4.0, "calgary": 1.5 },
+    "distance_km_from": { "edmonton": 415, "calgary": 130 },
+    "cost_level": "high",
+    "vibes": ["nature", "adventure", "relax", "food", "hot_springs", "winter_fun"],
+    "best_seasons": ["winter", "spring", "summer", "fall"],
+    "avoid_seasons": [],
+    "style_scores": {
+      "chill": 2,
+      "outdoors": 3,
+      "foodie": 2,
+      "solo reset": 2,
+      "adventure": 3
+    },
+    "anchor_experiences": [
+      { "title": "Banff Ave stroll + shops", "type": "culture" },
+      { "title": "Sulphur Mountain gondola / viewpoint", "type": "scenic" },
+      { "title": "Upper Hot Springs soak", "type": "hot_springs" }
+    ],
+    "neighborhoods": [
+      { "name": "Downtown Banff", "reason": "Walkable base with restaurants + transit options" }
+    ]
+  },
+  {
+    "id": "canmore_ab",
+    "name": "Canmore",
+    "region": "Alberta",
+    "home_base_city": "Canmore",
+    "is_staycation": false,
+    "drive_time_hours_from": { "edmonton": 4.0, "calgary": 1.25 },
+    "distance_km_from": { "edmonton": 420, "calgary": 105 },
+    "cost_level": "high",
+    "vibes": ["nature", "food", "relax", "adventure", "winter_fun"],
+    "best_seasons": ["winter", "spring", "summer", "fall"],
+    "avoid_seasons": [],
+    "style_scores": {
+      "chill": 2,
+      "outdoors": 3,
+      "foodie": 2,
+      "solo reset": 2,
+      "adventure": 2
+    },
+    "anchor_experiences": [
+      { "title": "Downtown Canmore + Bow River walk", "type": "relax" },
+      { "title": "Grassi Lakes (seasonal)", "type": "nature" },
+      { "title": "Scenic viewpoints + short hikes", "type": "scenic" }
+    ],
+    "neighborhoods": [
+      { "name": "Downtown Canmore", "reason": "Walkable cafés + quick access to trails" }
+    ]
+  },
+  {
+    "id": "kananaskis_ab",
+    "name": "Kananaskis (K-Country)",
+    "region": "Alberta",
+    "home_base_city": "Kananaskis Village (area)",
+    "is_staycation": false,
+    "drive_time_hours_from": { "edmonton": 4.5, "calgary": 1.5 },
+    "distance_km_from": { "edmonton": 460, "calgary": 115 },
+    "cost_level": "mid",
+    "vibes": ["nature", "adventure", "relax", "winter_fun"],
+    "best_seasons": ["winter", "spring", "summer", "fall"],
+    "avoid_seasons": [],
+    "style_scores": {
+      "chill": 1,
+      "outdoors": 3,
+      "foodie": 0,
+      "solo reset": 2,
+      "adventure": 3
+    },
+    "anchor_experiences": [
+      { "title": "Barrier Lake viewpoints", "type": "scenic" },
+      { "title": "Short hike loop (choose by season)", "type": "nature" },
+      { "title": "Quiet scenic drive + photo stops", "type": "relax" }
+    ],
+    "neighborhoods": [
+      { "name": "Kananaskis Village", "reason": "Easy base for multiple trailheads and viewpoints" }
+    ]
+  },
+  {
+    "id": "jasper_ab",
+    "name": "Jasper",
+    "region": "Alberta",
+    "home_base_city": "Jasper",
+    "is_staycation": false,
+    "drive_time_hours_from": { "edmonton": 4.0, "calgary": 4.5 },
+    "distance_km_from": { "edmonton": 365, "calgary": 412 },
+    "cost_level": "mid",
+    "vibes": ["nature", "adventure", "relax", "winter_fun"],
+    "best_seasons": ["winter", "spring", "summer", "fall"],
+    "avoid_seasons": [],
+    "style_scores": {
+      "chill": 2,
+      "outdoors": 3,
+      "foodie": 1,
+      "solo reset": 3,
+      "adventure": 2
+    },
+    "anchor_experiences": [
+      { "title": "Maligne Canyon walk", "type": "nature" },
+      { "title": "Pyramid Lake sunset", "type": "scenic" },
+      { "title": "Jasper town food crawl", "type": "food" }
+    ],
+    "neighborhoods": [
+      { "name": "Downtown Jasper", "reason": "Walkable base for food + quick drives to sights" }
+    ]
+  },
+  {
+    "id": "sylvan_lake_ab",
+    "name": "Sylvan Lake",
+    "region": "Alberta",
+    "home_base_city": "Sylvan Lake",
+    "is_staycation": false,
+    "drive_time_hours_from": { "edmonton": 1.75, "calgary": 2.0 },
+    "distance_km_from": { "edmonton": 175, "calgary": 150 },
+    "cost_level": "mid",
+    "vibes": ["lakes", "relax", "family", "food"],
+    "best_seasons": ["summer"],
+    "avoid_seasons": ["spring"],
+    "style_scores": {
+      "chill": 2,
+      "outdoors": 2,
+      "foodie": 1,
+      "solo reset": 2,
+      "adventure": 0
+    },
+    "anchor_experiences": [
+      { "title": "Lakeside walk + coffee", "type": "relax" },
+      { "title": "Beach / waterfront time (summer)", "type": "lakes" },
+      { "title": "Patio dinner (seasonal)", "type": "food" }
+    ],
+    "neighborhoods": [
+      { "name": "Lakeshore area", "reason": "Closest access to waterfront + restaurants" }
+    ]
+  },
+  {
+    "id": "drumheller_ab",
+    "name": "Drumheller",
+    "region": "Alberta",
+    "home_base_city": "Drumheller",
+    "is_staycation": false,
+    "drive_time_hours_from": { "edmonton": 3.0, "calgary": 1.5 },
+    "distance_km_from": { "edmonton": 280, "calgary": 135 },
+    "cost_level": "low_mid",
+    "vibes": ["culture", "family", "adventure", "scenic"],
+    "best_seasons": ["spring", "summer", "fall"],
+    "avoid_seasons": ["winter"],
+    "style_scores": {
+      "chill": 1,
+      "outdoors": 1,
+      "foodie": 0,
+      "solo reset": 1,
+      "adventure": 3
+    },
+    "anchor_experiences": [
+      { "title": "Royal Tyrrell Museum", "type": "culture" },
+      { "title": "Hoodoos viewpoint + short walk", "type": "scenic" },
+      { "title": "Horsethief Canyon sunset viewpoint", "type": "scenic" }
+    ],
+    "neighborhoods": [
+      { "name": "Downtown Drumheller", "reason": "Central for museum + quick drives to viewpoints" }
+    ]
+  },
+  {
+    "id": "red_deer_ab",
+    "name": "Red Deer",
+    "region": "Alberta",
+    "home_base_city": "Red Deer",
+    "is_staycation": false,
+    "drive_time_hours_from": { "edmonton": 1.5, "calgary": 1.5 },
+    "distance_km_from": { "edmonton": 150, "calgary": 150 },
+    "cost_level": "low",
+    "vibes": ["food", "relax", "family"],
+    "best_seasons": ["winter", "spring", "summer", "fall"],
+    "avoid_seasons": [],
+    "style_scores": {
+      "chill": 2,
+      "outdoors": 0,
+      "foodie": 1,
+      "solo reset": 1,
+      "adventure": 0
+    },
+    "anchor_experiences": [
+      { "title": "River trails + park walk", "type": "relax" },
+      { "title": "Local cafés / brunch spots", "type": "food" },
+      { "title": "Easy low-drive weekend reset", "type": "relax" }
+    ],
+    "neighborhoods": [
+      { "name": "Downtown / trail access", "reason": "Convenient for quick walks + food" }
+    ]
+  },
+  {
+    "id": "nordegg_ab",
+    "name": "Nordegg + Abraham Lake",
+    "region": "Alberta",
+    "home_base_city": "Nordegg",
+    "is_staycation": false,
+    "drive_time_hours_from": { "edmonton": 3.5, "calgary": 3.0 },
+    "distance_km_from": { "edmonton": 330, "calgary": 270 },
+    "cost_level": "low_mid",
+    "vibes": ["nature", "adventure", "winter_fun", "scenic"],
+    "best_seasons": ["winter", "summer"],
+    "avoid_seasons": ["spring"],
+    "style_scores": {
+      "chill": 0,
+      "outdoors": 3,
+      "foodie": 0,
+      "solo reset": 1,
+      "adventure": 3
+    },
+    "anchor_experiences": [
+      { "title": "Abraham Lake viewpoints (seasonal)", "type": "scenic" },
+      { "title": "Short waterfall/hike stop (seasonal)", "type": "nature" },
+      { "title": "Scenic drive photo loop", "type": "adventure" }
+    ],
+    "neighborhoods": [
+      { "name": "Nordegg area", "reason": "Best base for day loops to viewpoints and hikes" }
+    ]
+  },
+  {
+    "id": "calgary_staycation_ab",
+    "name": "Calgary Staycation",
+    "region": "Alberta",
+    "home_base_city": "Calgary",
+    "is_staycation": true,
+    "drive_time_hours_from": { "edmonton": 3.0, "calgary": 0.0 },
+    "distance_km_from": { "edmonton": 300, "calgary": 0 },
+    "cost_level": "low_mid",
+    "vibes": ["food", "culture", "nightlife", "relax"],
+    "best_seasons": ["winter", "spring", "summer", "fall"],
+    "avoid_seasons": [],
+    "style_scores": {
+      "chill": 2,
+      "outdoors": 0,
+      "foodie": 3,
+      "solo reset": 1,
+      "adventure": 0
+    },
+    "anchor_experiences": [
+      { "title": "Kensington / Inglewood stroll + cafés", "type": "food" },
+      { "title": "Downtown + Stephen Ave evening", "type": "nightlife" },
+      { "title": "Day trip add-on: Kananaskis viewpoint", "type": "scenic" }
+    ],
+    "neighborhoods": [
+      { "name": "Beltline / Downtown", "reason": "Central base for food + nightlife" },
+      { "name": "Kensington", "reason": "Walkable shops + brunch" }
+    ]
+  }
+]
