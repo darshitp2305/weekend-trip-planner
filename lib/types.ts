@@ -37,7 +37,11 @@ export interface BudgetBreakdown {
   food: number;
   gas: number;
   activities: number;
+  misc: number;
   total: number;
+  totalLow: number;
+  totalExpected: number;
+  totalHigh: number;
 }
 
 export interface Destination {
@@ -113,4 +117,40 @@ export interface RankedDestination extends Destination {
   aiItinerary?: string[];
   aiBudgetNote?: string;
   aiBestFit?: string;
+}
+
+export interface ItineraryStop {
+  time?: string;
+  title: string;
+  description?: string;
+  mapsUrl?: string;
+  websiteUrl?: string;
+  estimatedCost?: number;
+}
+
+export interface ItineraryDayData {
+  title?: string;
+  summary?: string;
+  stops: ItineraryStop[];
+}
+
+export interface TripPlan {
+  id: string;
+  destinationName: string;
+  region?: string;
+  summary: string;
+  driveTimeText: string;
+  imageUrl?: string;
+  score?: number;
+  styleMatchStrength?: RankedDestination["styleMatchStrength"];
+  tags: string[];
+  budgetBreakdown: BudgetBreakdown;
+  hotelOptions: HotelOption[];
+  foodSpots: FoodSpot[];
+  topActivities: Activity[];
+  itineraryDays: ItineraryDayData[];
+  aiSummary?: string;
+  aiBudgetNote?: string;
+  aiBestFit?: string;
+  createdAt: string;
 }

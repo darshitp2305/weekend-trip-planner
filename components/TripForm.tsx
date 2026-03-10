@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import TripCard from "./TripCard";
 import CompareTrips from "./CompareTrips";
 import SavedTrips from "./SavedTrips";
-import { RankedDestination, TripStyle } from "../lib/types";
+import { RankedDestination, TripStyle, TripInput } from "../lib/types";
 
 const SAVED_TRIPS_KEY = "weekend_trip_planner_saved_trips";
 
@@ -17,9 +17,17 @@ function buildSavedTripsFullText(savedTrips: RankedDestination[]) {
           : "- No itinerary available";
 
       const reasons =
-        trip.matchReasons.length > 0
+        trip.matchReasons && trip.matchReasons.length > 0
           ? trip.matchReasons.map((item) => `- ${item}`).join("\n")
           : "- No match reasons available";
+
+      const budget = trip.budgetBreakdown ?? {
+        hotel: 0,
+        food: 0,
+        gas: 0,
+        activities: 0,
+        total: trip.estimatedCost ?? 0,
+      };
 
       return `${index + 1}. ${trip.name}
 Home base: ${trip.homeBaseCity}
@@ -41,11 +49,11 @@ Match Reasons:
 ${reasons}
 
 Budget Breakdown:
-- Hotel: $${trip.budgetBreakdown.hotel}
-- Food: $${trip.budgetBreakdown.food}
-- Gas: $${trip.budgetBreakdown.gas}
-- Activities: $${trip.budgetBreakdown.activities}
-- Total: $${trip.budgetBreakdown.total}
+- Hotel: $${budget.hotel}
+- Food: $${budget.food}
+- Gas: $${budget.gas}
+- Activities: $${budget.activities}
+- Total: $${budget.total}
 
 Suggested Itinerary:
 ${itineraryLines}
@@ -81,14 +89,32 @@ ${itineraryPreview}
     .join("\n");
 }
 
+function isValidRankedDestination(trip: any): trip is RankedDestination {
+  return (
+    trip &&
+    typeof trip.name === "string" &&
+    typeof trip.summary === "string" &&
+    typeof trip.driveHoursFromStart === "number" &&
+    typeof trip.homeBaseCity === "string" &&
+    typeof trip.estimatedCost === "number" &&
+    typeof trip.score === "number" &&
+    trip.budgetBreakdown &&
+    typeof trip.budgetBreakdown.hotel === "number" &&
+    typeof trip.budgetBreakdown.food === "number" &&
+    typeof trip.budgetBreakdown.gas === "number" &&
+    typeof trip.budgetBreakdown.activities === "number" &&
+    typeof trip.budgetBreakdown.total === "number"
+  );
+}
+
 export default function TripForm() {
-  const [form, setForm] = useState({
-    startCity: "Edmonton" as "Edmonton" | "Calgary",
+  const [form, setForm] = useState<TripInput>({
+    startCity: "Edmonton",
     maxDriveHours: 5,
     budget: 600,
     tripLengthDays: 2,
     season: "summer",
-    style: "foodie" as TripStyle,
+    style: "foodie",
     veganFriendly: false,
     includeStaycations: true,
     strictBudget: false,
@@ -107,12 +133,18 @@ export default function TripForm() {
       const raw = localStorage.getItem(SAVED_TRIPS_KEY);
       if (!raw) return;
 
-      const parsed = JSON.parse(raw) as RankedDestination[];
-      if (Array.isArray(parsed)) {
-        setSavedTrips(parsed);
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return;
+
+      const validTrips = parsed.filter(isValidRankedDestination);
+      setSavedTrips(validTrips);
+
+      if (validTrips.length !== parsed.length) {
+        localStorage.setItem(SAVED_TRIPS_KEY, JSON.stringify(validTrips));
       }
     } catch (err) {
       console.error("Failed to load saved trips:", err);
+      localStorage.removeItem(SAVED_TRIPS_KEY);
     }
   }, []);
 
@@ -151,7 +183,8 @@ export default function TripForm() {
         throw new Error(data.error || "Something went wrong.");
       }
 
-      setTrips(data.trips);
+      const nextTrips = Array.isArray(data.trips) ? data.trips.filter(isValidRankedDestination) : [];
+      setTrips(nextTrips);
     } catch (err) {
       console.error(err);
       setError(err instanceof Error ? err.message : "Failed to generate trip results.");
@@ -162,10 +195,13 @@ export default function TripForm() {
     }
   }
 
-  function saveTrip(trip: RankedDestination) {
+  function saveTrip(tripName: string) {
+    const found = trips.find((trip) => trip.name === tripName);
+    if (!found) return;
+
     setSavedTrips((prev) => {
-      if (prev.some((item) => item.name === trip.name)) return prev;
-      return [trip, ...prev];
+      if (prev.some((item) => item.name === found.name)) return prev;
+      return [found, ...prev];
     });
   }
 
@@ -237,6 +273,11 @@ export default function TripForm() {
       setSavedCopyStatus("failed");
       setTimeout(() => setSavedCopyStatus("idle"), 2000);
     }
+  }
+
+  function clearSavedTrips() {
+    setSavedTrips([]);
+    localStorage.removeItem(SAVED_TRIPS_KEY);
   }
 
   function renderResultsMessage() {
@@ -473,6 +514,13 @@ export default function TripForm() {
               >
                 Export text
               </button>
+              <button
+                type="button"
+                onClick={clearSavedTrips}
+                className="border rounded px-3 py-2 text-sm"
+              >
+                Clear saved
+              </button>
               {savedCopyStatus === "copied" && (
                 <span className="text-xs text-gray-400">Copied</span>
               )}
@@ -495,9 +543,10 @@ export default function TripForm() {
               <TripCard
                 key={trip.name}
                 trip={trip}
+                input={form}
                 isSaved={savedTripNames.has(trip.name)}
                 onSave={saveTrip}
-                onRemove={removeSavedTrip}
+                onRemoveSaved={removeSavedTrip}
               />
             ))}
           </div>
