@@ -1,501 +1,256 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import {
-  RankedDestination,
-  TripDataSource,
-  TripInput,
-} from "../lib/types";
-import { buildTripPlan } from "../lib/buildTripPlan";
-import { saveTripPlan } from "../lib/tripStore";
+import { useMemo, useState } from "react";
+import type { RankedDestination } from "@/lib/types";
 
 type Props = {
   trip: RankedDestination;
-  input?: Partial<TripInput>;
-  onSave?: (tripName: string) => void;
-  onRemoveSaved?: (tripName: string) => void;
   isSaved?: boolean;
+  onRemove?: (tripName: string) => void;
 };
 
-function strengthLabel(strength: RankedDestination["styleMatchStrength"]) {
-  switch (strength) {
-    case "strong":
-      return "Strong style match";
-    case "medium":
-      return "Good style match";
-    case "weak":
-      return "Light style match";
-    default:
-      return "Weak style match";
-  }
+type TripCardTrip = RankedDestination & {
+  confidenceLabel?: string;
+  source?: string;
+  homeBase?: string;
+  aiSuggestedItinerary?: string;
+  aiBestFit?: string;
+  aiTripSummary?: string;
+};
+
+function sectionText(value?: string | null): string {
+  return value?.trim() || "No information available yet.";
 }
 
-function confidenceLabel(confidence?: RankedDestination["confidence"]) {
-  switch (confidence) {
-    case "high":
-      return "Strong match";
-    case "medium":
-      return "Good match";
-    case "low":
-      return "Experimental";
-    default:
-      return "Unrated";
-  }
+function getStyleFitLabel(trip: RankedDestination): string {
+  if (trip.styleMatchStrength === "strong") return "Strong style match";
+  if (trip.styleMatchStrength === "medium") return "Good style match";
+  if (trip.styleMatchStrength === "weak") return "Weak style match";
+  return "Poor style match";
 }
 
-function renderSourceBadge(trip: RankedDestination) {
-  if (trip.liveDataSummary?.usedPlacesData) {
-    return (
-      <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700">
-        Live Google Places
-      </span>
-    );
-  }
+export default function TripCard({ trip, isSaved = false, onRemove }: Props) {
+  const cardTrip = trip as TripCardTrip;
 
-  if (trip.liveDataSummary?.usedFallbackData) {
-    return (
-      <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-700">
-        Fallback data
-      </span>
-    );
-  }
+  const [openSections, setOpenSections] = useState({
+    overview: false,
+    whyMatched: false,
+    budget: false,
+    itinerary: true,
+  });
+
+  const toggleSection = (key: keyof typeof openSections) => {
+    setOpenSections((prev) => ({
+      ...prev,
+      [key]: !prev[key],
+    }));
+  };
+
+  const confidenceLabel =
+    cardTrip.confidenceLabel ??
+    (trip.confidence === "high"
+      ? "Strong match"
+      : trip.confidence === "medium"
+      ? "Good match"
+      : trip.confidence === "low"
+      ? "Promising"
+      : "Match");
+
+  const dataBadge = useMemo(() => {
+    if (trip.liveDataSummary?.usedPlacesData) return "Live Google Places";
+    if (cardTrip.source === "static-fallback") return "Static ranking data";
+    return "Static ranking";
+  }, [trip.liveDataSummary?.usedPlacesData, cardTrip.source]);
+
+  const whyRanked =
+    trip.rankingReasons?.[0]?.label ||
+    trip.matchReasons?.[0] ||
+    "Matched your trip filters.";
+
+  const itineraryText = trip.aiSummary?.trim()
+    ? trip.aiSummary
+    : cardTrip.aiTripSummary?.trim()
+    ? [
+        cardTrip.aiTripSummary,
+        cardTrip.aiBestFit ? `\n\nBEST FIT\n${cardTrip.aiBestFit}` : "",
+        cardTrip.aiSuggestedItinerary
+          ? `\n\nSUGGESTED ITINERARY\n${cardTrip.aiSuggestedItinerary}`
+          : "",
+      ].join("")
+    : "No AI itinerary available yet.";
 
   return (
-    <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-1 text-xs font-medium text-slate-600">
-      Static ranking data
-    </span>
-  );
-}
-
-function Accordion({
-  title,
-  open,
-  onToggle,
-  children,
-}: {
-  title: string;
-  open: boolean;
-  onToggle: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="rounded-xl border border-slate-200">
-      <button
-        type="button"
-        onClick={onToggle}
-        className="flex w-full items-center justify-between px-4 py-3 text-left"
-      >
-        <span className="font-medium text-slate-900">{title}</span>
-        <span className="text-sm text-slate-500">{open ? "Hide" : "Show"}</span>
-      </button>
-
-      {open ? <div className="border-t border-slate-200 p-4">{children}</div> : null}
-    </div>
-  );
-}
-
-function shortCopyText(trip: RankedDestination) {
-  return `${trip.name} — ${trip.summary} Estimated cost: $${trip.estimatedCost}. Drive: ${trip.driveHoursFromStart}h. Confidence: ${confidenceLabel(
-    trip.confidence
-  )}.`;
-}
-
-function fullCopyText(trip: RankedDestination) {
-  const itinerary = trip.aiItinerary?.length
-    ? trip.aiItinerary.map((line) => `- ${line}`).join("\n")
-    : "No itinerary available.";
-
-  const reasons = trip.rankingReasons?.length
-    ? trip.rankingReasons.map((line) => `- ${line.label}`).join("\n")
-    : trip.matchReasons?.length
-    ? trip.matchReasons.map((line) => `- ${line}`).join("\n")
-    : "No match reasons available.";
-
-  return [
-    `${trip.name}`,
-    ``,
-    `Summary: ${trip.summary}`,
-    `Estimated cost: $${trip.estimatedCost}`,
-    `Drive time: ${trip.driveHoursFromStart}h`,
-    `Style fit: ${trip.styleMatchStrength}`,
-    `Confidence: ${confidenceLabel(trip.confidence)}`,
-    ``,
-    `Why it ranked:`,
-    reasons,
-    ``,
-    `AI summary:`,
-    trip.aiSummary ?? "None",
-    ``,
-    `AI best fit:`,
-    trip.aiBestFit ?? "None",
-    ``,
-    `AI itinerary:`,
-    itinerary,
-  ].join("\n");
-}
-
-export default function TripCard({
-  trip,
-  input,
-  onSave,
-  onRemoveSaved,
-  isSaved = false,
-}: Props) {
-  const router = useRouter();
-  const [saving, setSaving] = useState(false);
-  const [openSection, setOpenSection] = useState<string | null>("itinerary");
-
-  const tags = Array.isArray(trip.rawVibes) ? trip.rawVibes.slice(0, 5) : [];
-  const topWhyRanked =
-    trip.rankingReasons?.[0]?.label ?? trip.matchReasons?.[0] ?? "No summary available";
-
-  async function handleSaveTrip() {
-    try {
-      setSaving(true);
-
-      let enrichedTrip = trip;
-      let source: TripDataSource = "static-fallback";
-
-      if (input) {
-        try {
-          const enrichRes = await fetch("/api/enrich-trip", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              trip,
-              input,
-            }),
-          });
-
-          const text = await enrichRes.text();
-          let enrichData: any = null;
-
-          if (text) {
-            try {
-              enrichData = JSON.parse(text);
-            } catch (parseError) {
-              console.error(
-                "Failed to parse enrich-trip response:",
-                parseError,
-                text
-              );
-            }
-          }
-
-          if (!enrichRes.ok) {
-            console.error(
-              "enrich-trip request failed:",
-              enrichRes.status,
-              enrichData
-            );
-          } else {
-            if (enrichData?.success && enrichData?.trip) {
-              enrichedTrip = enrichData.trip;
-            }
-
-            if (
-              enrichData?.source === "live-google-places" ||
-              enrichData?.source === "static-fallback" ||
-              enrichData?.source === "static-ranking"
-            ) {
-              source = enrichData.source;
-            }
-          }
-        } catch (enrichError) {
-          console.error("enrich-trip fetch failed, using static trip:", enrichError);
-        }
-      }
-
-      const plan = buildTripPlan(enrichedTrip, input, source);
-      saveTripPlan(plan);
-
-      if (onSave) onSave(trip.name);
-      router.push(`/trip/${plan.id}`);
-    } catch (error) {
-      console.error("Failed to save trip:", error);
-      alert("Trip save failed. Check terminal/console.");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  return (
-    <article className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+    <article className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
       {trip.imageUrl ? (
-        <div className="h-52 w-full overflow-hidden bg-slate-100">
-          <img
-            src={trip.imageUrl}
-            alt={trip.name}
-            className="h-full w-full object-cover"
-          />
-        </div>
+        <img
+          src={trip.imageUrl}
+          alt={trip.name}
+          className="h-48 w-full object-cover"
+        />
       ) : null}
 
-      <div className="p-5">
-        <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className="p-6">
+        <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h3 className="text-2xl font-semibold text-slate-900">{trip.name}</h3>
+            <h2 className="text-2xl font-semibold text-slate-900">{trip.name}</h2>
             <p className="mt-1 text-sm text-slate-600">
-              Home base: {trip.homeBaseCity} • Drive time: {trip.driveHoursFromStart} hours
+              Home base: {cardTrip.homeBase || trip.name} • Drive time: {trip.driveHoursFromStart} hours
             </p>
-            <p className="mt-1 text-xs text-slate-500">
-              {trip.isStaycation ? "Staycation option" : `${trip.province} getaway`}
+            <p className="mt-1 text-sm text-slate-500">
+              {trip.isStaycation ? "Staycation option" : "Alberta getaway"}
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            {renderSourceBadge(trip)}
-            <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-1 text-xs font-medium text-slate-700">
-              {confidenceLabel(trip.confidence)}
+          <div className="flex flex-wrap gap-2">
+            <span
+              className={`rounded-full border px-3 py-1 text-xs font-medium ${
+                trip.liveDataSummary?.usedPlacesData
+                  ? "border-emerald-300 bg-emerald-50 text-emerald-700"
+                  : "border-slate-200 bg-slate-50 text-slate-600"
+              }`}
+            >
+              {dataBadge}
+            </span>
+            <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
+              {confidenceLabel}
             </span>
           </div>
         </div>
 
-        <p className="mt-4 text-slate-700">{trip.summary}</p>
+        <p className="mb-6 text-base leading-7 text-slate-700">{trip.summary}</p>
 
-        <div className="mt-4 grid gap-3 sm:grid-cols-3">
-          <div className="rounded-xl bg-slate-50 p-3">
-            <div className="text-xs uppercase tracking-wide text-slate-500">
-              Estimated cost
-            </div>
-            <div className="mt-1 text-lg font-semibold text-slate-900">
-              ${Math.round(trip.estimatedCost)}
+        <div className="grid gap-4 md:grid-cols-3">
+          <div className="rounded-2xl bg-slate-50 p-4">
+            <div className="text-xs uppercase tracking-wide text-slate-500">Estimated cost</div>
+            <div className="mt-2 text-3xl font-semibold text-slate-900">
+              ${trip.estimatedCost}
             </div>
           </div>
 
-          <div className="rounded-xl bg-slate-50 p-3">
-            <div className="text-xs uppercase tracking-wide text-slate-500">
-              Match score
-            </div>
-            <div className="mt-1 text-lg font-semibold text-slate-900">
-              {trip.score}
-            </div>
+          <div className="rounded-2xl bg-slate-50 p-4">
+            <div className="text-xs uppercase tracking-wide text-slate-500">Match score</div>
+            <div className="mt-2 text-3xl font-semibold text-slate-900">{trip.score}</div>
           </div>
 
-          <div className="rounded-xl bg-slate-50 p-3">
-            <div className="text-xs uppercase tracking-wide text-slate-500">
-              Style fit
-            </div>
-            <div className="mt-1 text-lg font-semibold text-slate-900">
-              {strengthLabel(trip.styleMatchStrength)}
+          <div className="rounded-2xl bg-slate-50 p-4">
+            <div className="text-xs uppercase tracking-wide text-slate-500">Style fit</div>
+            <div className="mt-2 text-3xl font-semibold text-slate-900">
+              {getStyleFitLabel(trip)}
             </div>
           </div>
         </div>
 
-        <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
-          <div className="text-xs uppercase tracking-wide text-slate-500">
-            Why this ranked
-          </div>
-          <div className="mt-1 text-sm font-medium text-slate-800">
-            {topWhyRanked}
-          </div>
+        <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+          <div className="text-xs uppercase tracking-wide text-slate-500">Why this ranked</div>
+          <div className="mt-2 text-base text-slate-800">{whyRanked}</div>
         </div>
 
-        {tags.length > 0 ? (
+        {!!trip.rawVibes?.length && (
           <div className="mt-4 flex flex-wrap gap-2">
-            {tags.map((tag) => (
+            {trip.rawVibes.map((vibe) => (
               <span
-                key={tag}
-                className="rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-700"
+                key={vibe}
+                className="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-700"
               >
-                {tag}
+                {vibe}
               </span>
             ))}
           </div>
-        ) : null}
+        )}
 
-        <div className="mt-5 flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => navigator.clipboard.writeText(shortCopyText(trip))}
-            className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-          >
-            Copy short
-          </button>
-
-          <button
-            type="button"
-            onClick={() => navigator.clipboard.writeText(fullCopyText(trip))}
-            className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-          >
-            Copy full
-          </button>
-
-          {isSaved ? (
+        <div className="mt-5 flex flex-wrap gap-3">
+          {isSaved && onRemove ? (
             <button
               type="button"
-              onClick={() => onRemoveSaved?.(trip.name)}
-              className="rounded-xl border border-rose-200 px-3 py-2 text-sm font-medium text-rose-700 hover:bg-rose-50"
+              onClick={() => onRemove(trip.name)}
+              className="rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-100"
             >
-              Remove saved
+              Remove trip
             </button>
-          ) : (
-            <button
-              type="button"
-              onClick={handleSaveTrip}
-              disabled={saving}
-              className="rounded-xl bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-60"
-            >
-              {saving ? "Saving..." : "Save trip"}
-            </button>
-          )}
+          ) : null}
         </div>
 
-        <div className="mt-5 space-y-3">
-          <Accordion
-            title="Overview"
-            open={openSection === "overview"}
-            onToggle={() =>
-              setOpenSection(openSection === "overview" ? null : "overview")
-            }
-          >
-            <p className="text-sm text-slate-700">{trip.summary}</p>
-
-            {trip.aiSummary ? (
-              <div className="mt-3">
-                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  AI trip summary
-                </div>
-                <p className="mt-1 text-sm text-slate-700">{trip.aiSummary}</p>
+        <div className="mt-6 space-y-3">
+          <div className="rounded-2xl border border-slate-200">
+            <button
+              type="button"
+              onClick={() => toggleSection("overview")}
+              className="flex w-full items-center justify-between px-4 py-4 text-left"
+            >
+              <span className="text-lg font-medium text-slate-900">Overview</span>
+              <span className="text-sm text-slate-500">
+                {openSections.overview ? "Hide" : "Show"}
+              </span>
+            </button>
+            {openSections.overview ? (
+              <div className="border-t border-slate-200 px-4 py-4 text-slate-700">
+                {sectionText(trip.summary)}
               </div>
             ) : null}
-          </Accordion>
+          </div>
 
-          <Accordion
-            title="Why it matched"
-            open={openSection === "matched"}
-            onToggle={() =>
-              setOpenSection(openSection === "matched" ? null : "matched")
-            }
-          >
-            {trip.rankingReasons?.length ? (
-              <div>
-                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Ranking summary
-                </div>
-                <ul className="mt-2 space-y-2 text-sm text-slate-700">
-                  {trip.rankingReasons.map((reason, index) => (
-                    <li key={`${reason.label}-${index}`}>• {reason.label}</li>
+          <div className="rounded-2xl border border-slate-200">
+            <button
+              type="button"
+              onClick={() => toggleSection("whyMatched")}
+              className="flex w-full items-center justify-between px-4 py-4 text-left"
+            >
+              <span className="text-lg font-medium text-slate-900">Why it matched</span>
+              <span className="text-sm text-slate-500">
+                {openSections.whyMatched ? "Hide" : "Show"}
+              </span>
+            </button>
+            {openSections.whyMatched ? (
+              <div className="border-t border-slate-200 px-4 py-4">
+                <ul className="space-y-2 text-slate-700">
+                  {(trip.rankingReasons?.length
+                    ? trip.rankingReasons.map((reason) => reason.label)
+                    : trip.matchReasons?.length
+                    ? trip.matchReasons
+                    : ["Matched your selected filters."]
+                  ).map((item) => (
+                    <li key={item}>• {item}</li>
                   ))}
                 </ul>
               </div>
             ) : null}
+          </div>
 
-            <div className="mt-4">
-              <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Match reasons
-              </div>
-              {trip.matchReasons?.length ? (
-                <ul className="mt-2 space-y-2 text-sm text-slate-700">
-                  {trip.matchReasons.map((reason, index) => (
-                    <li key={`${reason}-${index}`}>• {reason}</li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="mt-2 text-sm text-slate-600">
-                  No match reasons available.
-                </p>
-              )}
-            </div>
-
-            {trip.aiBestFit ? (
-              <div className="mt-4">
-                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Best fit
-                </div>
-                <p className="mt-1 text-sm text-slate-700">{trip.aiBestFit}</p>
+          <div className="rounded-2xl border border-slate-200">
+            <button
+              type="button"
+              onClick={() => toggleSection("budget")}
+              className="flex w-full items-center justify-between px-4 py-4 text-left"
+            >
+              <span className="text-lg font-medium text-slate-900">Budget</span>
+              <span className="text-sm text-slate-500">
+                {openSections.budget ? "Hide" : "Show"}
+              </span>
+            </button>
+            {openSections.budget ? (
+              <div className="border-t border-slate-200 px-4 py-4 text-slate-700">
+                Estimated total cost: <span className="font-semibold">${trip.estimatedCost}</span>
               </div>
             ) : null}
+          </div>
 
-            {trip.warnings?.length ? (
-              <div className="mt-4">
-                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Warnings
-                </div>
-                <ul className="mt-2 space-y-2 text-sm text-slate-700">
-                  {trip.warnings.map((warning, index) => (
-                    <li key={`${warning}-${index}`}>• {warning}</li>
-                  ))}
-                </ul>
+          <div className="rounded-2xl border border-slate-200">
+            <button
+              type="button"
+              onClick={() => toggleSection("itinerary")}
+              className="flex w-full items-center justify-between px-4 py-4 text-left"
+            >
+              <span className="text-lg font-medium text-slate-900">Suggested itinerary</span>
+              <span className="text-sm text-slate-500">
+                {openSections.itinerary ? "Hide" : "Show"}
+              </span>
+            </button>
+            {openSections.itinerary ? (
+              <div className="border-t border-slate-200 px-4 py-4 whitespace-pre-line text-slate-700">
+                {itineraryText}
               </div>
             ) : null}
-          </Accordion>
-
-          <Accordion
-            title="Budget"
-            open={openSection === "budget"}
-            onToggle={() =>
-              setOpenSection(openSection === "budget" ? null : "budget")
-            }
-          >
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="rounded-xl bg-slate-50 p-3 text-sm text-slate-700">
-                Hotel: ${trip.budgetBreakdown.hotel}
-              </div>
-              <div className="rounded-xl bg-slate-50 p-3 text-sm text-slate-700">
-                Food: ${trip.budgetBreakdown.food}
-              </div>
-              <div className="rounded-xl bg-slate-50 p-3 text-sm text-slate-700">
-                Gas: ${trip.budgetBreakdown.gas}
-              </div>
-              <div className="rounded-xl bg-slate-50 p-3 text-sm text-slate-700">
-                Activities: ${trip.budgetBreakdown.activities}
-              </div>
-              <div className="rounded-xl bg-slate-100 p-3 text-sm font-semibold text-slate-900 sm:col-span-2">
-                Total: ${trip.budgetBreakdown.total}
-              </div>
-            </div>
-
-            {trip.aiBudgetNote ? (
-              <p className="mt-3 text-sm text-slate-700">{trip.aiBudgetNote}</p>
-            ) : null}
-          </Accordion>
-
-          <Accordion
-            title="Suggested itinerary"
-            open={openSection === "itinerary"}
-            onToggle={() =>
-              setOpenSection(openSection === "itinerary" ? null : "itinerary")
-            }
-          >
-            {trip.aiSummary ? (
-              <div className="mb-4">
-                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  AI trip summary
-                </div>
-                <p className="mt-1 text-sm text-slate-700">{trip.aiSummary}</p>
-              </div>
-            ) : null}
-
-            {trip.aiBestFit ? (
-              <div className="mb-4">
-                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Best fit
-                </div>
-                <p className="mt-1 text-sm text-slate-700">{trip.aiBestFit}</p>
-              </div>
-            ) : null}
-
-            {trip.aiItinerary?.length ? (
-              <div>
-                <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Suggested itinerary
-                </div>
-                <ul className="mt-2 space-y-2 text-sm text-slate-700">
-                  {trip.aiItinerary.map((line, index) => (
-                    <li key={`${line}-${index}`}>• {line}</li>
-                  ))}
-                </ul>
-              </div>
-            ) : (
-              <p className="text-sm text-slate-600">
-                No AI itinerary available yet.
-              </p>
-            )}
-          </Accordion>
+          </div>
         </div>
       </div>
     </article>

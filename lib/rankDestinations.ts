@@ -6,7 +6,7 @@ import {
   RawDestination,
   TripInput,
 } from "./types";
-import { estimateTripBreakdown } from "./budgetEstimator";
+import { estimateBudgetBreakdown } from "./budgetEstimator";
 import { mapRawDestination } from "./mapDestination";
 
 type ReasonCandidate = RankingReason & {
@@ -993,7 +993,7 @@ export function rankDestinations(
 
   const ranked = destinationList
     .map((destination) => {
-      const budgetBreakdown = estimateTripBreakdown(
+      const budgetBreakdown = estimateBudgetBreakdown(
         destination,
         input.tripLengthDays
       );
