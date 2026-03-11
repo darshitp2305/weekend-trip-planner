@@ -8,8 +8,21 @@ type Props = {
     score?: number;
     styleMatchStrength?: string;
     tags?: string[];
+    dataSource?: "live-google-places" | "static-fallback";
   };
 };
+
+function sourceLabel(source?: "live-google-places" | "static-fallback") {
+  if (source === "live-google-places") return "Live Google Places data";
+  return "Static fallback data";
+}
+
+function sourceBadgeClasses(source?: "live-google-places" | "static-fallback") {
+  if (source === "live-google-places") {
+    return "rounded-xl bg-green-100 px-4 py-2 text-sm text-green-800";
+  }
+  return "rounded-xl bg-yellow-100 px-4 py-2 text-sm text-yellow-800";
+}
 
 export default function TripHeader({ trip }: Props) {
   return (
@@ -55,6 +68,12 @@ export default function TripHeader({ trip }: Props) {
           {trip.score !== undefined ? (
             <div className="rounded-xl bg-gray-100 px-4 py-2 text-sm text-gray-700">
               <span className="font-medium text-gray-900">Score:</span> {trip.score}
+            </div>
+          ) : null}
+
+          {trip.dataSource ? (
+            <div className={sourceBadgeClasses(trip.dataSource)}>
+              {sourceLabel(trip.dataSource)}
             </div>
           ) : null}
         </div>

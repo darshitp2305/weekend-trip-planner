@@ -167,6 +167,8 @@ export interface ItineraryDayData {
   stops: ItineraryStop[];
 }
 
+export type TripDataSource = "live-google-places" | "static-fallback";
+
 export interface TripPlan {
   id: string;
   destinationName: string;
@@ -185,5 +187,6 @@ export interface TripPlan {
   aiSummary?: string;
   aiBudgetNote?: string;
   aiBestFit?: string;
+  dataSource: TripDataSource;
   createdAt: string;
 }

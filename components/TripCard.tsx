@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { RankedDestination, TripInput } from "../lib/types";
+import { RankedDestination, TripInput, TripDataSource } from "../lib/types";
 import { buildTripPlan } from "../lib/buildTripPlan";
 import { saveTripPlan } from "../lib/tripStore";
 
@@ -27,6 +27,14 @@ function strengthLabel(strength: RankedDestination["styleMatchStrength"]) {
   }
 }
 
+function renderPreSaveSourceBadge() {
+  return (
+    <div className="inline-flex rounded-full bg-blue-100 px-3 py-1 text-xs font-medium text-blue-800">
+      Ready for live enrichment on save
+    </div>
+  );
+}
+
 export default function TripCard({
   trip,
   input,
@@ -44,7 +52,52 @@ export default function TripCard({
     try {
       setSaving(true);
 
-      const plan = buildTripPlan(trip, input);
+      let enrichedTrip = trip;
+      let source: TripDataSource = "static-fallback";
+
+      if (input) {
+        try {
+          const enrichRes = await fetch("/api/enrich-trip", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              trip,
+              input,
+            }),
+          });
+
+          const text = await enrichRes.text();
+
+          let enrichData: any = null;
+          if (text) {
+            try {
+              enrichData = JSON.parse(text);
+            } catch (parseError) {
+              console.error("Failed to parse enrich-trip response:", parseError, text);
+            }
+          }
+
+          if (!enrichRes.ok) {
+            console.error("enrich-trip request failed:", enrichRes.status, enrichData);
+          } else {
+            if (enrichData?.success && enrichData?.trip) {
+              enrichedTrip = enrichData.trip;
+            }
+            if (
+              enrichData?.source === "live-google-places" ||
+              enrichData?.source === "static-fallback"
+            ) {
+              source = enrichData.source;
+            }
+          }
+        } catch (enrichError) {
+          console.error("enrich-trip fetch failed, using static trip:", enrichError);
+        }
+      }
+
+      const plan = buildTripPlan(enrichedTrip, input, source);
       saveTripPlan(plan);
 
       if (onSave) onSave(trip.name);
@@ -52,7 +105,7 @@ export default function TripCard({
       router.push(`/trip/${plan.id}`);
     } catch (error) {
       console.error("Failed to save trip:", error);
-      alert("Trip save failed. Check the console and fix the pipeline.");
+      alert("Trip save failed. Check terminal/console.");
     } finally {
       setSaving(false);
     }
@@ -61,7 +114,7 @@ export default function TripCard({
   return (
     <div className="border rounded p-4 space-y-4">
       <div className="flex items-start justify-between gap-4">
-        <div>
+        <div className="space-y-2">
           <h3 className="text-3xl font-bold">{trip.name}</h3>
           <p className="text-sm text-gray-400">
             Home base: {trip.homeBaseCity} • Drive time: {trip.driveHoursFromStart} hours
@@ -69,6 +122,7 @@ export default function TripCard({
           <p className="text-sm text-gray-500">
             {trip.isStaycation ? "Staycation option" : `${trip.province} getaway`}
           </p>
+          {renderPreSaveSourceBadge()}
         </div>
 
         <div className="flex flex-col gap-2">

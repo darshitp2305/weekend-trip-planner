@@ -1,4 +1,11 @@
-import { RankedDestination, TripInput, TripPlan, ItineraryDayData, BudgetBreakdown } from "./types";
+import {
+  RankedDestination,
+  TripInput,
+  TripPlan,
+  ItineraryDayData,
+  BudgetBreakdown,
+  TripDataSource,
+} from "./types";
 
 const defaultInput: TripInput = {
   startCity: "Edmonton",
@@ -73,7 +80,6 @@ function buildBudgetBreakdown(trip: RankedDestination, input: TripInput): Budget
 
 function buildDayOne(trip: RankedDestination, input: TripInput): ItineraryDayData {
   const activity1 = trip.topActivities[0];
-  const activity2 = trip.topActivities[1];
   const food1 = trip.foodSpots[0];
   const hotel = trip.hotelOptions[0];
 
@@ -126,15 +132,6 @@ function buildDayOne(trip: RankedDestination, input: TripInput): ItineraryDayDat
         websiteUrl: hotel?.bookingLink,
       },
       {
-        time: "Late afternoon",
-        title: activity1?.name ?? "First highlight",
-        description: activity1
-          ? `Start with ${activity1.name} as the easiest first win.`
-          : "Start with one low-friction highlight.",
-        websiteUrl: activity1?.bookingLink,
-        estimatedCost: activity1?.costEstimate ?? 0,
-      },
-      {
         time: "Evening",
         title: food1?.name ?? "Dinner",
         description: food1
@@ -142,65 +139,13 @@ function buildDayOne(trip: RankedDestination, input: TripInput): ItineraryDayDat
           : "Dinner and an easy evening.",
         websiteUrl: food1?.link,
       },
-      {
-        time: "Optional",
-        title: activity2?.name ?? "Optional extra stop",
-        description: "Only do this if you still have energy.",
-        websiteUrl: activity2?.bookingLink,
-        estimatedCost: activity2?.costEstimate ?? 0,
-      },
-    ],
-  };
-}
-
-function buildMiddleDay(trip: RankedDestination): ItineraryDayData {
-  const activity1 = trip.topActivities[1] ?? trip.topActivities[0];
-  const food1 = trip.foodSpots[0];
-  const food2 = trip.foodSpots[1] ?? trip.foodSpots[0];
-  const hotel = trip.hotelOptions[0];
-
-  return {
-    title: "Main exploration day",
-    summary: "Use the strongest activity block here and let the day breathe.",
-    stops: [
-      {
-        time: "Morning",
-        title: food1?.name ?? "Breakfast / coffee",
-        description: food1
-          ? `Start slower around ${food1.name}.`
-          : "Start with breakfast and a slower morning.",
-        websiteUrl: food1?.link,
-      },
-      {
-        time: "Afternoon",
-        title: activity1?.name ?? "Main activity block",
-        description: activity1
-          ? "This is the anchor activity of the trip."
-          : "Use this as the main daytime block.",
-        websiteUrl: activity1?.bookingLink,
-        estimatedCost: activity1?.costEstimate ?? 0,
-      },
-      {
-        time: "Evening",
-        title: food2?.name ?? "Dinner",
-        description: food2
-          ? `Wrap the day with dinner at ${food2.name}.`
-          : "End with a good dinner instead of adding random filler.",
-        websiteUrl: food2?.link,
-      },
-      {
-        time: "Optional",
-        title: hotel ? `Relax back at ${hotel.name}` : "Slow evening option",
-        description: "Leave room for recovery instead of pretending every hour needs to be optimized.",
-        websiteUrl: hotel?.bookingLink,
-      },
     ],
   };
 }
 
 function buildReturnDay(trip: RankedDestination, input: TripInput): ItineraryDayData {
   const food1 = trip.foodSpots[0];
-  const activity1 = trip.topActivities[2] ?? trip.topActivities[1] ?? trip.topActivities[0];
+  const activity1 = trip.topActivities[1] ?? trip.topActivities[0];
 
   if (trip.isStaycation) {
     return {
@@ -256,30 +201,22 @@ function buildReturnDay(trip: RankedDestination, input: TripInput): ItineraryDay
 
 export function buildTripPlan(
   trip: RankedDestination,
-  input?: Partial<TripInput>
+  input?: Partial<TripInput>,
+  dataSource: TripDataSource = "static-fallback"
 ): TripPlan {
   const safeInput = normalizeInput(input);
-  const days = Math.max(2, safeInput.tripLengthDays || 2);
   const budgetBreakdown = buildBudgetBreakdown(trip, safeInput);
 
   const itineraryDays: ItineraryDayData[] = [];
   itineraryDays.push(buildDayOne(trip, safeInput));
-
-  if (days >= 3) {
-    itineraryDays.push(buildMiddleDay(trip));
-  }
-
   itineraryDays.push(buildReturnDay(trip, safeInput));
-
-  if (days >= 4) {
-    itineraryDays.splice(2, 0, buildMiddleDay(trip));
-  }
 
   return {
     id: crypto.randomUUID(),
     destinationName: trip.name,
     region: trip.province,
     summary: trip.summary,
+    imageUrl: trip.imageUrl,
     driveTimeText: trip.isStaycation ? "0 hours" : makeDriveText(trip),
     score: trip.score,
     styleMatchStrength: trip.styleMatchStrength,
@@ -292,6 +229,7 @@ export function buildTripPlan(
     aiSummary: trip.aiSummary ?? "",
     aiBudgetNote: trip.aiBudgetNote ?? "",
     aiBestFit: trip.aiBestFit ?? "",
+    dataSource,
     createdAt: new Date().toISOString(),
   };
 }
