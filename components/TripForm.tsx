@@ -1,335 +1,199 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import TripCard from "./TripCard";
-import CompareTrips from "./CompareTrips";
-import SavedTrips from "./SavedTrips";
-import { RankedDestination, TripStyle, TripInput } from "../lib/types";
+import { useState } from "react";
+import { RankedDestination, TripInput, TripStyle } from "../lib/types";
 
-const SAVED_TRIPS_KEY = "weekend_trip_planner_saved_trips";
+type Props = {
+  onGenerate?: (input: TripInput) => Promise<void> | void;
+  onSubmit?: (input: TripInput) => Promise<void> | void;
+  loading?: boolean;
+  results?: RankedDestination[];
+};
 
-function buildSavedTripsFullText(savedTrips: RankedDestination[]) {
-  return savedTrips
-    .map((trip, index) => {
-      const itineraryLines =
-        trip.aiItinerary && trip.aiItinerary.length > 0
-          ? trip.aiItinerary.map((item) => `- ${item}`).join("\n")
-          : "- No itinerary available";
+type FormState = {
+  startCity: "Edmonton" | "Calgary";
+  maxDriveHours: string;
+  budget: string;
+  tripLengthDays: string;
+  season: string;
+  style: TripStyle;
+  veganFriendly: boolean;
+  includeStaycations: boolean;
+  strictBudget: boolean;
+};
 
-      const reasons =
-        trip.matchReasons && trip.matchReasons.length > 0
-          ? trip.matchReasons.map((item) => `- ${item}`).join("\n")
-          : "- No match reasons available";
+const DEFAULT_FORM: FormState = {
+  startCity: "Edmonton",
+  maxDriveHours: "5",
+  budget: "600",
+  tripLengthDays: "2",
+  season: "Summer",
+  style: "foodie",
+  veganFriendly: false,
+  includeStaycations: true,
+  strictBudget: false,
+};
 
-      const budget = trip.budgetBreakdown ?? {
-        hotel: 0,
-        food: 0,
-        gas: 0,
-        activities: 0,
-        total: trip.estimatedCost ?? 0,
-      };
+const SEASONS = ["Spring", "Summer", "Fall", "Winter"];
 
-      return `${index + 1}. ${trip.name}
-Home base: ${trip.homeBaseCity}
-Drive time: ${trip.driveHoursFromStart} hours
-Estimated cost: $${trip.estimatedCost}
-Style fit: ${trip.styleMatchStrength}
-Staycation: ${trip.isStaycation ? "Yes" : "No"}
+const TRIP_STYLES: TripStyle[] = [
+  "chill",
+  "outdoors",
+  "foodie",
+  "solo reset",
+  "adventure",
+];
 
-Summary:
-${trip.summary}
+function parsePositiveInt(value: string, fallback: number) {
+  const cleaned = value.replace(/[^\d]/g, "");
+  if (!cleaned) return fallback;
 
-AI Summary:
-${trip.aiSummary || "No AI summary available"}
+  const parsed = Number.parseInt(cleaned, 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
 
-Best Fit:
-${trip.aiBestFit || "No best-fit note available"}
-
-Match Reasons:
-${reasons}
-
-Budget Breakdown:
-- Hotel: $${budget.hotel}
-- Food: $${budget.food}
-- Gas: $${budget.gas}
-- Activities: $${budget.activities}
-- Total: $${budget.total}
-
-Suggested Itinerary:
-${itineraryLines}
-
-----------------------------------------
-`;
-    })
-    .join("\n");
+  return parsed;
 }
 
-function buildSavedTripsShortText(savedTrips: RankedDestination[]) {
-  return savedTrips
-    .map((trip, index) => {
-      const itineraryPreview =
-        trip.aiItinerary && trip.aiItinerary.length > 0
-          ? trip.aiItinerary.slice(0, 2).map((item) => `- ${item}`).join("\n")
-          : "- No itinerary available";
-
-      return `${index + 1}. ${trip.name}
-Cost: $${trip.estimatedCost}
-Drive time: ${trip.driveHoursFromStart} hours
-Best fit: ${trip.aiBestFit || "No best-fit note available"}
-
-Summary:
-${trip.aiSummary || trip.summary}
-
-2-day plan:
-${itineraryPreview}
-
-----------------------------------------
-`;
-    })
-    .join("\n");
+function normalizeNumericString(
+  value: string,
+  options: { min: number; max: number; fallback: number }
+) {
+  const parsed = parsePositiveInt(value, options.fallback);
+  const clamped = Math.min(options.max, Math.max(options.min, parsed));
+  return String(clamped);
 }
 
-function isValidRankedDestination(trip: any): trip is RankedDestination {
-  return (
-    trip &&
-    typeof trip.name === "string" &&
-    typeof trip.summary === "string" &&
-    typeof trip.driveHoursFromStart === "number" &&
-    typeof trip.homeBaseCity === "string" &&
-    typeof trip.estimatedCost === "number" &&
-    typeof trip.score === "number" &&
-    trip.budgetBreakdown &&
-    typeof trip.budgetBreakdown.hotel === "number" &&
-    typeof trip.budgetBreakdown.food === "number" &&
-    typeof trip.budgetBreakdown.gas === "number" &&
-    typeof trip.budgetBreakdown.activities === "number" &&
-    typeof trip.budgetBreakdown.total === "number"
-  );
+function displayStyleLabel(style: TripStyle) {
+  switch (style) {
+    case "solo reset":
+      return "Solo reset";
+    case "foodie":
+      return "Foodie";
+    case "outdoors":
+      return "Outdoors";
+    case "adventure":
+      return "Adventure";
+    case "chill":
+      return "Chill";
+    default:
+      return style;
+  }
 }
 
-export default function TripForm() {
-  const [form, setForm] = useState<TripInput>({
-    startCity: "Edmonton",
-    maxDriveHours: 5,
-    budget: 600,
-    tripLengthDays: 2,
-    season: "summer",
-    style: "foodie",
-    veganFriendly: false,
-    includeStaycations: true,
-    strictBudget: false,
-  });
+export default function TripForm({
+  onGenerate,
+  onSubmit,
+  loading = false,
+  results = [],
+}: Props) {
+  const [form, setForm] = useState<FormState>(DEFAULT_FORM);
 
-  const [trips, setTrips] = useState<RankedDestination[]>([]);
-  const [savedTrips, setSavedTrips] = useState<RankedDestination[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [hasSearched, setHasSearched] = useState(false);
-  const [mode, setMode] = useState("");
-  const [savedCopyStatus, setSavedCopyStatus] = useState<"idle" | "copied" | "failed">("idle");
+  function updateField<K extends keyof FormState>(key: K, value: FormState[K]) {
+    setForm((prev) => ({
+      ...prev,
+      [key]: value,
+    }));
+  }
 
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(SAVED_TRIPS_KEY);
-      if (!raw) return;
+  function handleNumericChange(
+    key: "maxDriveHours" | "budget" | "tripLengthDays",
+    value: string
+  ) {
+    const digitsOnly = value.replace(/[^\d]/g, "");
+    updateField(key, digitsOnly as FormState[typeof key]);
+  }
 
-      const parsed = JSON.parse(raw);
-      if (!Array.isArray(parsed)) return;
-
-      const validTrips = parsed.filter(isValidRankedDestination);
-      setSavedTrips(validTrips);
-
-      if (validTrips.length !== parsed.length) {
-        localStorage.setItem(SAVED_TRIPS_KEY, JSON.stringify(validTrips));
-      }
-    } catch (err) {
-      console.error("Failed to load saved trips:", err);
-      localStorage.removeItem(SAVED_TRIPS_KEY);
+  function handleNumericBlur(key: "maxDriveHours" | "budget" | "tripLengthDays") {
+    if (key === "maxDriveHours") {
+      updateField(
+        key,
+        normalizeNumericString(form[key], {
+          min: 1,
+          max: 12,
+          fallback: 5,
+        }) as FormState[typeof key]
+      );
+      return;
     }
-  }, []);
 
-  useEffect(() => {
-    try {
-      localStorage.setItem(SAVED_TRIPS_KEY, JSON.stringify(savedTrips));
-    } catch (err) {
-      console.error("Failed to save trips:", err);
+    if (key === "budget") {
+      updateField(
+        key,
+        normalizeNumericString(form[key], {
+          min: 50,
+          max: 5000,
+          fallback: 600,
+        }) as FormState[typeof key]
+      );
+      return;
     }
-  }, [savedTrips]);
 
-  const savedTripNames = useMemo(
-    () => new Set(savedTrips.map((trip) => trip.name)),
-    [savedTrips]
-  );
+    updateField(
+      key,
+      normalizeNumericString(form[key], {
+        min: 1,
+        max: 7,
+        fallback: 2,
+      }) as FormState[typeof key]
+    );
+  }
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setLoading(true);
-    setError("");
-    setHasSearched(true);
 
-    try {
-      const response = await fetch("/api/generate-trip", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(form),
-      });
-
-      const data = await response.json();
-      setMode(data.mode ?? "");
-
-      if (!data.success) {
-        throw new Error(data.error || "Something went wrong.");
-      }
-
-      const nextTrips = Array.isArray(data.trips) ? data.trips.filter(isValidRankedDestination) : [];
-      setTrips(nextTrips);
-    } catch (err) {
-      console.error(err);
-      setError(err instanceof Error ? err.message : "Failed to generate trip results.");
-      setTrips([]);
-      setMode("");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  function saveTrip(tripName: string) {
-    const found = trips.find((trip) => trip.name === tripName);
-    if (!found) return;
-
-    setSavedTrips((prev) => {
-      if (prev.some((item) => item.name === found.name)) return prev;
-      return [found, ...prev];
-    });
-  }
-
-  function removeSavedTrip(tripName: string) {
-    setSavedTrips((prev) => prev.filter((trip) => trip.name !== tripName));
-  }
-
-  function downloadFile(filename: string, content: string, mimeType: string) {
-    const blob = new Blob([content], { type: mimeType });
-    const url = URL.createObjectURL(blob);
-
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = filename;
-    link.click();
-
-    URL.revokeObjectURL(url);
-  }
-
-  function exportSavedTripsAsJson() {
-    if (savedTrips.length === 0) return;
-
-    const payload = {
-      exportedAt: new Date().toISOString(),
-      tripCount: savedTrips.length,
-      trips: savedTrips,
+    const cleanedInput: TripInput = {
+      startCity: form.startCity,
+      maxDriveHours: parsePositiveInt(form.maxDriveHours, 5),
+      budget: parsePositiveInt(form.budget, 600),
+      tripLengthDays: parsePositiveInt(form.tripLengthDays, 2),
+      season: form.season,
+      style: form.style,
+      veganFriendly: form.veganFriendly,
+      includeStaycations: form.includeStaycations,
+      strictBudget: form.strictBudget,
     };
 
-    downloadFile(
-      "saved-trips.json",
-      JSON.stringify(payload, null, 2),
-      "application/json"
-    );
-  }
+    cleanedInput.maxDriveHours = Math.min(12, Math.max(1, cleanedInput.maxDriveHours));
+    cleanedInput.budget = Math.min(5000, Math.max(50, cleanedInput.budget));
+    cleanedInput.tripLengthDays = Math.min(7, Math.max(1, cleanedInput.tripLengthDays));
 
-  function exportSavedTripsAsText() {
-    if (savedTrips.length === 0) return;
+    setForm((prev) => ({
+      ...prev,
+      maxDriveHours: String(cleanedInput.maxDriveHours),
+      budget: String(cleanedInput.budget),
+      tripLengthDays: String(cleanedInput.tripLengthDays),
+    }));
 
-    downloadFile(
-      "saved-trips.txt",
-      buildSavedTripsFullText(savedTrips),
-      "text/plain;charset=utf-8"
-    );
-  }
+    const submitHandler = onGenerate ?? onSubmit;
 
-  async function copySavedTripsShort() {
-    if (savedTrips.length === 0) return;
-
-    try {
-      await navigator.clipboard.writeText(buildSavedTripsShortText(savedTrips));
-      setSavedCopyStatus("copied");
-      setTimeout(() => setSavedCopyStatus("idle"), 2000);
-    } catch (err) {
-      console.error("Failed to copy short saved trips:", err);
-      setSavedCopyStatus("failed");
-      setTimeout(() => setSavedCopyStatus("idle"), 2000);
-    }
-  }
-
-  async function copySavedTripsFull() {
-    if (savedTrips.length === 0) return;
-
-    try {
-      await navigator.clipboard.writeText(buildSavedTripsFullText(savedTrips));
-      setSavedCopyStatus("copied");
-      setTimeout(() => setSavedCopyStatus("idle"), 2000);
-    } catch (err) {
-      console.error("Failed to copy full saved trips:", err);
-      setSavedCopyStatus("failed");
-      setTimeout(() => setSavedCopyStatus("idle"), 2000);
-    }
-  }
-
-  function clearSavedTrips() {
-    setSavedTrips([]);
-    localStorage.removeItem(SAVED_TRIPS_KEY);
-  }
-
-  function renderResultsMessage() {
-    if (!hasSearched || loading || error) return null;
-
-    if (trips.length === 0) {
-      return (
-        <div className="border rounded p-4 text-yellow-300">
-          No destinations matched your current filters. Try increasing your budget,
-          increasing max drive hours, allowing staycations, or turning off strict budget.
-        </div>
-      );
+    if (typeof submitHandler !== "function") {
+      console.error("TripForm requires an onGenerate or onSubmit prop.");
+      return;
     }
 
-    if (trips.length === 1) {
-      return (
-        <div className="border rounded p-4 text-gray-300">
-          1 destination matched your filters. Your current settings are narrow, so try loosening
-          budget or drive time if you want more options.
-        </div>
-      );
-    }
-
-    if (trips.length === 2) {
-      return (
-        <div className="border rounded p-4 text-gray-300">
-          2 destinations matched your filters. A stricter budget or drive limit may be reducing your options.
-        </div>
-      );
-    }
-
-    return (
-      <div className="border rounded p-4 text-gray-300">
-        {trips.length} destinations matched your filters.
-      </div>
-    );
+    await submitHandler(cleanedInput);
   }
 
   return (
-    <div className="space-y-6">
-      <form onSubmit={handleSubmit} className="space-y-4 max-w-xl">
+    <section className="w-full">
+      <form onSubmit={handleSubmit} className="space-y-5">
         <div>
-          <label className="block mb-1 font-medium">Start city</label>
+          <label
+            htmlFor="startCity"
+            className="mb-2 block text-sm font-medium text-white"
+          >
+            Start city
+          </label>
           <select
-            className="border p-2 w-full"
+            id="startCity"
             value={form.startCity}
             onChange={(e) =>
-              setForm({
-                ...form,
-                startCity: e.target.value as "Edmonton" | "Calgary",
-              })
+              updateField(
+                "startCity",
+                e.target.value as FormState["startCity"]
+              )
             }
+            className="w-full rounded-none border border-white bg-black px-3 py-2 text-white outline-none"
           >
             <option value="Edmonton">Edmonton</option>
             <option value="Calgary">Calgary</option>
@@ -337,221 +201,147 @@ export default function TripForm() {
         </div>
 
         <div>
-          <label className="block mb-1 font-medium">Max drive hours</label>
-          <input
-            className="border p-2 w-full"
-            type="number"
-            min={0}
-            max={12}
-            step={0.5}
-            value={form.maxDriveHours}
-            onChange={(e) =>
-              setForm({ ...form, maxDriveHours: Number(e.target.value) })
-            }
-          />
-        </div>
-
-        <div>
-          <label className="block mb-1 font-medium">Total budget ($)</label>
-          <input
-            className="border p-2 w-full"
-            type="number"
-            min={50}
-            step={50}
-            value={form.budget}
-            onChange={(e) => setForm({ ...form, budget: Number(e.target.value) })}
-          />
-        </div>
-
-        <div>
-          <label className="block mb-1 font-medium">Trip length (days)</label>
-          <input
-            className="border p-2 w-full"
-            type="number"
-            min={1}
-            max={14}
-            step={1}
-            value={form.tripLengthDays}
-            onChange={(e) =>
-              setForm({ ...form, tripLengthDays: Number(e.target.value) })
-            }
-          />
-        </div>
-
-        <div>
-          <label className="block mb-1 font-medium">Season</label>
-          <select
-            className="border p-2 w-full"
-            value={form.season}
-            onChange={(e) => setForm({ ...form, season: e.target.value })}
+          <label
+            htmlFor="maxDriveHours"
+            className="mb-2 block text-sm font-medium text-white"
           >
-            <option value="spring">Spring</option>
-            <option value="summer">Summer</option>
-            <option value="fall">Fall</option>
-            <option value="winter">Winter</option>
+            Max drive hours
+          </label>
+          <input
+            id="maxDriveHours"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            type="text"
+            value={form.maxDriveHours}
+            onChange={(e) => handleNumericChange("maxDriveHours", e.target.value)}
+            onBlur={() => handleNumericBlur("maxDriveHours")}
+            className="w-full rounded-none border border-white bg-black px-3 py-2 text-white outline-none"
+          />
+        </div>
+
+        <div>
+          <label
+            htmlFor="budget"
+            className="mb-2 block text-sm font-medium text-white"
+          >
+            Total budget ($)
+          </label>
+          <input
+            id="budget"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            type="text"
+            value={form.budget}
+            onChange={(e) => handleNumericChange("budget", e.target.value)}
+            onBlur={() => handleNumericBlur("budget")}
+            className="w-full rounded-none border border-white bg-black px-3 py-2 text-white outline-none"
+          />
+        </div>
+
+        <div>
+          <label
+            htmlFor="tripLengthDays"
+            className="mb-2 block text-sm font-medium text-white"
+          >
+            Trip length (days)
+          </label>
+          <input
+            id="tripLengthDays"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            type="text"
+            value={form.tripLengthDays}
+            onChange={(e) => handleNumericChange("tripLengthDays", e.target.value)}
+            onBlur={() => handleNumericBlur("tripLengthDays")}
+            className="w-full rounded-none border border-white bg-black px-3 py-2 text-white outline-none"
+          />
+        </div>
+
+        <div>
+          <label
+            htmlFor="season"
+            className="mb-2 block text-sm font-medium text-white"
+          >
+            Season
+          </label>
+          <select
+            id="season"
+            value={form.season}
+            onChange={(e) => updateField("season", e.target.value)}
+            className="w-full rounded-none border border-white bg-black px-3 py-2 text-white outline-none"
+          >
+            {SEASONS.map((season) => (
+              <option key={season} value={season}>
+                {season}
+              </option>
+            ))}
           </select>
         </div>
 
         <div>
-          <label className="block mb-1 font-medium">Trip style</label>
+          <label
+            htmlFor="style"
+            className="mb-2 block text-sm font-medium text-white"
+          >
+            Trip style
+          </label>
           <select
-            className="border p-2 w-full"
+            id="style"
             value={form.style}
             onChange={(e) =>
-              setForm({ ...form, style: e.target.value as TripStyle })
+              updateField("style", e.target.value as TripStyle)
             }
+            className="w-full rounded-none border border-white bg-black px-3 py-2 text-white outline-none"
           >
-            <option value="chill">Chill</option>
-            <option value="outdoors">Outdoors</option>
-            <option value="foodie">Foodie</option>
-            <option value="solo reset">Solo Reset</option>
-            <option value="adventure">Adventure</option>
+            {TRIP_STYLES.map((style) => (
+              <option key={style} value={style}>
+                {displayStyleLabel(style)}
+              </option>
+            ))}
           </select>
         </div>
 
-        <div className="flex items-center gap-2">
+        <label className="flex items-center gap-2 text-white">
           <input
-            id="veganFriendly"
             type="checkbox"
             checked={form.veganFriendly}
-            onChange={(e) =>
-              setForm({ ...form, veganFriendly: e.target.checked })
-            }
+            onChange={(e) => updateField("veganFriendly", e.target.checked)}
           />
-          <label htmlFor="veganFriendly" className="font-medium">
-            Vegan-friendly only
-          </label>
-        </div>
+          <span>Vegan-friendly only</span>
+        </label>
 
-        <div className="flex items-center gap-2">
+        <label className="flex items-center gap-2 text-white">
           <input
-            id="includeStaycations"
             type="checkbox"
             checked={form.includeStaycations}
-            onChange={(e) =>
-              setForm({ ...form, includeStaycations: e.target.checked })
-            }
+            onChange={(e) => updateField("includeStaycations", e.target.checked)}
           />
-          <label htmlFor="includeStaycations" className="font-medium">
-            Include staycations
-          </label>
-        </div>
+          <span>Include staycations</span>
+        </label>
 
-        <div className="flex items-center gap-2">
+        <label className="flex items-center gap-2 text-white">
           <input
-            id="strictBudget"
             type="checkbox"
             checked={form.strictBudget}
-            onChange={(e) =>
-              setForm({ ...form, strictBudget: e.target.checked })
-            }
+            onChange={(e) => updateField("strictBudget", e.target.checked)}
           />
-          <label htmlFor="strictBudget" className="font-medium">
-            Strict budget
-          </label>
-        </div>
+          <span>Strict budget</span>
+        </label>
 
-        <button className="bg-black text-white px-4 py-2 rounded" type="submit">
+        <button
+          type="submit"
+          disabled={loading}
+          className="rounded bg-black px-4 py-2 text-white outline outline-1 outline-white disabled:opacity-60"
+        >
           {loading ? "Generating..." : "Generate trip"}
         </button>
       </form>
 
-      {error && <p className="text-red-600">{error}</p>}
-
-      {!hasSearched && !loading && !error && (
-        <div className="border rounded p-4 text-gray-400">
-          Fill in your trip preferences and generate destination ideas.
-        </div>
-      )}
-
-      {renderResultsMessage()}
-
-      {mode && !loading && !error && (
-        <div className="border rounded p-3 text-sm text-gray-400">
-          {mode === "fake-ai" && "Using placeholder AI text for development mode."}
-          {mode === "real-ai" && "Using live AI-generated trip text."}
-          {mode === "real-ai-empty" &&
-            "Live AI was called, but no usable itinerary content came back. Try generating again."}
-        </div>
-      )}
-
-      {savedTrips.length > 0 && (
-        <div className="border rounded p-4 space-y-4">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h2 className="text-xl font-semibold">Saved trips</h2>
-              <p className="text-sm text-gray-400 mt-1">
-                These trips are saved in your browser on this device.
-              </p>
-            </div>
-
-            <div className="flex flex-wrap gap-2 items-center">
-              <button
-                type="button"
-                onClick={copySavedTripsShort}
-                className="border rounded px-3 py-2 text-sm"
-              >
-                Copy all short
-              </button>
-              <button
-                type="button"
-                onClick={copySavedTripsFull}
-                className="border rounded px-3 py-2 text-sm"
-              >
-                Copy all full
-              </button>
-              <button
-                type="button"
-                onClick={exportSavedTripsAsJson}
-                className="border rounded px-3 py-2 text-sm"
-              >
-                Export JSON
-              </button>
-              <button
-                type="button"
-                onClick={exportSavedTripsAsText}
-                className="border rounded px-3 py-2 text-sm"
-              >
-                Export text
-              </button>
-              <button
-                type="button"
-                onClick={clearSavedTrips}
-                className="border rounded px-3 py-2 text-sm"
-              >
-                Clear saved
-              </button>
-              {savedCopyStatus === "copied" && (
-                <span className="text-xs text-gray-400">Copied</span>
-              )}
-              {savedCopyStatus === "failed" && (
-                <span className="text-xs text-red-400">Copy failed</span>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      <SavedTrips trips={savedTrips} onRemove={removeSavedTrip} />
-
-      {!loading && trips.length > 0 && (
-        <>
-          <CompareTrips trips={trips} />
-
-          <div className="grid gap-4">
-            {trips.map((trip) => (
-              <TripCard
-                key={trip.name}
-                trip={trip}
-                input={form}
-                isSaved={savedTripNames.has(trip.name)}
-                onSave={saveTrip}
-                onRemoveSaved={removeSavedTrip}
-              />
-            ))}
-          </div>
-        </>
-      )}
-    </div>
+      <div className="mt-6 rounded border border-white px-4 py-4 text-white">
+        {results.length > 0
+          ? `${results.length} destinations matched your filters.`
+          : "No destinations generated yet."}
+      </div>
+    </section>
   );
 }

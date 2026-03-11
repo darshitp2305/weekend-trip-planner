@@ -1,10 +1,10 @@
 import {
+  BudgetBreakdown,
+  ItineraryDayData,
   RankedDestination,
+  TripDataSource,
   TripInput,
   TripPlan,
-  ItineraryDayData,
-  BudgetBreakdown,
-  TripDataSource,
 } from "./types";
 
 const defaultInput: TripInput = {
@@ -31,10 +31,15 @@ function roundMoney(value: number) {
 }
 
 function makeDriveText(trip: RankedDestination) {
-  return `${trip.driveHoursFromStart} hour${trip.driveHoursFromStart === 1 ? "" : "s"}`;
+  return `${trip.driveHoursFromStart} hour${
+    trip.driveHoursFromStart === 1 ? "" : "s"
+  }`;
 }
 
-function buildBudgetBreakdown(trip: RankedDestination, input: TripInput): BudgetBreakdown {
+function buildBudgetBreakdown(
+  trip: RankedDestination,
+  input: TripInput
+): BudgetBreakdown {
   const nights = Math.max(input.tripLengthDays - 1, 1);
 
   const hotelBase =
@@ -47,19 +52,21 @@ function buildBudgetBreakdown(trip: RankedDestination, input: TripInput): Budget
       ? trip.budgetBreakdown.food
       : input.tripLengthDays * 65;
 
-  const gasBase =
-    trip.isStaycation
-      ? 0
-      : trip.budgetBreakdown?.gas && trip.budgetBreakdown.gas > 0
-      ? trip.budgetBreakdown.gas
-      : Math.max(40, trip.driveHoursFromStart * 22);
+  const gasBase = trip.isStaycation
+    ? 0
+    : trip.budgetBreakdown?.gas && trip.budgetBreakdown.gas > 0
+    ? trip.budgetBreakdown.gas
+    : Math.max(40, trip.driveHoursFromStart * 22);
 
   const activitiesBase =
-    trip.topActivities?.reduce((sum, item) => sum + (item.costEstimate || 0), 0) ??
-    trip.budgetBreakdown?.activities ??
-    0;
+    trip.topActivities?.reduce(
+      (sum, item) => sum + (item.costEstimate || 0),
+      0
+    ) ?? trip.budgetBreakdown?.activities ?? 0;
 
-  const miscBase = roundMoney((hotelBase + foodBase + gasBase + activitiesBase) * 0.1);
+  const miscBase = roundMoney(
+    (hotelBase + foodBase + gasBase + activitiesBase) * 0.1
+  );
 
   const totalExpected = roundMoney(
     hotelBase + foodBase + gasBase + activitiesBase + miscBase
@@ -78,7 +85,10 @@ function buildBudgetBreakdown(trip: RankedDestination, input: TripInput): Budget
   };
 }
 
-function buildDayOne(trip: RankedDestination, input: TripInput): ItineraryDayData {
+function buildDayOne(
+  trip: RankedDestination,
+  input: TripInput
+): ItineraryDayData {
   const activity1 = trip.topActivities[0];
   const food1 = trip.foodSpots[0];
   const hotel = trip.hotelOptions[0];
@@ -116,7 +126,8 @@ function buildDayOne(trip: RankedDestination, input: TripInput): ItineraryDayDat
 
   return {
     title: "Arrival and easy first day",
-    summary: "Get there, settle in, and avoid wasting day one by cramming too much into it.",
+    summary:
+      "Get there, settle in, and avoid wasting day one by cramming too much into it.",
     stops: [
       {
         time: "Morning",
@@ -143,14 +154,18 @@ function buildDayOne(trip: RankedDestination, input: TripInput): ItineraryDayDat
   };
 }
 
-function buildReturnDay(trip: RankedDestination, input: TripInput): ItineraryDayData {
+function buildReturnDay(
+  trip: RankedDestination,
+  input: TripInput
+): ItineraryDayData {
   const food1 = trip.foodSpots[0];
   const activity1 = trip.topActivities[1] ?? trip.topActivities[0];
 
   if (trip.isStaycation) {
     return {
       title: "Second local day",
-      summary: "Use day two for one more meaningful stop without travel friction.",
+      summary:
+        "Use day two for one more meaningful stop without travel friction.",
       stops: [
         {
           time: "Morning",
@@ -220,6 +235,9 @@ export function buildTripPlan(
     driveTimeText: trip.isStaycation ? "0 hours" : makeDriveText(trip),
     score: trip.score,
     styleMatchStrength: trip.styleMatchStrength,
+    confidence: trip.confidence,
+    liveDataSummary: trip.liveDataSummary,
+    rankingReasons: trip.rankingReasons ?? [],
     tags: trip.rawVibes ?? [],
     budgetBreakdown,
     hotelOptions: trip.hotelOptions ?? [],

@@ -139,6 +139,23 @@ export interface TripInput {
   strictBudget: boolean;
 }
 
+export type ConfidenceLevel = "high" | "medium" | "low";
+
+export interface LiveDataSummary {
+  restaurantCount: number;
+  avgRestaurantRating?: number;
+  activityCount: number;
+  avgActivityRating?: number;
+  hotelCount: number;
+  usedPlacesData: boolean;
+  usedFallbackData: boolean;
+}
+
+export interface RankingReason {
+  label: string;
+  impact: "positive" | "negative" | "neutral";
+}
+
 export interface RankedDestination extends Destination {
   score: number;
   estimatedCost: number;
@@ -146,6 +163,9 @@ export interface RankedDestination extends Destination {
   matchReasons: string[];
   warnings: string[];
   styleMatchStrength: "strong" | "medium" | "weak" | "poor";
+  confidence?: ConfidenceLevel;
+  liveDataSummary?: LiveDataSummary;
+  rankingReasons?: RankingReason[];
   aiSummary?: string;
   aiItinerary?: string[];
   aiBudgetNote?: string;
@@ -167,7 +187,10 @@ export interface ItineraryDayData {
   stops: ItineraryStop[];
 }
 
-export type TripDataSource = "live-google-places" | "static-fallback";
+export type TripDataSource =
+  | "live-google-places"
+  | "static-fallback"
+  | "static-ranking";
 
 export interface TripPlan {
   id: string;
@@ -178,6 +201,9 @@ export interface TripPlan {
   imageUrl?: string;
   score?: number;
   styleMatchStrength?: RankedDestination["styleMatchStrength"];
+  confidence?: ConfidenceLevel;
+  liveDataSummary?: LiveDataSummary;
+  rankingReasons?: RankingReason[];
   tags: string[];
   budgetBreakdown: BudgetBreakdown;
   hotelOptions: HotelOption[];
