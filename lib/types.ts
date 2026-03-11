@@ -18,18 +18,34 @@ export interface Activity {
   type: string;
   costEstimate: number;
   bookingLink?: string;
+  shortDescription?: string;
+  rating?: number;
+  estimatedCost?: number;
+  websiteUrl?: string;
+  mapsUrl?: string;
 }
 
 export interface HotelOption {
   name: string;
   pricePerNight: number;
   bookingLink: string;
+  shortDescription?: string;
+  rating?: number;
+  estimatedCost?: number;
+  websiteUrl?: string;
+  mapsUrl?: string;
 }
 
 export interface FoodSpot {
   name: string;
   tags: string[];
   link?: string;
+  shortDescription?: string;
+  category?: string;
+  rating?: number;
+  estimatedCost?: number;
+  websiteUrl?: string;
+  mapsUrl?: string;
 }
 
 export interface BudgetBreakdown {
@@ -55,6 +71,7 @@ export interface Destination {
   budgetLevel: "low" | "medium" | "high";
   veganFriendly: boolean;
   summary: string;
+  imageUrl?: string;
   topActivities: Activity[];
   hotelOptions: HotelOption[];
   foodSpots: FoodSpot[];
@@ -69,6 +86,7 @@ export interface RawDestination {
   region: string;
   home_base_city: string;
   is_staycation: boolean;
+  image_url?: string;
   drive_time_hours_from: {
     edmonton?: number;
     calgary?: number;
@@ -87,10 +105,25 @@ export interface RawDestination {
   anchor_experiences: {
     title: string;
     type: string;
+    description?: string;
+    link?: string;
   }[];
   neighborhoods: {
     name: string;
     reason: string;
+    link?: string;
+  }[];
+  hotel_options?: {
+    name: string;
+    price_per_night?: number;
+    booking_link?: string;
+    description?: string;
+  }[];
+  food_spots?: {
+    name: string;
+    tags?: string[];
+    link?: string;
+    description?: string;
   }[];
 }
 

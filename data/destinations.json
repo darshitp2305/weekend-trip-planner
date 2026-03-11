@@ -5,6 +5,7 @@
     "region": "Alberta",
     "home_base_city": "Edmonton",
     "is_staycation": true,
+    "image_url": "https://images.unsplash.com/photo-1519501025264-65ba15a82390?auto=format&fit=crop&w=1400&q=80",
     "drive_time_hours_from": { "edmonton": 0.0, "calgary": 3.0 },
     "distance_km_from": { "edmonton": 0, "calgary": 300 },
     "cost_level": "low_mid",
@@ -19,13 +20,64 @@
       "adventure": 0
     },
     "anchor_experiences": [
-      { "title": "River Valley walk + viewpoints", "type": "nature" },
-      { "title": "Whyte Ave / Old Strathcona food crawl", "type": "food" },
-      { "title": "Museum or gallery stop", "type": "culture" }
+      {
+        "title": "River Valley walk + viewpoints",
+        "type": "nature",
+        "description": "Low-friction city nature stop with easy access and strong payoff.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Edmonton+River+Valley"
+      },
+      {
+        "title": "Whyte Ave / Old Strathcona food crawl",
+        "type": "food",
+        "description": "Best high-density food and café zone for a local weekend reset.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Whyte+Avenue+Old+Strathcona+Edmonton"
+      },
+      {
+        "title": "Museum or gallery stop",
+        "type": "culture",
+        "description": "Easy indoor anchor if weather turns or you want a slower pace.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Art+Gallery+of+Alberta"
+      }
     ],
     "neighborhoods": [
-      { "name": "Downtown", "reason": "Central base for attractions + restaurants" },
-      { "name": "Old Strathcona", "reason": "Walkable shops + cafés + nightlife" }
+      {
+        "name": "Downtown",
+        "reason": "Central base for attractions + restaurants",
+        "link": "https://www.google.com/maps/search/?api=1&query=Downtown+Edmonton"
+      },
+      {
+        "name": "Old Strathcona",
+        "reason": "Walkable shops + cafés + nightlife",
+        "link": "https://www.google.com/maps/search/?api=1&query=Old+Strathcona+Edmonton"
+      }
+    ],
+    "hotel_options": [
+      {
+        "name": "Matrix Hotel",
+        "price_per_night": 185,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Matrix+Hotel+Edmonton",
+        "description": "Solid downtown base for a staycation with easy restaurant access."
+      },
+      {
+        "name": "Metterra Hotel on Whyte",
+        "price_per_night": 205,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Metterra+Hotel+on+Whyte+Edmonton",
+        "description": "Best fit if you want Old Strathcona energy and walkable food spots."
+      }
+    ],
+    "food_spots": [
+      {
+        "name": "Old Strathcona / Whyte Ave",
+        "tags": ["walkable food strip", "cafés", "nightlife"],
+        "link": "https://www.google.com/maps/search/?api=1&query=Whyte+Avenue+Edmonton",
+        "description": "Best food-forward district for a city weekend."
+      },
+      {
+        "name": "104 Street / Downtown",
+        "tags": ["restaurants", "cocktails", "central"],
+        "link": "https://www.google.com/maps/search/?api=1&query=104+Street+Edmonton",
+        "description": "Good central food option if you stay downtown."
+      }
     ]
   },
   {
@@ -34,6 +86,7 @@
     "region": "Alberta",
     "home_base_city": "Fort Saskatchewan (area)",
     "is_staycation": false,
+    "image_url": "https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?auto=format&fit=crop&w=1400&q=80",
     "drive_time_hours_from": { "edmonton": 0.75, "calgary": 3.75 },
     "distance_km_from": { "edmonton": 55, "calgary": 360 },
     "cost_level": "low",
@@ -48,12 +101,47 @@
       "adventure": 1
     },
     "anchor_experiences": [
-      { "title": "Bison viewing loop", "type": "nature" },
-      { "title": "Easy lakeside trail walk", "type": "nature" },
-      { "title": "Stargazing (dark sky area)", "type": "relax" }
+      {
+        "title": "Bison viewing loop",
+        "type": "nature",
+        "description": "High-value wildlife anchor with minimal trip complexity.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Elk+Island+National+Park+Bison+Loop"
+      },
+      {
+        "title": "Easy lakeside trail walk",
+        "type": "nature",
+        "description": "Simple scenic walking option for a slower day.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Astotin+Lake+Elk+Island"
+      },
+      {
+        "title": "Stargazing (dark sky area)",
+        "type": "relax",
+        "description": "Strong nighttime payoff if weather is clear.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Elk+Island+National+Park+stargazing"
+      }
     ],
     "neighborhoods": [
-      { "name": "Park day trip", "reason": "Best as a day trip or paired with an Edmonton weekend" }
+      {
+        "name": "Park day trip",
+        "reason": "Best as a day trip or paired with an Edmonton weekend",
+        "link": "https://www.google.com/maps/search/?api=1&query=Elk+Island+National+Park"
+      }
+    ],
+    "hotel_options": [
+      {
+        "name": "Fort Saskatchewan hotel base",
+        "price_per_night": 145,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Hotels+near+Fort+Saskatchewan",
+        "description": "Best practical base if you want to pair the park with an overnight."
+      }
+    ],
+    "food_spots": [
+      {
+        "name": "Fort Saskatchewan cafés / casual eats",
+        "tags": ["casual", "low-friction", "near park"],
+        "link": "https://www.google.com/maps/search/?api=1&query=Restaurants+Fort+Saskatchewan",
+        "description": "Simple meal stop before or after the park."
+      }
     ]
   },
   {
@@ -62,6 +150,7 @@
     "region": "Alberta",
     "home_base_city": "Banff",
     "is_staycation": false,
+    "image_url": "https://images.unsplash.com/photo-1601758123927-1966453cf2e3?auto=format&fit=crop&w=1400&q=80",
     "drive_time_hours_from": { "edmonton": 4.0, "calgary": 1.5 },
     "distance_km_from": { "edmonton": 415, "calgary": 130 },
     "cost_level": "high",
@@ -76,12 +165,59 @@
       "adventure": 3
     },
     "anchor_experiences": [
-      { "title": "Banff Ave stroll + shops", "type": "culture" },
-      { "title": "Sulphur Mountain gondola / viewpoint", "type": "scenic" },
-      { "title": "Upper Hot Springs soak", "type": "hot_springs" }
+      {
+        "title": "Banff Ave stroll + shops",
+        "type": "culture",
+        "description": "Easy first stop that gives instant destination feel.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Banff+Avenue"
+      },
+      {
+        "title": "Sulphur Mountain gondola / viewpoint",
+        "type": "scenic",
+        "description": "Premium scenic anchor with obvious payoff.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Banff+Gondola"
+      },
+      {
+        "title": "Upper Hot Springs soak",
+        "type": "hot_springs",
+        "description": "Classic relaxation stop that rounds out the trip.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Banff+Upper+Hot+Springs"
+      }
     ],
     "neighborhoods": [
-      { "name": "Downtown Banff", "reason": "Walkable base with restaurants + transit options" }
+      {
+        "name": "Downtown Banff",
+        "reason": "Walkable base with restaurants + transit options",
+        "link": "https://www.google.com/maps/search/?api=1&query=Downtown+Banff"
+      }
+    ],
+    "hotel_options": [
+      {
+        "name": "Banff town base",
+        "price_per_night": 260,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Hotels+in+Banff",
+        "description": "Best if you want walkable access to food and evening strolling."
+      },
+      {
+        "name": "Tunnel Mountain area stay",
+        "price_per_night": 235,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Tunnel+Mountain+Banff+hotels",
+        "description": "Slightly calmer base if you do not need to be right on the main strip."
+      }
+    ],
+    "food_spots": [
+      {
+        "name": "Downtown Banff",
+        "tags": ["walkable base with restaurants + transit options"],
+        "link": "https://www.google.com/maps/search/?api=1&query=Downtown+Banff+restaurants",
+        "description": "Most practical food cluster for a short weekend."
+      },
+      {
+        "name": "Banff Ave casual stops",
+        "tags": ["cafés", "quick meals", "central"],
+        "link": "https://www.google.com/maps/search/?api=1&query=Banff+Avenue+restaurants",
+        "description": "Good fit for easy food between stops."
+      }
     ]
   },
   {
@@ -90,6 +226,7 @@
     "region": "Alberta",
     "home_base_city": "Canmore",
     "is_staycation": false,
+    "image_url": "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1400&q=80",
     "drive_time_hours_from": { "edmonton": 4.0, "calgary": 1.25 },
     "distance_km_from": { "edmonton": 420, "calgary": 105 },
     "cost_level": "high",
@@ -104,12 +241,59 @@
       "adventure": 2
     },
     "anchor_experiences": [
-      { "title": "Downtown Canmore + Bow River walk", "type": "relax" },
-      { "title": "Grassi Lakes (seasonal)", "type": "nature" },
-      { "title": "Scenic viewpoints + short hikes", "type": "scenic" }
+      {
+        "title": "Downtown Canmore + Bow River walk",
+        "type": "relax",
+        "description": "Easy scenic town anchor with almost no friction.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Downtown+Canmore+Bow+River"
+      },
+      {
+        "title": "Grassi Lakes (seasonal)",
+        "type": "nature",
+        "description": "Reliable scenic hike with strong effort-to-payoff ratio.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Grassi+Lakes+Trail"
+      },
+      {
+        "title": "Scenic viewpoints + short hikes",
+        "type": "scenic",
+        "description": "Flexible activity bucket if you want multiple smaller stops.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Canmore+viewpoints"
+      }
     ],
     "neighborhoods": [
-      { "name": "Downtown Canmore", "reason": "Walkable cafés + quick access to trails" }
+      {
+        "name": "Downtown Canmore",
+        "reason": "Walkable cafés + quick access to trails",
+        "link": "https://www.google.com/maps/search/?api=1&query=Downtown+Canmore"
+      }
+    ],
+    "hotel_options": [
+      {
+        "name": "Downtown Canmore base",
+        "price_per_night": 245,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Hotels+in+Canmore",
+        "description": "Good fit if you want cafés and evening walks without driving."
+      },
+      {
+        "name": "Canmore mountain-view stay",
+        "price_per_night": 220,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Canmore+mountain+view+hotels",
+        "description": "Solid compromise between location and scenery."
+      }
+    ],
+    "food_spots": [
+      {
+        "name": "Downtown Canmore cafés",
+        "tags": ["walkable", "cafés", "mountain town"],
+        "link": "https://www.google.com/maps/search/?api=1&query=Downtown+Canmore+cafes",
+        "description": "Strong breakfast and coffee zone."
+      },
+      {
+        "name": "Main street dinner spots",
+        "tags": ["restaurants", "casual dinner", "central"],
+        "link": "https://www.google.com/maps/search/?api=1&query=Canmore+restaurants",
+        "description": "Easy dinner cluster after hiking or sightseeing."
+      }
     ]
   },
   {
@@ -118,6 +302,7 @@
     "region": "Alberta",
     "home_base_city": "Kananaskis Village (area)",
     "is_staycation": false,
+    "image_url": "https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=1400&q=80",
     "drive_time_hours_from": { "edmonton": 4.5, "calgary": 1.5 },
     "distance_km_from": { "edmonton": 460, "calgary": 115 },
     "cost_level": "mid",
@@ -132,12 +317,47 @@
       "adventure": 3
     },
     "anchor_experiences": [
-      { "title": "Barrier Lake viewpoints", "type": "scenic" },
-      { "title": "Short hike loop (choose by season)", "type": "nature" },
-      { "title": "Quiet scenic drive + photo stops", "type": "relax" }
+      {
+        "title": "Barrier Lake viewpoints",
+        "type": "scenic",
+        "description": "Strong scenic payoff with low planning complexity.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Barrier+Lake+Kananaskis"
+      },
+      {
+        "title": "Short hike loop (choose by season)",
+        "type": "nature",
+        "description": "Flexible anchor that adapts well to weather and energy.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Kananaskis+short+hike"
+      },
+      {
+        "title": "Quiet scenic drive + photo stops",
+        "type": "relax",
+        "description": "Good fallback when you want the scenery without a big effort day.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Kananaskis+viewpoints"
+      }
     ],
     "neighborhoods": [
-      { "name": "Kananaskis Village", "reason": "Easy base for multiple trailheads and viewpoints" }
+      {
+        "name": "Kananaskis Village",
+        "reason": "Easy base for multiple trailheads and viewpoints",
+        "link": "https://www.google.com/maps/search/?api=1&query=Kananaskis+Village"
+      }
+    ],
+    "hotel_options": [
+      {
+        "name": "Kananaskis Village resort base",
+        "price_per_night": 230,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Kananaskis+Village+hotels",
+        "description": "Best if you want a low-friction mountain base."
+      }
+    ],
+    "food_spots": [
+      {
+        "name": "Village dining / lodge meals",
+        "tags": ["convenient", "mountain base", "simple"],
+        "link": "https://www.google.com/maps/search/?api=1&query=Kananaskis+Village+restaurants",
+        "description": "Mostly convenience-driven, but useful for an easy itinerary."
+      }
     ]
   },
   {
@@ -146,6 +366,7 @@
     "region": "Alberta",
     "home_base_city": "Jasper",
     "is_staycation": false,
+    "image_url": "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1400&q=80",
     "drive_time_hours_from": { "edmonton": 4.0, "calgary": 4.5 },
     "distance_km_from": { "edmonton": 365, "calgary": 412 },
     "cost_level": "mid",
@@ -160,12 +381,47 @@
       "adventure": 2
     },
     "anchor_experiences": [
-      { "title": "Maligne Canyon walk", "type": "nature" },
-      { "title": "Pyramid Lake sunset", "type": "scenic" },
-      { "title": "Jasper town food crawl", "type": "food" }
+      {
+        "title": "Maligne Canyon walk",
+        "type": "nature",
+        "description": "Reliable park stop with strong scenery value.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Maligne+Canyon"
+      },
+      {
+        "title": "Pyramid Lake sunset",
+        "type": "scenic",
+        "description": "High-return low-effort evening stop.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Pyramid+Lake+Jasper"
+      },
+      {
+        "title": "Jasper town food crawl",
+        "type": "food",
+        "description": "Useful if you want the trip to feel less purely outdoors.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Jasper+restaurants"
+      }
     ],
     "neighborhoods": [
-      { "name": "Downtown Jasper", "reason": "Walkable base for food + quick drives to sights" }
+      {
+        "name": "Downtown Jasper",
+        "reason": "Walkable base for food + quick drives to sights",
+        "link": "https://www.google.com/maps/search/?api=1&query=Downtown+Jasper"
+      }
+    ],
+    "hotel_options": [
+      {
+        "name": "Downtown Jasper base",
+        "price_per_night": 210,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Hotels+in+Jasper",
+        "description": "Most practical base for a short Jasper trip."
+      }
+    ],
+    "food_spots": [
+      {
+        "name": "Downtown Jasper",
+        "tags": ["walkable", "restaurants", "park town"],
+        "link": "https://www.google.com/maps/search/?api=1&query=Downtown+Jasper+restaurants",
+        "description": "Best for low-friction meals without extra driving."
+      }
     ]
   },
   {
@@ -174,6 +430,7 @@
     "region": "Alberta",
     "home_base_city": "Sylvan Lake",
     "is_staycation": false,
+    "image_url": "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1400&q=80",
     "drive_time_hours_from": { "edmonton": 1.75, "calgary": 2.0 },
     "distance_km_from": { "edmonton": 175, "calgary": 150 },
     "cost_level": "mid",
@@ -188,12 +445,47 @@
       "adventure": 0
     },
     "anchor_experiences": [
-      { "title": "Lakeside walk + coffee", "type": "relax" },
-      { "title": "Beach / waterfront time (summer)", "type": "lakes" },
-      { "title": "Patio dinner (seasonal)", "type": "food" }
+      {
+        "title": "Lakeside walk + coffee",
+        "type": "relax",
+        "description": "Easy waterfront anchor with almost no planning burden.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Sylvan+Lake+waterfront"
+      },
+      {
+        "title": "Beach / waterfront time (summer)",
+        "type": "lakes",
+        "description": "Best seasonal anchor if weather is good.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Sylvan+Lake+beach"
+      },
+      {
+        "title": "Patio dinner (seasonal)",
+        "type": "food",
+        "description": "Good summer closer for the day.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Sylvan+Lake+patio+restaurants"
+      }
     ],
     "neighborhoods": [
-      { "name": "Lakeshore area", "reason": "Closest access to waterfront + restaurants" }
+      {
+        "name": "Lakeshore area",
+        "reason": "Closest access to waterfront + restaurants",
+        "link": "https://www.google.com/maps/search/?api=1&query=Lakeshore+Drive+Sylvan+Lake"
+      }
+    ],
+    "hotel_options": [
+      {
+        "name": "Lakeshore area stay",
+        "price_per_night": 175,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Hotels+in+Sylvan+Lake",
+        "description": "Best if you want to stay close to the waterfront."
+      }
+    ],
+    "food_spots": [
+      {
+        "name": "Lakeshore restaurants",
+        "tags": ["waterfront", "casual", "summer patios"],
+        "link": "https://www.google.com/maps/search/?api=1&query=Sylvan+Lake+restaurants",
+        "description": "Most practical food cluster for a warm-weather trip."
+      }
     ]
   },
   {
@@ -202,6 +494,7 @@
     "region": "Alberta",
     "home_base_city": "Drumheller",
     "is_staycation": false,
+    "image_url": "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1400&q=80",
     "drive_time_hours_from": { "edmonton": 3.0, "calgary": 1.5 },
     "distance_km_from": { "edmonton": 280, "calgary": 135 },
     "cost_level": "low_mid",
@@ -216,12 +509,47 @@
       "adventure": 3
     },
     "anchor_experiences": [
-      { "title": "Royal Tyrrell Museum", "type": "culture" },
-      { "title": "Hoodoos viewpoint + short walk", "type": "scenic" },
-      { "title": "Horsethief Canyon sunset viewpoint", "type": "scenic" }
+      {
+        "title": "Royal Tyrrell Museum",
+        "type": "culture",
+        "description": "The obvious anchor that justifies the trip.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Royal+Tyrrell+Museum"
+      },
+      {
+        "title": "Hoodoos viewpoint + short walk",
+        "type": "scenic",
+        "description": "Easy visual payoff with little complexity.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Drumheller+Hoodoos"
+      },
+      {
+        "title": "Horsethief Canyon sunset viewpoint",
+        "type": "scenic",
+        "description": "Strong end-of-day stop if weather cooperates.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Horsethief+Canyon"
+      }
     ],
     "neighborhoods": [
-      { "name": "Downtown Drumheller", "reason": "Central for museum + quick drives to viewpoints" }
+      {
+        "name": "Downtown Drumheller",
+        "reason": "Central for museum + quick drives to viewpoints",
+        "link": "https://www.google.com/maps/search/?api=1&query=Downtown+Drumheller"
+      }
+    ],
+    "hotel_options": [
+      {
+        "name": "Downtown Drumheller base",
+        "price_per_night": 155,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Hotels+in+Drumheller",
+        "description": "Practical base close to the main urban area."
+      }
+    ],
+    "food_spots": [
+      {
+        "name": "Downtown Drumheller casual spots",
+        "tags": ["casual", "road trip", "simple meals"],
+        "link": "https://www.google.com/maps/search/?api=1&query=Drumheller+restaurants",
+        "description": "Works well as a functional food stop during a sightseeing-heavy weekend."
+      }
     ]
   },
   {
@@ -230,6 +558,7 @@
     "region": "Alberta",
     "home_base_city": "Red Deer",
     "is_staycation": false,
+    "image_url": "https://images.unsplash.com/photo-1472396961693-142e6e269027?auto=format&fit=crop&w=1400&q=80",
     "drive_time_hours_from": { "edmonton": 1.5, "calgary": 1.5 },
     "distance_km_from": { "edmonton": 150, "calgary": 150 },
     "cost_level": "low",
@@ -244,12 +573,47 @@
       "adventure": 0
     },
     "anchor_experiences": [
-      { "title": "River trails + park walk", "type": "relax" },
-      { "title": "Local cafés / brunch spots", "type": "food" },
-      { "title": "Easy low-drive weekend reset", "type": "relax" }
+      {
+        "title": "River trails + park walk",
+        "type": "relax",
+        "description": "Best low-effort weekend reset component.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Red+Deer+river+trails"
+      },
+      {
+        "title": "Local cafés / brunch spots",
+        "type": "food",
+        "description": "Keeps the trip from feeling too generic.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Red+Deer+brunch"
+      },
+      {
+        "title": "Easy low-drive weekend reset",
+        "type": "relax",
+        "description": "Useful if the priority is minimal travel friction.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Red+Deer+parks"
+      }
     ],
     "neighborhoods": [
-      { "name": "Downtown / trail access", "reason": "Convenient for quick walks + food" }
+      {
+        "name": "Downtown / trail access",
+        "reason": "Convenient for quick walks + food",
+        "link": "https://www.google.com/maps/search/?api=1&query=Downtown+Red+Deer"
+      }
+    ],
+    "hotel_options": [
+      {
+        "name": "Central Red Deer stay",
+        "price_per_night": 140,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Hotels+in+Red+Deer",
+        "description": "Simple and low-friction if budget matters."
+      }
+    ],
+    "food_spots": [
+      {
+        "name": "Downtown / brunch corridor",
+        "tags": ["brunch", "cafés", "easy"],
+        "link": "https://www.google.com/maps/search/?api=1&query=Downtown+Red+Deer+restaurants",
+        "description": "Most useful area if you want food without overcomplicating the trip."
+      }
     ]
   },
   {
@@ -258,6 +622,7 @@
     "region": "Alberta",
     "home_base_city": "Nordegg",
     "is_staycation": false,
+    "image_url": "https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=1400&q=80",
     "drive_time_hours_from": { "edmonton": 3.5, "calgary": 3.0 },
     "distance_km_from": { "edmonton": 330, "calgary": 270 },
     "cost_level": "low_mid",
@@ -272,12 +637,47 @@
       "adventure": 3
     },
     "anchor_experiences": [
-      { "title": "Abraham Lake viewpoints (seasonal)", "type": "scenic" },
-      { "title": "Short waterfall/hike stop (seasonal)", "type": "nature" },
-      { "title": "Scenic drive photo loop", "type": "adventure" }
+      {
+        "title": "Abraham Lake viewpoints (seasonal)",
+        "type": "scenic",
+        "description": "The main visual reason to do the trip.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Abraham+Lake+viewpoints"
+      },
+      {
+        "title": "Short waterfall/hike stop (seasonal)",
+        "type": "nature",
+        "description": "Useful secondary anchor if conditions cooperate.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Nordegg+hike"
+      },
+      {
+        "title": "Scenic drive photo loop",
+        "type": "adventure",
+        "description": "Best if you want big scenery without a rigid itinerary.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Nordegg+scenic+drive"
+      }
     ],
     "neighborhoods": [
-      { "name": "Nordegg area", "reason": "Best base for day loops to viewpoints and hikes" }
+      {
+        "name": "Nordegg area",
+        "reason": "Best base for day loops to viewpoints and hikes",
+        "link": "https://www.google.com/maps/search/?api=1&query=Nordegg"
+      }
+    ],
+    "hotel_options": [
+      {
+        "name": "Nordegg lodge / cabin base",
+        "price_per_night": 160,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Nordegg+lodges",
+        "description": "Best practical base for short access to scenic loops."
+      }
+    ],
+    "food_spots": [
+      {
+        "name": "Nordegg local stop",
+        "tags": ["simple", "road trip", "functional"],
+        "link": "https://www.google.com/maps/search/?api=1&query=Nordegg+restaurants",
+        "description": "Food here is more about function than destination dining."
+      }
     ]
   },
   {
@@ -286,6 +686,7 @@
     "region": "Alberta",
     "home_base_city": "Calgary",
     "is_staycation": true,
+    "image_url": "https://images.unsplash.com/photo-1519501025264-65ba15a82390?auto=format&fit=crop&w=1400&q=80",
     "drive_time_hours_from": { "edmonton": 3.0, "calgary": 0.0 },
     "distance_km_from": { "edmonton": 300, "calgary": 0 },
     "cost_level": "low_mid",
@@ -300,13 +701,64 @@
       "adventure": 0
     },
     "anchor_experiences": [
-      { "title": "Kensington / Inglewood stroll + cafés", "type": "food" },
-      { "title": "Downtown + Stephen Ave evening", "type": "nightlife" },
-      { "title": "Day trip add-on: Kananaskis viewpoint", "type": "scenic" }
+      {
+        "title": "Kensington / Inglewood stroll + cafés",
+        "type": "food",
+        "description": "Best low-friction food/culture anchor in the city.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Kensington+Calgary"
+      },
+      {
+        "title": "Downtown + Stephen Ave evening",
+        "type": "nightlife",
+        "description": "Simple evening anchor with strong central energy.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Stephen+Avenue+Calgary"
+      },
+      {
+        "title": "Day trip add-on: Kananaskis viewpoint",
+        "type": "scenic",
+        "description": "Optional add-on if you want more nature without rebuilding the trip.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Kananaskis+viewpoints"
+      }
     ],
     "neighborhoods": [
-      { "name": "Beltline / Downtown", "reason": "Central base for food + nightlife" },
-      { "name": "Kensington", "reason": "Walkable shops + brunch" }
+      {
+        "name": "Beltline / Downtown",
+        "reason": "Central base for food + nightlife",
+        "link": "https://www.google.com/maps/search/?api=1&query=Beltline+Calgary"
+      },
+      {
+        "name": "Kensington",
+        "reason": "Walkable shops + brunch",
+        "link": "https://www.google.com/maps/search/?api=1&query=Kensington+Calgary"
+      }
+    ],
+    "hotel_options": [
+      {
+        "name": "Downtown Calgary base",
+        "price_per_night": 155,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Hotels+in+Downtown+Calgary",
+        "description": "Most practical base for a food/nightlife staycation."
+      },
+      {
+        "name": "Beltline stay",
+        "price_per_night": 165,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Beltline+Calgary+hotels",
+        "description": "Good if you want restaurants and nightlife within short rides or walks."
+      }
+    ],
+    "food_spots": [
+      {
+        "name": "Beltline / Downtown",
+        "tags": ["food", "nightlife", "central"],
+        "link": "https://www.google.com/maps/search/?api=1&query=Beltline+Calgary+restaurants",
+        "description": "Best central cluster for dinner and late-evening energy."
+      },
+      {
+        "name": "Kensington",
+        "tags": ["walkable shops + brunch", "cafés"],
+        "link": "https://www.google.com/maps/search/?api=1&query=Kensington+Calgary+restaurants",
+        "description": "Good daytime food/café anchor with a more relaxed pace."
+      }
     ]
   }
 ]
