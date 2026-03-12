@@ -257,7 +257,7 @@ export default function HomePage() {
                   <TripCard
                     key={trip.name}
                     trip={trip}
-                    input={lastInput ?? undefined}
+ 
                   />
                 ))}
               </div>

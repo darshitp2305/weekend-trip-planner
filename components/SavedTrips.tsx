@@ -20,7 +20,7 @@ export default function SavedTrips({
             key={`saved-${trip.name}`}
             trip={trip}
             isSaved={true}
-            onRemove={onRemove}
+            onRemoveSaved={onRemove}
           />
         ))}
       </div>

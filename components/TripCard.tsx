@@ -12,7 +12,7 @@ import { saveTripPlan } from "../lib/tripStore";
 
 type Props = {
   trip: RankedDestination;
-  input?: Partial<TripInput>;
+  input?: TripInput;
   onSave?: (tripName: string) => void;
   onRemoveSaved?: (tripName: string) => void;
   isSaved?: boolean;
