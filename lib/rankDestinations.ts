@@ -712,7 +712,6 @@ function buildRankingReasons(args: {
 
   const candidates: ReasonCandidate[] = [];
 
-  // 1) strongest style reason
   if (styleMatchStrength === "strong") {
     if (resolutionSignal >= 5) {
       if (input.style === "adventure" || input.style === "outdoors") {
@@ -762,7 +761,6 @@ function buildRankingReasons(args: {
     );
   }
 
-  // 2) strongest budget / drive / getaway reason
   if (budgetRatio <= 0.65) {
     candidates.push(
       reasonCandidate("Excellent value for your budget", "positive", 2, 95)
@@ -819,7 +817,6 @@ function buildRankingReasons(args: {
     );
   }
 
-  // 3) vegan/live-data reason if relevant
   if (input.veganFriendly) {
     if (veganSignal >= 2) {
       candidates.push(
@@ -848,7 +845,6 @@ function buildRankingReasons(args: {
     candidates.push(reasonCandidate(item.label, item.impact, 3, weight));
   }
 
-  // 4) season reason if relevant
   if (destination.bestSeasons.includes(input.season)) {
     candidates.push(
       reasonCandidate(
@@ -860,7 +856,6 @@ function buildRankingReasons(args: {
     );
   }
 
-  // Additional contextual reasons from scorer
   for (const item of extraReasonItems) {
     let priority = 3;
     let weight = 58;
@@ -958,9 +953,6 @@ function calculateConfidence(args: {
     return "medium";
   }
 
-  // Vegan mode:
-  // - strong vegan support can still earn high confidence
-  // - uncertain vegan support should usually land in medium, not low
   if (veganStrong) {
     if (baseStrong && !weakLiveForRelevantStyle) {
       return "high";
@@ -969,8 +961,6 @@ function calculateConfidence(args: {
     return "medium";
   }
 
-  // Vegan is required but not strongly confirmed.
-  // This should downgrade confidence, not automatically kill it.
   if (
     styleMatchStrength === "strong" &&
     budgetRatio <= 1 &&
@@ -993,11 +983,39 @@ export function rankDestinations(
 
   const ranked = destinationList
     .map((destination) => {
+      const nights = Math.max(1, input.tripLengthDays - 1);
+      const nightlyHotel = destination.hotelOptions?.[0]?.pricePerNight ?? 150;
+
+      const foodPerDay =
+        input.style === "foodie"
+          ? 65
+          : input.style === "chill" || input.style === "solo reset"
+          ? 45
+          : 50;
+
+      const activitiesSeed = (destination.topActivities ?? [])
+        .slice(0, 2)
+        .reduce((sum, activity) => sum + (activity.costEstimate ?? 25), 0);
+
+      const gasSeed =
+        destination.driveHoursFromStart <= 0.5
+        ? 0
+        : Math.round(destination.driveHoursFromStart * 18);
+
+      const seededDestination = {
+        ...destination,
+        estimatedCost:
+        nightlyHotel * nights +
+        foodPerDay * input.tripLengthDays +
+        activitiesSeed +
+        gasSeed,
+      };
+
       const budgetBreakdown = estimateBudgetBreakdown(
-        destination,
-        input.tripLengthDays
+        seededDestination,
+        input
       );
-      const estimatedCost = budgetBreakdown.total;
+      const estimatedCost = budgetBreakdown.totalExpected ?? budgetBreakdown.total;
 
       const hardFilter = passesHardFilters(destination, input, estimatedCost);
       if (!hardFilter.passed) {
