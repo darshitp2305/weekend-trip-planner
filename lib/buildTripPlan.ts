@@ -159,6 +159,7 @@ function buildReturnDay(
   input: TripInput
 ): ItineraryDayData {
   const food1 = trip.foodSpots[0];
+  const food2 = trip.foodSpots[1] ?? trip.foodSpots[0];
   const activity1 = trip.topActivities[1] ?? trip.topActivities[0];
 
   if (trip.isStaycation) {
@@ -169,11 +170,11 @@ function buildReturnDay(
       stops: [
         {
           time: "Morning",
-          title: food1?.name ?? "Brunch / coffee",
-          description: food1
-            ? `Start with another good local stop at ${food1.name}.`
+          title: food2?.name ?? "Brunch / coffee",
+          description: food2
+            ? `Start with another good local stop at ${food2.name}.`
             : "Start with brunch or coffee.",
-          websiteUrl: food1?.link,
+          websiteUrl: food2?.link,
         },
         {
           time: "Afternoon",
@@ -194,9 +195,11 @@ function buildReturnDay(
     stops: [
       {
         time: "Morning",
-        title: food1?.name ?? "Breakfast / last local stop",
-        description: "Get one more good local stop before leaving.",
-        websiteUrl: food1?.link,
+        title: food2?.name ?? "Breakfast / last local stop",
+        description: food2
+          ? `Get one more good local stop at ${food2.name} before leaving.`
+          : "Get one more good local stop before leaving.",
+        websiteUrl: food2?.link,
       },
       {
         time: "Late morning",
@@ -208,7 +211,8 @@ function buildReturnDay(
       {
         time: "Afternoon",
         title: `Drive back to ${input.startCity}`,
-        description: "Head back without turning the final day into a scramble.",
+        description:
+          "Head back without turning the final day into a scramble.",
       },
     ],
   };
