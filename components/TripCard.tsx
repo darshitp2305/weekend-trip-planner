@@ -96,7 +96,12 @@ function Accordion({
 }
 
 function shortCopyText(trip: RankedDestination) {
-  return `${trip.name} — ${trip.summary} Estimated cost: $${trip.estimatedCost}. Drive: ${trip.driveHoursFromStart}h. Confidence: ${confidenceLabel(
+  const displayCost =
+    trip.budgetBreakdown?.totalExpected ??
+    trip.budgetBreakdown?.total ??
+    trip.estimatedCost;
+
+  return `${trip.name} — ${trip.summary} Estimated cost: $${displayCost}. Drive: ${trip.driveHoursFromStart}h. Confidence: ${confidenceLabel(
     trip.confidence
   )}.`;
 }
@@ -112,11 +117,16 @@ function fullCopyText(trip: RankedDestination) {
     ? trip.matchReasons.map((line) => `- ${line}`).join("\n")
     : "No match reasons available.";
 
+  const displayCost =
+    trip.budgetBreakdown?.totalExpected ??
+    trip.budgetBreakdown?.total ??
+    trip.estimatedCost;
+
   return [
     `${trip.name}`,
     ``,
     `Summary: ${trip.summary}`,
-    `Estimated cost: $${trip.estimatedCost}`,
+    `Estimated cost: $${displayCost}`,
     `Drive time: ${trip.driveHoursFromStart}h`,
     `Style fit: ${trip.styleMatchStrength}`,
     `Confidence: ${confidenceLabel(trip.confidence)}`,
@@ -155,7 +165,11 @@ export default function TripCard({
       setSaving(true);
 
       let enrichedTrip = trip;
-      let source: TripDataSource = "static-fallback";
+      let source: TripDataSource = trip.liveDataSummary?.usedPlacesData
+        ? "live-google-places"
+        : trip.liveDataSummary?.usedFallbackData
+        ? "static-fallback"
+        : "static-ranking";
 
       if (input) {
         try {
@@ -222,6 +236,11 @@ export default function TripCard({
     }
   }
 
+  const displayCost =
+    trip.budgetBreakdown?.totalExpected ??
+    trip.budgetBreakdown?.total ??
+    trip.estimatedCost;
+
   return (
     <article className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
       {trip.imageUrl ? (
@@ -262,7 +281,7 @@ export default function TripCard({
               Estimated cost
             </div>
             <div className="mt-1 text-lg font-semibold text-slate-900">
-              ${Math.round(trip.estimatedCost)}
+              ${Math.round(displayCost)}
             </div>
           </div>
 
@@ -445,7 +464,7 @@ export default function TripCard({
                 Activities: ${trip.budgetBreakdown.activities}
               </div>
               <div className="rounded-xl bg-slate-100 p-3 text-sm font-semibold text-slate-900 sm:col-span-2">
-                Total: ${trip.budgetBreakdown.total}
+                Total: ${trip.budgetBreakdown.totalExpected ?? trip.budgetBreakdown.total}
               </div>
             </div>
 
