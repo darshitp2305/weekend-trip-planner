@@ -10,6 +10,8 @@ import {
 import { buildTripPlan } from "../lib/buildTripPlan";
 import { saveTripPlan } from "../lib/tripStore";
 
+const LAST_INPUT_STORAGE_KEY = "weekend-trip-last-input";
+
 type Props = {
   trip: RankedDestination;
   input?: TripInput;
@@ -145,6 +147,35 @@ function fullCopyText(trip: RankedDestination) {
   ].join("\n");
 }
 
+function normalizeTripInput(input?: Partial<TripInput> | null): TripInput | undefined {
+  if (!input) return undefined;
+
+  return {
+    startCity: input.startCity === "Calgary" ? "Calgary" : "Edmonton",
+    season: input.season ?? "Summer",
+    style: input.style ?? "foodie",
+    veganFriendly: Boolean(input.veganFriendly),
+    includeStaycations: Boolean(input.includeStaycations),
+    strictBudget: Boolean(input.strictBudget),
+    maxDriveHours: Number(input.maxDriveHours ?? 5),
+    budget: Number(input.budget ?? 600),
+    tripLengthDays: Number(input.tripLengthDays ?? 2),
+  };
+}
+
+function getStoredLastInput(): TripInput | undefined {
+  if (typeof window === "undefined") return undefined;
+
+  try {
+    const raw = sessionStorage.getItem(LAST_INPUT_STORAGE_KEY);
+    if (!raw) return undefined;
+    return normalizeTripInput(JSON.parse(raw));
+  } catch (error) {
+    console.error("Failed to read stored planner input:", error);
+    return undefined;
+  }
+}
+
 export default function TripCard({
   trip,
   input,
@@ -171,7 +202,11 @@ export default function TripCard({
         ? "static-fallback"
         : "static-ranking";
 
-      if (input) {
+      const propInput = normalizeTripInput(input);
+      const storedInput = getStoredLastInput();
+      const effectiveInput = storedInput ?? propInput;
+
+      if (effectiveInput) {
         try {
           const enrichRes = await fetch("/api/enrich-trip", {
             method: "POST",
@@ -180,7 +215,7 @@ export default function TripCard({
             },
             body: JSON.stringify({
               trip,
-              input,
+              input: effectiveInput,
             }),
           });
 
@@ -219,11 +254,11 @@ export default function TripCard({
             }
           }
         } catch (enrichError) {
-          console.error("enrich-trip fetch failed, using static trip:", enrichError);
+          console.error("enrich-trip fetch failed, using current trip:", enrichError);
         }
       }
 
-      const plan = buildTripPlan(enrichedTrip, input, source);
+      const plan = buildTripPlan(enrichedTrip, effectiveInput, source);
       saveTripPlan(plan);
 
       if (onSave) onSave(trip.name);

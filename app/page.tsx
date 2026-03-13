@@ -19,6 +19,8 @@ type GenerateTripResponse = {
   results?: RankedDestination[];
 };
 
+const LAST_INPUT_STORAGE_KEY = "weekend-trip-last-input";
+
 function extractResults(payload: any): RankedDestination[] | null {
   if (Array.isArray(payload?.results)) return payload.results;
   if (Array.isArray(payload?.trips)) return payload.trips;
@@ -89,6 +91,14 @@ export default function HomePage() {
     setWaitingForTripText(true);
     setLastInput(input);
     setAiStatusMessage("");
+
+    if (typeof window !== "undefined") {
+      try {
+        sessionStorage.setItem(LAST_INPUT_STORAGE_KEY, JSON.stringify(input));
+      } catch (error) {
+        console.error("Failed to persist last generated input:", error);
+      }
+    }
 
     try {
       const rankResponse = await fetch("/api/rank-trips", {
@@ -257,7 +267,7 @@ export default function HomePage() {
                   <TripCard
                     key={trip.name}
                     trip={trip}
- 
+                    input={lastInput ?? undefined}
                   />
                 ))}
               </div>

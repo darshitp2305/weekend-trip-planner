@@ -23,6 +23,9 @@ function normalizeInput(input?: Partial<TripInput>): TripInput {
   return {
     ...defaultInput,
     ...input,
+    maxDriveHours: Number(input?.maxDriveHours ?? defaultInput.maxDriveHours),
+    budget: Number(input?.budget ?? defaultInput.budget),
+    tripLengthDays: Number(input?.tripLengthDays ?? defaultInput.tripLengthDays),
   };
 }
 
@@ -85,44 +88,102 @@ function buildBudgetBreakdown(
   };
 }
 
-function buildDayOne(
+function pickUniqueFoodSpots(trip: RankedDestination) {
+  const foods = trip.foodSpots ?? [];
+  return {
+    first: foods[0],
+    second: foods[1] ?? foods[0],
+    third: foods[2] ?? foods[1] ?? foods[0],
+  };
+}
+
+function pickUniqueActivities(trip: RankedDestination) {
+  const activities = trip.topActivities ?? [];
+  return {
+    first: activities[0],
+    second: activities[1] ?? activities[0],
+    third: activities[2] ?? activities[1] ?? activities[0],
+  };
+}
+
+function buildStaycationDayOne(
   trip: RankedDestination,
   input: TripInput
 ): ItineraryDayData {
-  const activity1 = trip.topActivities[0];
-  const food1 = trip.foodSpots[0];
-  const hotel = trip.hotelOptions[0];
+  const foods = pickUniqueFoodSpots(trip);
+  const activities = pickUniqueActivities(trip);
 
-  if (trip.isStaycation) {
-    return {
-      title: "Local reset day",
-      summary: `Low-friction ${input.style} day with basically no travel overhead.`,
-      stops: [
-        {
-          time: "Morning",
-          title: "Brunch / coffee start",
-          description: food1
-            ? `Start with food at ${food1.name}.`
-            : "Start with a strong local brunch or coffee stop.",
-          websiteUrl: food1?.link,
-        },
-        {
-          time: "Afternoon",
-          title: activity1?.name ?? "Main local activity",
-          description: activity1
-            ? `Use ${activity1.name} as the anchor activity for the afternoon.`
-            : "Pick one anchor activity instead of overplanning the whole day.",
-          websiteUrl: activity1?.bookingLink,
-          estimatedCost: activity1?.costEstimate ?? 0,
-        },
-        {
-          time: "Evening",
-          title: "Dinner and relaxed evening",
-          description: trip.aiSummary || "Keep the evening easy and enjoyable.",
-        },
-      ],
-    };
-  }
+  return {
+    title: "Local reset day",
+    summary: `Low-friction ${input.style} day with basically no travel overhead.`,
+    stops: [
+      {
+        time: "Morning",
+        title: foods.first?.name ?? "Brunch / coffee start",
+        description: foods.first
+          ? `Start with food at ${foods.first.name}.`
+          : "Start with a strong local brunch or coffee stop.",
+        websiteUrl: foods.first?.link,
+      },
+      {
+        time: "Afternoon",
+        title: activities.first?.name ?? "Main local activity",
+        description: activities.first
+          ? `Use ${activities.first.name} as the anchor activity for the afternoon.`
+          : "Pick one anchor activity instead of overplanning the whole day.",
+        websiteUrl: activities.first?.bookingLink,
+        estimatedCost: activities.first?.costEstimate ?? 0,
+      },
+      {
+        time: "Evening",
+        title: foods.second?.name ?? "Dinner and relaxed evening",
+        description: foods.second
+          ? `Wrap up with food at ${foods.second.name}.`
+          : trip.aiSummary || "Keep the evening easy and enjoyable.",
+        websiteUrl: foods.second?.link,
+      },
+    ],
+  };
+}
+
+function buildStaycationDayTwo(
+  trip: RankedDestination
+): ItineraryDayData {
+  const foods = pickUniqueFoodSpots(trip);
+  const activities = pickUniqueActivities(trip);
+
+  return {
+    title: "Second local day",
+    summary:
+      "Use day two for one more meaningful stop without travel friction.",
+    stops: [
+      {
+        time: "Morning",
+        title: foods.third?.name ?? "Brunch / coffee",
+        description: foods.third
+          ? `Start with another good local stop at ${foods.third.name}.`
+          : "Start with brunch or coffee.",
+        websiteUrl: foods.third?.link,
+      },
+      {
+        time: "Afternoon",
+        title: activities.second?.name ?? "Flexible local highlight",
+        description: activities.second
+          ? `Use ${activities.second.name} as the second-day anchor.`
+          : "Choose one more meaningful stop, then keep the rest flexible.",
+        websiteUrl: activities.second?.bookingLink,
+        estimatedCost: activities.second?.costEstimate ?? 0,
+      },
+    ],
+  };
+}
+
+function buildGetawayDayOne(
+  trip: RankedDestination,
+  input: TripInput
+): ItineraryDayData {
+  const foods = pickUniqueFoodSpots(trip);
+  const hotel = trip.hotelOptions?.[0];
 
   return {
     title: "Arrival and easy first day",
@@ -144,50 +205,22 @@ function buildDayOne(
       },
       {
         time: "Evening",
-        title: food1?.name ?? "Dinner",
-        description: food1
-          ? `Dinner at ${food1.name}, then keep the night relaxed.`
+        title: foods.first?.name ?? "Dinner",
+        description: foods.first
+          ? `Dinner at ${foods.first.name}, then keep the night relaxed.`
           : "Dinner and an easy evening.",
-        websiteUrl: food1?.link,
+        websiteUrl: foods.first?.link,
       },
     ],
   };
 }
 
-function buildReturnDay(
+function buildGetawayDayTwo(
   trip: RankedDestination,
   input: TripInput
 ): ItineraryDayData {
-  const food1 = trip.foodSpots[0];
-  const food2 = trip.foodSpots[1] ?? trip.foodSpots[0];
-  const activity1 = trip.topActivities[1] ?? trip.topActivities[0];
-
-  if (trip.isStaycation) {
-    return {
-      title: "Second local day",
-      summary:
-        "Use day two for one more meaningful stop without travel friction.",
-      stops: [
-        {
-          time: "Morning",
-          title: food2?.name ?? "Brunch / coffee",
-          description: food2
-            ? `Start with another good local stop at ${food2.name}.`
-            : "Start with brunch or coffee.",
-          websiteUrl: food2?.link,
-        },
-        {
-          time: "Afternoon",
-          title: activity1?.name ?? "Flexible local highlight",
-          description: activity1
-            ? `Use ${activity1.name} as the second-day anchor.`
-            : "Choose one more meaningful stop, then keep the rest flexible.",
-          websiteUrl: activity1?.bookingLink,
-          estimatedCost: activity1?.costEstimate ?? 0,
-        },
-      ],
-    };
-  }
+  const foods = pickUniqueFoodSpots(trip);
+  const activities = pickUniqueActivities(trip);
 
   return {
     title: "Final half-day and drive back",
@@ -195,18 +228,18 @@ function buildReturnDay(
     stops: [
       {
         time: "Morning",
-        title: food2?.name ?? "Breakfast / last local stop",
-        description: food2
-          ? `Get one more good local stop at ${food2.name} before leaving.`
+        title: foods.second?.name ?? "Breakfast / last local stop",
+        description: foods.second
+          ? `Get one more good local stop at ${foods.second.name} before leaving.`
           : "Get one more good local stop before leaving.",
-        websiteUrl: food2?.link,
+        websiteUrl: foods.second?.link,
       },
       {
         time: "Late morning",
-        title: activity1?.name ?? "One final highlight",
+        title: activities.first?.name ?? "One final highlight",
         description: "Optional final stop before the drive home.",
-        websiteUrl: activity1?.bookingLink,
-        estimatedCost: activity1?.costEstimate ?? 0,
+        websiteUrl: activities.first?.bookingLink,
+        estimatedCost: activities.first?.costEstimate ?? 0,
       },
       {
         time: "Afternoon",
@@ -218,6 +251,98 @@ function buildReturnDay(
   };
 }
 
+function buildMiddleDay(
+  trip: RankedDestination,
+  input: TripInput,
+  dayNumber: number
+): ItineraryDayData {
+  const foods = pickUniqueFoodSpots(trip);
+  const activities = pickUniqueActivities(trip);
+
+  const breakfastSpot = foods.second ?? foods.first;
+  const lunchSpot = foods.third ?? foods.second ?? foods.first;
+  const mainActivity = activities.first;
+  const secondActivity = activities.second;
+
+  return {
+    title: `Core experience day ${dayNumber}`,
+    summary: `Use the middle of the trip for the strongest ${input.style} anchors instead of wasting it on logistics.`,
+    stops: [
+      {
+        time: "Morning",
+        title: breakfastSpot?.name ?? "Breakfast / coffee",
+        description: breakfastSpot
+          ? `Start the day at ${breakfastSpot.name}.`
+          : "Start the day with breakfast or coffee.",
+        websiteUrl: breakfastSpot?.link,
+      },
+      {
+        time: "Late morning",
+        title: mainActivity?.name ?? "Main activity",
+        description: mainActivity
+          ? `Use ${mainActivity.name} as the main daytime anchor.`
+          : "Use one meaningful anchor stop for the morning.",
+        websiteUrl: mainActivity?.bookingLink,
+        estimatedCost: mainActivity?.costEstimate ?? 0,
+      },
+      {
+        time: "Afternoon",
+        title: secondActivity?.name ?? "Flexible second stop",
+        description: secondActivity
+          ? `Add ${secondActivity.name} if you still have energy.`
+          : "Keep the afternoon flexible instead of overpacking it.",
+        websiteUrl: secondActivity?.bookingLink,
+        estimatedCost: secondActivity?.costEstimate ?? 0,
+      },
+      {
+        time: "Evening",
+        title: lunchSpot?.name ?? "Dinner",
+        description: lunchSpot
+          ? `Finish with dinner at ${lunchSpot.name}.`
+          : "Finish with a strong dinner stop.",
+        websiteUrl: lunchSpot?.link,
+      },
+    ],
+  };
+}
+
+function buildItineraryDays(
+  trip: RankedDestination,
+  input: TripInput
+): ItineraryDayData[] {
+  if (trip.isStaycation) {
+    if (input.tripLengthDays <= 1) {
+      return [buildStaycationDayOne(trip, input)];
+    }
+
+    if (input.tripLengthDays === 2) {
+      return [buildStaycationDayOne(trip, input), buildStaycationDayTwo(trip)];
+    }
+
+    const days: ItineraryDayData[] = [buildStaycationDayOne(trip, input)];
+    for (let day = 2; day < input.tripLengthDays; day += 1) {
+      days.push(buildMiddleDay(trip, input, day));
+    }
+    days.push(buildStaycationDayTwo(trip));
+    return days;
+  }
+
+  if (input.tripLengthDays <= 1) {
+    return [buildGetawayDayOne(trip, input)];
+  }
+
+  if (input.tripLengthDays === 2) {
+    return [buildGetawayDayOne(trip, input), buildGetawayDayTwo(trip, input)];
+  }
+
+  const days: ItineraryDayData[] = [buildGetawayDayOne(trip, input)];
+  for (let day = 2; day < input.tripLengthDays; day += 1) {
+    days.push(buildMiddleDay(trip, input, day));
+  }
+  days.push(buildGetawayDayTwo(trip, input));
+  return days;
+}
+
 export function buildTripPlan(
   trip: RankedDestination,
   input?: Partial<TripInput>,
@@ -225,10 +350,7 @@ export function buildTripPlan(
 ): TripPlan {
   const safeInput = normalizeInput(input);
   const budgetBreakdown = buildBudgetBreakdown(trip, safeInput);
-
-  const itineraryDays: ItineraryDayData[] = [];
-  itineraryDays.push(buildDayOne(trip, safeInput));
-  itineraryDays.push(buildReturnDay(trip, safeInput));
+  const itineraryDays = buildItineraryDays(trip, safeInput);
 
   return {
     id: crypto.randomUUID(),

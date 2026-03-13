@@ -52,6 +52,8 @@ export default function TripPage() {
     );
   }
 
+  const itineraryDays = Array.isArray(trip.itineraryDays) ? trip.itineraryDays : [];
+
   return (
     <main className="min-h-screen bg-black text-white px-6 py-8">
       <div className="mx-auto max-w-5xl space-y-6">
@@ -62,10 +64,21 @@ export default function TripPage() {
         <FoodSection foodSpots={trip.foodSpots ?? []} />
         <ActivitySection activities={trip.topActivities ?? []} />
 
+        <section className="rounded border border-white/20 bg-white/5 px-4 py-4 text-sm text-white/80 space-y-1">
+          <div>Saved trip id: {trip.id}</div>
+          <div>Stored itinerary day count: {itineraryDays.length}</div>
+          <div>
+            Day titles:{" "}
+            {itineraryDays.length > 0
+              ? itineraryDays.map((day: any) => day.title).join(" | ")
+              : "None"}
+          </div>
+        </section>
+
         <section className="space-y-4">
           <h2 className="text-2xl font-semibold">Itinerary</h2>
-          {Array.isArray(trip.itineraryDays) && trip.itineraryDays.length > 0 ? (
-            trip.itineraryDays.map((day: any, index: number) => (
+          {itineraryDays.length > 0 ? (
+            itineraryDays.map((day: any, index: number) => (
               <ItineraryDay key={index} day={day} dayNumber={index + 1} />
             ))
           ) : (
