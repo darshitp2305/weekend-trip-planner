@@ -18,11 +18,25 @@ export default function TripPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!params?.tripId) return;
+    let cancelled = false;
 
-    const found = getTripPlanById(params.tripId);
-    setTrip(found);
-    setLoading(false);
+    async function loadTrip() {
+      if (!params?.tripId) return;
+
+      setLoading(true);
+      const found = await getTripPlanById(params.tripId);
+
+      if (!cancelled) {
+        setTrip(found);
+        setLoading(false);
+      }
+    }
+
+    loadTrip();
+
+    return () => {
+      cancelled = true;
+    };
   }, [params?.tripId]);
 
   if (loading) {
@@ -39,7 +53,7 @@ export default function TripPage() {
         <div className="mx-auto max-w-3xl rounded border p-6 space-y-4">
           <h1 className="text-2xl font-bold">Trip not found</h1>
           <p className="text-sm text-gray-400">
-            This trip is stored only in local browser storage right now, so it may not exist on this device or after local data was cleared.
+            This trip could not be found locally or in the shared trip database.
           </p>
           <button
             onClick={() => router.push("/")}
@@ -63,17 +77,6 @@ export default function TripPage() {
         <StaySection stays={trip.hotelOptions ?? []} />
         <FoodSection foodSpots={trip.foodSpots ?? []} />
         <ActivitySection activities={trip.topActivities ?? []} />
-
-        <section className="rounded border border-white/20 bg-white/5 px-4 py-4 text-sm text-white/80 space-y-1">
-          <div>Saved trip id: {trip.id}</div>
-          <div>Stored itinerary day count: {itineraryDays.length}</div>
-          <div>
-            Day titles:{" "}
-            {itineraryDays.length > 0
-              ? itineraryDays.map((day: any) => day.title).join(" | ")
-              : "None"}
-          </div>
-        </section>
 
         <section className="space-y-4">
           <h2 className="text-2xl font-semibold">Itinerary</h2>

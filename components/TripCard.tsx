@@ -116,8 +116,8 @@ function fullCopyText(trip: RankedDestination) {
   const reasons = trip.rankingReasons?.length
     ? trip.rankingReasons.map((line) => `- ${line.label}`).join("\n")
     : trip.matchReasons?.length
-    ? trip.matchReasons.map((line) => `- ${line}`).join("\n")
-    : "No match reasons available.";
+      ? trip.matchReasons.map((line) => `- ${line}`).join("\n")
+      : "No match reasons available.";
 
   const displayCost =
     trip.budgetBreakdown?.totalExpected ??
@@ -199,8 +199,8 @@ export default function TripCard({
       let source: TripDataSource = trip.liveDataSummary?.usedPlacesData
         ? "live-google-places"
         : trip.liveDataSummary?.usedFallbackData
-        ? "static-fallback"
-        : "static-ranking";
+          ? "static-fallback"
+          : "static-ranking";
 
       const propInput = normalizeTripInput(input);
       const storedInput = getStoredLastInput();
@@ -259,7 +259,11 @@ export default function TripCard({
       }
 
       const plan = buildTripPlan(enrichedTrip, effectiveInput, source);
-      saveTripPlan(plan);
+      const saveResult = await saveTripPlan(plan);
+
+      if (!saveResult.success) {
+        throw new Error("Trip save failed.");
+      }
 
       if (onSave) onSave(trip.name);
       router.push(`/trip/${plan.id}`);

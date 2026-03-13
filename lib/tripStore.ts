@@ -1,29 +1,98 @@
+import type { TripPlan } from "./types";
+
 const STORAGE_KEY = "weekend-trip-plans";
 
-export function saveTripPlan(plan: any) {
-  if (typeof window === "undefined") return;
-
-  const raw = localStorage.getItem(STORAGE_KEY);
-  const plans = raw ? JSON.parse(raw) : [];
-
-  const next = plans.filter((p: any) => p.id !== plan.id);
-  next.push(plan);
-
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-}
-
-export function getTripPlanById(id: string) {
-  if (typeof window === "undefined") return null;
-
-  const raw = localStorage.getItem(STORAGE_KEY);
-  const plans = raw ? JSON.parse(raw) : [];
-
-  return plans.find((p: any) => p.id === id) ?? null;
-}
-
-export function getAllTripPlans() {
+function readLocalPlans(): TripPlan[] {
   if (typeof window === "undefined") return [];
 
-  const raw = localStorage.getItem(STORAGE_KEY);
-  return raw ? JSON.parse(raw) : [];
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch (error) {
+    console.error("Failed to read local trip plans:", error);
+    return [];
+  }
+}
+
+function writeLocalPlans(plans: TripPlan[]) {
+  if (typeof window === "undefined") return;
+
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(plans));
+  } catch (error) {
+    console.error("Failed to write local trip plans:", error);
+  }
+}
+
+export async function saveTripPlan(plan: TripPlan) {
+  const plans = readLocalPlans();
+  const next = plans.filter((p) => p.id !== plan.id);
+  next.push(plan);
+  writeLocalPlans(next);
+
+  try {
+    const response = await fetch("/api/save-trip", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ plan }),
+    });
+
+    const data = await response.json().catch(() => null);
+
+    if (!response.ok || !data?.success) {
+      throw new Error(data?.error || "Remote save failed.");
+    }
+
+    return {
+      success: true,
+      id: plan.id,
+      shareUrl: data.shareUrl as string,
+      remoteSaved: true,
+    };
+  } catch (error) {
+    console.error("Remote trip save failed, local save kept:", error);
+
+    return {
+      success: true,
+      id: plan.id,
+      shareUrl: `/trip/${plan.id}`,
+      remoteSaved: false,
+    };
+  }
+}
+
+export async function getTripPlanById(id: string): Promise<TripPlan | null> {
+  const local = readLocalPlans().find((p) => p.id === id) ?? null;
+  if (local) return local;
+
+  try {
+    const response = await fetch(`/api/trips/${id}`, {
+      method: "GET",
+      cache: "no-store",
+    });
+
+    const data = await response.json().catch(() => null);
+
+    if (!response.ok || !data?.success || !data?.trip) {
+      return null;
+    }
+
+    const trip = data.trip as TripPlan;
+
+    const plans = readLocalPlans();
+    const next = plans.filter((p) => p.id !== trip.id);
+    next.push(trip);
+    writeLocalPlans(next);
+
+    return trip;
+  } catch (error) {
+    console.error("Failed to load shared trip:", error);
+    return null;
+  }
+}
+
+export function getAllTripPlans(): TripPlan[] {
+  return readLocalPlans();
 }
