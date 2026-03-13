@@ -58,8 +58,8 @@ function buildBudgetBreakdown(
   const gasBase = trip.isStaycation
     ? 0
     : trip.budgetBreakdown?.gas && trip.budgetBreakdown.gas > 0
-    ? trip.budgetBreakdown.gas
-    : Math.max(40, trip.driveHoursFromStart * 22);
+      ? trip.budgetBreakdown.gas
+      : Math.max(40, trip.driveHoursFromStart * 22);
 
   const activitiesBase =
     trip.topActivities?.reduce(
@@ -88,30 +88,154 @@ function buildBudgetBreakdown(
   };
 }
 
-function pickUniqueFoodSpots(trip: RankedDestination) {
-  const foods = trip.foodSpots ?? [];
-  return {
-    first: foods[0],
-    second: foods[1] ?? foods[0],
-    third: foods[2] ?? foods[1] ?? foods[0],
-  };
+type FoodSpot = NonNullable<RankedDestination["foodSpots"]>[number];
+type ActivitySpot = NonNullable<RankedDestination["topActivities"]>[number];
+
+type BuildContext = {
+  foods: FoodSpot[];
+  activities: ActivitySpot[];
+  usedFoodNames: Set<string>;
+  usedActivityNames: Set<string>;
+  previousDayFoodNames: Set<string>;
+  previousDayActivityNames: Set<string>;
+};
+
+function dedupeByName<T extends { name?: string }>(items: T[] | undefined): T[] {
+  if (!items?.length) return [];
+
+  const seen = new Set<string>();
+  const result: T[] = [];
+
+  for (const item of items) {
+    const key = (item.name ?? "").trim().toLowerCase();
+    if (!key) continue;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    result.push(item);
+  }
+
+  return result;
 }
 
-function pickUniqueActivities(trip: RankedDestination) {
-  const activities = trip.topActivities ?? [];
+function itemName(item?: { name?: string }) {
+  return (item?.name ?? "").trim().toLowerCase();
+}
+
+function markFoodUsed(ctx: BuildContext, item?: FoodSpot) {
+  const key = itemName(item);
+  if (key) ctx.usedFoodNames.add(key);
+}
+
+function markActivityUsed(ctx: BuildContext, item?: ActivitySpot) {
+  const key = itemName(item);
+  if (key) ctx.usedActivityNames.add(key);
+}
+
+function setPreviousDayFoods(ctx: BuildContext, items: Array<FoodSpot | undefined>) {
+  ctx.previousDayFoodNames = new Set(
+    items.map(itemName).filter(Boolean)
+  );
+}
+
+function setPreviousDayActivities(
+  ctx: BuildContext,
+  items: Array<ActivitySpot | undefined>
+) {
+  ctx.previousDayActivityNames = new Set(
+    items.map(itemName).filter(Boolean)
+  );
+}
+
+function pickBestItem<T extends { name?: string }>(
+  items: T[],
+  options: {
+    usedNames: Set<string>;
+    previousDayNames: Set<string>;
+    blockedNames?: Set<string>;
+  }
+): T | undefined {
+  const { usedNames, previousDayNames, blockedNames = new Set<string>() } = options;
+
+  const available = items.filter((item) => {
+    const key = itemName(item);
+    return Boolean(key) && !blockedNames.has(key);
+  });
+
+  if (available.length === 0) return undefined;
+
+  const tiers = [
+    available.filter((item) => {
+      const key = itemName(item);
+      return !usedNames.has(key) && !previousDayNames.has(key);
+    }),
+    available.filter((item) => {
+      const key = itemName(item);
+      return !usedNames.has(key);
+    }),
+    available.filter((item) => {
+      const key = itemName(item);
+      return !previousDayNames.has(key);
+    }),
+    available,
+  ];
+
+  for (const tier of tiers) {
+    if (tier.length > 0) return tier[0];
+  }
+
+  return available[0];
+}
+
+function pickFood(
+  ctx: BuildContext,
+  blockedNames: Set<string> = new Set<string>()
+): FoodSpot | undefined {
+  const picked = pickBestItem(ctx.foods, {
+    usedNames: ctx.usedFoodNames,
+    previousDayNames: ctx.previousDayFoodNames,
+    blockedNames,
+  });
+
+  markFoodUsed(ctx, picked);
+  return picked;
+}
+
+function pickActivity(
+  ctx: BuildContext,
+  blockedNames: Set<string> = new Set<string>()
+): ActivitySpot | undefined {
+  const picked = pickBestItem(ctx.activities, {
+    usedNames: ctx.usedActivityNames,
+    previousDayNames: ctx.previousDayActivityNames,
+    blockedNames,
+  });
+
+  markActivityUsed(ctx, picked);
+  return picked;
+}
+
+function buildContext(trip: RankedDestination): BuildContext {
   return {
-    first: activities[0],
-    second: activities[1] ?? activities[0],
-    third: activities[2] ?? activities[1] ?? activities[0],
+    foods: dedupeByName(trip.foodSpots),
+    activities: dedupeByName(trip.topActivities),
+    usedFoodNames: new Set<string>(),
+    usedActivityNames: new Set<string>(),
+    previousDayFoodNames: new Set<string>(),
+    previousDayActivityNames: new Set<string>(),
   };
 }
 
 function buildStaycationDayOne(
   trip: RankedDestination,
-  input: TripInput
+  input: TripInput,
+  ctx: BuildContext
 ): ItineraryDayData {
-  const foods = pickUniqueFoodSpots(trip);
-  const activities = pickUniqueActivities(trip);
+  const breakfast = pickFood(ctx);
+  const activity = pickActivity(ctx);
+  const dinner = pickFood(ctx, new Set([itemName(breakfast)]));
+
+  setPreviousDayFoods(ctx, [breakfast, dinner]);
+  setPreviousDayActivities(ctx, [activity]);
 
   return {
     title: "Local reset day",
@@ -119,38 +243,42 @@ function buildStaycationDayOne(
     stops: [
       {
         time: "Morning",
-        title: foods.first?.name ?? "Brunch / coffee start",
-        description: foods.first
-          ? `Start with food at ${foods.first.name}.`
+        title: breakfast?.name ?? "Brunch / coffee start",
+        description: breakfast
+          ? `Start with food at ${breakfast.name}.`
           : "Start with a strong local brunch or coffee stop.",
-        websiteUrl: foods.first?.link,
+        websiteUrl: breakfast?.link,
       },
       {
         time: "Afternoon",
-        title: activities.first?.name ?? "Main local activity",
-        description: activities.first
-          ? `Use ${activities.first.name} as the anchor activity for the afternoon.`
+        title: activity?.name ?? "Main local activity",
+        description: activity
+          ? `Use ${activity.name} as the anchor activity for the afternoon.`
           : "Pick one anchor activity instead of overplanning the whole day.",
-        websiteUrl: activities.first?.bookingLink,
-        estimatedCost: activities.first?.costEstimate ?? 0,
+        websiteUrl: activity?.bookingLink,
+        estimatedCost: activity?.costEstimate ?? 0,
       },
       {
         time: "Evening",
-        title: foods.second?.name ?? "Dinner and relaxed evening",
-        description: foods.second
-          ? `Wrap up with food at ${foods.second.name}.`
+        title: dinner?.name ?? "Dinner and relaxed evening",
+        description: dinner
+          ? `Wrap up with food at ${dinner.name}.`
           : trip.aiSummary || "Keep the evening easy and enjoyable.",
-        websiteUrl: foods.second?.link,
+        websiteUrl: dinner?.link,
       },
     ],
   };
 }
 
-function buildStaycationDayTwo(
-  trip: RankedDestination
+function buildStaycationFinalDay(
+  trip: RankedDestination,
+  ctx: BuildContext
 ): ItineraryDayData {
-  const foods = pickUniqueFoodSpots(trip);
-  const activities = pickUniqueActivities(trip);
+  const breakfast = pickFood(ctx);
+  const activity = pickActivity(ctx);
+
+  setPreviousDayFoods(ctx, [breakfast]);
+  setPreviousDayActivities(ctx, [activity]);
 
   return {
     title: "Second local day",
@@ -159,20 +287,20 @@ function buildStaycationDayTwo(
     stops: [
       {
         time: "Morning",
-        title: foods.third?.name ?? "Brunch / coffee",
-        description: foods.third
-          ? `Start with another good local stop at ${foods.third.name}.`
+        title: breakfast?.name ?? "Brunch / coffee",
+        description: breakfast
+          ? `Start with another good local stop at ${breakfast.name}.`
           : "Start with brunch or coffee.",
-        websiteUrl: foods.third?.link,
+        websiteUrl: breakfast?.link,
       },
       {
         time: "Afternoon",
-        title: activities.second?.name ?? "Flexible local highlight",
-        description: activities.second
-          ? `Use ${activities.second.name} as the second-day anchor.`
+        title: activity?.name ?? "Flexible local highlight",
+        description: activity
+          ? `Use ${activity.name} as the second-day anchor.`
           : "Choose one more meaningful stop, then keep the rest flexible.",
-        websiteUrl: activities.second?.bookingLink,
-        estimatedCost: activities.second?.costEstimate ?? 0,
+        websiteUrl: activity?.bookingLink,
+        estimatedCost: activity?.costEstimate ?? 0,
       },
     ],
   };
@@ -180,10 +308,14 @@ function buildStaycationDayTwo(
 
 function buildGetawayDayOne(
   trip: RankedDestination,
-  input: TripInput
+  input: TripInput,
+  ctx: BuildContext
 ): ItineraryDayData {
-  const foods = pickUniqueFoodSpots(trip);
   const hotel = trip.hotelOptions?.[0];
+  const dinner = pickFood(ctx);
+
+  setPreviousDayFoods(ctx, [dinner]);
+  setPreviousDayActivities(ctx, []);
 
   return {
     title: "Arrival and easy first day",
@@ -205,22 +337,26 @@ function buildGetawayDayOne(
       },
       {
         time: "Evening",
-        title: foods.first?.name ?? "Dinner",
-        description: foods.first
-          ? `Dinner at ${foods.first.name}, then keep the night relaxed.`
+        title: dinner?.name ?? "Dinner",
+        description: dinner
+          ? `Dinner at ${dinner.name}, then keep the night relaxed.`
           : "Dinner and an easy evening.",
-        websiteUrl: foods.first?.link,
+        websiteUrl: dinner?.link,
       },
     ],
   };
 }
 
-function buildGetawayDayTwo(
+function buildGetawayFinalDay(
   trip: RankedDestination,
-  input: TripInput
+  input: TripInput,
+  ctx: BuildContext
 ): ItineraryDayData {
-  const foods = pickUniqueFoodSpots(trip);
-  const activities = pickUniqueActivities(trip);
+  const breakfast = pickFood(ctx);
+  const finalActivity = pickActivity(ctx);
+
+  setPreviousDayFoods(ctx, [breakfast]);
+  setPreviousDayActivities(ctx, [finalActivity]);
 
   return {
     title: "Final half-day and drive back",
@@ -228,18 +364,18 @@ function buildGetawayDayTwo(
     stops: [
       {
         time: "Morning",
-        title: foods.second?.name ?? "Breakfast / last local stop",
-        description: foods.second
-          ? `Get one more good local stop at ${foods.second.name} before leaving.`
+        title: breakfast?.name ?? "Breakfast / last local stop",
+        description: breakfast
+          ? `Get one more good local stop at ${breakfast.name} before leaving.`
           : "Get one more good local stop before leaving.",
-        websiteUrl: foods.second?.link,
+        websiteUrl: breakfast?.link,
       },
       {
         time: "Late morning",
-        title: activities.first?.name ?? "One final highlight",
+        title: finalActivity?.name ?? "One final highlight",
         description: "Optional final stop before the drive home.",
-        websiteUrl: activities.first?.bookingLink,
-        estimatedCost: activities.first?.costEstimate ?? 0,
+        websiteUrl: finalActivity?.bookingLink,
+        estimatedCost: finalActivity?.costEstimate ?? 0,
       },
       {
         time: "Afternoon",
@@ -254,15 +390,22 @@ function buildGetawayDayTwo(
 function buildMiddleDay(
   trip: RankedDestination,
   input: TripInput,
-  dayNumber: number
+  dayNumber: number,
+  ctx: BuildContext
 ): ItineraryDayData {
-  const foods = pickUniqueFoodSpots(trip);
-  const activities = pickUniqueActivities(trip);
+  const breakfast = pickFood(ctx);
+  const mainActivity = pickActivity(ctx);
+  const secondaryActivity = pickActivity(
+    ctx,
+    new Set([itemName(mainActivity)])
+  );
+  const dinner = pickFood(
+    ctx,
+    new Set([itemName(breakfast)])
+  );
 
-  const breakfastSpot = foods.second ?? foods.first;
-  const lunchSpot = foods.third ?? foods.second ?? foods.first;
-  const mainActivity = activities.first;
-  const secondActivity = activities.second;
+  setPreviousDayFoods(ctx, [breakfast, dinner]);
+  setPreviousDayActivities(ctx, [mainActivity, secondaryActivity]);
 
   return {
     title: `Core experience day ${dayNumber}`,
@@ -270,11 +413,11 @@ function buildMiddleDay(
     stops: [
       {
         time: "Morning",
-        title: breakfastSpot?.name ?? "Breakfast / coffee",
-        description: breakfastSpot
-          ? `Start the day at ${breakfastSpot.name}.`
+        title: breakfast?.name ?? "Breakfast / coffee",
+        description: breakfast
+          ? `Start the day at ${breakfast.name}.`
           : "Start the day with breakfast or coffee.",
-        websiteUrl: breakfastSpot?.link,
+        websiteUrl: breakfast?.link,
       },
       {
         time: "Late morning",
@@ -287,20 +430,20 @@ function buildMiddleDay(
       },
       {
         time: "Afternoon",
-        title: secondActivity?.name ?? "Flexible second stop",
-        description: secondActivity
-          ? `Add ${secondActivity.name} if you still have energy.`
+        title: secondaryActivity?.name ?? "Flexible second stop",
+        description: secondaryActivity
+          ? `Add ${secondaryActivity.name} if you still have energy.`
           : "Keep the afternoon flexible instead of overpacking it.",
-        websiteUrl: secondActivity?.bookingLink,
-        estimatedCost: secondActivity?.costEstimate ?? 0,
+        websiteUrl: secondaryActivity?.bookingLink,
+        estimatedCost: secondaryActivity?.costEstimate ?? 0,
       },
       {
         time: "Evening",
-        title: lunchSpot?.name ?? "Dinner",
-        description: lunchSpot
-          ? `Finish with dinner at ${lunchSpot.name}.`
+        title: dinner?.name ?? "Dinner",
+        description: dinner
+          ? `Finish with dinner at ${dinner.name}.`
           : "Finish with a strong dinner stop.",
-        websiteUrl: lunchSpot?.link,
+        websiteUrl: dinner?.link,
       },
     ],
   };
@@ -310,36 +453,44 @@ function buildItineraryDays(
   trip: RankedDestination,
   input: TripInput
 ): ItineraryDayData[] {
+  const ctx = buildContext(trip);
+
   if (trip.isStaycation) {
     if (input.tripLengthDays <= 1) {
-      return [buildStaycationDayOne(trip, input)];
+      return [buildStaycationDayOne(trip, input, ctx)];
     }
 
     if (input.tripLengthDays === 2) {
-      return [buildStaycationDayOne(trip, input), buildStaycationDayTwo(trip)];
+      return [
+        buildStaycationDayOne(trip, input, ctx),
+        buildStaycationFinalDay(trip, ctx),
+      ];
     }
 
-    const days: ItineraryDayData[] = [buildStaycationDayOne(trip, input)];
+    const days: ItineraryDayData[] = [buildStaycationDayOne(trip, input, ctx)];
     for (let day = 2; day < input.tripLengthDays; day += 1) {
-      days.push(buildMiddleDay(trip, input, day));
+      days.push(buildMiddleDay(trip, input, day, ctx));
     }
-    days.push(buildStaycationDayTwo(trip));
+    days.push(buildStaycationFinalDay(trip, ctx));
     return days;
   }
 
   if (input.tripLengthDays <= 1) {
-    return [buildGetawayDayOne(trip, input)];
+    return [buildGetawayDayOne(trip, input, ctx)];
   }
 
   if (input.tripLengthDays === 2) {
-    return [buildGetawayDayOne(trip, input), buildGetawayDayTwo(trip, input)];
+    return [
+      buildGetawayDayOne(trip, input, ctx),
+      buildGetawayFinalDay(trip, input, ctx),
+    ];
   }
 
-  const days: ItineraryDayData[] = [buildGetawayDayOne(trip, input)];
+  const days: ItineraryDayData[] = [buildGetawayDayOne(trip, input, ctx)];
   for (let day = 2; day < input.tripLengthDays; day += 1) {
-    days.push(buildMiddleDay(trip, input, day));
+    days.push(buildMiddleDay(trip, input, day, ctx));
   }
-  days.push(buildGetawayDayTwo(trip, input));
+  days.push(buildGetawayFinalDay(trip, input, ctx));
   return days;
 }
 
