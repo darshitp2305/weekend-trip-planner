@@ -91,13 +91,19 @@ function buildBudgetBreakdown(
 type FoodSpot = NonNullable<RankedDestination["foodSpots"]>[number];
 type ActivitySpot = NonNullable<RankedDestination["topActivities"]>[number];
 
+type ReservationState = {
+  finalDayFood?: FoodSpot;
+  finalDayActivity?: ActivitySpot;
+};
+
 type BuildContext = {
-  foods: FoodSpot[];
-  activities: ActivitySpot[];
-  usedFoodNames: Set<string>;
-  usedActivityNames: Set<string>;
+  foodQueue: FoodSpot[];
+  activityQueue: ActivitySpot[];
+  foodFallback: FoodSpot[];
+  activityFallback: ActivitySpot[];
   previousDayFoodNames: Set<string>;
   previousDayActivityNames: Set<string>;
+  reservations: ReservationState;
 };
 
 function dedupeByName<T extends { name?: string }>(items: T[] | undefined): T[] {
@@ -121,108 +127,132 @@ function itemName(item?: { name?: string }) {
   return (item?.name ?? "").trim().toLowerCase();
 }
 
-function markFoodUsed(ctx: BuildContext, item?: FoodSpot) {
-  const key = itemName(item);
-  if (key) ctx.usedFoodNames.add(key);
-}
-
-function markActivityUsed(ctx: BuildContext, item?: ActivitySpot) {
-  const key = itemName(item);
-  if (key) ctx.usedActivityNames.add(key);
-}
-
-function setPreviousDayFoods(ctx: BuildContext, items: Array<FoodSpot | undefined>) {
-  ctx.previousDayFoodNames = new Set(
-    items.map(itemName).filter(Boolean)
-  );
+function setPreviousDayFoods(
+  ctx: BuildContext,
+  items: Array<FoodSpot | undefined>
+) {
+  ctx.previousDayFoodNames = new Set(items.map(itemName).filter(Boolean));
 }
 
 function setPreviousDayActivities(
   ctx: BuildContext,
   items: Array<ActivitySpot | undefined>
 ) {
-  ctx.previousDayActivityNames = new Set(
-    items.map(itemName).filter(Boolean)
-  );
+  ctx.previousDayActivityNames = new Set(items.map(itemName).filter(Boolean));
 }
 
-function pickBestItem<T extends { name?: string }>(
-  items: T[],
-  options: {
-    usedNames: Set<string>;
-    previousDayNames: Set<string>;
-    blockedNames?: Set<string>;
-  }
+function takeFromQueueAvoidingPrevious<T extends { name?: string }>(
+  queue: T[],
+  previousDayNames: Set<string>
 ): T | undefined {
-  const { usedNames, previousDayNames, blockedNames = new Set<string>() } = options;
+  if (queue.length === 0) return undefined;
 
-  const available = items.filter((item) => {
-    const key = itemName(item);
-    return Boolean(key) && !blockedNames.has(key);
-  });
+  const nonRepeatingIndex = queue.findIndex(
+    (item) => !previousDayNames.has(itemName(item))
+  );
 
-  if (available.length === 0) return undefined;
-
-  const tiers = [
-    available.filter((item) => {
-      const key = itemName(item);
-      return !usedNames.has(key) && !previousDayNames.has(key);
-    }),
-    available.filter((item) => {
-      const key = itemName(item);
-      return !usedNames.has(key);
-    }),
-    available.filter((item) => {
-      const key = itemName(item);
-      return !previousDayNames.has(key);
-    }),
-    available,
-  ];
-
-  for (const tier of tiers) {
-    if (tier.length > 0) return tier[0];
+  if (nonRepeatingIndex >= 0) {
+    const [picked] = queue.splice(nonRepeatingIndex, 1);
+    return picked;
   }
 
-  return available[0];
+  return queue.shift();
+}
+
+function takeFallbackAvoidingPrevious<T extends { name?: string }>(
+  pool: T[],
+  previousDayNames: Set<string>,
+  blockedNames: Set<string> = new Set<string>()
+): T | undefined {
+  if (pool.length === 0) return undefined;
+
+  const filtered = pool.filter((item) => !blockedNames.has(itemName(item)));
+  if (filtered.length === 0) return undefined;
+
+  const nonRepeating = filtered.find(
+    (item) => !previousDayNames.has(itemName(item))
+  );
+  if (nonRepeating) return nonRepeating;
+
+  return filtered[0];
+}
+
+function buildContext(
+  trip: RankedDestination,
+  tripLengthDays: number
+): BuildContext {
+  const allFoods = dedupeByName(trip.foodSpots);
+  const allActivities = dedupeByName(trip.topActivities);
+
+  const foodQueue = [...allFoods];
+  const activityQueue = [...allActivities];
+
+  let finalDayFood: FoodSpot | undefined;
+  let finalDayActivity: ActivitySpot | undefined;
+
+  if (tripLengthDays > 2) {
+    finalDayFood = foodQueue.pop();
+    finalDayActivity = activityQueue.pop();
+  }
+
+  return {
+    foodQueue,
+    activityQueue,
+    foodFallback: allFoods,
+    activityFallback: allActivities,
+    previousDayFoodNames: new Set<string>(),
+    previousDayActivityNames: new Set<string>(),
+    reservations: {
+      finalDayFood,
+      finalDayActivity,
+    },
+  };
 }
 
 function pickFood(
   ctx: BuildContext,
   blockedNames: Set<string> = new Set<string>()
 ): FoodSpot | undefined {
-  const picked = pickBestItem(ctx.foods, {
-    usedNames: ctx.usedFoodNames,
-    previousDayNames: ctx.previousDayFoodNames,
-    blockedNames,
-  });
+  const queueCandidate = takeFromQueueAvoidingPrevious(
+    ctx.foodQueue.filter((item) => !blockedNames.has(itemName(item))),
+    ctx.previousDayFoodNames
+  );
 
-  markFoodUsed(ctx, picked);
-  return picked;
+  if (queueCandidate) {
+    const key = itemName(queueCandidate);
+    const idx = ctx.foodQueue.findIndex((item) => itemName(item) === key);
+    if (idx >= 0) ctx.foodQueue.splice(idx, 1);
+    return queueCandidate;
+  }
+
+  return takeFallbackAvoidingPrevious(
+    ctx.foodFallback,
+    ctx.previousDayFoodNames,
+    blockedNames
+  );
 }
 
 function pickActivity(
   ctx: BuildContext,
   blockedNames: Set<string> = new Set<string>()
 ): ActivitySpot | undefined {
-  const picked = pickBestItem(ctx.activities, {
-    usedNames: ctx.usedActivityNames,
-    previousDayNames: ctx.previousDayActivityNames,
-    blockedNames,
-  });
+  const queueCandidate = takeFromQueueAvoidingPrevious(
+    ctx.activityQueue.filter((item) => !blockedNames.has(itemName(item))),
+    ctx.previousDayActivityNames
+  );
 
-  markActivityUsed(ctx, picked);
-  return picked;
-}
+  if (queueCandidate) {
+    const key = itemName(queueCandidate);
+    const idx = ctx.activityQueue.findIndex((item) => itemName(item) === key);
+    if (idx >= 0) ctx.activityQueue.splice(idx, 1);
+    return queueCandidate;
+  }
 
-function buildContext(trip: RankedDestination): BuildContext {
-  return {
-    foods: dedupeByName(trip.foodSpots),
-    activities: dedupeByName(trip.topActivities),
-    usedFoodNames: new Set<string>(),
-    usedActivityNames: new Set<string>(),
-    previousDayFoodNames: new Set<string>(),
-    previousDayActivityNames: new Set<string>(),
-  };
+  return takeFallbackAvoidingPrevious(
+    ctx.activityFallback,
+    ctx.previousDayActivityNames,
+    blockedNames
+  );
 }
 
 function buildStaycationDayOne(
@@ -274,8 +304,13 @@ function buildStaycationFinalDay(
   trip: RankedDestination,
   ctx: BuildContext
 ): ItineraryDayData {
-  const breakfast = pickFood(ctx);
-  const activity = pickActivity(ctx);
+  const breakfast =
+    ctx.reservations.finalDayFood ??
+    pickFood(ctx);
+
+  const activity =
+    ctx.reservations.finalDayActivity ??
+    pickActivity(ctx);
 
   setPreviousDayFoods(ctx, [breakfast]);
   setPreviousDayActivities(ctx, [activity]);
@@ -352,8 +387,13 @@ function buildGetawayFinalDay(
   input: TripInput,
   ctx: BuildContext
 ): ItineraryDayData {
-  const breakfast = pickFood(ctx);
-  const finalActivity = pickActivity(ctx);
+  const breakfast =
+    ctx.reservations.finalDayFood ??
+    pickFood(ctx);
+
+  const finalActivity =
+    ctx.reservations.finalDayActivity ??
+    pickActivity(ctx);
 
   setPreviousDayFoods(ctx, [breakfast]);
   setPreviousDayActivities(ctx, [finalActivity]);
@@ -453,7 +493,7 @@ function buildItineraryDays(
   trip: RankedDestination,
   input: TripInput
 ): ItineraryDayData[] {
-  const ctx = buildContext(trip);
+  const ctx = buildContext(trip, input.tripLengthDays);
 
   if (trip.isStaycation) {
     if (input.tripLengthDays <= 1) {
