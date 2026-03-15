@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import CompareTrips from "../components/CompareTrips";
 import TripCard from "../components/TripCard";
 import TripForm from "../components/TripForm";
 import { RankedDestination, TripInput } from "../lib/types";
@@ -136,11 +135,22 @@ export default function HomePage() {
         }
       }
 
-      if (!rankResponse.ok || !rankData?.results || rankData.results.length === 0) {
+      if (!rankResponse.ok) {
         console.error("/api/rank-trips failed:", rankResponse.status, rankData);
         setRankedResults([]);
         setDisplayResults([]);
         setAiStatusMessage("");
+        return;
+      }
+
+      if (!rankData?.results || rankData.results.length === 0) {
+        setRankedResults([]);
+        setDisplayResults([]);
+        setAiStatusMessage(
+          input.preferredDestination
+            ? `Trippify could not find a destination match for "${input.preferredDestination}".`
+            : ""
+        );
         return;
       }
 
@@ -236,6 +246,7 @@ export default function HomePage() {
   }
 
   const compareTrips = displayResults.length > 0 ? displayResults : rankedResults;
+  const isDirectDestinationFlow = Boolean(lastInput?.preferredDestination);
 
   return (
     <main className="min-h-screen bg-[#f8fafc] text-slate-900">
@@ -321,21 +332,18 @@ export default function HomePage() {
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
               <div>
                 <div className="text-xs font-semibold uppercase tracking-[0.18em] text-violet-600">
-                  Your Trippify matches
+                  {isDirectDestinationFlow ? "Your trip" : "Your Trippify matches"}
                 </div>
                 <h2 className="mt-2 text-3xl font-semibold tracking-tight text-slate-950">
-                  Compare your best options
+                  {isDirectDestinationFlow ? "Destination build" : "Your best options"}
                 </h2>
               </div>
 
               <p className="max-w-xl text-sm leading-6 text-slate-600">
-                Review the strongest fits first, then save the one worth turning
-                into a full trip plan.
+                {isDirectDestinationFlow
+                  ? "Trippify found the destination you asked for and built the trip directly."
+                  : "Review the strongest fits side by side, then build the one worth turning into a full trip plan."}
               </p>
-            </div>
-
-            <div className="mt-6 rounded-[2rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
-              <CompareTrips trips={compareTrips} />
             </div>
 
             {waitingForTripText ? (

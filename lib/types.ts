@@ -45,6 +45,8 @@ export interface Activity {
 export interface HotelOption {
   name: string;
   pricePerNight?: number;
+  totalStayPrice?: number;
+  pricingSource?: string;
   bookingLink: string;
   shortDescription?: string;
   rating?: number;
@@ -160,6 +162,9 @@ export interface TripInput {
   veganFriendly: boolean;
   includeStaycations: boolean;
   strictBudget: boolean;
+  preferredDestination?: string;
+  tripStartDate?: string;
+  tripEndDate?: string;
 }
 
 export type ConfidenceLevel = "high" | "medium" | "low";
@@ -243,6 +248,8 @@ export interface TripPlan {
   travelerCount?: number;
   budgetPerTraveler?: number;
   totalBudget?: number;
+  tripStartDate?: string;
+  tripEndDate?: string;
 
   // compatibility fields used by saved trip page / header
   name?: string;

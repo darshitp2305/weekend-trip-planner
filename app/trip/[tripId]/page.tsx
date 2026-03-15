@@ -10,6 +10,7 @@ import FoodSection from "../../../components/FoodSection";
 import ActivitySection from "../../../components/ActivitySection";
 import TripActions from "../../../components/TripActions";
 import ItineraryDay from "../../../components/ItineraryDay";
+import { formatDateRange } from "../../../lib/tripDates";
 
 function formatMoney(value: number) {
   return `$${Math.round(value)}`;
@@ -112,6 +113,7 @@ export default function TripPage() {
   }, [trip]);
 
   const itineraryDays = Array.isArray(trip?.itineraryDays) ? trip.itineraryDays : [];
+  const tripDateRange = formatDateRange(trip?.tripStartDate, trip?.tripEndDate);
 
   const travelerCount = useMemo(() => {
     const value = Number(trip?.travelerCount ?? 1);
@@ -191,11 +193,16 @@ export default function TripPage() {
                 <p className="mt-2 text-sm text-slate-600">
                   Compare your target budget against the estimated trip cost.
                 </p>
+                {tripDateRange ? (
+                  <p className="mt-2 text-sm text-slate-500">
+                    Travel dates: {tripDateRange}
+                  </p>
+                ) : null}
               </div>
 
               <div className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                  <div className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
+                  <div className="text-[11px] font-medium uppercase tracking-[0.1em] text-slate-500">
                     Travelers
                   </div>
                   <div className="mt-2 text-xl font-semibold text-slate-900">
@@ -204,8 +211,8 @@ export default function TripPage() {
                 </div>
 
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                  <div className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
-                    Budget per traveler
+                  <div className="text-[11px] font-medium uppercase tracking-[0.1em] text-slate-500">
+                    Budget each
                   </div>
                   <div className="mt-2 text-xl font-semibold text-slate-900">
                     {formatMoney(budgetPerTraveler)}
@@ -213,8 +220,8 @@ export default function TripPage() {
                 </div>
 
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                  <div className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
-                    Target total budget
+                  <div className="text-[11px] font-medium uppercase tracking-[0.1em] text-slate-500">
+                    Target budget
                   </div>
                   <div className="mt-2 text-xl font-semibold text-slate-900">
                     {formatMoney(targetTotalBudget)}
@@ -222,8 +229,8 @@ export default function TripPage() {
                 </div>
 
                 <div className="rounded-2xl border border-violet-200 bg-violet-50 p-4">
-                  <div className="text-xs font-medium uppercase tracking-[0.16em] text-violet-700">
-                    Estimated total cost
+                  <div className="text-[11px] font-medium uppercase tracking-[0.1em] text-violet-700">
+                    Estimated cost
                   </div>
                   <div className="mt-2 text-xl font-semibold text-slate-950">
                     {formatMoney(estimatedTotalCost)}
@@ -240,7 +247,11 @@ export default function TripPage() {
           </div>
 
           <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
-            <StaySection stays={trip.hotelOptions ?? []} />
+            <StaySection
+              stays={trip.hotelOptions ?? []}
+              tripStartDate={trip.tripStartDate}
+              tripEndDate={trip.tripEndDate}
+            />
           </div>
         </div>
 

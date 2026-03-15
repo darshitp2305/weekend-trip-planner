@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import rawDestinations from "../data/destinations.json";
+import { deriveTripEndDate, formatDateRange } from "../lib/tripDates";
 import { RankedDestination, TripInput, TripStyle } from "../lib/types";
 
 type Props = {
@@ -21,6 +23,8 @@ type FormState = {
   veganFriendly: boolean;
   includeStaycations: boolean;
   strictBudget: boolean;
+  preferredDestination: string;
+  tripStartDate: string;
 };
 
 const DEFAULT_FORM: FormState = {
@@ -34,6 +38,8 @@ const DEFAULT_FORM: FormState = {
   veganFriendly: false,
   includeStaycations: false,
   strictBudget: false,
+  preferredDestination: "",
+  tripStartDate: "",
 };
 
 const SEASONS = ["Spring", "Summer", "Fall", "Winter"];
@@ -45,6 +51,14 @@ const TRIP_STYLES: TripStyle[] = [
   "solo reset",
   "adventure",
 ];
+
+const DESTINATION_OPTIONS = Array.from(
+  new Set(
+    (rawDestinations as Array<{ name?: string }>)
+      .map((destination) => destination.name?.trim())
+      .filter((name): name is string => Boolean(name))
+  )
+).sort((a, b) => a.localeCompare(b));
 
 function parsePositiveInt(value: string, fallback: number) {
   const cleaned = value.replace(/[^\d]/g, "");
@@ -141,6 +155,14 @@ export default function TripForm({
   results = [],
 }: Props) {
   const [form, setForm] = useState<FormState>(DEFAULT_FORM);
+  const derivedTripEndDate = deriveTripEndDate(
+    form.tripStartDate || undefined,
+    Math.max(1, parsePositiveInt(form.tripLengthDays, 2))
+  );
+  const tripDateRange = formatDateRange(
+    form.tripStartDate || undefined,
+    derivedTripEndDate
+  );
 
   function updateField<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({
@@ -237,6 +259,9 @@ export default function TripForm({
       veganFriendly: form.veganFriendly,
       includeStaycations: form.includeStaycations,
       strictBudget: form.strictBudget,
+      preferredDestination: form.preferredDestination.trim() || undefined,
+      tripStartDate: form.tripStartDate || undefined,
+      tripEndDate: derivedTripEndDate,
     };
 
     setForm((prev) => ({
@@ -379,6 +404,17 @@ export default function TripForm({
               className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
             />
           </div>
+
+          <div>
+            <FieldLabel htmlFor="tripStartDate">Trip start date</FieldLabel>
+            <input
+              id="tripStartDate"
+              type="date"
+              value={form.tripStartDate}
+              onChange={(e) => updateField("tripStartDate", e.target.value)}
+              className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+            />
+          </div>
         </div>
 
         <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
@@ -389,6 +425,40 @@ export default function TripForm({
             Based on {liveTravelerCount} traveler
             {liveTravelerCount === 1 ? "" : "s"} at{" "}
             {formatCurrency(liveBudgetPerTraveler)} each.
+          </div>
+          {tripDateRange ? (
+            <div className="mt-1 text-xs text-slate-600">
+              Trip window: {tripDateRange}
+            </div>
+          ) : null}
+        </div>
+
+        <div className="rounded-[1.5rem] border border-slate-200 bg-white p-5">
+          <div>
+            <h3 className="text-lg font-semibold text-slate-950">
+              Already know where you want to go?
+            </h3>
+            <p className="mt-1 text-sm leading-6 text-slate-600">
+              Enter a destination and Trippify will try to build that trip directly
+              instead of making you choose from recommendations.
+            </p>
+          </div>
+
+          <div className="mt-4">
+            <FieldLabel htmlFor="preferredDestination">Destination</FieldLabel>
+            <select
+              id="preferredDestination"
+              value={form.preferredDestination}
+              onChange={(e) => updateField("preferredDestination", e.target.value)}
+              className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+            >
+              <option value="">Pick from available destinations</option>
+              {DESTINATION_OPTIONS.map((destination) => (
+                <option key={destination} value={destination}>
+                  {destination}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
 
@@ -412,7 +482,9 @@ export default function TripForm({
 
         <div className="flex flex-col gap-4 border-t border-slate-200 pt-5 lg:flex-row lg:items-center lg:justify-between">
           <div className="text-sm text-slate-600">
-            {results.length > 0
+            {form.preferredDestination.trim()
+              ? `Trippify will try to build a trip for ${form.preferredDestination.trim()}.`
+              : results.length > 0
               ? `${results.length} destination${results.length === 1 ? "" : "s"} matched your filters.`
               : "Choose your preferences and generate ranked trip ideas."}
           </div>
@@ -422,7 +494,13 @@ export default function TripForm({
             disabled={loading}
             className="inline-flex h-12 items-center justify-center rounded-2xl bg-slate-950 px-6 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {loading ? "Generating..." : "Generate trips"}
+            {loading
+              ? form.preferredDestination.trim()
+                ? "Building..."
+                : "Generating..."
+              : form.preferredDestination.trim()
+                ? "Build my trip"
+                : "Generate trips"}
           </button>
         </div>
       </form>

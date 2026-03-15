@@ -50,6 +50,39 @@ function round2(value: number): number {
   return Math.round(value * 100) / 100;
 }
 
+function normalizeSearchText(value?: string): string {
+  return (value ?? "")
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function destinationMatchesPreference(
+  destination: ReturnType<typeof mapRawDestination>,
+  preferredDestination?: string
+): boolean {
+  const query = normalizeSearchText(preferredDestination);
+  if (!query) return true;
+
+  const destinationText = normalizeSearchText(
+    [
+      destination.name,
+      destination.homeBaseCity,
+      destination.summary,
+      ...(destination.rawVibes ?? []),
+    ].join(" ")
+  );
+
+  if (!destinationText) return false;
+  if (destinationText.includes(query)) return true;
+
+  const queryTokens = query.split(" ").filter(Boolean);
+  if (queryTokens.length === 0) return false;
+
+  return queryTokens.every((token) => destinationText.includes(token));
+}
+
 function getJoinedSignals(destination: ReturnType<typeof mapRawDestination>): string {
   return [
     destination.name,
@@ -981,9 +1014,11 @@ export function rankDestinations(
   input: TripInput,
   limit = 3
 ): RankedDestination[] {
-  const destinationList = (rawDestinations as RawDestination[]).map((raw) =>
-    mapRawDestination(raw, input)
-  );
+  const destinationList = (rawDestinations as RawDestination[])
+    .map((raw) => mapRawDestination(raw, input))
+    .filter((destination) =>
+      destinationMatchesPreference(destination, input.preferredDestination)
+    );
 
   const ranked = destinationList
     .map((destination) => {

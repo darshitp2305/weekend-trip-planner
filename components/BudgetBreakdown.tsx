@@ -25,8 +25,8 @@ function BudgetChip({
   value?: number;
 }) {
   return (
-    <div className="rounded-2xl bg-slate-50 px-4 py-3">
-      <div className="text-xs font-medium uppercase tracking-[0.14em] text-slate-500">
+    <div className="min-w-0 rounded-2xl bg-slate-50 px-4 py-3">
+      <div className="text-[11px] font-medium uppercase tracking-[0.1em] text-slate-500">
         {label}
       </div>
       <div className="mt-1 text-2xl font-semibold tracking-tight text-slate-950">
@@ -55,9 +55,9 @@ function TotalCard({
     >
       <div
         className={
-          featured
-            ? "text-xs font-semibold uppercase tracking-[0.14em] text-violet-700"
-            : "text-xs font-semibold uppercase tracking-[0.14em] text-slate-500"
+        featured
+          ? "text-[11px] font-semibold uppercase tracking-[0.1em] text-violet-700"
+          : "text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500"
         }
       >
         {label}
@@ -81,7 +81,7 @@ export default function BudgetBreakdown({ breakdown }: Props) {
         </p>
       </div>
 
-      <div className="mt-5 grid grid-cols-2 gap-3 xl:grid-cols-5">
+      <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
         <BudgetChip label="Gas" value={breakdown?.gas} />
         <BudgetChip label="Hotel" value={breakdown?.hotel} />
         <BudgetChip label="Food" value={breakdown?.food} />

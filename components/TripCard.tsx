@@ -8,6 +8,7 @@ import {
   TripInput,
 } from "../lib/types";
 import { buildTripPlan } from "../lib/buildTripPlan";
+import { deriveTripEndDate } from "../lib/tripDates";
 import { saveTripPlan } from "../lib/tripStore";
 
 const LAST_INPUT_STORAGE_KEY = "weekend-trip-last-input";
@@ -114,6 +115,9 @@ function normalizeTripInput(input?: Partial<TripInput> | null): TripInput | unde
   const travelerCount = Number(input.travelerCount ?? 2);
   const budgetPerTraveler = Number(input.budgetPerTraveler ?? 300);
   const computedBudget = travelerCount * budgetPerTraveler;
+  const tripLengthDays = Number(input.tripLengthDays ?? 2);
+  const tripStartDate =
+    typeof input.tripStartDate === "string" ? input.tripStartDate : undefined;
 
   return {
     startCity: input.startCity === "Calgary" ? "Calgary" : "Edmonton",
@@ -126,7 +130,13 @@ function normalizeTripInput(input?: Partial<TripInput> | null): TripInput | unde
     budget: Number(input.budget ?? computedBudget),
     budgetPerTraveler,
     travelerCount,
-    tripLengthDays: Number(input.tripLengthDays ?? 2),
+    tripLengthDays,
+    preferredDestination:
+      typeof input.preferredDestination === "string"
+        ? input.preferredDestination.trim() || undefined
+        : undefined,
+    tripStartDate,
+    tripEndDate: deriveTripEndDate(tripStartDate, tripLengthDays),
   };
 }
 
@@ -405,7 +415,7 @@ export default function TripCard({
               disabled={saving}
               className="rounded-xl bg-slate-950 px-3 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-60"
             >
-              {saving ? "Saving..." : "Save trip"}
+              {saving ? "Building..." : "Build trip"}
             </button>
           )}
         </div>

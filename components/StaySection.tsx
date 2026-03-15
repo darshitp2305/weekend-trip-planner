@@ -1,3 +1,5 @@
+import { formatDateRange } from "../lib/tripDates";
+
 type Stay = {
   id?: string;
   name?: string;
@@ -8,15 +10,27 @@ type Stay = {
   websiteUrl?: string;
   bookingLink?: string;
   pricePerNight?: number;
+  totalStayPrice?: number;
+  pricingSource?: string;
 };
 
 type Props = {
   stays: Stay[];
+  tripStartDate?: string;
+  tripEndDate?: string;
 };
 
-function fallbackStayDescription(stay: Stay) {
+function fallbackStayDescription(
+  stay: Stay,
+  dateRange?: string
+) {
   if (stay.pricePerNight !== undefined) {
-    return `Practical base option at about $${stay.pricePerNight} per night.`;
+    const totalText =
+      stay.totalStayPrice !== undefined ? `, about $${stay.totalStayPrice} total` : "";
+    return `Practical base option at about $${stay.pricePerNight} per night${totalText}.`;
+  }
+  if (dateRange) {
+    return `Useful base option for ${dateRange}. Live room pricing is not available from the current hotel source.`;
   }
   return "Solid base option for this trip.";
 }
@@ -44,7 +58,13 @@ function InfoPill({
   );
 }
 
-export default function StaySection({ stays }: Props) {
+export default function StaySection({
+  stays,
+  tripStartDate,
+  tripEndDate,
+}: Props) {
+  const dateRange = formatDateRange(tripStartDate, tripEndDate);
+
   return (
     <section>
       <div className="flex flex-col gap-1">
@@ -54,6 +74,11 @@ export default function StaySection({ stays }: Props) {
         <p className="text-sm leading-6 text-slate-600">
           Lodging picks that give the trip a usable base, not just a destination name.
         </p>
+        {dateRange ? (
+          <p className="text-sm leading-6 text-slate-500">
+            Travel dates: {dateRange}
+          </p>
+        ) : null}
       </div>
 
       <div className="mt-5 grid gap-4 md:grid-cols-2">
@@ -78,14 +103,24 @@ export default function StaySection({ stays }: Props) {
                 </div>
 
                 <p className="mt-2 text-sm leading-6 text-slate-600">
-                  {stay.shortDescription ?? fallbackStayDescription(stay)}
+                  {stay.shortDescription ?? fallbackStayDescription(stay, dateRange)}
                 </p>
 
                 <div className="mt-4 flex flex-wrap gap-2">
                   {hasNightlyPrice ? (
-                    <InfoPill>Nightly est. ${stay.pricePerNight}</InfoPill>
+                    <>
+                      <InfoPill>Nightly est. ${stay.pricePerNight}</InfoPill>
+                      {stay.totalStayPrice !== undefined ? (
+                        <InfoPill>Total est. ${stay.totalStayPrice}</InfoPill>
+                      ) : null}
+                      {stay.pricingSource ? (
+                        <InfoPill tone="green">{stay.pricingSource}</InfoPill>
+                      ) : null}
+                    </>
                   ) : (
-                    <InfoPill tone="amber">Price unavailable</InfoPill>
+                    <InfoPill tone="amber">
+                      {dateRange ? "Live price unavailable" : "Price unavailable"}
+                    </InfoPill>
                   )}
                 </div>
 
@@ -97,7 +132,7 @@ export default function StaySection({ stays }: Props) {
                       rel="noreferrer"
                       className="inline-flex h-10 items-center justify-center rounded-xl bg-slate-950 px-4 text-sm font-medium text-white transition hover:bg-slate-800"
                     >
-                      Check stay
+                      {dateRange ? "Check rates" : "Check stay"}
                     </a>
                   ) : null}
 

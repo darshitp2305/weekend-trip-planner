@@ -53,6 +53,8 @@ export function mapGooglePlaceToHotel(place: GooglePlace): HotelOption {
   return {
     name: place.displayName?.text ?? "Unnamed hotel",
     pricePerNight: undefined,
+    totalStayPrice: undefined,
+    pricingSource: undefined,
     bookingLink: place.googleMapsUri || place.websiteUri || "",
     websiteUrl: place.websiteUri || "",
     mapsUrl: place.googleMapsUri || "",

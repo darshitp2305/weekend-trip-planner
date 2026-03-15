@@ -24,6 +24,10 @@ function InfoPill({
 export default function TripActions({ trip }: Props) {
   const [copied, setCopied] = useState(false);
 
+  function handleSave() {
+    // Placeholder for future saved-plan persistence.
+  }
+
   async function handleCopyLink() {
     try {
       await navigator.clipboard.writeText(window.location.href);
@@ -55,8 +59,17 @@ export default function TripActions({ trip }: Props) {
 
       <div className="mt-5 flex flex-wrap gap-3">
         <button
-          onClick={handleCopyLink}
+          type="button"
+          onClick={handleSave}
           className="inline-flex h-11 items-center justify-center rounded-xl bg-slate-950 px-5 text-sm font-medium text-white transition hover:bg-slate-800"
+        >
+          Save
+        </button>
+
+        <button
+          type="button"
+          onClick={handleCopyLink}
+          className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-300 bg-white px-5 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
         >
           {copied ? "Link copied" : "Copy page link"}
         </button>

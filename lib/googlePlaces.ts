@@ -46,6 +46,11 @@ export type GooglePlace = {
   userRatingCount?: number;
 };
 
+type HotelSearchOptions = {
+  tripStartDate?: string;
+  tripEndDate?: string;
+};
+
 const FIELD_MASK = [
   "places.id",
   "places.displayName",
@@ -88,10 +93,18 @@ export async function searchActivities(destination: string, style: string) {
   );
 }
 
-export async function searchHotels(destination: string) {
+export async function searchHotels(
+  destination: string,
+  options?: HotelSearchOptions
+) {
+  const dateContext =
+    options?.tripStartDate && options?.tripEndDate
+      ? ` from ${options.tripStartDate} to ${options.tripEndDate}`
+      : "";
+
   return placesTextSearch<{ places?: GooglePlace[] }>(
     {
-      textQuery: `best hotels in ${destination}`,
+      textQuery: `best hotels in ${destination}${dateContext}`,
       maxResultCount: 8,
     },
     FIELD_MASK

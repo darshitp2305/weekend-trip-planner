@@ -6,6 +6,7 @@ import {
   TripInput,
   TripPlan,
 } from "./types";
+import { deriveTripEndDate } from "./tripDates";
 
 const defaultInput: TripInput = {
   startCity: "Edmonton",
@@ -28,6 +29,11 @@ function normalizeInput(input?: Partial<TripInput>): TripInput {
   const budgetPerTraveler = Number(
     input?.budgetPerTraveler ?? defaultInput.budgetPerTraveler
   );
+  const tripLengthDays = Number(
+    input?.tripLengthDays ?? defaultInput.tripLengthDays
+  );
+  const tripStartDate =
+    typeof input?.tripStartDate === "string" ? input.tripStartDate : undefined;
 
   return {
     ...defaultInput,
@@ -39,9 +45,9 @@ function normalizeInput(input?: Partial<TripInput>): TripInput {
       defaultInput.budget,
     budgetPerTraveler,
     travelerCount,
-    tripLengthDays: Number(
-      input?.tripLengthDays ?? defaultInput.tripLengthDays
-    ),
+    tripLengthDays,
+    tripStartDate,
+    tripEndDate: deriveTripEndDate(tripStartDate, tripLengthDays),
   };
 }
 
@@ -63,15 +69,25 @@ function buildBudgetBreakdown(
   const travelerCount = Math.max(1, input.travelerCount);
 
   const firstHotelPrice = trip.hotelOptions?.[0]?.pricePerNight;
+  const firstHotelTotal = trip.hotelOptions?.[0]?.totalStayPrice;
   const hotelBase =
-    typeof firstHotelPrice === "number"
+    typeof firstHotelTotal === "number"
+      ? firstHotelTotal
+      : typeof firstHotelPrice === "number"
       ? firstHotelPrice * nights
       : trip.budgetBreakdown?.hotel ?? 0;
 
+  const fallbackFoodPerDayPerTraveler =
+    input.style === "foodie"
+      ? 65
+      : input.style === "chill" || input.style === "solo reset"
+        ? 45
+        : 50;
+
   const foodBase =
     trip.budgetBreakdown?.food && trip.budgetBreakdown.food > 0
-      ? trip.budgetBreakdown.food * travelerCount
-      : input.tripLengthDays * 65 * travelerCount;
+      ? trip.budgetBreakdown.food
+      : input.tripLengthDays * fallbackFoodPerDayPerTraveler * travelerCount;
 
   const gasBase = trip.isStaycation
     ? 0
@@ -89,7 +105,7 @@ function buildBudgetBreakdown(
   const activitiesBase =
     activitiesFromList > 0
       ? activitiesFromList * travelerCount
-      : (trip.budgetBreakdown?.activities ?? 0) * travelerCount;
+      : (trip.budgetBreakdown?.activities ?? 0);
 
   const miscBase = roundMoney(
     (hotelBase + foodBase + gasBase + activitiesBase) * 0.1
@@ -917,6 +933,8 @@ export function buildTripPlan(
     travelerCount: safeInput.travelerCount,
     budgetPerTraveler: safeInput.budgetPerTraveler,
     totalBudget: safeInput.budget,
+    tripStartDate: safeInput.tripStartDate,
+    tripEndDate: safeInput.tripEndDate,
 
     name: trip.name,
     title: trip.name,

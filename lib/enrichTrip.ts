@@ -15,6 +15,7 @@ import {
   mapGooglePlaceToFoodSpot,
   mapGooglePlaceToHotel,
 } from "./placeMappers";
+import { searchHotelsWithSerpApi } from "./serpApiHotels";
 
 function averageRating(
   items: Array<{ rating?: number }>
@@ -81,12 +82,29 @@ export async function enrichRankedTrip(
   const destinationQuery = `${trip.name}, ${trip.province}`;
 
   try {
-    const [restaurantsRes, cafesRes, activitiesRes, hotelsRes] =
+    const hotelSearchPromise =
+      input.tripStartDate && input.tripEndDate
+        ? searchHotelsWithSerpApi({
+            destination: destinationQuery,
+            tripStartDate: input.tripStartDate,
+            tripEndDate: input.tripEndDate,
+            adults: input.travelerCount,
+          }).catch(async (error) => {
+            console.error("SerpApi hotel search failed, falling back to Places:", error);
+            return null;
+          })
+        : Promise.resolve(null);
+
+    const [restaurantsRes, cafesRes, activitiesRes, hotelsRes, serpHotels] =
       await Promise.all([
         searchRestaurants(destinationQuery),
         searchCafes(destinationQuery),
         searchActivities(destinationQuery, input.style),
-        searchHotels(destinationQuery),
+        searchHotels(destinationQuery, {
+          tripStartDate: input.tripStartDate,
+          tripEndDate: input.tripEndDate,
+        }),
+        hotelSearchPromise,
       ]);
 
     const liveRestaurants = dedupeByName(
@@ -107,11 +125,18 @@ export async function enrichRankedTrip(
         .filter((item) => item.name)
     );
 
-    const liveHotels = dedupeByName(
+    const serpApiHotels = dedupeByName(
+      (serpHotels ?? []).filter((item) => item.name)
+    );
+
+    const placesHotels = dedupeByName(
       (hotelsRes.places ?? [])
         .map(mapGooglePlaceToHotel)
         .filter((item) => item.name)
     );
+
+    const liveHotels =
+      serpApiHotels.length > 0 ? serpApiHotels : placesHotels;
 
     const balancedFoodSpots = dedupeByName(
       interleaveArrays(liveRestaurants, liveCafes)
@@ -163,10 +188,6 @@ export async function enrichRankedTrip(
         impact: "neutral",
       });
     }
-
-    console.log("LIVE HOTELS", liveHotels);
-    console.log("STATIC HOTELS", trip.hotelOptions);
-    console.log("MERGED HOTELS", mergedHotels);
 
     const mergedTrip: RankedDestination = {
       ...trip,
