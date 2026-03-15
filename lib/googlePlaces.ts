@@ -42,6 +42,8 @@ export type GooglePlace = {
   websiteUri?: string;
   googleMapsUri?: string;
   primaryType?: string;
+  priceLevel?: string;
+  userRatingCount?: number;
 };
 
 const FIELD_MASK = [
@@ -49,16 +51,18 @@ const FIELD_MASK = [
   "places.displayName",
   "places.formattedAddress",
   "places.rating",
+  "places.userRatingCount",
   "places.websiteUri",
   "places.googleMapsUri",
   "places.primaryType",
+  "places.priceLevel",
 ].join(",");
 
 export async function searchRestaurants(destination: string) {
   return placesTextSearch<{ places?: GooglePlace[] }>(
     {
       textQuery: `best restaurants in ${destination}`,
-      maxResultCount: 6,
+      maxResultCount: 10,
     },
     FIELD_MASK
   );
@@ -67,8 +71,8 @@ export async function searchRestaurants(destination: string) {
 export async function searchCafes(destination: string) {
   return placesTextSearch<{ places?: GooglePlace[] }>(
     {
-      textQuery: `best cafes in ${destination}`,
-      maxResultCount: 4,
+      textQuery: `best cafes and coffee shops in ${destination}`,
+      maxResultCount: 8,
     },
     FIELD_MASK
   );
@@ -78,7 +82,7 @@ export async function searchActivities(destination: string, style: string) {
   return placesTextSearch<{ places?: GooglePlace[] }>(
     {
       textQuery: `top attractions and activities in ${destination} for ${style} travelers`,
-      maxResultCount: 6,
+      maxResultCount: 12,
     },
     FIELD_MASK
   );
@@ -88,7 +92,7 @@ export async function searchHotels(destination: string) {
   return placesTextSearch<{ places?: GooglePlace[] }>(
     {
       textQuery: `best hotels in ${destination}`,
-      maxResultCount: 5,
+      maxResultCount: 8,
     },
     FIELD_MASK
   );

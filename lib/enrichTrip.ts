@@ -28,6 +28,35 @@ function averageRating(
   return Number(average.toFixed(1));
 }
 
+function dedupeByName<T extends { name?: string }>(items: T[]): T[] {
+  const seen = new Set<string>();
+  const result: T[] = [];
+
+  for (const item of items) {
+    const key = (item.name ?? "").trim().toLowerCase();
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    result.push(item);
+  }
+
+  return result;
+}
+
+function interleaveArrays<T>(...arrays: T[][]): T[] {
+  const result: T[] = [];
+  const maxLength = Math.max(...arrays.map((arr) => arr.length), 0);
+
+  for (let i = 0; i < maxLength; i += 1) {
+    for (const arr of arrays) {
+      if (arr[i] !== undefined) {
+        result.push(arr[i]);
+      }
+    }
+  }
+
+  return result;
+}
+
 function buildLiveSummary(
   restaurantItems: Array<{ rating?: number }>,
   activityItems: Array<{ rating?: number }>,
@@ -60,39 +89,51 @@ export async function enrichRankedTrip(
         searchHotels(destinationQuery),
       ]);
 
-    const liveRestaurants = (restaurantsRes.places ?? [])
-      .map(mapGooglePlaceToFoodSpot)
-      .filter((item) => item.name);
+    const liveRestaurants = dedupeByName(
+      (restaurantsRes.places ?? [])
+        .map(mapGooglePlaceToFoodSpot)
+        .filter((item) => item.name)
+    );
 
-    const liveCafes = (cafesRes.places ?? [])
-      .map(mapGooglePlaceToFoodSpot)
-      .filter((item) => item.name);
+    const liveCafes = dedupeByName(
+      (cafesRes.places ?? [])
+        .map(mapGooglePlaceToFoodSpot)
+        .filter((item) => item.name)
+    );
 
-    const liveActivities = (activitiesRes.places ?? [])
-      .map(mapGooglePlaceToActivity)
-      .filter((item) => item.name);
+    const liveActivities = dedupeByName(
+      (activitiesRes.places ?? [])
+        .map(mapGooglePlaceToActivity)
+        .filter((item) => item.name)
+    );
 
-    const liveHotels = (hotelsRes.places ?? [])
-      .map(mapGooglePlaceToHotel)
-      .filter((item) => item.name);
+    const liveHotels = dedupeByName(
+      (hotelsRes.places ?? [])
+        .map(mapGooglePlaceToHotel)
+        .filter((item) => item.name)
+    );
+
+    const balancedFoodSpots = dedupeByName(
+      interleaveArrays(liveRestaurants, liveCafes)
+    );
 
     const mergedFoodSpots =
-      [...liveRestaurants, ...liveCafes].slice(0, 6).length > 0
-        ? [...liveRestaurants, ...liveCafes].slice(0, 6)
+      balancedFoodSpots.length > 0
+        ? balancedFoodSpots.slice(0, 12)
         : trip.foodSpots;
 
     const mergedActivities =
-      liveActivities.slice(0, 6).length > 0
-        ? liveActivities.slice(0, 6)
+      liveActivities.length > 0
+        ? liveActivities.slice(0, 12)
         : trip.topActivities;
 
     const mergedHotels =
-      liveHotels.slice(0, 4).length > 0
-        ? liveHotels.slice(0, 4)
+      liveHotels.length > 0
+        ? liveHotels.slice(0, 6)
         : trip.hotelOptions;
 
     const hasLiveResults =
-      [...liveRestaurants, ...liveCafes].length > 0 ||
+      balancedFoodSpots.length > 0 ||
       liveActivities.length > 0 ||
       liveHotels.length > 0;
 
@@ -101,7 +142,7 @@ export async function enrichRankedTrip(
       : "static-fallback";
 
     const liveDataSummary = buildLiveSummary(
-      [...liveRestaurants, ...liveCafes],
+      balancedFoodSpots,
       liveActivities,
       liveHotels,
       hasLiveResults
@@ -122,6 +163,10 @@ export async function enrichRankedTrip(
         impact: "neutral",
       });
     }
+
+    console.log("LIVE HOTELS", liveHotels);
+    console.log("STATIC HOTELS", trip.hotelOptions);
+    console.log("MERGED HOTELS", mergedHotels);
 
     const mergedTrip: RankedDestination = {
       ...trip,

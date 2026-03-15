@@ -27,7 +27,7 @@ export interface Activity {
 
 export interface HotelOption {
   name: string;
-  pricePerNight: number;
+  pricePerNight?: number;
   bookingLink: string;
   shortDescription?: string;
   rating?: number;
@@ -215,4 +215,15 @@ export interface TripPlan {
   aiBestFit?: string;
   dataSource: TripDataSource;
   createdAt: string;
+
+  // compatibility fields used by saved trip page / header
+  name?: string;
+  title?: string;
+  destination?: string;
+  province?: string;
+  driveHoursFromStart?: number;
+  rawVibes?: string[];
+  source?: TripDataSource;
+  isStaycation?: boolean;
+  homeBaseCity?: string;
 }

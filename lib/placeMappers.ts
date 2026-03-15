@@ -9,10 +9,22 @@ function inferActivityCost(primaryType?: string): number {
   return 0;
 }
 
+function humanizePrimaryType(primaryType?: string): string | undefined {
+  if (!primaryType) return undefined;
+
+  return primaryType
+    .split("_")
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
 export function mapGooglePlaceToFoodSpot(place: GooglePlace): FoodSpot {
   return {
     name: place.displayName?.text ?? "Unnamed food spot",
-    tags: place.primaryType ? [place.primaryType] : [],
+    tags: humanizePrimaryType(place.primaryType)
+      ? [humanizePrimaryType(place.primaryType)!]
+      : [],
     link: place.googleMapsUri || place.websiteUri || "",
     websiteUrl: place.websiteUri || "",
     mapsUrl: place.googleMapsUri || "",
@@ -26,7 +38,7 @@ export function mapGooglePlaceToActivity(place: GooglePlace): Activity {
 
   return {
     name: place.displayName?.text ?? "Unnamed activity",
-    type: place.primaryType || "activity",
+    type: humanizePrimaryType(place.primaryType) || "Activity",
     costEstimate: cost,
     bookingLink: place.googleMapsUri || place.websiteUri || "",
     websiteUrl: place.websiteUri || "",
@@ -40,12 +52,12 @@ export function mapGooglePlaceToActivity(place: GooglePlace): Activity {
 export function mapGooglePlaceToHotel(place: GooglePlace): HotelOption {
   return {
     name: place.displayName?.text ?? "Unnamed hotel",
-    pricePerNight: 220,
+    pricePerNight: undefined,
     bookingLink: place.googleMapsUri || place.websiteUri || "",
     websiteUrl: place.websiteUri || "",
     mapsUrl: place.googleMapsUri || "",
     rating: place.rating,
     shortDescription: place.formattedAddress || "Live Google Places result.",
-    estimatedCost: 220,
+    estimatedCost: undefined,
   };
 }

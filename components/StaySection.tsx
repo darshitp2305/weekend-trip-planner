@@ -15,9 +15,8 @@ type Props = {
 };
 
 function fallbackStayDescription(stay: Stay) {
-  const price = stay.pricePerNight ?? stay.estimatedCost;
-  if (price !== undefined) {
-    return `Practical base option at about $${price} per night.`;
+  if (stay.pricePerNight !== undefined) {
+    return `Practical base option at about $${stay.pricePerNight} per night.`;
   }
   return "Solid base option for this trip.";
 }
@@ -27,12 +26,14 @@ function InfoPill({
   tone = "slate",
 }: {
   children: React.ReactNode;
-  tone?: "slate" | "green";
+  tone?: "slate" | "green" | "amber";
 }) {
   const className =
     tone === "green"
       ? "border border-emerald-200 bg-emerald-50 text-emerald-700"
-      : "border border-slate-200 bg-slate-100 text-slate-700";
+      : tone === "amber"
+        ? "border border-amber-200 bg-amber-50 text-amber-700"
+        : "border border-slate-200 bg-slate-100 text-slate-700";
 
   return (
     <span
@@ -58,8 +59,8 @@ export default function StaySection({ stays }: Props) {
       <div className="mt-5 grid gap-4 md:grid-cols-2">
         {stays.length > 0 ? (
           stays.map((stay, index) => {
-            const price = stay.pricePerNight ?? stay.estimatedCost;
             const primaryLink = stay.bookingLink ?? stay.websiteUrl;
+            const hasNightlyPrice = stay.pricePerNight !== undefined;
 
             return (
               <article
@@ -81,9 +82,11 @@ export default function StaySection({ stays }: Props) {
                 </p>
 
                 <div className="mt-4 flex flex-wrap gap-2">
-                  {price !== undefined ? (
-                    <InfoPill>Nightly est. ${price}</InfoPill>
-                  ) : null}
+                  {hasNightlyPrice ? (
+                    <InfoPill>Nightly est. ${stay.pricePerNight}</InfoPill>
+                  ) : (
+                    <InfoPill tone="amber">Price unavailable</InfoPill>
+                  )}
                 </div>
 
                 <div className="mt-5 flex flex-wrap gap-2">
