@@ -13,7 +13,8 @@ type Props = {
 type FormState = {
   startCity: "Edmonton" | "Calgary";
   maxDriveHours: string;
-  budget: string;
+  budgetPerTraveler: string;
+  travelerCount: string;
   tripLengthDays: string;
   season: string;
   style: TripStyle;
@@ -25,12 +26,13 @@ type FormState = {
 const DEFAULT_FORM: FormState = {
   startCity: "Edmonton",
   maxDriveHours: "5",
-  budget: "600",
+  budgetPerTraveler: "300",
+  travelerCount: "2",
   tripLengthDays: "2",
   season: "Summer",
   style: "foodie",
   veganFriendly: false,
-  includeStaycations: true,
+  includeStaycations: false,
   strictBudget: false,
 };
 
@@ -78,6 +80,14 @@ function displayStyleLabel(style: TripStyle) {
     default:
       return style;
   }
+}
+
+function formatCurrency(value: number) {
+  return new Intl.NumberFormat("en-CA", {
+    style: "currency",
+    currency: "CAD",
+    maximumFractionDigits: 0,
+  }).format(value);
 }
 
 function FieldLabel({
@@ -140,14 +150,16 @@ export default function TripForm({
   }
 
   function handleNumericChange(
-    key: "maxDriveHours" | "budget" | "tripLengthDays",
+    key: "maxDriveHours" | "budgetPerTraveler" | "travelerCount" | "tripLengthDays",
     value: string
   ) {
     const digitsOnly = value.replace(/[^\d]/g, "");
     updateField(key, digitsOnly as FormState[typeof key]);
   }
 
-  function handleNumericBlur(key: "maxDriveHours" | "budget" | "tripLengthDays") {
+  function handleNumericBlur(
+    key: "maxDriveHours" | "budgetPerTraveler" | "travelerCount" | "tripLengthDays"
+  ) {
     if (key === "maxDriveHours") {
       updateField(
         key,
@@ -160,13 +172,25 @@ export default function TripForm({
       return;
     }
 
-    if (key === "budget") {
+    if (key === "budgetPerTraveler") {
       updateField(
         key,
         normalizeNumericString(form[key], {
           min: 50,
           max: 5000,
-          fallback: 600,
+          fallback: 300,
+        }) as FormState[typeof key]
+      );
+      return;
+    }
+
+    if (key === "travelerCount") {
+      updateField(
+        key,
+        normalizeNumericString(form[key], {
+          min: 1,
+          max: 12,
+          fallback: 2,
         }) as FormState[typeof key]
       );
       return;
@@ -185,11 +209,29 @@ export default function TripForm({
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
 
+    const travelerCount = Math.min(
+      12,
+      Math.max(1, parsePositiveInt(form.travelerCount, 2))
+    );
+
+    const budgetPerTraveler = Math.min(
+      5000,
+      Math.max(50, parsePositiveInt(form.budgetPerTraveler, 300))
+    );
+
     const cleanedInput: TripInput = {
       startCity: form.startCity,
-      maxDriveHours: parsePositiveInt(form.maxDriveHours, 5),
-      budget: parsePositiveInt(form.budget, 600),
-      tripLengthDays: parsePositiveInt(form.tripLengthDays, 2),
+      maxDriveHours: Math.min(
+        12,
+        Math.max(1, parsePositiveInt(form.maxDriveHours, 5))
+      ),
+      budget: travelerCount * budgetPerTraveler,
+      budgetPerTraveler,
+      travelerCount,
+      tripLengthDays: Math.min(
+        7,
+        Math.max(1, parsePositiveInt(form.tripLengthDays, 2))
+      ),
       season: form.season,
       style: form.style,
       veganFriendly: form.veganFriendly,
@@ -197,14 +239,11 @@ export default function TripForm({
       strictBudget: form.strictBudget,
     };
 
-    cleanedInput.maxDriveHours = Math.min(12, Math.max(1, cleanedInput.maxDriveHours));
-    cleanedInput.budget = Math.min(5000, Math.max(50, cleanedInput.budget));
-    cleanedInput.tripLengthDays = Math.min(7, Math.max(1, cleanedInput.tripLengthDays));
-
     setForm((prev) => ({
       ...prev,
       maxDriveHours: String(cleanedInput.maxDriveHours),
-      budget: String(cleanedInput.budget),
+      budgetPerTraveler: String(cleanedInput.budgetPerTraveler),
+      travelerCount: String(cleanedInput.travelerCount),
       tripLengthDays: String(cleanedInput.tripLengthDays),
     }));
 
@@ -217,6 +256,18 @@ export default function TripForm({
 
     await submitHandler(cleanedInput);
   }
+
+  const liveTravelerCount = Math.min(
+    12,
+    Math.max(1, parsePositiveInt(form.travelerCount, 2))
+  );
+
+  const liveBudgetPerTraveler = Math.min(
+    5000,
+    Math.max(50, parsePositiveInt(form.budgetPerTraveler, 300))
+  );
+
+  const totalBudget = liveTravelerCount * liveBudgetPerTraveler;
 
   return (
     <section className="w-full">
@@ -270,15 +321,33 @@ export default function TripForm({
           </div>
 
           <div>
-            <FieldLabel htmlFor="budget">Budget ($)</FieldLabel>
+            <FieldLabel htmlFor="budgetPerTraveler">
+              Budget per traveller ($)
+            </FieldLabel>
             <input
-              id="budget"
+              id="budgetPerTraveler"
               inputMode="numeric"
               pattern="[0-9]*"
               type="text"
-              value={form.budget}
-              onChange={(e) => handleNumericChange("budget", e.target.value)}
-              onBlur={() => handleNumericBlur("budget")}
+              value={form.budgetPerTraveler}
+              onChange={(e) =>
+                handleNumericChange("budgetPerTraveler", e.target.value)
+              }
+              onBlur={() => handleNumericBlur("budgetPerTraveler")}
+              className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+            />
+          </div>
+
+          <div>
+            <FieldLabel htmlFor="travelerCount">How many people</FieldLabel>
+            <input
+              id="travelerCount"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              type="text"
+              value={form.travelerCount}
+              onChange={(e) => handleNumericChange("travelerCount", e.target.value)}
+              onBlur={() => handleNumericBlur("travelerCount")}
               className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
             />
           </div>
@@ -309,6 +378,17 @@ export default function TripForm({
               onBlur={() => handleNumericBlur("tripLengthDays")}
               className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
             />
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+          <div className="text-sm font-medium text-slate-800">
+            Estimated total budget: {formatCurrency(totalBudget)}
+          </div>
+          <div className="mt-1 text-xs text-slate-600">
+            Based on {liveTravelerCount} traveler
+            {liveTravelerCount === 1 ? "" : "s"} at{" "}
+            {formatCurrency(liveBudgetPerTraveler)} each.
           </div>
         </div>
 

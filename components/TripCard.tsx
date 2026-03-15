@@ -52,16 +52,19 @@ function sourceLabel(trip: RankedDestination) {
   return "Static ranking";
 }
 
-function shortCopyText(trip: RankedDestination) {
+function shortCopyText(trip: RankedDestination, input?: TripInput) {
   const displayCost =
     trip.budgetBreakdown?.totalExpected ??
     trip.budgetBreakdown?.total ??
     trip.estimatedCost;
 
-  return `${trip.name} — ${trip.summary} Estimated cost: $${displayCost}. Drive: ${trip.driveHoursFromStart}h. Confidence: ${confidenceLabel(trip.confidence)}.`;
+  const travelerCount = Math.max(1, input?.travelerCount ?? 1);
+  const perTraveler = Math.round(displayCost / travelerCount);
+
+  return `${trip.name} — ${trip.summary} Estimated total cost: $${displayCost}. Approx. per traveler: $${perTraveler}. Drive: ${trip.driveHoursFromStart}h. Confidence: ${confidenceLabel(trip.confidence)}.`;
 }
 
-function fullCopyText(trip: RankedDestination) {
+function fullCopyText(trip: RankedDestination, input?: TripInput) {
   const itinerary = trip.aiItinerary?.length
     ? trip.aiItinerary.map((line) => `- ${line}`).join("\n")
     : "No itinerary available.";
@@ -77,11 +80,16 @@ function fullCopyText(trip: RankedDestination) {
     trip.budgetBreakdown?.total ??
     trip.estimatedCost;
 
+  const travelerCount = Math.max(1, input?.travelerCount ?? 1);
+  const perTraveler = Math.round(displayCost / travelerCount);
+
   return [
     `${trip.name}`,
     ``,
     `Summary: ${trip.summary}`,
-    `Estimated cost: $${displayCost}`,
+    `Estimated total cost: $${displayCost}`,
+    `Estimated per traveler: $${perTraveler}`,
+    `Travelers: ${travelerCount}`,
     `Drive time: ${trip.driveHoursFromStart}h`,
     `Style fit: ${trip.styleMatchStrength}`,
     `Confidence: ${confidenceLabel(trip.confidence)}`,
@@ -103,6 +111,10 @@ function fullCopyText(trip: RankedDestination) {
 function normalizeTripInput(input?: Partial<TripInput> | null): TripInput | undefined {
   if (!input) return undefined;
 
+  const travelerCount = Number(input.travelerCount ?? 2);
+  const budgetPerTraveler = Number(input.budgetPerTraveler ?? 300);
+  const computedBudget = travelerCount * budgetPerTraveler;
+
   return {
     startCity: input.startCity === "Calgary" ? "Calgary" : "Edmonton",
     season: input.season ?? "Summer",
@@ -111,7 +123,9 @@ function normalizeTripInput(input?: Partial<TripInput> | null): TripInput | unde
     includeStaycations: Boolean(input.includeStaycations),
     strictBudget: Boolean(input.strictBudget),
     maxDriveHours: Number(input.maxDriveHours ?? 5),
-    budget: Number(input.budget ?? 600),
+    budget: Number(input.budget ?? computedBudget),
+    budgetPerTraveler,
+    travelerCount,
     tripLengthDays: Number(input.tripLengthDays ?? 2),
   };
 }
@@ -217,6 +231,10 @@ export default function TripCard({
     trip.budgetBreakdown?.totalExpected ??
     trip.budgetBreakdown?.total ??
     trip.estimatedCost;
+
+  const normalizedPropInput = normalizeTripInput(input);
+  const travelerCount = Math.max(1, normalizedPropInput?.travelerCount ?? 1);
+  const perTravelerDisplay = Math.round(displayCost / travelerCount);
 
   async function handleSaveTrip() {
     try {
@@ -330,8 +348,8 @@ export default function TripCard({
         <p className="mt-4 text-sm leading-6 text-slate-600">{trip.summary}</p>
 
         <div className="mt-5 grid grid-cols-3 gap-3">
-          <Stat label="Budget" value={`$${Math.round(displayCost)}`} />
-          <Stat label="Score" value={String(trip.score)} />
+          <Stat label="Budget total" value={`$${Math.round(displayCost)}`} />
+          <Stat label="Per traveler" value={`$${perTravelerDisplay}`} />
           <Stat label="Style fit" value={strengthLabel(trip.styleMatchStrength)} />
         </div>
 
@@ -358,7 +376,7 @@ export default function TripCard({
         <div className="mt-5 flex flex-wrap gap-2">
           <button
             type="button"
-            onClick={() => navigator.clipboard.writeText(shortCopyText(trip))}
+            onClick={() => navigator.clipboard.writeText(shortCopyText(trip, normalizedPropInput))}
             className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
           >
             Copy short
@@ -366,7 +384,7 @@ export default function TripCard({
 
           <button
             type="button"
-            onClick={() => navigator.clipboard.writeText(fullCopyText(trip))}
+            onClick={() => navigator.clipboard.writeText(fullCopyText(trip, normalizedPropInput))}
             className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
           >
             Copy full
@@ -476,6 +494,12 @@ export default function TripCard({
                 <div className="rounded-xl bg-white p-3">Gas: ${trip.budgetBreakdown.gas}</div>
                 <div className="rounded-xl bg-white p-3">
                   Activities: ${trip.budgetBreakdown.activities}
+                </div>
+                <div className="rounded-xl bg-white p-3">
+                  Per traveler: ${perTravelerDisplay}
+                </div>
+                <div className="rounded-xl bg-white p-3">
+                  Travelers: {travelerCount}
                 </div>
                 <div className="col-span-2 rounded-xl bg-slate-100 p-3 font-semibold text-slate-900">
                   Total: $

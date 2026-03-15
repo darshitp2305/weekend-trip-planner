@@ -4,6 +4,7 @@ type BudgetTripLike = {
   driveHoursFromStart?: number;
   estimatedCost?: number;
   liveDataSummary?: RankedDestination["liveDataSummary"];
+  isStaycation?: boolean;
 };
 
 function roundToNearest5(value: number): number {
@@ -28,40 +29,53 @@ export function estimateBudgetBreakdown(
       ? tripLengthDaysOrInput
       : undefined;
 
+  const travelerCount = Math.max(1, input?.travelerCount ?? 1);
   const driveHours = Math.max(0, trip.driveHoursFromStart ?? 0);
   const estimatedCost = Math.max(0, trip.estimatedCost ?? 0);
+  const isStaycation = Boolean(trip.isStaycation || driveHours <= 0.5);
 
-  const hotelBase =
-    driveHours <= 0.5
-      ? estimatedCost * 0.22
-      : tripLengthDays >= 2
-      ? estimatedCost * 0.38
-      : estimatedCost * 0.3;
+  const nights = Math.max(1, tripLengthDays - 1);
 
-  const foodBase =
+  const foodPerDayPerTraveler =
     input?.style === "foodie"
-      ? estimatedCost * 0.3
+      ? 65
       : input?.style === "chill" || input?.style === "solo reset"
-      ? estimatedCost * 0.22
-      : estimatedCost * 0.2;
+        ? 45
+        : 50;
 
-  const gasBase =
-    driveHours <= 0.5 ? estimatedCost * 0.04 : estimatedCost * 0.09 + driveHours * 8;
-
-  const activitiesBase =
+  const activitiesPerTravelerPerDay =
     input?.style === "adventure" || input?.style === "outdoors"
-      ? estimatedCost * 0.16
+      ? 35
       : input?.style === "foodie"
-      ? estimatedCost * 0.08
-      : estimatedCost * 0.1;
+        ? 20
+        : 25;
 
-  let hotel = roundToNearest5(clamp(hotelBase, 0, estimatedCost));
-  let food = roundToNearest5(clamp(foodBase, 0, estimatedCost));
-  let gas = roundToNearest5(clamp(gasBase, 0, estimatedCost));
-  let activities = roundToNearest5(clamp(activitiesBase, 0, estimatedCost));
+  const hotelBase = isStaycation ? 0 : 150 * nights;
+  const foodBase = foodPerDayPerTraveler * tripLengthDays * travelerCount;
+  const gasBase = isStaycation ? 0 : Math.max(25, driveHours * 18);
+  const activitiesBase = activitiesPerTravelerPerDay * travelerCount * tripLengthDays * 0.6;
+
+  let hotel = roundToNearest5(Math.max(0, hotelBase));
+  let food = roundToNearest5(Math.max(0, foodBase));
+  let gas = roundToNearest5(Math.max(0, gasBase));
+  let activities = roundToNearest5(Math.max(0, activitiesBase));
 
   let subtotal = hotel + food + gas + activities;
-  let misc = roundToNearest5(Math.max(15, estimatedCost - subtotal));
+
+  if (estimatedCost > 0) {
+    const scale = estimatedCost / Math.max(subtotal, 1);
+
+    hotel = roundToNearest5(clamp(hotel * scale, 0, estimatedCost));
+    food = roundToNearest5(clamp(food * scale, 0, estimatedCost));
+    gas = roundToNearest5(clamp(gas * scale, 0, estimatedCost));
+    activities = roundToNearest5(clamp(activities * scale, 0, estimatedCost));
+
+    subtotal = hotel + food + gas + activities;
+  }
+
+  let misc = roundToNearest5(
+    Math.max(estimatedCost > 0 ? 0 : 15, estimatedCost - subtotal)
+  );
 
   let totalExpected = hotel + food + gas + activities + misc;
 
@@ -75,14 +89,14 @@ export function estimateBudgetBreakdown(
   const totalHigh = roundToNearest5(totalExpected * 1.15);
 
   return {
-  hotel,
-  food,
-  gas,
-  activities,
-  misc,
-  total: totalExpected,
-  totalLow,
-  totalExpected,
-  totalHigh,
-};
+    hotel,
+    food,
+    gas,
+    activities,
+    misc,
+    total: totalExpected,
+    totalLow,
+    totalExpected,
+    totalHigh,
+  };
 }

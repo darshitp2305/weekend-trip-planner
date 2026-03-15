@@ -128,7 +128,11 @@ export default function HomePage() {
         try {
           rankData = JSON.parse(rankText);
         } catch (parseError) {
-          console.error("Failed to parse /api/rank-trips response:", parseError, rankText);
+          console.error(
+            "Failed to parse /api/rank-trips response:",
+            parseError,
+            rankText
+          );
         }
       }
 

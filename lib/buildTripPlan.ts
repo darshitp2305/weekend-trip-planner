@@ -11,21 +11,37 @@ const defaultInput: TripInput = {
   startCity: "Edmonton",
   maxDriveHours: 5,
   budget: 600,
+  budgetPerTraveler: 300,
+  travelerCount: 2,
   tripLengthDays: 2,
   season: "Summer",
   style: "foodie",
   veganFriendly: false,
-  includeStaycations: true,
+  includeStaycations: false,
   strictBudget: false,
 };
 
 function normalizeInput(input?: Partial<TripInput>): TripInput {
+  const travelerCount = Number(
+    input?.travelerCount ?? defaultInput.travelerCount
+  );
+  const budgetPerTraveler = Number(
+    input?.budgetPerTraveler ?? defaultInput.budgetPerTraveler
+  );
+
   return {
     ...defaultInput,
     ...input,
     maxDriveHours: Number(input?.maxDriveHours ?? defaultInput.maxDriveHours),
-    budget: Number(input?.budget ?? defaultInput.budget),
-    tripLengthDays: Number(input?.tripLengthDays ?? defaultInput.tripLengthDays),
+    budget:
+      Number(input?.budget) ||
+      travelerCount * budgetPerTraveler ||
+      defaultInput.budget,
+    budgetPerTraveler,
+    travelerCount,
+    tripLengthDays: Number(
+      input?.tripLengthDays ?? defaultInput.tripLengthDays
+    ),
   };
 }
 
@@ -44,6 +60,7 @@ function buildBudgetBreakdown(
   input: TripInput
 ): BudgetBreakdown {
   const nights = Math.max(input.tripLengthDays - 1, 1);
+  const travelerCount = Math.max(1, input.travelerCount);
 
   const firstHotelPrice = trip.hotelOptions?.[0]?.pricePerNight;
   const hotelBase =
@@ -53,20 +70,26 @@ function buildBudgetBreakdown(
 
   const foodBase =
     trip.budgetBreakdown?.food && trip.budgetBreakdown.food > 0
-      ? trip.budgetBreakdown.food
-      : input.tripLengthDays * 65;
+      ? trip.budgetBreakdown.food * travelerCount
+      : input.tripLengthDays * 65 * travelerCount;
 
   const gasBase = trip.isStaycation
     ? 0
     : trip.budgetBreakdown?.gas && trip.budgetBreakdown.gas > 0
-      ? trip.budgetBreakdown.gas
-      : Math.max(40, trip.driveHoursFromStart * 22);
+    ? trip.budgetBreakdown.gas
+    : Math.max(40, trip.driveHoursFromStart * 22);
+
+  const activitiesFromList = trip.topActivities?.length
+  ? trip.topActivities.reduce(
+      (sum, item) => sum + (item.costEstimate || item.estimatedCost || 0),
+      0
+    )
+  : 0;
 
   const activitiesBase =
-    trip.topActivities?.reduce(
-      (sum, item) => sum + (item.costEstimate || 0),
-      0
-    ) ?? trip.budgetBreakdown?.activities ?? 0;
+    activitiesFromList > 0
+      ? activitiesFromList * travelerCount
+      : (trip.budgetBreakdown?.activities ?? 0) * travelerCount;
 
   const miscBase = roundMoney(
     (hotelBase + foodBase + gasBase + activitiesBase) * 0.1
@@ -623,7 +646,7 @@ function buildStaycationDayOne(
         title: activity.name,
         description: `Use ${activity.name} as the anchor activity for the afternoon.`,
         websiteUrl: activity.bookingLink ?? activity.websiteUrl,
-        estimatedCost: activity.costEstimate ?? 0,
+        estimatedCost: activity.costEstimate ?? activity.estimatedCost ?? 0,
       },
       dinner && {
         time: "Evening",
@@ -661,7 +684,7 @@ function buildStaycationFinalDay(
         title: activity.name,
         description: `Use ${activity.name} as the second-day anchor.`,
         websiteUrl: activity.bookingLink ?? activity.websiteUrl,
-        estimatedCost: activity.costEstimate ?? 0,
+        estimatedCost: activity.costEstimate ?? activity.estimatedCost ?? 0,
       },
     ]),
   };
@@ -730,7 +753,8 @@ function buildGetawayFinalDay(
         title: finalActivity.name,
         description: `Optional final stop at ${finalActivity.name} before the drive home.`,
         websiteUrl: finalActivity.bookingLink ?? finalActivity.websiteUrl,
-        estimatedCost: finalActivity.costEstimate ?? 0,
+        estimatedCost:
+          finalActivity.costEstimate ?? finalActivity.estimatedCost ?? 0,
       },
       {
         time: "Afternoon",
@@ -782,7 +806,7 @@ function buildMiddleDay(
         title: mainActivity.name,
         description: `Use ${mainActivity.name} as the main daytime anchor.`,
         websiteUrl: mainActivity.bookingLink ?? mainActivity.websiteUrl,
-        estimatedCost: mainActivity.costEstimate ?? 0,
+        estimatedCost: mainActivity.costEstimate ?? mainActivity.estimatedCost ?? 0,
       },
       secondaryActivity && {
         time: "Afternoon",
@@ -790,7 +814,10 @@ function buildMiddleDay(
         description: `Add ${secondaryActivity.name} if you still have energy.`,
         websiteUrl:
           secondaryActivity.bookingLink ?? secondaryActivity.websiteUrl,
-        estimatedCost: secondaryActivity.costEstimate ?? 0,
+        estimatedCost:
+          secondaryActivity.costEstimate ??
+          secondaryActivity.estimatedCost ??
+          0,
       },
       dinner && {
         time: "Evening",
@@ -887,6 +914,9 @@ export function buildTripPlan(
 
     dataSource,
     createdAt: new Date().toISOString(),
+    travelerCount: safeInput.travelerCount,
+    budgetPerTraveler: safeInput.budgetPerTraveler,
+    totalBudget: safeInput.budget,
 
     name: trip.name,
     title: trip.name,

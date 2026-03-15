@@ -19,6 +19,8 @@ function isTripInput(value: any): value is TripInput {
     (value.startCity === "Edmonton" || value.startCity === "Calgary") &&
     typeof value.maxDriveHours === "number" &&
     typeof value.budget === "number" &&
+    typeof value.budgetPerTraveler === "number" &&
+    typeof value.travelerCount === "number" &&
     typeof value.tripLengthDays === "number" &&
     typeof value.season === "string" &&
     typeof value.style === "string" &&
@@ -31,10 +33,15 @@ function isTripInput(value: any): value is TripInput {
 function normalizeInput(raw: any): TripInput | null {
   if (!raw || typeof raw !== "object") return null;
 
+  const travelerCount = Number(raw.travelerCount);
+  const budgetPerTraveler = Number(raw.budgetPerTraveler);
+
   const candidate = {
     startCity: raw.startCity,
     maxDriveHours: Number(raw.maxDriveHours),
-    budget: Number(raw.budget),
+    budget: travelerCount * budgetPerTraveler,
+    budgetPerTraveler,
+    travelerCount,
     tripLengthDays: Number(raw.tripLengthDays),
     season: raw.season,
     style: raw.style,
@@ -66,7 +73,9 @@ function extractRankedTripsFromBody(body: any): RankedDestination[] | null {
 }
 
 function safeString(value: unknown, fallback = ""): string {
-  return typeof value === "string" && value.trim().length > 0 ? value.trim() : fallback;
+  return typeof value === "string" && value.trim().length > 0
+    ? value.trim()
+    : fallback;
 }
 
 function safeStringArray(value: unknown): string[] {
@@ -87,7 +96,9 @@ function parseJsonFromText(text: string): any | null {
     // Try fenced code block
   }
 
-  const fencedMatch = trimmed.match(/```json\s*([\s\S]*?)```/i) || trimmed.match(/```([\s\S]*?)```/);
+  const fencedMatch =
+    trimmed.match(/```json\s*([\s\S]*?)```/i) ||
+    trimmed.match(/```([\s\S]*?)```/);
   if (fencedMatch?.[1]) {
     try {
       return JSON.parse(fencedMatch[1].trim());
@@ -150,7 +161,9 @@ function topActivityNames(trip: RankedDestination): string[] {
   return Array.isArray(trip.topActivities)
     ? trip.topActivities
         .map((item) => item?.name)
-        .filter((name): name is string => typeof name === "string" && name.length > 0)
+        .filter(
+          (name): name is string => typeof name === "string" && name.length > 0
+        )
     : [];
 }
 
@@ -162,22 +175,35 @@ function buildFallbackAiContent(
   const firstActivity = activities[0];
   const secondActivity = activities[1] ?? activities[0];
 
-  const aiSummary = `${trip.name} is a strong ${input.style} pick from ${input.startCity}, with ${getDriveTone(
-    trip
-  )} and ${getBudgetTone(trip, input)} pricing for a ${input.tripLengthDays}-day trip.${
+  const aiSummary = `${trip.name} is a strong ${input.style} pick from ${
+    input.startCity
+  }, with ${getDriveTone(trip)} and ${getBudgetTone(
+    trip,
+    input
+  )} pricing for ${input.travelerCount} traveler${
+    input.travelerCount === 1 ? "" : "s"
+  } over a ${input.tripLengthDays}-day trip.${
     input.veganFriendly && !trip.veganFriendly
       ? " Vegan support may need a bit more planning."
       : ""
   }`;
 
-  const aiBestFit = `Best for a ${input.style}-focused weekend that balances drive time, cost, and trip value.`;
+  const aiBestFit = `Best for a ${input.style}-focused weekend that balances drive time, cost, and trip value for ${input.travelerCount} traveler${
+    input.travelerCount === 1 ? "" : "s"
+  }.`;
+
+  const estimatedPerTraveler = Math.round(
+    trip.estimatedCost / Math.max(1, input.travelerCount)
+  );
 
   const aiBudgetNote =
     trip.estimatedCost <= input.budget
-      ? `This trip stays within your stated budget at about $${Math.round(trip.estimatedCost)}.`
+      ? `This trip stays within your stated group budget at about $${Math.round(
+          trip.estimatedCost
+        )} total, or roughly $${estimatedPerTraveler} per traveler.`
       : `This trip is estimated around $${Math.round(
           trip.estimatedCost
-        )}, so it may stretch your budget slightly.`;
+        )} total, or roughly $${estimatedPerTraveler} per traveler, so it may stretch your budget slightly.`;
 
   const aiItinerary =
     input.tripLengthDays > 2
@@ -329,18 +355,20 @@ async function generateWithOpenAI(
   }
 
   const aiTrips: OpenAITripPayload[] = trips
-  .map((trip: unknown): OpenAITripPayload => {
-    const item = trip as Record<string, unknown>;
+    .map((trip: unknown): OpenAITripPayload => {
+      const item = trip as Record<string, unknown>;
 
-    return {
-      name: safeString(item.name),
-      aiSummary: safeString(item.aiSummary),
-      aiBestFit: safeString(item.aiBestFit),
-      aiBudgetNote: safeString(item.aiBudgetNote),
-      aiItinerary: safeStringArray(item.aiItinerary),
-    };
-  })
-  .filter((trip: OpenAITripPayload) => Boolean(trip.name && trip.aiSummary));
+      return {
+        name: safeString(item.name),
+        aiSummary: safeString(item.aiSummary),
+        aiBestFit: safeString(item.aiBestFit),
+        aiBudgetNote: safeString(item.aiBudgetNote),
+        aiItinerary: safeStringArray(item.aiItinerary),
+      };
+    })
+    .filter(
+      (trip: OpenAITripPayload) => Boolean(trip.name && trip.aiSummary)
+    );
 
   if (aiTrips.length === 0) {
     console.error("OpenAI payload parsed but fields were unusable:", parsed);
@@ -376,7 +404,9 @@ export async function POST(req: Request) {
       });
     }
 
-    const fallbackTrips = rankedTrips.map((trip) => buildFallbackAiContent(trip, input));
+    const fallbackTrips = rankedTrips.map((trip) =>
+      buildFallbackAiContent(trip, input)
+    );
 
     return NextResponse.json({
       success: true,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { getTripPlanById } from "../../../lib/tripStore";
 import TripHeader from "../../../components/TripHeader";
@@ -10,6 +10,10 @@ import FoodSection from "../../../components/FoodSection";
 import ActivitySection from "../../../components/ActivitySection";
 import TripActions from "../../../components/TripActions";
 import ItineraryDay from "../../../components/ItineraryDay";
+
+function formatMoney(value: number) {
+  return `$${Math.round(value)}`;
+}
 
 export default function TripPage() {
   const params = useParams<{ tripId: string }>();
@@ -38,6 +42,44 @@ export default function TripPage() {
       cancelled = true;
     };
   }, [params?.tripId]);
+
+  const itineraryDays = Array.isArray(trip?.itineraryDays) ? trip.itineraryDays : [];
+
+  const travelerCount = useMemo(() => {
+    const value = Number(trip?.travelerCount ?? 1);
+    return Number.isFinite(value) && value > 0 ? value : 1;
+  }, [trip]);
+
+  const targetTotalBudget = useMemo(() => {
+    const fromSavedField = Number(trip?.totalBudget);
+    if (Number.isFinite(fromSavedField) && fromSavedField > 0) {
+      return fromSavedField;
+    }
+    return 0;
+  }, [trip]);
+
+  const budgetPerTraveler = useMemo(() => {
+    const saved = Number(trip?.budgetPerTraveler);
+    if (Number.isFinite(saved) && saved > 0) {
+      return saved;
+    }
+
+    if (targetTotalBudget > 0 && travelerCount > 0) {
+      return Math.round(targetTotalBudget / travelerCount);
+    }
+
+    return 0;
+  }, [trip, targetTotalBudget, travelerCount]);
+
+  const estimatedTotalCost = useMemo(() => {
+    const fromBreakdown = Number(
+      trip?.budgetBreakdown?.totalExpected ?? trip?.budgetBreakdown?.total
+    );
+    if (Number.isFinite(fromBreakdown) && fromBreakdown > 0) {
+      return fromBreakdown;
+    }
+    return 0;
+  }, [trip]);
 
   if (loading) {
     return (
@@ -68,8 +110,6 @@ export default function TripPage() {
     );
   }
 
-  const itineraryDays = Array.isArray(trip.itineraryDays) ? trip.itineraryDays : [];
-
   return (
     <main className="min-h-screen bg-[#f8fafc] px-6 py-8 text-slate-900">
       <div className="mx-auto max-w-7xl space-y-6">
@@ -78,6 +118,51 @@ export default function TripPage() {
         <div className="grid gap-6 xl:grid-cols-[0.8fr_1.2fr]">
           <div className="space-y-6">
             <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+              <div className="mb-5">
+                <h2 className="text-2xl font-semibold text-slate-950">Budget</h2>
+                <p className="mt-2 text-sm text-slate-600">
+                  Compare your target budget against the estimated trip cost.
+                </p>
+              </div>
+
+              <div className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <div className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
+                    Travelers
+                  </div>
+                  <div className="mt-2 text-xl font-semibold text-slate-900">
+                    {travelerCount}
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <div className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
+                    Budget per traveler
+                  </div>
+                  <div className="mt-2 text-xl font-semibold text-slate-900">
+                    {formatMoney(budgetPerTraveler)}
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <div className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
+                    Target total budget
+                  </div>
+                  <div className="mt-2 text-xl font-semibold text-slate-900">
+                    {formatMoney(targetTotalBudget)}
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-violet-200 bg-violet-50 p-4">
+                  <div className="text-xs font-medium uppercase tracking-[0.16em] text-violet-700">
+                    Estimated total cost
+                  </div>
+                  <div className="mt-2 text-xl font-semibold text-slate-950">
+                    {formatMoney(estimatedTotalCost)}
+                  </div>
+                </div>
+              </div>
+
               <BudgetBreakdown breakdown={trip.budgetBreakdown} />
             </div>
 

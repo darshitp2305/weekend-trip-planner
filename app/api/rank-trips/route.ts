@@ -9,6 +9,8 @@ function isTripInput(value: any): value is TripInput {
     (value.startCity === "Edmonton" || value.startCity === "Calgary") &&
     typeof value.maxDriveHours === "number" &&
     typeof value.budget === "number" &&
+    typeof value.budgetPerTraveler === "number" &&
+    typeof value.travelerCount === "number" &&
     typeof value.tripLengthDays === "number" &&
     typeof value.season === "string" &&
     typeof value.style === "string" &&
@@ -21,10 +23,15 @@ function isTripInput(value: any): value is TripInput {
 function normalizeInput(raw: any): TripInput | null {
   if (!raw || typeof raw !== "object") return null;
 
+  const travelerCount = Number(raw.travelerCount);
+  const budgetPerTraveler = Number(raw.budgetPerTraveler);
+
   const candidate = {
     startCity: raw.startCity,
     maxDriveHours: Number(raw.maxDriveHours),
-    budget: Number(raw.budget),
+    budget: travelerCount * budgetPerTraveler,
+    budgetPerTraveler,
+    travelerCount,
     tripLengthDays: Number(raw.tripLengthDays),
     season: raw.season,
     style: raw.style,

@@ -131,6 +131,8 @@ export interface TripInput {
   startCity: "Edmonton" | "Calgary";
   maxDriveHours: number;
   budget: number;
+  budgetPerTraveler: number;
+  travelerCount: number;
   tripLengthDays: number;
   season: string;
   style: TripStyle;
@@ -215,6 +217,9 @@ export interface TripPlan {
   aiBestFit?: string;
   dataSource: TripDataSource;
   createdAt: string;
+  travelerCount?: number;
+  budgetPerTraveler?: number;
+  totalBudget?: number;
 
   // compatibility fields used by saved trip page / header
   name?: string;

@@ -441,6 +441,10 @@ function calculateStaycationAdjustment(
   input: TripInput
 ): { score: number; warnings: string[]; extraReason?: RankingReason } {
   const warnings: string[] = [];
+  const budgetPerTraveler =
+    input.budgetPerTraveler > 0
+      ? input.budgetPerTraveler
+      : input.budget / Math.max(1, input.travelerCount);
 
   if (!destination.isStaycation) {
     return { score: 0, warnings };
@@ -448,7 +452,7 @@ function calculateStaycationAdjustment(
 
   if (
     (input.style === "foodie" || input.style === "chill") &&
-    (input.maxDriveHours <= 3 || input.budget <= 350)
+    (input.maxDriveHours <= 3 || budgetPerTraveler <= 350)
   ) {
     return {
       score: 2,
@@ -460,7 +464,7 @@ function calculateStaycationAdjustment(
     };
   }
 
-  if (input.maxDriveHours >= 4 && input.budget >= 350) {
+  if (input.maxDriveHours >= 4 && budgetPerTraveler >= 350) {
     warnings.push("Staycation may feel less distinct than a true getaway");
     return {
       score: -10,
@@ -983,32 +987,33 @@ export function rankDestinations(
 
   const ranked = destinationList
     .map((destination) => {
+      const travelerCount = Math.max(1, input.travelerCount);
       const nights = Math.max(1, input.tripLengthDays - 1);
       const nightlyHotel = destination.hotelOptions?.[0]?.pricePerNight ?? 150;
 
-      const foodPerDay =
+      const foodPerDayPerTraveler =
         input.style === "foodie"
           ? 65
           : input.style === "chill" || input.style === "solo reset"
-          ? 45
-          : 50;
+            ? 45
+            : 50;
 
-      const activitiesSeed = (destination.topActivities ?? [])
+      const activitiesSeedPerTraveler = (destination.topActivities ?? [])
         .slice(0, 2)
         .reduce((sum, activity) => sum + (activity.costEstimate ?? 25), 0);
 
       const gasSeed =
         destination.driveHoursFromStart <= 0.5
-        ? 0
-        : Math.round(destination.driveHoursFromStart * 18);
+          ? 0
+          : Math.round(destination.driveHoursFromStart * 18);
 
       const seededDestination = {
         ...destination,
         estimatedCost:
-        nightlyHotel * nights +
-        foodPerDay * input.tripLengthDays +
-        activitiesSeed +
-        gasSeed,
+          nightlyHotel * nights +
+          foodPerDayPerTraveler * input.tripLengthDays * travelerCount +
+          activitiesSeedPerTraveler * travelerCount +
+          gasSeed,
       };
 
       const budgetBreakdown = estimateBudgetBreakdown(
