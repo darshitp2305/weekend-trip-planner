@@ -41,23 +41,25 @@ export default function TripPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-black text-white px-6 py-10">
-        <div className="mx-auto max-w-5xl">Loading trip...</div>
+      <main className="min-h-screen bg-[#f8fafc] px-6 py-10 text-slate-900">
+        <div className="mx-auto max-w-7xl rounded-[2rem] border border-slate-200 bg-white p-8 shadow-sm">
+          Loading trip...
+        </div>
       </main>
     );
   }
 
   if (!trip) {
     return (
-      <main className="min-h-screen bg-black text-white px-6 py-10">
-        <div className="mx-auto max-w-3xl rounded border p-6 space-y-4">
-          <h1 className="text-2xl font-bold">Trip not found</h1>
-          <p className="text-sm text-gray-400">
+      <main className="min-h-screen bg-[#f8fafc] px-6 py-10 text-slate-900">
+        <div className="mx-auto max-w-3xl rounded-[2rem] border border-slate-200 bg-white p-8 shadow-sm">
+          <h1 className="text-2xl font-semibold text-slate-950">Trip not found</h1>
+          <p className="mt-3 text-slate-600">
             This trip could not be found locally or in the shared trip database.
           </p>
           <button
             onClick={() => router.push("/")}
-            className="rounded border px-4 py-2"
+            className="mt-6 rounded-2xl bg-slate-950 px-5 py-3 text-white transition hover:bg-slate-800"
           >
             Back to planner
           </button>
@@ -69,23 +71,47 @@ export default function TripPage() {
   const itineraryDays = Array.isArray(trip.itineraryDays) ? trip.itineraryDays : [];
 
   return (
-    <main className="min-h-screen bg-black text-white px-6 py-8">
-      <div className="mx-auto max-w-5xl space-y-6">
+    <main className="min-h-screen bg-[#f8fafc] px-6 py-8 text-slate-900">
+      <div className="mx-auto max-w-7xl space-y-6">
         <TripHeader trip={trip} />
-        <TripActions trip={trip} />
-        <BudgetBreakdown breakdown={trip.budgetBreakdown} />
-        <StaySection stays={trip.hotelOptions ?? []} />
-        <FoodSection foodSpots={trip.foodSpots ?? []} />
-        <ActivitySection activities={trip.topActivities ?? []} />
 
-        <section className="space-y-4">
-          <h2 className="text-2xl font-semibold">Itinerary</h2>
+        <div className="grid gap-6 xl:grid-cols-[0.8fr_1.2fr]">
+          <div className="space-y-6">
+            <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+              <BudgetBreakdown breakdown={trip.budgetBreakdown} />
+            </div>
+
+            <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+              <TripActions trip={trip} />
+            </div>
+          </div>
+
+          <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+            <StaySection stays={trip.hotelOptions ?? []} />
+          </div>
+        </div>
+
+        <div className="grid gap-6 lg:grid-cols-2">
+          <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+            <FoodSection foodSpots={trip.foodSpots ?? []} />
+          </div>
+
+          <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+            <ActivitySection activities={trip.topActivities ?? []} />
+          </div>
+        </div>
+
+        <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+          <h2 className="text-2xl font-semibold text-slate-950">Itinerary</h2>
+
           {itineraryDays.length > 0 ? (
-            itineraryDays.map((day: any, index: number) => (
-              <ItineraryDay key={index} day={day} dayNumber={index + 1} />
-            ))
+            <div className="mt-5 space-y-4">
+              {itineraryDays.map((day: any, index: number) => (
+                <ItineraryDay key={index} day={day} dayNumber={index + 1} />
+              ))}
+            </div>
           ) : (
-            <p className="text-sm text-gray-400">No itinerary generated yet.</p>
+            <p className="mt-4 text-slate-600">No itinerary generated yet.</p>
           )}
         </section>
       </div>

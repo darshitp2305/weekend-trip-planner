@@ -1,89 +1,149 @@
-type Props = {
+type TripHeaderProps = {
   trip: {
-    destinationName?: string;
-    region?: string;
-    summary?: string;
-    driveTimeText?: string;
+    title?: string;
+    name?: string;
+    destination?: string;
+    province?: string;
     imageUrl?: string;
-    score?: number;
+    summary?: string;
+    driveHours?: number;
+    driveHoursFromStart?: number;
     styleMatchStrength?: string;
-    tags?: string[];
-    dataSource?: "live-google-places" | "static-fallback";
+    score?: number;
+    source?: string;
+    rawVibes?: string[];
+    confidence?: string;
+    liveDataSummary?: {
+      usedPlacesData?: boolean;
+      usedFallbackData?: boolean;
+    };
   };
 };
 
-function sourceLabel(source?: "live-google-places" | "static-fallback") {
-  if (source === "live-google-places") return "Live Google Places data";
-  return "Static fallback data";
-}
+function Badge({
+  children,
+  tone = "slate",
+}: {
+  children: React.ReactNode;
+  tone?: "slate" | "green" | "violet";
+}) {
+  const toneClass =
+    tone === "green"
+      ? "border border-emerald-200 bg-emerald-50 text-emerald-700"
+      : tone === "violet"
+        ? "border border-violet-200 bg-violet-50 text-violet-700"
+        : "border border-slate-200 bg-slate-100 text-slate-700";
 
-function sourceBadgeClasses(source?: "live-google-places" | "static-fallback") {
-  if (source === "live-google-places") {
-    return "rounded-xl bg-green-100 px-4 py-2 text-sm text-green-800";
-  }
-  return "rounded-xl bg-yellow-100 px-4 py-2 text-sm text-yellow-800";
-}
-
-export default function TripHeader({ trip }: Props) {
   return (
-    <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+    <span
+      className={`inline-flex shrink-0 items-center whitespace-nowrap rounded-full px-3 py-1 text-xs font-medium leading-none ${toneClass}`}
+    >
+      {children}
+    </span>
+  );
+}
+
+function Stat({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="rounded-2xl bg-slate-50 px-4 py-3">
+      <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+        {label}
+      </div>
+      <div className="mt-1 text-sm font-semibold text-slate-950">{value}</div>
+    </div>
+  );
+}
+
+function confidenceLabel(confidence?: string) {
+  switch (confidence) {
+    case "high":
+      return "Strong match";
+    case "medium":
+      return "Good match";
+    case "low":
+      return "Experimental";
+    default:
+      return "Trip plan";
+  }
+}
+
+function sourceLabel(trip: TripHeaderProps["trip"]) {
+  if (trip.source === "live-google-places") return "Live Google Places";
+  if (trip.source === "static-fallback") return "Fallback data";
+  if (trip.source === "static-ranking") return "Static ranking";
+  if (trip.liveDataSummary?.usedPlacesData) return "Live Google Places";
+  if (trip.liveDataSummary?.usedFallbackData) return "Fallback data";
+  return "Saved trip";
+}
+
+export default function TripHeader({ trip }: TripHeaderProps) {
+  const title = trip.title ?? trip.name ?? trip.destination ?? "Saved trip";
+  const vibes = Array.isArray(trip.rawVibes) ? trip.rawVibes.slice(0, 5) : [];
+  const driveValue =
+    trip.driveHours !== undefined
+      ? trip.driveHours
+      : trip.driveHoursFromStart !== undefined
+        ? trip.driveHoursFromStart
+        : undefined;
+
+  return (
+    <section className="overflow-hidden rounded-[1.75rem] border border-slate-200 bg-white shadow-sm">
       {trip.imageUrl ? (
-        <img
-          src={trip.imageUrl}
-          alt={trip.destinationName ?? "Trip image"}
-          className="h-64 w-full object-cover"
-        />
+        <div className="aspect-[16/5] w-full overflow-hidden bg-slate-100">
+          <img
+            src={trip.imageUrl}
+            alt={title}
+            className="h-full w-full object-cover"
+          />
+        </div>
       ) : null}
 
-      <div className="p-6">
-        {trip.region ? (
-          <p className="text-sm font-medium uppercase tracking-wide text-gray-500">
-            {trip.region}
-          </p>
-        ) : null}
+      <div className="p-6 sm:p-7">
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge>{trip.province ?? "Alberta"}</Badge>
+          <Badge tone="violet">{confidenceLabel(trip.confidence)}</Badge>
+          <Badge tone="green">{sourceLabel(trip)}</Badge>
+        </div>
 
-        <h1 className="mt-1 text-3xl font-bold text-gray-900">
-          {trip.destinationName ?? "Weekend Trip"}
-        </h1>
+        <div className="mt-4">
+          <h1 className="text-4xl font-semibold tracking-tight text-slate-950">
+            {title}
+          </h1>
 
-        {trip.summary ? (
-          <p className="mt-3 max-w-3xl text-gray-700">{trip.summary}</p>
-        ) : null}
-
-        <div className="mt-4 flex flex-wrap gap-3">
-          {trip.driveTimeText ? (
-            <div className="rounded-xl bg-gray-100 px-4 py-2 text-sm text-gray-700">
-              <span className="font-medium text-gray-900">Drive time:</span>{" "}
-              {trip.driveTimeText}
-            </div>
-          ) : null}
-
-          {trip.styleMatchStrength ? (
-            <div className="rounded-xl bg-gray-100 px-4 py-2 text-sm text-gray-700">
-              <span className="font-medium text-gray-900">Style fit:</span>{" "}
-              {trip.styleMatchStrength}
-            </div>
-          ) : null}
-
-          {trip.score !== undefined ? (
-            <div className="rounded-xl bg-gray-100 px-4 py-2 text-sm text-gray-700">
-              <span className="font-medium text-gray-900">Score:</span> {trip.score}
-            </div>
-          ) : null}
-
-          {trip.dataSource ? (
-            <div className={sourceBadgeClasses(trip.dataSource)}>
-              {sourceLabel(trip.dataSource)}
-            </div>
+          {trip.summary ? (
+            <p className="mt-3 max-w-4xl text-base leading-7 text-slate-600">
+              {trip.summary}
+            </p>
           ) : null}
         </div>
 
-        {trip.tags && trip.tags.length > 0 ? (
-          <div className="mt-4 flex flex-wrap gap-2">
-            {trip.tags.slice(0, 5).map((tag) => (
+        <div className="mt-6 grid gap-3 sm:grid-cols-3 lg:max-w-2xl">
+          <Stat
+            label="Drive time"
+            value={driveValue !== undefined ? `${driveValue} hours` : "—"}
+          />
+          <Stat
+            label="Style fit"
+            value={trip.styleMatchStrength ?? "—"}
+          />
+          <Stat
+            label="Score"
+            value={trip.score !== undefined ? String(trip.score) : "—"}
+          />
+        </div>
+
+        {vibes.length > 0 ? (
+          <div className="mt-5 flex flex-wrap gap-2">
+            {vibes.map((tag) => (
               <span
                 key={tag}
-                className="rounded-full border border-gray-300 px-3 py-1 text-xs text-gray-700"
+                className="inline-flex shrink-0 items-center whitespace-nowrap rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600"
               >
                 {tag}
               </span>

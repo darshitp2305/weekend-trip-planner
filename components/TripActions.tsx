@@ -9,6 +9,18 @@ type Props = {
   };
 };
 
+function InfoPill({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
+      {children}
+    </span>
+  );
+}
+
 export default function TripActions({ trip }: Props) {
   const [copied, setCopied] = useState(false);
 
@@ -26,16 +38,25 @@ export default function TripActions({ trip }: Props) {
     trip.hotelOptions?.[0]?.websiteUrl || trip.hotelOptions?.[0]?.bookingLink;
 
   return (
-    <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-      <h2 className="text-2xl font-semibold text-gray-900">Actions</h2>
-      <p className="mt-1 text-sm text-gray-600">
-        This page is stored locally in this browser right now, so the copied link is only reliable on this device.
-      </p>
+    <section>
+      <div className="flex flex-col gap-1">
+        <h2 className="text-2xl font-semibold tracking-tight text-slate-950">
+          Actions
+        </h2>
+        <p className="text-sm leading-6 text-slate-600">
+          Quick actions for this saved plan.
+        </p>
+      </div>
 
-      <div className="mt-4 flex flex-wrap gap-3">
+      <div className="mt-5 flex flex-wrap items-center gap-2">
+        <InfoPill>Saved locally</InfoPill>
+        <InfoPill>Best on this device</InfoPill>
+      </div>
+
+      <div className="mt-5 flex flex-wrap gap-3">
         <button
           onClick={handleCopyLink}
-          className="rounded-lg bg-black px-4 py-2 text-sm text-white"
+          className="inline-flex h-11 items-center justify-center rounded-xl bg-slate-950 px-5 text-sm font-medium text-white transition hover:bg-slate-800"
         >
           {copied ? "Link copied" : "Copy page link"}
         </button>
@@ -45,7 +66,7 @@ export default function TripActions({ trip }: Props) {
             href={firstHotelSite}
             target="_blank"
             rel="noreferrer"
-            className="rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-800"
+            className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-300 bg-white px-5 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
           >
             Open lodging link
           </a>

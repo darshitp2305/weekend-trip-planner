@@ -31,10 +31,10 @@ function extractResults(payload: any): RankedDestination[] | null {
 
 function SkeletonTripCard() {
   return (
-    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm animate-pulse">
-      <div className="h-52 w-full bg-slate-200" />
+    <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm animate-pulse">
+      <div className="h-56 w-full bg-slate-100" />
 
-      <div className="p-5">
+      <div className="p-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="flex-1">
             <div className="h-8 w-56 rounded bg-slate-200" />
@@ -55,25 +55,37 @@ function SkeletonTripCard() {
         </div>
 
         <div className="mt-5 grid gap-3 sm:grid-cols-3">
-          <div className="rounded-xl bg-slate-100 p-3">
+          <div className="rounded-2xl bg-slate-50 p-4">
             <div className="h-3 w-24 rounded bg-slate-200" />
             <div className="mt-3 h-7 w-20 rounded bg-slate-200" />
           </div>
-          <div className="rounded-xl bg-slate-100 p-3">
+          <div className="rounded-2xl bg-slate-50 p-4">
             <div className="h-3 w-24 rounded bg-slate-200" />
             <div className="mt-3 h-7 w-20 rounded bg-slate-200" />
           </div>
-          <div className="rounded-xl bg-slate-100 p-3">
+          <div className="rounded-2xl bg-slate-50 p-4">
             <div className="h-3 w-24 rounded bg-slate-200" />
             <div className="mt-3 h-7 w-36 rounded bg-slate-200" />
           </div>
         </div>
-
-        <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
-          <div className="h-3 w-28 rounded bg-slate-200" />
-          <div className="mt-3 h-4 w-64 rounded bg-slate-200" />
-        </div>
       </div>
+    </div>
+  );
+}
+
+function MiniStat({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+      <div className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
+        {label}
+      </div>
+      <div className="mt-2 text-xl font-semibold text-slate-900">{value}</div>
     </div>
   );
 }
@@ -222,57 +234,127 @@ export default function HomePage() {
   const compareTrips = displayResults.length > 0 ? displayResults : rankedResults;
 
   return (
-    <main className="min-h-screen bg-black px-7 py-6 text-white">
-      <div className="mx-auto max-w-5xl">
-        <h1 className="text-5xl font-bold tracking-tight">
-          Weekend Trip Planner
-        </h1>
+    <main className="min-h-screen bg-[#f8fafc] text-slate-900">
+      <div className="mx-auto max-w-7xl px-6 py-8 sm:px-8 lg:px-10">
+        <section className="mb-8">
+          <div className="inline-flex rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600 shadow-sm">
+            Alberta weekend planner
+          </div>
 
-        <p className="mt-4 text-lg text-white/85">
-          Choose your city, budget, drive limit, and travel style to get 3 Alberta
-          trip ideas ranked for fit.
-        </p>
+          <div className="mt-4 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div className="max-w-3xl">
+              <h1 className="text-4xl font-semibold tracking-tight text-slate-950 sm:text-5xl">
+                Plan a weekend trip without digging through ten tabs.
+              </h1>
+              <p className="mt-3 text-base leading-7 text-slate-600 sm:text-lg">
+                Enter your budget, drive limit, and trip style to get ranked Alberta
+                getaway ideas that actually fit your weekend.
+              </p>
+            </div>
 
-        <div className="mt-10">
-          <TripForm
-            onGenerate={handleGenerate}
-            loading={loading}
-            results={compareTrips}
-          />
-        </div>
+            <div className="grid grid-cols-3 gap-3 lg:min-w-[360px]">
+              <MiniStat label="Output" value="3 trips" />
+              <MiniStat label="Ranking" value="Fit-based" />
+              <MiniStat label="Data" value="Live + AI" />
+            </div>
+          </div>
+        </section>
+
+        <section className="grid gap-6 xl:grid-cols-[1.45fr_0.75fr]">
+          <div className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
+            <TripForm
+              onGenerate={handleGenerate}
+              loading={loading}
+              results={compareTrips}
+            />
+          </div>
+
+          <aside className="grid gap-4 sm:grid-cols-3 xl:grid-cols-1">
+            <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+              <div className="text-xs font-semibold uppercase tracking-[0.18em] text-violet-600">
+                What you get
+              </div>
+              <ul className="mt-4 space-y-3 text-sm leading-6 text-slate-600">
+                <li>Ranked destinations based on your constraints</li>
+                <li>Budget-aware options with staycation support</li>
+                <li>Saveable trip cards with fuller itinerary details</li>
+              </ul>
+            </div>
+
+            <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+              <div className="text-xs font-semibold uppercase tracking-[0.18em] text-violet-600">
+                Example fit
+              </div>
+              <div className="mt-3 text-xl font-semibold text-slate-900">
+                Jasper foodie weekend
+              </div>
+              <p className="mt-2 text-sm leading-6 text-slate-600">
+                Works well when you want scenic value, a manageable drive, and decent food options without blowing a short-trip budget.
+              </p>
+            </div>
+
+            <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+              <div className="text-xs font-semibold uppercase tracking-[0.18em] text-violet-600">
+                Good default
+              </div>
+              <p className="mt-3 text-sm leading-6 text-slate-600">
+                Keep the form simple. Let the trip cards carry the detail after generation.
+              </p>
+            </div>
+          </aside>
+        </section>
 
         {aiStatusMessage ? (
-          <div className="mt-5 rounded border border-white px-4 py-4 text-white/80">
+          <div className="mt-6 rounded-2xl border border-violet-200 bg-violet-50 px-5 py-4 text-sm text-violet-900">
             {aiStatusMessage}
           </div>
         ) : null}
 
         {compareTrips.length > 0 ? (
-          <div className="mt-8 space-y-6">
-            <CompareTrips trips={compareTrips} />
+          <section className="mt-10">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-violet-600">
+                  Your matches
+                </div>
+                <h2 className="mt-2 text-3xl font-semibold tracking-tight text-slate-950">
+                  Compare your best options
+                </h2>
+              </div>
+
+              <p className="max-w-xl text-sm leading-6 text-slate-600">
+                Review the top fits first, then save the one worth turning into a full plan.
+              </p>
+            </div>
+
+            <div className="mt-6 rounded-[2rem] border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+              <CompareTrips trips={compareTrips} />
+            </div>
 
             {waitingForTripText ? (
-              <div className="space-y-8">
-                <div className="rounded border border-white/20 bg-white/5 px-4 py-5 text-white/80">
+              <div className="mt-8 space-y-6">
+                <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-slate-600 shadow-sm">
                   Building trip summaries and itinerary text...
                 </div>
 
-                <SkeletonTripCard />
-                <SkeletonTripCard />
-                <SkeletonTripCard />
+                <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+                  <SkeletonTripCard />
+                  <SkeletonTripCard />
+                  <SkeletonTripCard />
+                </div>
               </div>
             ) : (
-              <div className="space-y-8">
+              <div className="mt-8 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
                 {displayResults.map((trip) => (
                   <TripCard
-                    key={trip.name}
-                    trip={trip}
-                    input={lastInput ?? undefined}
-                  />
-                ))}
-              </div>
+                  key={trip.name}
+                  trip={trip}
+                  input={lastInput ?? undefined}
+                />
+              ))}
+            </div>
             )}
-          </div>
+          </section>
         ) : null}
       </div>
     </main>

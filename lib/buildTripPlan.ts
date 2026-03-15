@@ -46,7 +46,7 @@ function buildBudgetBreakdown(
   const nights = Math.max(input.tripLengthDays - 1, 1);
 
   const hotelBase =
-    trip.hotelOptions?.length > 0
+    trip.hotelOptions?.length && trip.hotelOptions[0]?.pricePerNight
       ? trip.hotelOptions[0].pricePerNight * nights
       : trip.budgetBreakdown?.hotel ?? 0;
 
@@ -213,8 +213,12 @@ function pickFood(
   ctx: BuildContext,
   blockedNames: Set<string> = new Set<string>()
 ): FoodSpot | undefined {
+  const availableQueue = ctx.foodQueue.filter(
+    (item) => !blockedNames.has(itemName(item))
+  );
+
   const queueCandidate = takeFromQueueAvoidingPrevious(
-    ctx.foodQueue.filter((item) => !blockedNames.has(itemName(item))),
+    availableQueue,
     ctx.previousDayFoodNames
   );
 
@@ -236,8 +240,12 @@ function pickActivity(
   ctx: BuildContext,
   blockedNames: Set<string> = new Set<string>()
 ): ActivitySpot | undefined {
+  const availableQueue = ctx.activityQueue.filter(
+    (item) => !blockedNames.has(itemName(item))
+  );
+
   const queueCandidate = takeFromQueueAvoidingPrevious(
-    ctx.activityQueue.filter((item) => !blockedNames.has(itemName(item))),
+    availableQueue,
     ctx.previousDayActivityNames
   );
 
@@ -304,13 +312,8 @@ function buildStaycationFinalDay(
   trip: RankedDestination,
   ctx: BuildContext
 ): ItineraryDayData {
-  const breakfast =
-    ctx.reservations.finalDayFood ??
-    pickFood(ctx);
-
-  const activity =
-    ctx.reservations.finalDayActivity ??
-    pickActivity(ctx);
+  const breakfast = ctx.reservations.finalDayFood ?? pickFood(ctx);
+  const activity = ctx.reservations.finalDayActivity ?? pickActivity(ctx);
 
   setPreviousDayFoods(ctx, [breakfast]);
   setPreviousDayActivities(ctx, [activity]);
@@ -368,7 +371,7 @@ function buildGetawayDayOne(
         description: hotel
           ? `Use ${hotel.name} as your base, then start light.`
           : `Settle in near ${trip.homeBaseCity}.`,
-        websiteUrl: hotel?.bookingLink,
+        websiteUrl: hotel?.bookingLink ?? hotel?.websiteUrl,
       },
       {
         time: "Evening",
@@ -387,13 +390,8 @@ function buildGetawayFinalDay(
   input: TripInput,
   ctx: BuildContext
 ): ItineraryDayData {
-  const breakfast =
-    ctx.reservations.finalDayFood ??
-    pickFood(ctx);
-
-  const finalActivity =
-    ctx.reservations.finalDayActivity ??
-    pickActivity(ctx);
+  const breakfast = ctx.reservations.finalDayFood ?? pickFood(ctx);
+  const finalActivity = ctx.reservations.finalDayActivity ?? pickActivity(ctx);
 
   setPreviousDayFoods(ctx, [breakfast]);
   setPreviousDayActivities(ctx, [finalActivity]);
@@ -414,7 +412,7 @@ function buildGetawayFinalDay(
         time: "Late morning",
         title: finalActivity?.name ?? "One final highlight",
         description: "Optional final stop before the drive home.",
-        websiteUrl: finalActivity?.bookingLink,
+        websiteUrl: finalActivity?.bookingLink ?? finalActivity?.websiteUrl,
         estimatedCost: finalActivity?.costEstimate ?? 0,
       },
       {
@@ -439,10 +437,7 @@ function buildMiddleDay(
     ctx,
     new Set([itemName(mainActivity)])
   );
-  const dinner = pickFood(
-    ctx,
-    new Set([itemName(breakfast)])
-  );
+  const dinner = pickFood(ctx, new Set([itemName(breakfast)]));
 
   setPreviousDayFoods(ctx, [breakfast, dinner]);
   setPreviousDayActivities(ctx, [mainActivity, secondaryActivity]);
@@ -465,7 +460,7 @@ function buildMiddleDay(
         description: mainActivity
           ? `Use ${mainActivity.name} as the main daytime anchor.`
           : "Use one meaningful anchor stop for the morning.",
-        websiteUrl: mainActivity?.bookingLink,
+        websiteUrl: mainActivity?.bookingLink ?? mainActivity?.websiteUrl,
         estimatedCost: mainActivity?.costEstimate ?? 0,
       },
       {
@@ -474,7 +469,8 @@ function buildMiddleDay(
         description: secondaryActivity
           ? `Add ${secondaryActivity.name} if you still have energy.`
           : "Keep the afternoon flexible instead of overpacking it.",
-        websiteUrl: secondaryActivity?.bookingLink,
+        websiteUrl:
+          secondaryActivity?.bookingLink ?? secondaryActivity?.websiteUrl,
         estimatedCost: secondaryActivity?.costEstimate ?? 0,
       },
       {
@@ -543,28 +539,47 @@ export function buildTripPlan(
   const budgetBreakdown = buildBudgetBreakdown(trip, safeInput);
   const itineraryDays = buildItineraryDays(trip, safeInput);
 
+  const driveHoursFromStart = trip.isStaycation ? 0 : trip.driveHoursFromStart;
+  const driveTimeText = trip.isStaycation ? "0 hours" : makeDriveText(trip);
+
   return {
     id: crypto.randomUUID(),
+
     destinationName: trip.name,
     region: trip.province,
     summary: trip.summary,
     imageUrl: trip.imageUrl,
-    driveTimeText: trip.isStaycation ? "0 hours" : makeDriveText(trip),
+
+    driveTimeText,
     score: trip.score,
     styleMatchStrength: trip.styleMatchStrength,
     confidence: trip.confidence,
     liveDataSummary: trip.liveDataSummary,
     rankingReasons: trip.rankingReasons ?? [],
     tags: trip.rawVibes ?? [],
+
     budgetBreakdown,
     hotelOptions: trip.hotelOptions ?? [],
     foodSpots: trip.foodSpots ?? [],
     topActivities: trip.topActivities ?? [],
     itineraryDays,
+
     aiSummary: trip.aiSummary ?? "",
     aiBudgetNote: trip.aiBudgetNote ?? "",
     aiBestFit: trip.aiBestFit ?? "",
+
     dataSource,
     createdAt: new Date().toISOString(),
-  };
+
+    // Extra compatibility fields for the saved trip page / header components
+    name: trip.name,
+    title: trip.name,
+    destination: trip.name,
+    province: trip.province,
+    driveHoursFromStart,
+    rawVibes: trip.rawVibes ?? [],
+    source: dataSource,
+    isStaycation: trip.isStaycation,
+    homeBaseCity: trip.homeBaseCity,
+  } as TripPlan;
 }

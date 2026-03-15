@@ -80,6 +80,50 @@ function displayStyleLabel(style: TripStyle) {
   }
 }
 
+function FieldLabel({
+  htmlFor,
+  children,
+}: {
+  htmlFor: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <label
+      htmlFor={htmlFor}
+      className="mb-2 block text-sm font-medium text-slate-700"
+    >
+      {children}
+    </label>
+  );
+}
+
+function ToggleRow({
+  title,
+  checked,
+  onChange,
+}: {
+  title: string;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+}) {
+  return (
+    <label className="flex cursor-pointer items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 transition hover:bg-slate-100">
+      <span className="text-sm font-medium text-slate-800">{title}</span>
+
+      <div className="relative">
+        <input
+          type="checkbox"
+          checked={checked}
+          onChange={(e) => onChange(e.target.checked)}
+          className="peer sr-only"
+        />
+        <div className="h-6 w-11 rounded-full bg-slate-300 transition peer-checked:bg-violet-500" />
+        <div className="absolute left-1 top-1 h-4 w-4 rounded-full bg-white transition peer-checked:translate-x-5" />
+      </div>
+    </label>
+  );
+}
+
 export default function TripForm({
   onGenerate,
   onSubmit,
@@ -176,172 +220,132 @@ export default function TripForm({
 
   return (
     <section className="w-full">
-      <form onSubmit={handleSubmit} className="space-y-5">
-        <div>
-          <label
-            htmlFor="startCity"
-            className="mb-2 block text-sm font-medium text-white"
-          >
-            Start city
-          </label>
-          <select
-            id="startCity"
-            value={form.startCity}
-            onChange={(e) =>
-              updateField(
-                "startCity",
-                e.target.value as FormState["startCity"]
-              )
-            }
-            className="w-full rounded-none border border-white bg-black px-3 py-2 text-white outline-none"
-          >
-            <option value="Edmonton">Edmonton</option>
-            <option value="Calgary">Calgary</option>
-          </select>
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="grid gap-4 lg:grid-cols-3">
+          <div>
+            <FieldLabel htmlFor="startCity">Start city</FieldLabel>
+            <select
+              id="startCity"
+              value={form.startCity}
+              onChange={(e) =>
+                updateField("startCity", e.target.value as FormState["startCity"])
+              }
+              className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+            >
+              <option value="Edmonton">Edmonton</option>
+              <option value="Calgary">Calgary</option>
+            </select>
+          </div>
+
+          <div>
+            <FieldLabel htmlFor="season">Season</FieldLabel>
+            <select
+              id="season"
+              value={form.season}
+              onChange={(e) => updateField("season", e.target.value)}
+              className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+            >
+              {SEASONS.map((season) => (
+                <option key={season} value={season}>
+                  {season}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <FieldLabel htmlFor="style">Trip style</FieldLabel>
+            <select
+              id="style"
+              value={form.style}
+              onChange={(e) => updateField("style", e.target.value as TripStyle)}
+              className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+            >
+              {TRIP_STYLES.map((style) => (
+                <option key={style} value={style}>
+                  {displayStyleLabel(style)}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <FieldLabel htmlFor="budget">Budget ($)</FieldLabel>
+            <input
+              id="budget"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              type="text"
+              value={form.budget}
+              onChange={(e) => handleNumericChange("budget", e.target.value)}
+              onBlur={() => handleNumericBlur("budget")}
+              className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+            />
+          </div>
+
+          <div>
+            <FieldLabel htmlFor="maxDriveHours">Drive hours</FieldLabel>
+            <input
+              id="maxDriveHours"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              type="text"
+              value={form.maxDriveHours}
+              onChange={(e) => handleNumericChange("maxDriveHours", e.target.value)}
+              onBlur={() => handleNumericBlur("maxDriveHours")}
+              className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+            />
+          </div>
+
+          <div>
+            <FieldLabel htmlFor="tripLengthDays">Trip days</FieldLabel>
+            <input
+              id="tripLengthDays"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              type="text"
+              value={form.tripLengthDays}
+              onChange={(e) => handleNumericChange("tripLengthDays", e.target.value)}
+              onBlur={() => handleNumericBlur("tripLengthDays")}
+              className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+            />
+          </div>
         </div>
 
-        <div>
-          <label
-            htmlFor="maxDriveHours"
-            className="mb-2 block text-sm font-medium text-white"
-          >
-            Max drive hours
-          </label>
-          <input
-            id="maxDriveHours"
-            inputMode="numeric"
-            pattern="[0-9]*"
-            type="text"
-            value={form.maxDriveHours}
-            onChange={(e) => handleNumericChange("maxDriveHours", e.target.value)}
-            onBlur={() => handleNumericBlur("maxDriveHours")}
-            className="w-full rounded-none border border-white bg-black px-3 py-2 text-white outline-none"
-          />
-        </div>
-
-        <div>
-          <label
-            htmlFor="budget"
-            className="mb-2 block text-sm font-medium text-white"
-          >
-            Total budget ($)
-          </label>
-          <input
-            id="budget"
-            inputMode="numeric"
-            pattern="[0-9]*"
-            type="text"
-            value={form.budget}
-            onChange={(e) => handleNumericChange("budget", e.target.value)}
-            onBlur={() => handleNumericBlur("budget")}
-            className="w-full rounded-none border border-white bg-black px-3 py-2 text-white outline-none"
-          />
-        </div>
-
-        <div>
-          <label
-            htmlFor="tripLengthDays"
-            className="mb-2 block text-sm font-medium text-white"
-          >
-            Trip length (days)
-          </label>
-          <input
-            id="tripLengthDays"
-            inputMode="numeric"
-            pattern="[0-9]*"
-            type="text"
-            value={form.tripLengthDays}
-            onChange={(e) => handleNumericChange("tripLengthDays", e.target.value)}
-            onBlur={() => handleNumericBlur("tripLengthDays")}
-            className="w-full rounded-none border border-white bg-black px-3 py-2 text-white outline-none"
-          />
-        </div>
-
-        <div>
-          <label
-            htmlFor="season"
-            className="mb-2 block text-sm font-medium text-white"
-          >
-            Season
-          </label>
-          <select
-            id="season"
-            value={form.season}
-            onChange={(e) => updateField("season", e.target.value)}
-            className="w-full rounded-none border border-white bg-black px-3 py-2 text-white outline-none"
-          >
-            {SEASONS.map((season) => (
-              <option key={season} value={season}>
-                {season}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label
-            htmlFor="style"
-            className="mb-2 block text-sm font-medium text-white"
-          >
-            Trip style
-          </label>
-          <select
-            id="style"
-            value={form.style}
-            onChange={(e) =>
-              updateField("style", e.target.value as TripStyle)
-            }
-            className="w-full rounded-none border border-white bg-black px-3 py-2 text-white outline-none"
-          >
-            {TRIP_STYLES.map((style) => (
-              <option key={style} value={style}>
-                {displayStyleLabel(style)}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <label className="flex items-center gap-2 text-white">
-          <input
-            type="checkbox"
+        <div className="grid gap-3 lg:grid-cols-3">
+          <ToggleRow
+            title="Vegan-friendly only"
             checked={form.veganFriendly}
-            onChange={(e) => updateField("veganFriendly", e.target.checked)}
+            onChange={(checked) => updateField("veganFriendly", checked)}
           />
-          <span>Vegan-friendly only</span>
-        </label>
-
-        <label className="flex items-center gap-2 text-white">
-          <input
-            type="checkbox"
+          <ToggleRow
+            title="Include staycations"
             checked={form.includeStaycations}
-            onChange={(e) => updateField("includeStaycations", e.target.checked)}
+            onChange={(checked) => updateField("includeStaycations", checked)}
           />
-          <span>Include staycations</span>
-        </label>
-
-        <label className="flex items-center gap-2 text-white">
-          <input
-            type="checkbox"
+          <ToggleRow
+            title="Strict budget"
             checked={form.strictBudget}
-            onChange={(e) => updateField("strictBudget", e.target.checked)}
+            onChange={(checked) => updateField("strictBudget", checked)}
           />
-          <span>Strict budget</span>
-        </label>
+        </div>
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="rounded bg-black px-4 py-2 text-white outline outline-1 outline-white disabled:opacity-60"
-        >
-          {loading ? "Generating..." : "Generate trip"}
-        </button>
+        <div className="flex flex-col gap-4 border-t border-slate-200 pt-5 lg:flex-row lg:items-center lg:justify-between">
+          <div className="text-sm text-slate-600">
+            {results.length > 0
+              ? `${results.length} destination${results.length === 1 ? "" : "s"} matched your filters.`
+              : "Choose your preferences and generate ranked trip ideas."}
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="inline-flex h-12 items-center justify-center rounded-2xl bg-slate-950 px-6 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {loading ? "Generating..." : "Generate trips"}
+          </button>
+        </div>
       </form>
-
-      <div className="mt-6 rounded border border-white px-4 py-4 text-white">
-        {results.length > 0
-          ? `${results.length} destinations matched your filters.`
-          : "No destinations generated yet."}
-      </div>
     </section>
   );
 }
