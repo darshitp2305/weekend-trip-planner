@@ -15,6 +15,29 @@ function formatMoney(value: number) {
   return `$${Math.round(value)}`;
 }
 
+function getStartCityLabel(trip: any): string {
+  const raw = `${trip?.routeSummary?.origin?.label ?? ""} ${trip?.summary ?? ""} ${trip?.name ?? ""}`.toLowerCase();
+
+  if (raw.includes("calgary")) return "Calgary, Alberta";
+  return "Edmonton, Alberta";
+}
+
+function getDestinationLabel(trip: any): string {
+  if (typeof trip?.destinationName === "string" && trip.destinationName.trim()) {
+    return `${trip.destinationName}, Alberta`;
+  }
+
+  if (typeof trip?.destination === "string" && trip.destination.trim()) {
+    return `${trip.destination}, Alberta`;
+  }
+
+  if (typeof trip?.name === "string" && trip.name.trim()) {
+    return `${trip.name}, Alberta`;
+  }
+
+  return "Banff, Alberta";
+}
+
 export default function TripPage() {
   const params = useParams<{ tripId: string }>();
   const router = useRouter();
@@ -42,6 +65,51 @@ export default function TripPage() {
       cancelled = true;
     };
   }, [params?.tripId]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadRoute() {
+      if (!trip) return;
+      if (trip.routeSummary?.distanceMeters && trip.routeSummary?.durationSeconds) return;
+
+      try {
+        const origin = getStartCityLabel(trip);
+        const destination = getDestinationLabel(trip);
+
+        const response = await fetch("/api/osm-route", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            origin,
+            destination,
+          }),
+        });
+
+        const data = await response.json();
+
+        if (!cancelled && response.ok && data?.success && data?.route) {
+          setTrip((prev: any) => {
+            if (!prev) return prev;
+            return {
+              ...prev,
+              routeSummary: data.route,
+            };
+          });
+        }
+      } catch (error) {
+        console.error("Failed to load OpenStreetMap route:", error);
+      }
+    }
+
+    loadRoute();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [trip]);
 
   const itineraryDays = Array.isArray(trip?.itineraryDays) ? trip.itineraryDays : [];
 

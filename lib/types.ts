@@ -13,6 +13,23 @@ export interface StyleScores {
   adventure: number;
 }
 
+export interface Coordinate {
+  lat: number;
+  lon: number;
+  label?: string;
+}
+
+export interface RouteSummary {
+  distanceMeters: number;
+  durationSeconds: number;
+  geometry?: {
+    type: string;
+    coordinates: number[][];
+  } | null;
+  origin?: Coordinate;
+  destination?: Coordinate;
+}
+
 export interface Activity {
   name: string;
   type: string;
@@ -72,6 +89,8 @@ export interface Destination {
   veganFriendly: boolean;
   summary: string;
   imageUrl?: string;
+  latitude?: number;
+  longitude?: number;
   topActivities: Activity[];
   hotelOptions: HotelOption[];
   foodSpots: FoodSpot[];
@@ -87,6 +106,8 @@ export interface RawDestination {
   home_base_city: string;
   is_staycation: boolean;
   image_url?: string;
+  latitude?: number;
+  longitude?: number;
   drive_time_hours_from: {
     edmonton?: number;
     calgary?: number;
@@ -172,6 +193,7 @@ export interface RankedDestination extends Destination {
   aiItinerary?: string[];
   aiBudgetNote?: string;
   aiBestFit?: string;
+  routeSummary?: RouteSummary;
 }
 
 export interface ItineraryStop {
@@ -215,6 +237,7 @@ export interface TripPlan {
   aiSummary?: string;
   aiBudgetNote?: string;
   aiBestFit?: string;
+  routeSummary?: RouteSummary;
   dataSource: TripDataSource;
   createdAt: string;
   travelerCount?: number;
@@ -231,4 +254,6 @@ export interface TripPlan {
   source?: TripDataSource;
   isStaycation?: boolean;
   homeBaseCity?: string;
+  latitude?: number;
+  longitude?: number;
 }

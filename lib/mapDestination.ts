@@ -71,6 +71,18 @@ function getImageUrl(raw: RawDestination): string | undefined {
   return typeof value === "string" && value.trim().length > 0 ? value : undefined;
 }
 
+function getLatitude(raw: RawDestination): number | undefined {
+  return typeof raw.latitude === "number" && Number.isFinite(raw.latitude)
+    ? raw.latitude
+    : undefined;
+}
+
+function getLongitude(raw: RawDestination): number | undefined {
+  return typeof raw.longitude === "number" && Number.isFinite(raw.longitude)
+    ? raw.longitude
+    : undefined;
+}
+
 type RawHotelOption = {
   name: string;
   price_per_night?: number;
@@ -169,6 +181,8 @@ export function mapRawDestination(
     veganFriendly: false,
     summary: buildSummary(raw),
     imageUrl: getImageUrl(raw),
+    latitude: getLatitude(raw),
+    longitude: getLongitude(raw),
     topActivities,
     hotelOptions,
     foodSpots,

@@ -13,6 +13,16 @@ type TripHeaderProps = {
     source?: string;
     rawVibes?: string[];
     confidence?: string;
+    routeSummary?: {
+      distanceMeters?: number;
+      durationSeconds?: number;
+      origin?: {
+        label?: string;
+      };
+      destination?: {
+        label?: string;
+      };
+    };
     liveDataSummary?: {
       usedPlacesData?: boolean;
       usedFallbackData?: boolean;
@@ -82,15 +92,54 @@ function sourceLabel(trip: TripHeaderProps["trip"]) {
   return "Saved trip";
 }
 
+function formatDriveHours(hours?: number) {
+  if (hours === undefined || !Number.isFinite(hours)) return "—";
+  if (hours < 1) return `${Math.round(hours * 60)} min`;
+  return `${Math.round(hours * 10) / 10} hours`;
+}
+
+function formatDurationFromSeconds(seconds?: number) {
+  if (seconds === undefined || !Number.isFinite(seconds)) return undefined;
+
+  const totalMinutes = Math.round(seconds / 60);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+
+  if (hours <= 0) return `${minutes} min`;
+  if (minutes === 0) return `${hours} hr`;
+  return `${hours} hr ${minutes} min`;
+}
+
+function formatDistanceFromMeters(meters?: number) {
+  if (meters === undefined || !Number.isFinite(meters)) return "—";
+  const km = meters / 1000;
+  return `${Math.round(km)} km`;
+}
+
 export default function TripHeader({ trip }: TripHeaderProps) {
   const title = trip.title ?? trip.name ?? trip.destination ?? "Saved trip";
   const vibes = Array.isArray(trip.rawVibes) ? trip.rawVibes.slice(0, 5) : [];
-  const driveValue =
+
+  const fallbackDriveHours =
     trip.driveHours !== undefined
       ? trip.driveHours
       : trip.driveHoursFromStart !== undefined
         ? trip.driveHoursFromStart
         : undefined;
+
+  const routedDuration = formatDurationFromSeconds(
+    trip.routeSummary?.durationSeconds
+  );
+
+  const driveTimeValue =
+    routedDuration ?? formatDriveHours(fallbackDriveHours);
+
+  const distanceValue = formatDistanceFromMeters(
+    trip.routeSummary?.distanceMeters
+  );
+
+  const originLabel = trip.routeSummary?.origin?.label;
+  const destinationLabel = trip.routeSummary?.destination?.label;
 
   return (
     <section className="overflow-hidden rounded-[1.75rem] border border-slate-200 bg-white shadow-sm">
@@ -109,6 +158,7 @@ export default function TripHeader({ trip }: TripHeaderProps) {
           <Badge>{trip.province ?? "Alberta"}</Badge>
           <Badge tone="violet">{confidenceLabel(trip.confidence)}</Badge>
           <Badge tone="green">{sourceLabel(trip)}</Badge>
+          {trip.routeSummary ? <Badge>OpenStreetMap route</Badge> : null}
         </div>
 
         <div className="mt-4">
@@ -121,13 +171,17 @@ export default function TripHeader({ trip }: TripHeaderProps) {
               {trip.summary}
             </p>
           ) : null}
+
+          {originLabel && destinationLabel ? (
+            <p className="mt-3 text-sm text-slate-500">
+              Route: {originLabel} → {destinationLabel}
+            </p>
+          ) : null}
         </div>
 
-        <div className="mt-6 grid gap-3 sm:grid-cols-3 lg:max-w-2xl">
-          <Stat
-            label="Drive time"
-            value={driveValue !== undefined ? `${driveValue} hours` : "—"}
-          />
+        <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 lg:max-w-4xl">
+          <Stat label="Drive time" value={driveTimeValue} />
+          <Stat label="Distance" value={distanceValue} />
           <Stat
             label="Style fit"
             value={trip.styleMatchStrength ?? "—"}
