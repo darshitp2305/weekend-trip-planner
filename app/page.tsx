@@ -31,7 +31,7 @@ function extractResults(payload: any): RankedDestination[] | null {
 
 function SkeletonTripCard() {
   return (
-    <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm animate-pulse">
+    <div className="animate-pulse overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
       <div className="h-56 w-full bg-slate-100" />
 
       <div className="p-6">
@@ -178,8 +178,8 @@ export default function HomePage() {
           setDisplayResults(rankedTrips);
           setAiStatusMessage(
             usedLiveData
-              ? "Used live Places data for ranking. Using fallback template text."
-              : "Using fallback template text."
+              ? "Trippify used live Places data for ranking and fallback template text."
+              : "Trippify used fallback template text."
           );
           return;
         }
@@ -192,14 +192,14 @@ export default function HomePage() {
           if (data?.source === "live-openai") {
             setAiStatusMessage(
               usedLiveData
-                ? "Used live Places data for ranking and live OpenAI-generated trip text."
-                : "Using live OpenAI-generated trip text."
+                ? "Trippify used live Places data and live OpenAI trip text."
+                : "Trippify used live OpenAI trip text."
             );
           } else {
             setAiStatusMessage(
               usedLiveData
-                ? "Used live Places data for ranking. Using fallback template text."
-                : "Using fallback template text."
+                ? "Trippify used live Places data for ranking and fallback template text."
+                : "Trippify used fallback template text."
             );
           }
         } else {
@@ -207,8 +207,8 @@ export default function HomePage() {
           setDisplayResults(rankedTrips);
           setAiStatusMessage(
             usedLiveData
-              ? "Used live Places data for ranking. Using fallback template text."
-              : "Using fallback template text."
+              ? "Trippify used live Places data for ranking and fallback template text."
+              : "Trippify used fallback template text."
           );
         }
       } catch (error) {
@@ -216,8 +216,8 @@ export default function HomePage() {
         setDisplayResults(rankedTrips);
         setAiStatusMessage(
           usedLiveData
-            ? "Used live Places data for ranking. Using fallback template text."
-            : "Using fallback template text."
+            ? "Trippify used live Places data for ranking and fallback template text."
+            : "Trippify used fallback template text."
         );
       }
     } catch (error) {
@@ -237,24 +237,24 @@ export default function HomePage() {
     <main className="min-h-screen bg-[#f8fafc] text-slate-900">
       <div className="mx-auto max-w-7xl px-6 py-8 sm:px-8 lg:px-10">
         <section className="mb-8">
-          <div className="inline-flex rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600 shadow-sm">
-            Alberta weekend planner
+          <div className="inline-flex rounded-full border border-violet-200 bg-violet-50 px-3 py-1 text-xs font-medium text-violet-700 shadow-sm">
+            Trippify for Alberta
           </div>
 
           <div className="mt-4 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-3xl">
               <h1 className="text-4xl font-semibold tracking-tight text-slate-950 sm:text-5xl">
-                Plan a weekend trip without digging through ten tabs.
+                Find a weekend trip that actually fits.
               </h1>
               <p className="mt-3 text-base leading-7 text-slate-600 sm:text-lg">
-                Enter your budget, drive limit, and trip style to get ranked Alberta
-                getaway ideas that actually fit your weekend.
+                Trippify ranks Alberta getaways and staycations by budget, drive
+                time, and travel style, so you can stop guessing and pick faster.
               </p>
             </div>
 
             <div className="grid grid-cols-3 gap-3 lg:min-w-[360px]">
+              <MiniStat label="Brand" value="Trippify" />
               <MiniStat label="Output" value="3 trips" />
-              <MiniStat label="Ranking" value="Fit-based" />
               <MiniStat label="Data" value="Live + AI" />
             </div>
           </div>
@@ -272,12 +272,12 @@ export default function HomePage() {
           <aside className="grid gap-4 sm:grid-cols-3 xl:grid-cols-1">
             <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
               <div className="text-xs font-semibold uppercase tracking-[0.18em] text-violet-600">
-                What you get
+                Why Trippify
               </div>
               <ul className="mt-4 space-y-3 text-sm leading-6 text-slate-600">
-                <li>Ranked destinations based on your constraints</li>
-                <li>Budget-aware options with staycation support</li>
-                <li>Saveable trip cards with fuller itinerary details</li>
+                <li>Ranked trips based on your actual constraints</li>
+                <li>Budget-aware results with staycation support</li>
+                <li>Saveable plans with fuller itinerary details</li>
               </ul>
             </div>
 
@@ -289,16 +289,18 @@ export default function HomePage() {
                 Jasper foodie weekend
               </div>
               <p className="mt-2 text-sm leading-6 text-slate-600">
-                Works well when you want scenic value, a manageable drive, and decent food options without blowing a short-trip budget.
+                A strong Trippify match when you want scenic value, a manageable
+                drive, and solid food options without blowing a short-trip budget.
               </p>
             </div>
 
             <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
               <div className="text-xs font-semibold uppercase tracking-[0.18em] text-violet-600">
-                Good default
+                Product promise
               </div>
               <p className="mt-3 text-sm leading-6 text-slate-600">
-                Keep the form simple. Let the trip cards carry the detail after generation.
+                Keep the form simple. Let Trippify handle the ranking, then save
+                the trip worth turning into a real plan.
               </p>
             </div>
           </aside>
@@ -315,7 +317,7 @@ export default function HomePage() {
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
               <div>
                 <div className="text-xs font-semibold uppercase tracking-[0.18em] text-violet-600">
-                  Your matches
+                  Your Trippify matches
                 </div>
                 <h2 className="mt-2 text-3xl font-semibold tracking-tight text-slate-950">
                   Compare your best options
@@ -323,7 +325,8 @@ export default function HomePage() {
               </div>
 
               <p className="max-w-xl text-sm leading-6 text-slate-600">
-                Review the top fits first, then save the one worth turning into a full plan.
+                Review the strongest fits first, then save the one worth turning
+                into a full trip plan.
               </p>
             </div>
 
@@ -334,7 +337,7 @@ export default function HomePage() {
             {waitingForTripText ? (
               <div className="mt-8 space-y-6">
                 <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-slate-600 shadow-sm">
-                  Building trip summaries and itinerary text...
+                  Trippify is building your trip summaries and itinerary text...
                 </div>
 
                 <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
@@ -347,12 +350,12 @@ export default function HomePage() {
               <div className="mt-8 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
                 {displayResults.map((trip) => (
                   <TripCard
-                  key={trip.name}
-                  trip={trip}
-                  input={lastInput ?? undefined}
-                />
-              ))}
-            </div>
+                    key={trip.name}
+                    trip={trip}
+                    input={lastInput ?? undefined}
+                  />
+                ))}
+              </div>
             )}
           </section>
         ) : null}
