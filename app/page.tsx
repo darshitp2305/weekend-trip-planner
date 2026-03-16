@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import AccountPanel from "../components/AccountPanel";
 import TripCard from "../components/TripCard";
 import TripForm from "../components/TripForm";
 import { RankedDestination, TripInput } from "../lib/types";
@@ -19,6 +20,37 @@ type GenerateTripResponse = {
 };
 
 const LAST_INPUT_STORAGE_KEY = "weekend-trip-last-input";
+const PAGE_STATE_STORAGE_KEY = "weekend-trip-page-state";
+
+function getFallbackImageUrl(name?: string) {
+  const seed = encodeURIComponent((name ?? "trippify").trim().toLowerCase());
+  return `https://picsum.photos/seed/${seed}/1400/900`;
+}
+
+function withUniqueTripImages(results: RankedDestination[]) {
+  const seenImages = new Set<string>();
+
+  return results.map((trip) => {
+    const rawImage = typeof trip.imageUrl === "string" ? trip.imageUrl.trim() : "";
+
+    if (!rawImage) {
+      return {
+        ...trip,
+        imageUrl: getFallbackImageUrl(trip.name),
+      };
+    }
+
+    if (seenImages.has(rawImage)) {
+      return {
+        ...trip,
+        imageUrl: getFallbackImageUrl(trip.name),
+      };
+    }
+
+    seenImages.add(rawImage);
+    return trip;
+  });
+}
 
 function extractResults(payload: any): RankedDestination[] | null {
   if (Array.isArray(payload?.results)) return payload.results;
@@ -96,6 +128,71 @@ export default function HomePage() {
   const [lastInput, setLastInput] = useState<TripInput | null>(null);
   const [aiStatusMessage, setAiStatusMessage] = useState("");
   const [waitingForTripText, setWaitingForTripText] = useState(false);
+  const [restored, setRestored] = useState(false);
+
+  function persistPageState(nextState: {
+    rankedResults?: RankedDestination[];
+    displayResults?: RankedDestination[];
+    lastInput?: TripInput | null;
+    aiStatusMessage?: string;
+  }) {
+    if (typeof window === "undefined") return;
+
+    try {
+      sessionStorage.setItem(
+        PAGE_STATE_STORAGE_KEY,
+        JSON.stringify({
+          rankedResults: nextState.rankedResults ?? rankedResults,
+          displayResults: nextState.displayResults ?? displayResults,
+          lastInput: nextState.lastInput ?? lastInput,
+          aiStatusMessage: nextState.aiStatusMessage ?? aiStatusMessage,
+        })
+      );
+    } catch (error) {
+      console.error("Failed to persist planner page state:", error);
+    }
+  }
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    try {
+      const raw = sessionStorage.getItem(PAGE_STATE_STORAGE_KEY);
+      if (!raw) return;
+
+      const saved = JSON.parse(raw) as {
+        rankedResults?: RankedDestination[];
+        displayResults?: RankedDestination[];
+        lastInput?: TripInput | null;
+        aiStatusMessage?: string;
+      };
+
+      if (Array.isArray(saved.rankedResults)) {
+        setRankedResults(saved.rankedResults);
+      }
+
+      if (Array.isArray(saved.displayResults)) {
+        setDisplayResults(saved.displayResults);
+      }
+
+      if (saved.lastInput) {
+        setLastInput(saved.lastInput);
+      }
+
+      if (typeof saved.aiStatusMessage === "string") {
+        setAiStatusMessage(saved.aiStatusMessage);
+      }
+    } catch (error) {
+      console.error("Failed to restore planner page state:", error);
+    } finally {
+      setRestored(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!restored) return;
+    persistPageState({});
+  }, [aiStatusMessage, displayResults, lastInput, rankedResults, restored]);
 
   async function handleGenerate(input: TripInput) {
     setLoading(true);
@@ -110,6 +207,13 @@ export default function HomePage() {
         console.error("Failed to persist last generated input:", error);
       }
     }
+
+    persistPageState({
+      lastInput: input,
+      rankedResults: [],
+      displayResults: [],
+      aiStatusMessage: "",
+    });
 
     try {
       const rankResponse = await fetch("/api/rank-trips", {
@@ -140,22 +244,40 @@ export default function HomePage() {
         setRankedResults([]);
         setDisplayResults([]);
         setAiStatusMessage("");
+        persistPageState({
+          rankedResults: [],
+          displayResults: [],
+          lastInput: input,
+          aiStatusMessage: "",
+        });
         return;
       }
 
       if (!rankData?.results || rankData.results.length === 0) {
         setRankedResults([]);
         setDisplayResults([]);
-        setAiStatusMessage(
+        const noMatchMessage =
           input.preferredDestination
             ? `Trippify could not find a destination match for "${input.preferredDestination}".`
-            : ""
-        );
+            : "";
+        setAiStatusMessage(noMatchMessage);
+        persistPageState({
+          rankedResults: [],
+          displayResults: [],
+          lastInput: input,
+          aiStatusMessage: noMatchMessage,
+        });
         return;
       }
 
       setRankedResults(rankData.results);
       setDisplayResults([]);
+      persistPageState({
+        rankedResults: rankData.results,
+        displayResults: [],
+        lastInput: input,
+        aiStatusMessage: "",
+      });
 
       const rankedTrips = rankData.results;
       const usedLiveData = Boolean(rankData.usedLiveData);
@@ -190,11 +312,17 @@ export default function HomePage() {
         if (!response.ok) {
           console.error("/api/generate-trip failed:", response.status, data);
           setDisplayResults(rankedTrips);
-          setAiStatusMessage(
+          const fallbackMessage =
             usedLiveData
               ? "Trippify used live Places data for ranking and fallback template text."
-              : "Trippify used fallback template text."
-          );
+              : "Trippify used fallback template text.";
+          setAiStatusMessage(fallbackMessage);
+          persistPageState({
+            rankedResults: rankedTrips,
+            displayResults: rankedTrips,
+            lastInput: input,
+            aiStatusMessage: fallbackMessage,
+          });
           return;
         }
 
@@ -203,49 +331,77 @@ export default function HomePage() {
         if (aiTrips && aiTrips.length > 0) {
           setDisplayResults(aiTrips);
 
-          if (data?.source === "live-openai") {
-            setAiStatusMessage(
-              usedLiveData
+          const aiMessage =
+            data?.source === "live-openai"
+              ? usedLiveData
                 ? "Trippify used live Places data and live OpenAI trip text."
                 : "Trippify used live OpenAI trip text."
-            );
-          } else {
-            setAiStatusMessage(
-              usedLiveData
+              : usedLiveData
                 ? "Trippify used live Places data for ranking and fallback template text."
-                : "Trippify used fallback template text."
-            );
+                : "Trippify used fallback template text.";
+
+          if (data?.source === "live-openai") {
+            setAiStatusMessage(aiMessage);
+          } else {
+            setAiStatusMessage(aiMessage);
           }
+
+          persistPageState({
+            rankedResults: rankedTrips,
+            displayResults: aiTrips,
+            lastInput: input,
+            aiStatusMessage: aiMessage,
+          });
         } else {
           console.error("/api/generate-trip returned no usable results:", data);
           setDisplayResults(rankedTrips);
-          setAiStatusMessage(
+          const fallbackMessage =
             usedLiveData
               ? "Trippify used live Places data for ranking and fallback template text."
-              : "Trippify used fallback template text."
-          );
+              : "Trippify used fallback template text.";
+          setAiStatusMessage(fallbackMessage);
+          persistPageState({
+            rankedResults: rankedTrips,
+            displayResults: rankedTrips,
+            lastInput: input,
+            aiStatusMessage: fallbackMessage,
+          });
         }
       } catch (error) {
         console.error("AI generation failed, using ranked results:", error);
         setDisplayResults(rankedTrips);
-        setAiStatusMessage(
+        const fallbackMessage =
           usedLiveData
             ? "Trippify used live Places data for ranking and fallback template text."
-            : "Trippify used fallback template text."
-        );
+            : "Trippify used fallback template text.";
+        setAiStatusMessage(fallbackMessage);
+        persistPageState({
+          rankedResults: rankedTrips,
+          displayResults: rankedTrips,
+          lastInput: input,
+          aiStatusMessage: fallbackMessage,
+        });
       }
     } catch (error) {
       console.error("Trip generation failed:", error);
       setRankedResults([]);
       setDisplayResults([]);
       setAiStatusMessage("");
+      persistPageState({
+        rankedResults: [],
+        displayResults: [],
+        lastInput: input,
+        aiStatusMessage: "",
+      });
     } finally {
       setLoading(false);
       setWaitingForTripText(false);
     }
   }
 
-  const compareTrips = displayResults.length > 0 ? displayResults : rankedResults;
+  const compareTrips = withUniqueTripImages(
+    displayResults.length > 0 ? displayResults : rankedResults
+  );
   const isDirectDestinationFlow = Boolean(lastInput?.preferredDestination);
 
   return (
@@ -281,10 +437,13 @@ export default function HomePage() {
               onGenerate={handleGenerate}
               loading={loading}
               results={compareTrips}
+              initialInput={lastInput ?? undefined}
             />
           </div>
 
           <aside className="grid gap-4 sm:grid-cols-3 xl:grid-cols-1">
+            <AccountPanel />
+
             <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
               <div className="text-xs font-semibold uppercase tracking-[0.18em] text-violet-600">
                 Why Trippify
@@ -306,16 +465,6 @@ export default function HomePage() {
               <p className="mt-2 text-sm leading-6 text-slate-600">
                 A strong Trippify match when you want scenic value, a manageable
                 drive, and solid food options without blowing a short-trip budget.
-              </p>
-            </div>
-
-            <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
-              <div className="text-xs font-semibold uppercase tracking-[0.18em] text-violet-600">
-                Product promise
-              </div>
-              <p className="mt-3 text-sm leading-6 text-slate-600">
-                Keep the form simple. Let Trippify handle the ranking, then save
-                the trip worth turning into a real plan.
               </p>
             </div>
           </aside>

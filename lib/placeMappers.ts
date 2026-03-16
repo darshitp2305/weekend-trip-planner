@@ -30,6 +30,7 @@ export function mapGooglePlaceToFoodSpot(place: GooglePlace): FoodSpot {
     mapsUrl: place.googleMapsUri || "",
     rating: place.rating,
     shortDescription: place.formattedAddress || "Live Google Places result.",
+    photoRef: place.photos?.[0]?.name,
   };
 }
 
@@ -46,6 +47,7 @@ export function mapGooglePlaceToActivity(place: GooglePlace): Activity {
     rating: place.rating,
     shortDescription: place.formattedAddress || "Live Google Places result.",
     estimatedCost: cost,
+    photoRef: place.photos?.[0]?.name,
   };
 }
 
@@ -61,5 +63,6 @@ export function mapGooglePlaceToHotel(place: GooglePlace): HotelOption {
     rating: place.rating,
     shortDescription: place.formattedAddress || "Live Google Places result.",
     estimatedCost: undefined,
+    photoRef: place.photos?.[0]?.name,
   };
 }

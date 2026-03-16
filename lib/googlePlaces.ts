@@ -44,6 +44,9 @@ export type GooglePlace = {
   primaryType?: string;
   priceLevel?: string;
   userRatingCount?: number;
+  photos?: Array<{
+    name?: string;
+  }>;
 };
 
 type HotelSearchOptions = {
@@ -61,6 +64,7 @@ const FIELD_MASK = [
   "places.googleMapsUri",
   "places.primaryType",
   "places.priceLevel",
+  "places.photos.name",
 ].join(",");
 
 export async function searchRestaurants(destination: string) {

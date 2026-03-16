@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import rawDestinations from "../data/destinations.json";
 import { deriveTripEndDate, formatDateRange } from "../lib/tripDates";
 import { RankedDestination, TripInput, TripStyle } from "../lib/types";
@@ -10,6 +10,7 @@ type Props = {
   onSubmit?: (input: TripInput) => Promise<void> | void;
   loading?: boolean;
   results?: RankedDestination[];
+  initialInput?: Partial<TripInput>;
 };
 
 type FormState = {
@@ -153,6 +154,7 @@ export default function TripForm({
   onSubmit,
   loading = false,
   results = [],
+  initialInput,
 }: Props) {
   const [form, setForm] = useState<FormState>(DEFAULT_FORM);
   const derivedTripEndDate = deriveTripEndDate(
@@ -163,6 +165,25 @@ export default function TripForm({
     form.tripStartDate || undefined,
     derivedTripEndDate
   );
+
+  useEffect(() => {
+    if (!initialInput) return;
+
+    setForm({
+      startCity: initialInput.startCity === "Calgary" ? "Calgary" : "Edmonton",
+      maxDriveHours: String(initialInput.maxDriveHours ?? 5),
+      budgetPerTraveler: String(initialInput.budgetPerTraveler ?? 300),
+      travelerCount: String(initialInput.travelerCount ?? 2),
+      tripLengthDays: String(initialInput.tripLengthDays ?? 2),
+      season: initialInput.season ?? "Summer",
+      style: initialInput.style ?? "foodie",
+      veganFriendly: Boolean(initialInput.veganFriendly),
+      includeStaycations: Boolean(initialInput.includeStaycations),
+      strictBudget: Boolean(initialInput.strictBudget),
+      preferredDestination: initialInput.preferredDestination ?? "",
+      tripStartDate: initialInput.tripStartDate ?? "",
+    });
+  }, [initialInput]);
 
   function updateField<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({
@@ -230,6 +251,10 @@ export default function TripForm({
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+
+    if (!form.tripStartDate) {
+      return;
+    }
 
     const travelerCount = Math.min(
       12,
@@ -489,19 +514,27 @@ export default function TripForm({
               : "Choose your preferences and generate ranked trip ideas."}
           </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="inline-flex h-12 items-center justify-center rounded-2xl bg-slate-950 px-6 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {loading
-              ? form.preferredDestination.trim()
-                ? "Building..."
-                : "Generating..."
-              : form.preferredDestination.trim()
-                ? "Build my trip"
-                : "Generate trips"}
-          </button>
+          <div className="flex flex-col items-end gap-2">
+            {!form.tripStartDate ? (
+              <div className="text-sm text-amber-700">
+                Select a trip start date to generate a trip.
+              </div>
+            ) : null}
+
+            <button
+              type="submit"
+              disabled={loading || !form.tripStartDate}
+              className="inline-flex h-12 items-center justify-center rounded-2xl bg-slate-950 px-6 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {loading
+                ? form.preferredDestination.trim()
+                  ? "Building..."
+                  : "Generating..."
+                : form.preferredDestination.trim()
+                  ? "Build my trip"
+                  : "Generate trips"}
+            </button>
+          </div>
         </div>
       </form>
     </section>

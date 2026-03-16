@@ -45,6 +45,10 @@ type SerpApiHotelResult = {
   };
   price?: string;
   extracted_price?: number;
+  images?: Array<{
+    thumbnail?: string;
+    original_image?: string;
+  }>;
 };
 
 type SerpApiHotelsResponse = {
@@ -61,6 +65,7 @@ export type LiveHotelRate = {
   pricePerNight?: number;
   totalStayPrice?: number;
   pricingSource: "SerpApi Google Hotels";
+  photoUrl?: string;
 };
 
 function numericRateFromPrice(price?: SerpApiPrice): number | undefined {
@@ -144,6 +149,8 @@ export async function searchHotelsWithSerpApi(
         pricePerNight: nightly,
         totalStayPrice: total,
         pricingSource: "SerpApi Google Hotels" as const,
+        photoUrl:
+          result.images?.[0]?.original_image || result.images?.[0]?.thumbnail,
       };
     })
     .filter((hotel) => Boolean(hotel.name))

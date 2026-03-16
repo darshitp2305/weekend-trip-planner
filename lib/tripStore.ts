@@ -50,6 +50,7 @@ export async function saveTripPlan(plan: TripPlan) {
       id: plan.id,
       shareUrl: data.shareUrl as string,
       remoteSaved: true,
+      accountSaved: Boolean(data?.accountSaved),
     };
   } catch (error) {
     console.error("Remote trip save failed, local save kept:", error);
@@ -59,6 +60,7 @@ export async function saveTripPlan(plan: TripPlan) {
       id: plan.id,
       shareUrl: `/trip/${plan.id}`,
       remoteSaved: false,
+      accountSaved: false,
     };
   }
 }

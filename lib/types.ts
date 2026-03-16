@@ -40,6 +40,8 @@ export interface Activity {
   estimatedCost?: number;
   websiteUrl?: string;
   mapsUrl?: string;
+  photoRef?: string;
+  photoUrl?: string;
 }
 
 export interface HotelOption {
@@ -53,6 +55,8 @@ export interface HotelOption {
   estimatedCost?: number;
   websiteUrl?: string;
   mapsUrl?: string;
+  photoRef?: string;
+  photoUrl?: string;
 }
 
 export interface FoodSpot {
@@ -65,6 +69,8 @@ export interface FoodSpot {
   estimatedCost?: number;
   websiteUrl?: string;
   mapsUrl?: string;
+  photoRef?: string;
+  photoUrl?: string;
 }
 
 export interface BudgetBreakdown {
@@ -208,6 +214,7 @@ export interface ItineraryStop {
   mapsUrl?: string;
   websiteUrl?: string;
   estimatedCost?: number;
+  kind?: "travel" | "stay" | "food" | "activity";
 }
 
 export interface ItineraryDayData {
@@ -248,6 +255,7 @@ export interface TripPlan {
   travelerCount?: number;
   budgetPerTraveler?: number;
   totalBudget?: number;
+  tripLengthDays?: number;
   tripStartDate?: string;
   tripEndDate?: string;
 

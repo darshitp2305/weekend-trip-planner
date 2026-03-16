@@ -43,6 +43,55 @@ function dedupeByName<T extends { name?: string }>(items: T[]): T[] {
   return result;
 }
 
+function normalizeName(value?: string) {
+  return (value ?? "").trim().toLowerCase();
+}
+
+function mergeHotelSources<
+  TPrimary extends {
+    name?: string;
+    photoRef?: string;
+    photoUrl?: string;
+    mapsUrl?: string;
+    websiteUrl?: string;
+    bookingLink?: string;
+    shortDescription?: string;
+    rating?: number;
+  },
+  TFallback extends {
+    name?: string;
+    photoRef?: string;
+    photoUrl?: string;
+    mapsUrl?: string;
+    websiteUrl?: string;
+    bookingLink?: string;
+    shortDescription?: string;
+    rating?: number;
+  },
+>(primary: TPrimary[], fallback: TFallback[]) {
+  const fallbackByName = new Map(
+    fallback.map((item) => [normalizeName(item.name), item] as const)
+  );
+
+  return primary.map((item) => {
+    const match = fallbackByName.get(normalizeName(item.name));
+
+    if (!match) return item;
+
+    return {
+      ...match,
+      ...item,
+      photoRef: item.photoRef ?? match.photoRef,
+      photoUrl: item.photoUrl ?? match.photoUrl,
+      mapsUrl: item.mapsUrl ?? match.mapsUrl,
+      websiteUrl: item.websiteUrl ?? match.websiteUrl,
+      bookingLink: item.bookingLink ?? match.bookingLink,
+      shortDescription: item.shortDescription ?? match.shortDescription,
+      rating: item.rating ?? match.rating,
+    };
+  });
+}
+
 function interleaveArrays<T>(...arrays: T[][]): T[] {
   const result: T[] = [];
   const maxLength = Math.max(...arrays.map((arr) => arr.length), 0);
@@ -136,7 +185,9 @@ export async function enrichRankedTrip(
     );
 
     const liveHotels =
-      serpApiHotels.length > 0 ? serpApiHotels : placesHotels;
+      serpApiHotels.length > 0
+        ? mergeHotelSources(serpApiHotels, placesHotels)
+        : placesHotels;
 
     const balancedFoodSpots = dedupeByName(
       interleaveArrays(liveRestaurants, liveCafes)

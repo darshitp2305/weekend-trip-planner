@@ -61,11 +61,11 @@ function Stat({
   value: string;
 }) {
   return (
-    <div className="rounded-2xl bg-slate-50 px-4 py-3">
-      <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+    <div className="rounded-[1.1rem] border border-slate-200 bg-slate-50 px-3.5 py-3">
+      <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
         {label}
       </div>
-      <div className="mt-1 text-sm font-semibold text-slate-950">{value}</div>
+      <div className="mt-1 text-[15px] font-semibold text-slate-950">{value}</div>
     </div>
   );
 }
@@ -93,7 +93,7 @@ function sourceLabel(trip: TripHeaderProps["trip"]) {
 }
 
 function formatDriveHours(hours?: number) {
-  if (hours === undefined || !Number.isFinite(hours)) return "—";
+  if (hours === undefined || !Number.isFinite(hours)) return "-";
   if (hours < 1) return `${Math.round(hours * 60)} min`;
   return `${Math.round(hours * 10) / 10} hours`;
 }
@@ -111,7 +111,7 @@ function formatDurationFromSeconds(seconds?: number) {
 }
 
 function formatDistanceFromMeters(meters?: number) {
-  if (meters === undefined || !Number.isFinite(meters)) return "—";
+  if (meters === undefined || !Number.isFinite(meters)) return "-";
   const km = meters / 1000;
   return `${Math.round(km)} km`;
 }
@@ -131,8 +131,7 @@ export default function TripHeader({ trip }: TripHeaderProps) {
     trip.routeSummary?.durationSeconds
   );
 
-  const driveTimeValue =
-    routedDuration ?? formatDriveHours(fallbackDriveHours);
+  const driveTimeValue = routedDuration ?? formatDriveHours(fallbackDriveHours);
 
   const distanceValue = formatDistanceFromMeters(
     trip.routeSummary?.distanceMeters
@@ -142,9 +141,9 @@ export default function TripHeader({ trip }: TripHeaderProps) {
   const destinationLabel = trip.routeSummary?.destination?.label;
 
   return (
-    <section className="overflow-hidden rounded-[1.75rem] border border-slate-200 bg-white shadow-sm">
+    <section className="overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-sm">
       {trip.imageUrl ? (
-        <div className="aspect-[16/5] w-full overflow-hidden bg-slate-100">
+        <div className="aspect-[16/4.5] w-full overflow-hidden bg-slate-100">
           <img
             src={trip.imageUrl}
             alt={title}
@@ -153,7 +152,7 @@ export default function TripHeader({ trip }: TripHeaderProps) {
         </div>
       ) : null}
 
-      <div className="p-6 sm:p-7">
+      <div className="p-5 sm:p-6">
         <div className="flex flex-wrap items-center gap-2">
           <Badge>{trip.province ?? "Alberta"}</Badge>
           <Badge tone="violet">{confidenceLabel(trip.confidence)}</Badge>
@@ -161,39 +160,36 @@ export default function TripHeader({ trip }: TripHeaderProps) {
           {trip.routeSummary ? <Badge>OpenStreetMap route</Badge> : null}
         </div>
 
-        <div className="mt-4">
-          <h1 className="text-4xl font-semibold tracking-tight text-slate-950">
+        <div className="mt-3.5">
+          <h1 className="text-3xl font-semibold tracking-tight text-slate-950 sm:text-[2.15rem]">
             {title}
           </h1>
 
           {trip.summary ? (
-            <p className="mt-3 max-w-4xl text-base leading-7 text-slate-600">
+            <p className="mt-2.5 max-w-4xl text-[15px] leading-7 text-slate-600">
               {trip.summary}
             </p>
           ) : null}
 
           {originLabel && destinationLabel ? (
             <p className="mt-3 text-sm text-slate-500">
-              Route: {originLabel} → {destinationLabel}
+              Route: {originLabel} -&gt; {destinationLabel}
             </p>
           ) : null}
         </div>
 
-        <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 lg:max-w-4xl">
+        <div className="mt-5 grid gap-2.5 sm:grid-cols-2 lg:max-w-4xl lg:grid-cols-4">
           <Stat label="Drive time" value={driveTimeValue} />
           <Stat label="Distance" value={distanceValue} />
-          <Stat
-            label="Style fit"
-            value={trip.styleMatchStrength ?? "—"}
-          />
+          <Stat label="Style fit" value={trip.styleMatchStrength ?? "-"} />
           <Stat
             label="Score"
-            value={trip.score !== undefined ? String(trip.score) : "—"}
+            value={trip.score !== undefined ? String(trip.score) : "-"}
           />
         </div>
 
         {vibes.length > 0 ? (
-          <div className="mt-5 flex flex-wrap gap-2">
+          <div className="mt-4 flex flex-wrap gap-2">
             {vibes.map((tag) => (
               <span
                 key={tag}

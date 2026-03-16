@@ -656,6 +656,7 @@ function buildStaycationDayOne(
         title: breakfast.name,
         description: `Start with food at ${breakfast.name}.`,
         websiteUrl: breakfast.link,
+        kind: "food" as const,
       },
       activity && {
         time: "Afternoon",
@@ -663,12 +664,14 @@ function buildStaycationDayOne(
         description: `Use ${activity.name} as the anchor activity for the afternoon.`,
         websiteUrl: activity.bookingLink ?? activity.websiteUrl,
         estimatedCost: activity.costEstimate ?? activity.estimatedCost ?? 0,
+        kind: "activity" as const,
       },
       dinner && {
         time: "Evening",
         title: dinner.name,
         description: `Wrap up with food at ${dinner.name}.`,
         websiteUrl: dinner.link,
+        kind: "food" as const,
       },
     ]),
   };
@@ -694,6 +697,7 @@ function buildStaycationFinalDay(
         title: breakfast.name,
         description: `Start with another good local stop at ${breakfast.name}.`,
         websiteUrl: breakfast.link,
+        kind: "food" as const,
       },
       activity && {
         time: "Afternoon",
@@ -701,6 +705,7 @@ function buildStaycationFinalDay(
         description: `Use ${activity.name} as the second-day anchor.`,
         websiteUrl: activity.bookingLink ?? activity.websiteUrl,
         estimatedCost: activity.costEstimate ?? activity.estimatedCost ?? 0,
+        kind: "activity" as const,
       },
     ]),
   };
@@ -726,18 +731,21 @@ function buildGetawayDayOne(
         time: "Morning",
         title: `Drive from ${input.startCity} to ${trip.name}`,
         description: `Estimated drive: ${makeDriveText(trip)}.`,
+        kind: "travel" as const,
       },
       hotel && {
         time: "Afternoon",
         title: `Check in at ${hotel.name}`,
         description: `Use ${hotel.name} as your base, then start light.`,
         websiteUrl: hotel.bookingLink ?? hotel.websiteUrl,
+        kind: "stay" as const,
       },
       dinner && {
         time: "Evening",
         title: dinner.name,
         description: `Dinner at ${dinner.name}, then keep the night relaxed.`,
         websiteUrl: dinner.link,
+        kind: "food" as const,
       },
     ]),
   };
@@ -763,6 +771,7 @@ function buildGetawayFinalDay(
         title: breakfast.name,
         description: `Get one more good local stop at ${breakfast.name} before leaving.`,
         websiteUrl: breakfast.link,
+        kind: "food" as const,
       },
       finalActivity && {
         time: "Late morning",
@@ -771,12 +780,14 @@ function buildGetawayFinalDay(
         websiteUrl: finalActivity.bookingLink ?? finalActivity.websiteUrl,
         estimatedCost:
           finalActivity.costEstimate ?? finalActivity.estimatedCost ?? 0,
+        kind: "activity" as const,
       },
       {
         time: "Afternoon",
         title: `Drive back to ${input.startCity}`,
         description:
           "Head back without turning the final day into a scramble.",
+        kind: "travel" as const,
       },
     ]),
   };
@@ -816,6 +827,7 @@ function buildMiddleDay(
         title: breakfast.name,
         description: `Start the day at ${breakfast.name}.`,
         websiteUrl: breakfast.link,
+        kind: "food" as const,
       },
       mainActivity && {
         time: "Late morning",
@@ -823,6 +835,7 @@ function buildMiddleDay(
         description: `Use ${mainActivity.name} as the main daytime anchor.`,
         websiteUrl: mainActivity.bookingLink ?? mainActivity.websiteUrl,
         estimatedCost: mainActivity.costEstimate ?? mainActivity.estimatedCost ?? 0,
+        kind: "activity" as const,
       },
       secondaryActivity && {
         time: "Afternoon",
@@ -834,12 +847,14 @@ function buildMiddleDay(
           secondaryActivity.costEstimate ??
           secondaryActivity.estimatedCost ??
           0,
+        kind: "activity" as const,
       },
       dinner && {
         time: "Evening",
         title: dinner.name,
         description: `Finish with dinner at ${dinner.name}.`,
         websiteUrl: dinner.link,
+        kind: "food" as const,
       },
     ]),
   };
@@ -933,6 +948,7 @@ export function buildTripPlan(
     travelerCount: safeInput.travelerCount,
     budgetPerTraveler: safeInput.budgetPerTraveler,
     totalBudget: safeInput.budget,
+    tripLengthDays: safeInput.tripLengthDays,
     tripStartDate: safeInput.tripStartDate,
     tripEndDate: safeInput.tripEndDate,
 

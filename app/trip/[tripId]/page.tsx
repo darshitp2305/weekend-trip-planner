@@ -5,15 +5,36 @@ import { useParams, useRouter } from "next/navigation";
 import { getTripPlanById } from "../../../lib/tripStore";
 import TripHeader from "../../../components/TripHeader";
 import BudgetBreakdown from "../../../components/BudgetBreakdown";
-import StaySection from "../../../components/StaySection";
-import FoodSection from "../../../components/FoodSection";
-import ActivitySection from "../../../components/ActivitySection";
 import TripActions from "../../../components/TripActions";
-import ItineraryDay from "../../../components/ItineraryDay";
+import InteractiveItinerary from "../../../components/InteractiveItinerary";
 import { formatDateRange } from "../../../lib/tripDates";
+import { Activity, FoodSpot, HotelOption } from "../../../lib/types";
 
 function formatMoney(value: number) {
   return `$${Math.round(value)}`;
+}
+
+function deriveTripLengthDays(trip: any): number {
+  const explicitLength = Number(trip?.tripLengthDays);
+  if (Number.isFinite(explicitLength) && explicitLength > 0) {
+    return explicitLength;
+  }
+
+  if (trip?.tripStartDate && trip?.tripEndDate) {
+    const start = new Date(`${trip.tripStartDate}T00:00:00`);
+    const end = new Date(`${trip.tripEndDate}T00:00:00`);
+
+    if (!Number.isNaN(start.getTime()) && !Number.isNaN(end.getTime())) {
+      const diffMs = end.getTime() - start.getTime();
+      const diffDays = Math.round(diffMs / 86400000) + 1;
+
+      if (Number.isFinite(diffDays) && diffDays > 0) {
+        return diffDays;
+      }
+    }
+  }
+
+  return 2;
 }
 
 function getStartCityLabel(trip: any): string {
@@ -114,11 +135,93 @@ export default function TripPage() {
 
   const itineraryDays = Array.isArray(trip?.itineraryDays) ? trip.itineraryDays : [];
   const tripDateRange = formatDateRange(trip?.tripStartDate, trip?.tripEndDate);
+  const [selectionState, setSelectionState] = useState<{
+    hotelName?: string;
+    foods: Record<string, string>;
+    activities: Record<string, string>;
+  }>({
+    hotelName: undefined,
+    foods: {},
+    activities: {},
+  });
 
   const travelerCount = useMemo(() => {
     const value = Number(trip?.travelerCount ?? 1);
     return Number.isFinite(value) && value > 0 ? value : 1;
   }, [trip]);
+
+  const selectedBudget = useMemo(() => {
+    if (!trip) return null;
+
+    const tripLengthDays = deriveTripLengthDays(trip);
+    const nights = Math.max(1, tripLengthDays - 1);
+    const gas = Number(trip?.budgetBreakdown?.gas ?? 0);
+
+    const selectedHotel = (trip.hotelOptions ?? []).find(
+      (hotel: HotelOption) => hotel.name === selectionState.hotelName
+    );
+
+    const hotel =
+      typeof selectedHotel?.totalStayPrice === "number"
+        ? selectedHotel.totalStayPrice
+        : typeof selectedHotel?.pricePerNight === "number"
+          ? selectedHotel.pricePerNight * nights
+          : Number(trip?.budgetBreakdown?.hotel ?? 0);
+
+    const food = Object.values(selectionState.foods).reduce((sum, selectedName) => {
+      const spot = (trip.foodSpots ?? []).find(
+        (item: FoodSpot) => item.name === selectedName
+      );
+
+      if (!spot) return sum;
+
+      if (typeof spot.estimatedCost === "number") {
+        return sum + spot.estimatedCost * travelerCount;
+      }
+
+      const text = [spot.category, ...(spot.tags ?? []), spot.name]
+        .join(" ")
+        .toLowerCase();
+
+      const base =
+        text.includes("cafe") || text.includes("coffee") || text.includes("bakery")
+          ? 18
+          : text.includes("restaurant") || text.includes("steak") || text.includes("bar")
+            ? 38
+            : 26;
+
+      return sum + base * travelerCount;
+    }, 0);
+
+    const activities = Object.values(selectionState.activities).reduce(
+      (sum, selectedName) => {
+        const activity = (trip.topActivities ?? []).find(
+          (item: Activity) => item.name === selectedName
+        );
+        if (!activity) return sum;
+
+        return (
+          sum +
+          (activity.costEstimate ?? activity.estimatedCost ?? 0) * travelerCount
+        );
+      },
+      0
+    );
+
+    const misc = Math.round((hotel + food + gas + activities) * 0.1);
+    const totalExpected = Math.round(hotel + food + gas + activities + misc);
+
+    return {
+      hotel: Math.round(hotel),
+      food: Math.round(food),
+      gas: Math.round(gas),
+      activities: Math.round(activities),
+      misc,
+      totalExpected,
+      totalLow: Math.round(totalExpected * 0.9),
+      totalHigh: Math.round(totalExpected * 1.15),
+    };
+  }, [selectionState, travelerCount, trip]);
 
   const targetTotalBudget = useMemo(() => {
     const fromSavedField = Number(trip?.totalBudget);
@@ -143,13 +246,15 @@ export default function TripPage() {
 
   const estimatedTotalCost = useMemo(() => {
     const fromBreakdown = Number(
-      trip?.budgetBreakdown?.totalExpected ?? trip?.budgetBreakdown?.total
+      selectedBudget?.totalExpected ??
+        trip?.budgetBreakdown?.totalExpected ??
+        trip?.budgetBreakdown?.total
     );
     if (Number.isFinite(fromBreakdown) && fromBreakdown > 0) {
       return fromBreakdown;
     }
     return 0;
-  }, [trip]);
+  }, [selectedBudget, trip]);
 
   if (loading) {
     return (
@@ -181,103 +286,101 @@ export default function TripPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#f8fafc] px-6 py-8 text-slate-900">
-      <div className="mx-auto max-w-7xl space-y-6">
+    <main className="min-h-screen bg-[#f6f8fb] px-4 py-6 text-slate-900 sm:px-6">
+      <div className="mx-auto max-w-[1400px] space-y-5">
         <TripHeader trip={trip} />
 
-        <div className="grid gap-6 xl:grid-cols-[0.8fr_1.2fr]">
-          <div className="space-y-6">
-            <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
-              <div className="mb-5">
-                <h2 className="text-2xl font-semibold text-slate-950">Budget</h2>
-                <p className="mt-2 text-sm text-slate-600">
+        <div className="grid gap-5 xl:grid-cols-[320px_minmax(0,1fr)] xl:items-start">
+          <aside className="xl:sticky xl:top-5">
+            <div className="overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-sm">
+              <div className="border-b border-slate-200 bg-slate-50/80 px-5 py-4">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-violet-600">
+                  Planner rail
+                </div>
+                <h2 className="mt-1 text-xl font-semibold tracking-tight text-slate-950">
+                  Budget and actions
+                </h2>
+              </div>
+
+              <div className="space-y-5 p-5">
+                <section>
+                  <div className="mb-4">
+                    <h3 className="text-lg font-semibold text-slate-950">Budget</h3>
+                    <p className="mt-1 text-sm text-slate-600">
                   Compare your target budget against the estimated trip cost.
-                </p>
-                {tripDateRange ? (
-                  <p className="mt-2 text-sm text-slate-500">
-                    Travel dates: {tripDateRange}
-                  </p>
-                ) : null}
+                    </p>
+                    {tripDateRange ? (
+                      <p className="mt-1 text-sm text-slate-500">
+                        Travel dates: {tripDateRange}
+                      </p>
+                    ) : null}
+                  </div>
+
+                  <div className="mb-4 grid grid-cols-2 gap-2">
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                      <div className="text-[10px] font-medium uppercase tracking-[0.1em] text-slate-500">
+                        Travelers
+                      </div>
+                      <div className="mt-1 text-base font-semibold text-slate-900">
+                        {travelerCount}
+                      </div>
+                    </div>
+
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                      <div className="text-[10px] font-medium uppercase tracking-[0.1em] text-slate-500">
+                        Budget each
+                      </div>
+                      <div className="mt-1 text-base font-semibold text-slate-900">
+                        {formatMoney(budgetPerTraveler)}
+                      </div>
+                    </div>
+
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                      <div className="text-[10px] font-medium uppercase tracking-[0.1em] text-slate-500">
+                        Target
+                      </div>
+                      <div className="mt-1 text-base font-semibold text-slate-900">
+                        {formatMoney(targetTotalBudget)}
+                      </div>
+                    </div>
+
+                    <div className="rounded-xl border border-violet-200 bg-violet-50 p-3">
+                      <div className="text-[10px] font-medium uppercase tracking-[0.1em] text-violet-700">
+                        Selected
+                      </div>
+                      <div className="mt-1 text-base font-semibold text-slate-950">
+                        {formatMoney(estimatedTotalCost)}
+                      </div>
+                    </div>
+                  </div>
+
+                  <BudgetBreakdown breakdown={selectedBudget ?? trip.budgetBreakdown} />
+                </section>
+
+                <div className="border-t border-slate-200" />
+
+                <TripActions trip={trip} />
               </div>
-
-              <div className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                  <div className="text-[11px] font-medium uppercase tracking-[0.1em] text-slate-500">
-                    Travelers
-                  </div>
-                  <div className="mt-2 text-xl font-semibold text-slate-900">
-                    {travelerCount}
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                  <div className="text-[11px] font-medium uppercase tracking-[0.1em] text-slate-500">
-                    Budget each
-                  </div>
-                  <div className="mt-2 text-xl font-semibold text-slate-900">
-                    {formatMoney(budgetPerTraveler)}
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                  <div className="text-[11px] font-medium uppercase tracking-[0.1em] text-slate-500">
-                    Target budget
-                  </div>
-                  <div className="mt-2 text-xl font-semibold text-slate-900">
-                    {formatMoney(targetTotalBudget)}
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border border-violet-200 bg-violet-50 p-4">
-                  <div className="text-[11px] font-medium uppercase tracking-[0.1em] text-violet-700">
-                    Estimated cost
-                  </div>
-                  <div className="mt-2 text-xl font-semibold text-slate-950">
-                    {formatMoney(estimatedTotalCost)}
-                  </div>
-                </div>
-              </div>
-
-              <BudgetBreakdown breakdown={trip.budgetBreakdown} />
             </div>
-
-            <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
-              <TripActions trip={trip} />
-            </div>
-          </div>
-
-          <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
-            <StaySection
-              stays={trip.hotelOptions ?? []}
-              tripStartDate={trip.tripStartDate}
-              tripEndDate={trip.tripEndDate}
-            />
-          </div>
-        </div>
-
-        <div className="grid gap-6 lg:grid-cols-2">
-          <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
-            <FoodSection foodSpots={trip.foodSpots ?? []} />
-          </div>
-
-          <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
-            <ActivitySection activities={trip.topActivities ?? []} />
-          </div>
-        </div>
-
-        <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
-          <h2 className="text-2xl font-semibold text-slate-950">Itinerary</h2>
+          </aside>
 
           {itineraryDays.length > 0 ? (
-            <div className="mt-5 space-y-4">
-              {itineraryDays.map((day: any, index: number) => (
-                <ItineraryDay key={index} day={day} dayNumber={index + 1} />
-              ))}
-            </div>
+            <InteractiveItinerary
+              days={itineraryDays}
+              hotels={trip.hotelOptions ?? []}
+              foodSpots={trip.foodSpots ?? []}
+              activities={trip.topActivities ?? []}
+              travelerCount={travelerCount}
+              destinationImageUrl={trip.imageUrl}
+              onSelectionChange={setSelectionState}
+            />
           ) : (
-            <p className="mt-4 text-slate-600">No itinerary generated yet.</p>
+            <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+              <h2 className="text-2xl font-semibold text-slate-950">Itinerary</h2>
+              <p className="mt-4 text-slate-600">No itinerary generated yet.</p>
+            </section>
           )}
-        </section>
+        </div>
       </div>
     </main>
   );
