@@ -102,6 +102,12 @@ export default function AccountPanel({ refreshKey = 0 }: Props) {
     }
   }
 
+  function handleGoogleAuth() {
+    setLoading(true);
+    setStatus("");
+    window.location.href = "/api/auth/google";
+  }
+
   async function handleLogout() {
     try {
       setLoading(true);
@@ -257,6 +263,23 @@ export default function AccountPanel({ refreshKey = 0 }: Props) {
               Create account
             </button>
           </div>
+
+          <div className="flex items-center gap-3 pt-1">
+            <div className="h-px flex-1 bg-slate-200" />
+            <span className="text-xs uppercase tracking-[0.16em] text-slate-400">
+              Or
+            </span>
+            <div className="h-px flex-1 bg-slate-200" />
+          </div>
+
+          <button
+            type="button"
+            onClick={handleGoogleAuth}
+            disabled={loading}
+            className="inline-flex h-11 w-full items-center justify-center rounded-2xl border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-100 disabled:opacity-60"
+          >
+            Continue with Google
+          </button>
         </div>
       )}
 
