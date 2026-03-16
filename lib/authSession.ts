@@ -1,5 +1,7 @@
 import { cookies } from "next/headers";
 import { createHmac, timingSafeEqual } from "crypto";
+import { NextResponse } from "next/server";
+import { supabaseAuth } from "./supabaseAuth";
 
 export const AUTH_COOKIE_NAME = "trippify_session";
 const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30;
@@ -38,27 +40,59 @@ function decodePayload(value: string): SessionPayload | null {
   }
 }
 
-export async function createUserSessionCookie(userId: string, email: string) {
+function buildSessionCookieValue(payload: SessionPayload) {
+  const encoded = encodePayload(payload);
+  const signature = sign(encoded);
+  return `${encoded}.${signature}`;
+}
+
+function sessionCookieOptions(expiresAt: number) {
+  return {
+    httpOnly: true,
+    sameSite: "lax" as const,
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    expires: new Date(expiresAt),
+  };
+}
+
+function createSessionPayload(userId: string, email: string): SessionPayload {
   const issuedAt = Date.now();
   const expiresAt = issuedAt + SESSION_TTL_MS;
-  const payload: SessionPayload = {
+
+  return {
     userId,
     email,
     issuedAt,
     expiresAt,
   };
+}
 
-  const encoded = encodePayload(payload);
-  const signature = sign(encoded);
+export async function createUserSessionCookie(userId: string, email: string) {
+  const payload = createSessionPayload(userId, email);
 
   const cookieStore = await cookies();
-  cookieStore.set(AUTH_COOKIE_NAME, `${encoded}.${signature}`, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-    expires: new Date(expiresAt),
-  });
+  cookieStore.set(
+    AUTH_COOKIE_NAME,
+    buildSessionCookieValue(payload),
+    sessionCookieOptions(payload.expiresAt)
+  );
+
+  return payload;
+}
+
+export function setUserSessionCookieOnResponse(
+  response: NextResponse,
+  userId: string,
+  email: string
+) {
+  const payload = createSessionPayload(userId, email);
+
+  response.cookies.set(
+    AUTH_COOKIE_NAME,
+    buildSessionCookieValue(payload),
+    sessionCookieOptions(payload.expiresAt)
+  );
 
   return payload;
 }
@@ -99,4 +133,37 @@ export async function getAuthenticatedUser() {
   if (payload.expiresAt <= Date.now()) return null;
 
   return payload;
+}
+
+export async function getAuthenticatedUserFromRequest(request: Request) {
+  const cookieUser = await getAuthenticatedUser();
+  if (cookieUser) {
+    return cookieUser;
+  }
+
+  const authHeader = request.headers.get("authorization") ?? "";
+  const token = authHeader.startsWith("Bearer ")
+    ? authHeader.slice("Bearer ".length).trim()
+    : "";
+
+  if (!token) {
+    return null;
+  }
+
+  try {
+    const { data, error } = await supabaseAuth.auth.getUser(token);
+
+    if (error || !data?.user?.id || !data.user.email) {
+      return null;
+    }
+
+    return {
+      userId: data.user.id,
+      email: data.user.email,
+      issuedAt: Date.now(),
+      expiresAt: Date.now() + SESSION_TTL_MS,
+    };
+  } catch {
+    return null;
+  }
 }

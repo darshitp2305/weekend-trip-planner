@@ -1,4 +1,5 @@
 import type { TripPlan } from "./types";
+import { getBrowserSupabaseAccessToken } from "./supabaseBrowserAuth";
 
 const STORAGE_KEY = "weekend-trip-plans";
 
@@ -31,10 +32,14 @@ export async function saveTripPlan(plan: TripPlan) {
   writeLocalPlans(next);
 
   try {
+    const accessToken =
+      typeof window !== "undefined" ? await getBrowserSupabaseAccessToken() : null;
+
     const response = await fetch("/api/save-trip", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       },
       body: JSON.stringify({ plan }),
     });

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createUserSessionCookie } from "../../../../lib/authSession";
+import { setUserSessionCookieOnResponse } from "../../../../lib/authSession";
 import { supabaseAuth } from "../../../../lib/supabaseAuth";
 
 export async function GET(request: Request) {
@@ -22,9 +22,9 @@ export async function GET(request: Request) {
       );
     }
 
-    await createUserSessionCookie(data.user.id, data.user.email);
-
-    return NextResponse.redirect(new URL("/", request.url));
+    const response = NextResponse.redirect(new URL("/", request.url));
+    setUserSessionCookieOnResponse(response, data.user.id, data.user.email);
+    return response;
   } catch (error) {
     console.error("google auth callback fatal error:", error);
     return NextResponse.redirect(

@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
-import { getAuthenticatedUser } from "../../../../lib/authSession";
+import { getAuthenticatedUserFromRequest } from "../../../../lib/authSession";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const user = await getAuthenticatedUser();
+    const user = await getAuthenticatedUserFromRequest(request);
 
     return NextResponse.json({
       success: true,

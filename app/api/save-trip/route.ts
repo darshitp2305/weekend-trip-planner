@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
-import { getAuthenticatedUser } from "../../../lib/authSession";
+import { getAuthenticatedUserFromRequest } from "../../../lib/authSession";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
     const plan = body?.plan;
-    const authUser = await getAuthenticatedUser();
+    const authUser = await getAuthenticatedUserFromRequest(request);
 
     if (!plan?.id) {
       return NextResponse.json(

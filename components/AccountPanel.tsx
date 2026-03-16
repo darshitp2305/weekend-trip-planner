@@ -2,6 +2,10 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import {
+  getBrowserSupabaseAccessToken,
+  supabaseBrowserAuth,
+} from "../lib/supabaseBrowserAuth";
 
 type AccountUser = {
   id: string;
@@ -42,10 +46,46 @@ export default function AccountPanel({ refreshKey = 0 }: Props) {
   const [loading, setLoading] = useState(false);
   const [removingTripId, setRemovingTripId] = useState<string | null>(null);
 
+  async function buildAuthHeaders() {
+    const token = await getBrowserSupabaseAccessToken();
+    return token
+      ? {
+          Authorization: `Bearer ${token}`,
+        }
+      : undefined;
+  }
+
   async function loadAccount() {
-    const meRes = await fetch("/api/auth/me", { cache: "no-store" });
-    const meData = await meRes.json().catch(() => null);
-    const nextUser = meData?.user ?? null;
+    const token = await getBrowserSupabaseAccessToken();
+
+    let nextUser: AccountUser | null = null;
+    let authHeaders: Record<string, string> | undefined;
+
+    if (token) {
+      const { data, error } = await supabaseBrowserAuth.auth.getUser(token);
+
+      if (!error && data.user?.id && data.user.email) {
+        nextUser = {
+          id: data.user.id,
+          email: data.user.email,
+        };
+        authHeaders = {
+          Authorization: `Bearer ${token}`,
+        };
+      }
+    }
+
+    if (!nextUser) {
+      authHeaders = await buildAuthHeaders();
+
+      const meRes = await fetch("/api/auth/me", {
+        cache: "no-store",
+        headers: authHeaders,
+      });
+      const meData = await meRes.json().catch(() => null);
+      nextUser = meData?.user ?? null;
+    }
+
     setUser(nextUser);
 
     if (!nextUser) {
@@ -53,7 +93,10 @@ export default function AccountPanel({ refreshKey = 0 }: Props) {
       return;
     }
 
-    const tripsRes = await fetch("/api/account/trips", { cache: "no-store" });
+    const tripsRes = await fetch("/api/account/trips", {
+      cache: "no-store",
+      headers: authHeaders,
+    });
     const tripsData = await tripsRes.json().catch(() => null);
     setTrips(Array.isArray(tripsData?.trips) ? tripsData.trips : []);
   }
@@ -62,6 +105,17 @@ export default function AccountPanel({ refreshKey = 0 }: Props) {
     loadAccount().catch((error) => {
       console.error("Failed to load account panel:", error);
     });
+    const {
+      data: { subscription },
+    } = supabaseBrowserAuth.auth.onAuthStateChange(() => {
+      loadAccount().catch((error) => {
+        console.error("Failed to refresh account panel after auth state change:", error);
+      });
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, [refreshKey]);
 
   async function handleAuth(path: "/api/auth/login" | "/api/auth/signup") {
@@ -102,15 +156,47 @@ export default function AccountPanel({ refreshKey = 0 }: Props) {
     }
   }
 
-  function handleGoogleAuth() {
-    setLoading(true);
-    setStatus("");
-    window.location.href = "/api/auth/google";
+  async function handleGoogleAuth() {
+    try {
+      setLoading(true);
+      setStatus("");
+
+      const redirectTo = `${window.location.origin}/auth/callback`;
+      const { data, error } = await supabaseBrowserAuth.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo,
+          queryParams: {
+            access_type: "offline",
+            prompt: "consent",
+          },
+        },
+      });
+
+      if (error) {
+        setStatus(error.message || "Google sign-in failed.");
+        setLoading(false);
+        return;
+      }
+
+      if (data?.url) {
+        window.location.href = data.url;
+        return;
+      }
+
+      setStatus("Google sign-in failed.");
+      setLoading(false);
+    } catch (error) {
+      console.error("Google auth failed:", error);
+      setStatus("Google sign-in failed.");
+      setLoading(false);
+    }
   }
 
   async function handleLogout() {
     try {
       setLoading(true);
+      await supabaseBrowserAuth.auth.signOut();
       await fetch("/api/auth/logout", { method: "POST" });
       setUser(null);
       setTrips([]);
@@ -134,6 +220,7 @@ export default function AccountPanel({ refreshKey = 0 }: Props) {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",
+          ...(await buildAuthHeaders()),
         },
         body: JSON.stringify({ tripId }),
       });
