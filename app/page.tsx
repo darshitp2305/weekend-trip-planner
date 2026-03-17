@@ -129,6 +129,7 @@ export default function HomePage() {
   const [aiStatusMessage, setAiStatusMessage] = useState("");
   const [waitingForTripText, setWaitingForTripText] = useState(false);
   const [restored, setRestored] = useState(false);
+  const [savedTripsOpen, setSavedTripsOpen] = useState(false);
 
   function persistPageState(nextState: {
     rankedResults?: RankedDestination[];
@@ -406,11 +407,25 @@ export default function HomePage() {
   const tripFormKey = lastInput ? JSON.stringify(lastInput) : "new-trip";
 
   return (
-    <main className="min-h-screen bg-[#f8fafc] text-slate-900">
-      <div className="mx-auto max-w-7xl px-6 py-8 sm:px-8 lg:px-10">
+    <main className="relative min-h-screen overflow-hidden bg-[linear-gradient(180deg,#f5f1e8_0%,#f8fafc_18%,#f8fbff_100%)] text-slate-900">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(251,146,60,0.10),transparent_24%),radial-gradient(circle_at_top_right,rgba(96,165,250,0.10),transparent_24%),radial-gradient(circle_at_bottom_right,rgba(139,92,246,0.08),transparent_22%)]" />
+
+      <AccountPanel open={savedTripsOpen} onClose={() => setSavedTripsOpen(false)} />
+
+      <div className="relative mx-auto max-w-7xl px-6 py-8 sm:px-8 lg:px-10">
         <section className="mb-8">
-          <div className="inline-flex rounded-full border border-violet-200 bg-violet-50 px-3 py-1 text-xs font-medium text-violet-700 shadow-sm">
-            Trippify for Alberta
+          <div className="flex items-center justify-between gap-4">
+            <button
+              type="button"
+              onClick={() => setSavedTripsOpen(true)}
+              className="inline-flex h-11 items-center justify-center rounded-full border border-slate-300 bg-white px-5 text-sm font-semibold text-slate-800 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-100"
+            >
+              Saved trips
+            </button>
+
+            <div className="inline-flex rounded-full border border-violet-200 bg-violet-50 px-3 py-1 text-xs font-medium text-violet-700 shadow-sm">
+              Trippify for Alberta
+            </div>
           </div>
 
           <div className="mt-4 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
@@ -444,8 +459,6 @@ export default function HomePage() {
           </div>
 
           <aside className="grid gap-4 sm:grid-cols-3 xl:grid-cols-1">
-            <AccountPanel />
-
             <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
               <div className="text-xs font-semibold uppercase tracking-[0.18em] text-violet-600">
                 Why Trippify

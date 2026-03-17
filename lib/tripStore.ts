@@ -2,6 +2,7 @@ import type { TripPlan } from "./types";
 import { getBrowserSupabaseAccessToken } from "./supabaseBrowserAuth";
 
 const STORAGE_KEY = "weekend-trip-plans";
+export const TRIP_STORE_UPDATED_EVENT = "trip-store-updated";
 
 function readLocalPlans(): TripPlan[] {
   if (typeof window === "undefined") return [];
@@ -20,6 +21,7 @@ function writeLocalPlans(plans: TripPlan[]) {
 
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(plans));
+    window.dispatchEvent(new CustomEvent(TRIP_STORE_UPDATED_EVENT));
   } catch (error) {
     console.error("Failed to write local trip plans:", error);
   }
@@ -67,6 +69,10 @@ export async function saveTripPlan(plan: TripPlan) {
       remoteSaved: false,
       accountSaved: false,
     };
+  } finally {
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent(TRIP_STORE_UPDATED_EVENT));
+    }
   }
 }
 

@@ -1,27 +1,23 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useEffectEvent, useState } from "react";
 import {
   getBrowserSupabaseAccessToken,
   supabaseBrowserAuth,
 } from "../lib/supabaseBrowserAuth";
+import { getAllTripPlans, TRIP_STORE_UPDATED_EVENT } from "../lib/tripStore";
+import { TripPlan } from "../lib/types";
 
 type AccountUser = {
   id: string;
   email: string;
 };
 
-type AccountTrip = {
-  id?: string;
-  name?: string;
-  title?: string;
-  destinationName?: string;
-  tripStartDate?: string;
-};
-
 type Props = {
   refreshKey?: number;
+  open: boolean;
+  onClose: () => void;
 };
 
 function formatDate(value?: string) {
@@ -37,9 +33,121 @@ function formatDate(value?: string) {
   }).format(date);
 }
 
-export default function AccountPanel({ refreshKey = 0 }: Props) {
+function getTripTitle(trip: TripPlan) {
+  return (
+    trip.title ??
+    trip.name ??
+    trip.destinationName ??
+    trip.destination ??
+    "Saved trip"
+  );
+}
+
+function getTripSubtitle(trip: TripPlan) {
+  return [
+    trip.destinationName ?? trip.destination ?? trip.homeBaseCity,
+    formatDate(trip.tripStartDate),
+  ]
+    .filter(Boolean)
+    .join(" | ");
+}
+
+function getFallbackImageUrl(name?: string) {
+  const seed = encodeURIComponent((name ?? "trippify").trim().toLowerCase());
+  return `https://picsum.photos/seed/${seed}/1200/800`;
+}
+
+function SectionHeader({
+  eyebrow,
+  title,
+  copy,
+}: {
+  eyebrow: string;
+  title: string;
+  copy: string;
+}) {
+  return (
+    <div>
+      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-violet-600">
+        {eyebrow}
+      </div>
+      <div className="mt-1 text-lg font-semibold text-slate-950">{title}</div>
+      <p className="mt-1 text-sm leading-6 text-slate-600">{copy}</p>
+    </div>
+  );
+}
+
+function SavedTripCard({
+  trip,
+  tone,
+  action,
+}: {
+  trip: TripPlan;
+  tone: "slate" | "violet";
+  action?: React.ReactNode;
+}) {
+  const imageUrl = trip.imageUrl?.trim() || getFallbackImageUrl(getTripTitle(trip));
+  const badgeClass =
+    tone === "violet"
+      ? "border-violet-200 bg-violet-50 text-violet-700"
+      : "border-slate-200 bg-slate-100 text-slate-600";
+
+  return (
+    <article
+      tabIndex={0}
+      className="group overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-sm outline-none transition hover:-translate-y-0.5 hover:border-violet-300 hover:shadow-md focus-visible:border-violet-400 focus-visible:ring-2 focus-visible:ring-violet-200"
+    >
+      <div className="flex items-start justify-between gap-3 px-4 py-4">
+        <div className="min-w-0 flex-1">
+          <div className="text-base font-semibold text-slate-950">
+            {getTripTitle(trip)}
+          </div>
+          {getTripSubtitle(trip) ? (
+            <div className="mt-1 text-sm text-slate-500">{getTripSubtitle(trip)}</div>
+          ) : null}
+        </div>
+
+        <span
+          className={`inline-flex shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] ${badgeClass}`}
+        >
+          Saved
+        </span>
+      </div>
+
+      <div className="max-h-0 overflow-hidden opacity-0 transition-all duration-300 group-hover:max-h-[32rem] group-hover:opacity-100 group-focus-within:max-h-[32rem] group-focus-within:opacity-100">
+        <div className="border-t border-slate-200 px-4 py-4">
+          <div
+            className="h-36 rounded-[1.25rem] bg-slate-200 bg-cover bg-center"
+            style={{ backgroundImage: `url("${imageUrl}")` }}
+          />
+
+          {trip.summary ? (
+            <p className="mt-3 text-sm leading-6 text-slate-600">{trip.summary}</p>
+          ) : null}
+
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Link
+              href={`/trip/${trip.id}`}
+              className="inline-flex h-10 items-center justify-center rounded-xl bg-slate-950 px-4 text-sm font-medium text-white transition hover:bg-slate-800"
+            >
+              See details
+            </Link>
+            {action}
+          </div>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+export default function AccountPanel({
+  refreshKey = 0,
+  open,
+  onClose,
+}: Props) {
   const [user, setUser] = useState<AccountUser | null>(null);
-  const [trips, setTrips] = useState<AccountTrip[]>([]);
+  const [localTrips, setLocalTrips] = useState<TripPlan[]>([]);
+  const [accountTrips, setAccountTrips] = useState<TripPlan[]>([]);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [status, setStatus] = useState("");
@@ -55,7 +163,16 @@ export default function AccountPanel({ refreshKey = 0 }: Props) {
       : undefined;
   }
 
+  function loadLocalTrips() {
+    const plans = getAllTripPlans().sort((a, b) =>
+      `${b.createdAt ?? ""}`.localeCompare(`${a.createdAt ?? ""}`)
+    );
+    setLocalTrips(plans);
+  }
+
   async function loadAccount() {
+    loadLocalTrips();
+
     const token = await getBrowserSupabaseAccessToken();
 
     let nextUser: AccountUser | null = null;
@@ -89,7 +206,7 @@ export default function AccountPanel({ refreshKey = 0 }: Props) {
     setUser(nextUser);
 
     if (!nextUser) {
-      setTrips([]);
+      setAccountTrips([]);
       return;
     }
 
@@ -98,25 +215,44 @@ export default function AccountPanel({ refreshKey = 0 }: Props) {
       headers: authHeaders,
     });
     const tripsData = await tripsRes.json().catch(() => null);
-    setTrips(Array.isArray(tripsData?.trips) ? tripsData.trips : []);
+    setAccountTrips(Array.isArray(tripsData?.trips) ? tripsData.trips : []);
   }
 
-  useEffect(() => {
+  const refreshAccount = useEffectEvent(() => {
     loadAccount().catch((error) => {
-      console.error("Failed to load account panel:", error);
+      console.error("Failed to refresh account panel:", error);
     });
+  });
+
+  useEffect(() => {
+    refreshAccount();
+
     const {
       data: { subscription },
-    } = supabaseBrowserAuth.auth.onAuthStateChange(() => {
-      loadAccount().catch((error) => {
-        console.error("Failed to refresh account panel after auth state change:", error);
-      });
-    });
+    } = supabaseBrowserAuth.auth.onAuthStateChange(() => refreshAccount());
+
+    const handleTripStoreUpdate = () => refreshAccount();
+
+    if (typeof window !== "undefined") {
+      window.addEventListener(TRIP_STORE_UPDATED_EVENT, handleTripStoreUpdate);
+      window.addEventListener("storage", handleTripStoreUpdate);
+    }
 
     return () => {
       subscription.unsubscribe();
+
+      if (typeof window !== "undefined") {
+        window.removeEventListener(TRIP_STORE_UPDATED_EVENT, handleTripStoreUpdate);
+        window.removeEventListener("storage", handleTripStoreUpdate);
+      }
     };
   }, [refreshKey]);
+
+  useEffect(() => {
+    if (!open) return;
+
+    refreshAccount();
+  }, [open]);
 
   async function handleAuth(path: "/api/auth/login" | "/api/auth/signup") {
     try {
@@ -199,7 +335,7 @@ export default function AccountPanel({ refreshKey = 0 }: Props) {
       await supabaseBrowserAuth.auth.signOut();
       await fetch("/api/auth/logout", { method: "POST" });
       setUser(null);
-      setTrips([]);
+      setAccountTrips([]);
       setStatus("Logged out.");
     } catch (error) {
       console.error("Logout failed:", error);
@@ -232,7 +368,7 @@ export default function AccountPanel({ refreshKey = 0 }: Props) {
         return;
       }
 
-      setTrips((prev) => prev.filter((trip) => trip.id !== tripId));
+      setAccountTrips((prev) => prev.filter((trip) => trip.id !== tripId));
       setStatus("Trip removed from your account.");
     } catch (error) {
       console.error("Account trip removal failed:", error);
@@ -243,134 +379,175 @@ export default function AccountPanel({ refreshKey = 0 }: Props) {
   }
 
   return (
-    <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
-      <div className="text-xs font-semibold uppercase tracking-[0.18em] text-violet-600">
-        Account
-      </div>
+    <div
+      className={`fixed inset-0 z-50 ${open ? "pointer-events-auto" : "pointer-events-none"}`}
+      aria-hidden={!open}
+    >
+      <button
+        type="button"
+        aria-label="Close saved trips panel"
+        onClick={onClose}
+        className={`absolute inset-0 bg-slate-950/35 transition ${open ? "opacity-100" : "opacity-0"}`}
+      />
 
-      {user ? (
-        <div className="mt-4 space-y-4">
+      <aside
+        className={`absolute inset-y-0 left-0 flex w-full max-w-[430px] flex-col border-r border-slate-200 bg-[#fffdf8] shadow-2xl transition-transform duration-300 ${open ? "translate-x-0" : "-translate-x-full"}`}
+      >
+        <div className="flex items-center justify-between border-b border-slate-200 px-5 py-5">
           <div>
-            <div className="text-lg font-semibold text-slate-900">{user.email}</div>
-            <p className="mt-1 text-sm leading-6 text-slate-600">
-              Trips you build can now be saved to this account.
-            </p>
+            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-violet-600">
+              Saved trips
+            </div>
+            <div className="mt-1 text-xl font-semibold text-slate-950">
+              Your save drawer
+            </div>
           </div>
 
           <button
             type="button"
-            onClick={handleLogout}
-            disabled={loading}
-            className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-100 disabled:opacity-60"
+            onClick={onClose}
+            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-100"
           >
-            Log out
+            X
           </button>
+        </div>
 
-          <div className="border-t border-slate-200 pt-4">
-            <div className="text-sm font-semibold text-slate-900">Saved to account</div>
-            {trips.length > 0 ? (
-              <div className="mt-3 space-y-3">
-                {trips.slice(0, 5).map((trip) => (
-                  trip.id ? (
-                    <div
-                      key={trip.id ?? trip.destinationName}
-                      className="flex items-start justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3"
-                    >
-                      <Link
-                        href={`/trip/${trip.id}`}
-                        className="min-w-0 flex-1 transition hover:text-violet-700"
-                      >
-                        <div className="text-sm font-medium text-slate-900">
-                          {trip.title ?? trip.name ?? trip.destinationName ?? "Saved trip"}
-                        </div>
-                        {trip.tripStartDate ? (
-                          <div className="mt-1 text-xs text-slate-500">
-                            {formatDate(trip.tripStartDate)}
-                          </div>
-                        ) : null}
-                      </Link>
+        <div className="flex-1 space-y-8 overflow-y-auto px-5 py-5">
+          <section className="rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm">
+            <SectionHeader
+              eyebrow={user ? "Account" : "Save access"}
+              title={user ? user.email : "Sign in to sync saves"}
+              copy={
+                user
+                  ? "This drawer shows trips saved on this device and trips synced to your account."
+                  : "Trips still save on this device. Sign in here if you also want them synced to your account."
+              }
+            />
+            {user ? (
+              <div className="mt-4 flex flex-wrap gap-2">
+                <span className="inline-flex rounded-full border border-violet-200 bg-violet-50 px-3 py-1 text-xs font-semibold text-violet-700">
+                  Account connected
+                </span>
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  disabled={loading}
+                  className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-100 disabled:opacity-60"
+                >
+                  Log out
+                </button>
+              </div>
+            ) : (
+              <div className="mt-4 space-y-3">
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Email"
+                  className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+                />
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Password"
+                  className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+                />
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleAuth("/api/auth/login")}
+                    disabled={loading}
+                    className="inline-flex h-10 items-center justify-center rounded-xl bg-slate-950 px-4 text-sm font-medium text-white transition hover:bg-slate-800 disabled:opacity-60"
+                  >
+                    Log in
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleAuth("/api/auth/signup")}
+                    disabled={loading}
+                    className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-100 disabled:opacity-60"
+                  >
+                    Create account
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleGoogleAuth}
+                  disabled={loading}
+                  className="inline-flex h-11 w-full items-center justify-center rounded-2xl border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-100 disabled:opacity-60"
+                >
+                  Continue with Google
+                </button>
+              </div>
+            )}
+          </section>
 
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveTrip(trip.id)}
-                        disabled={removingTripId === trip.id}
-                        className="inline-flex h-8 shrink-0 items-center justify-center rounded-lg border border-slate-300 bg-white px-3 text-xs font-medium text-slate-600 transition hover:bg-slate-100 disabled:opacity-60"
-                      >
-                        {removingTripId === trip.id ? "Removing..." : "Remove"}
-                      </button>
-                    </div>
-                  ) : null
+          {user ? (
+            <section>
+              <SectionHeader
+                eyebrow="Synced"
+                title={`${accountTrips.length} account save${accountTrips.length === 1 ? "" : "s"}`}
+                copy="These are the trips currently saved to your account and should be your primary saved list."
+              />
+              {accountTrips.length > 0 ? (
+                <div className="mt-4 space-y-3">
+                  {accountTrips.map((trip) => (
+                    <SavedTripCard
+                      key={`account-${trip.id}`}
+                      trip={trip}
+                      tone="violet"
+                      action={
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveTrip(trip.id)}
+                          disabled={removingTripId === trip.id}
+                          className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-100 disabled:opacity-60"
+                        >
+                          {removingTripId === trip.id ? "Removing..." : "Remove"}
+                        </button>
+                      }
+                    />
+                  ))}
+                </div>
+              ) : (
+                <p className="mt-3 text-sm leading-6 text-slate-600">
+                  No account-saved trips yet.
+                </p>
+              )}
+            </section>
+          ) : null}
+
+          <section>
+            <SectionHeader
+              eyebrow={user ? "Device backup" : "On this device"}
+              title={`${localTrips.length} local save${localTrips.length === 1 ? "" : "s"}`}
+              copy={
+                user
+                  ? "These are the trips stored in this browser on this device. They stay secondary to your synced account saves."
+                  : "Hover a saved trip to expand it, preview the destination photo, and jump into the full trip page."
+              }
+            />
+            {localTrips.length > 0 ? (
+              <div className="mt-4 space-y-3">
+                {localTrips.map((trip) => (
+                  <SavedTripCard key={`local-${trip.id}`} trip={trip} tone="slate" />
                 ))}
               </div>
             ) : (
-              <p className="mt-2 text-sm leading-6 text-slate-600">
-                No account-saved trips yet.
+              <p className="mt-3 text-sm leading-6 text-slate-600">
+                No locally saved trips yet.
               </p>
             )}
-          </div>
+          </section>
+
+          {status ? (
+            <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 shadow-sm">
+              {status}
+            </div>
+          ) : null}
         </div>
-      ) : (
-        <div className="mt-4 space-y-3">
-          <p className="text-sm leading-6 text-slate-600">
-            Create an account or log in to save trips beyond this device.
-          </p>
-
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="Email"
-            className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
-          />
-
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Password"
-            className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
-          />
-
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => handleAuth("/api/auth/login")}
-              disabled={loading}
-              className="inline-flex h-10 items-center justify-center rounded-xl bg-slate-950 px-4 text-sm font-medium text-white transition hover:bg-slate-800 disabled:opacity-60"
-            >
-              Log in
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleAuth("/api/auth/signup")}
-              disabled={loading}
-              className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-100 disabled:opacity-60"
-            >
-              Create account
-            </button>
-          </div>
-
-          <div className="flex items-center gap-3 pt-1">
-            <div className="h-px flex-1 bg-slate-200" />
-            <span className="text-xs uppercase tracking-[0.16em] text-slate-400">
-              Or
-            </span>
-            <div className="h-px flex-1 bg-slate-200" />
-          </div>
-
-          <button
-            type="button"
-            onClick={handleGoogleAuth}
-            disabled={loading}
-            className="inline-flex h-11 w-full items-center justify-center rounded-2xl border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-100 disabled:opacity-60"
-          >
-            Continue with Google
-          </button>
-        </div>
-      )}
-
-      {status ? <p className="mt-3 text-sm text-slate-600">{status}</p> : null}
+      </aside>
     </div>
   );
 }

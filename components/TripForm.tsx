@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { CSSProperties, useState } from "react";
 import rawDestinations from "../data/destinations.json";
 import {
   clampTripEndDate,
@@ -186,6 +186,14 @@ function ToggleRow({
     </label>
   );
 }
+
+const DATE_INPUT_CLASS =
+  "h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-date-and-time-value]:text-slate-900 [&::-webkit-datetime-edit]:text-slate-900 [&::-webkit-datetime-edit-fields-wrapper]:text-slate-900";
+const DATE_INPUT_STYLE: CSSProperties = {
+  color: "#0f172a",
+  WebkitTextFillColor: "#0f172a",
+  opacity: 1,
+};
 
 export default function TripForm({
   onGenerate,
@@ -472,7 +480,8 @@ export default function TripForm({
               required
               value={form.tripStartDate}
               onChange={(e) => handleTripStartDateChange(e.target.value)}
-              className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+              className={DATE_INPUT_CLASS}
+              style={DATE_INPUT_STYLE}
             />
           </div>
 
@@ -486,7 +495,8 @@ export default function TripForm({
               required
               value={form.tripEndDate}
               onChange={(e) => handleTripEndDateChange(e.target.value)}
-              className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+              className={DATE_INPUT_CLASS}
+              style={DATE_INPUT_STYLE}
             />
           </div>
         </div>
