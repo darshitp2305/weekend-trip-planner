@@ -1,3 +1,5 @@
+import type { StartCity } from "./startCities";
+
 export type TripStyle =
   | "chill"
   | "outdoors"
@@ -164,7 +166,7 @@ export interface RawDestination {
 }
 
 export interface TripInput {
-  startCity: "Edmonton" | "Calgary";
+  startCity: StartCity;
   maxDriveHours: number;
   budget: number;
   budgetPerTraveler: number;

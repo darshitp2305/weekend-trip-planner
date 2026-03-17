@@ -121,6 +121,43 @@ function MiniStat({
   );
 }
 
+function RailFeature({
+  title,
+  detail,
+}: {
+  title: string;
+  detail: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white/80 p-4 backdrop-blur-sm">
+      <div className="text-sm font-semibold text-slate-900">{title}</div>
+      <p className="mt-1 text-sm leading-6 text-slate-600">{detail}</p>
+    </div>
+  );
+}
+
+function RailStep({
+  number,
+  title,
+  detail,
+}: {
+  number: string;
+  title: string;
+  detail: string;
+}) {
+  return (
+    <div className="flex items-start gap-3">
+      <div className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-950 text-xs font-semibold text-white">
+        {number}
+      </div>
+      <div>
+        <div className="text-sm font-semibold text-slate-900">{title}</div>
+        <p className="mt-1 text-sm leading-6 text-slate-600">{detail}</p>
+      </div>
+    </div>
+  );
+}
+
 export default function HomePage() {
   const [loading, setLoading] = useState(false);
   const [rankedResults, setRankedResults] = useState<RankedDestination[]>([]);
@@ -492,24 +529,33 @@ export default function HomePage() {
 
       <div className="relative mx-auto max-w-7xl px-6 py-8 sm:px-8 lg:px-10">
         <section className="mb-8">
-          <div className="flex items-center justify-between gap-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/70 bg-white/75 px-2 py-2 shadow-sm backdrop-blur-sm">
+              <div className="inline-flex rounded-full border border-violet-200 bg-violet-50 px-3 py-1 text-xs font-medium text-violet-700">
+                Trippify for Alberta
+              </div>
+              <div className="hidden h-5 w-px bg-slate-200 sm:block" />
+              <div className="hidden text-xs font-medium text-slate-500 sm:block">
+                Weekend planning without guesswork
+              </div>
+            </div>
+
             <button
               type="button"
               onClick={() => setSavedTripsOpen(true)}
-              className="inline-flex h-11 items-center justify-center rounded-full border border-slate-300 bg-white px-5 text-sm font-semibold text-slate-800 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-100"
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-full border border-slate-300 bg-white/85 px-5 text-sm font-semibold text-slate-800 shadow-sm backdrop-blur-sm transition hover:-translate-y-0.5 hover:bg-white"
             >
+              <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-slate-950 text-[11px] font-semibold text-white">
+                {Math.max(1, compareTrips.length || 3)}
+              </span>
               Saved trips
             </button>
-
-            <div className="inline-flex rounded-full border border-violet-200 bg-violet-50 px-3 py-1 text-xs font-medium text-violet-700 shadow-sm">
-              Trippify for Alberta
-            </div>
           </div>
 
-          <div className="mt-4 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div className="mt-5 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-3xl">
               <h1 className="text-4xl font-semibold tracking-tight text-slate-950 sm:text-5xl">
-                Find a weekend trip that actually fits.
+                Find a trip that actually fits.
               </h1>
               <p className="mt-3 text-base leading-7 text-slate-600 sm:text-lg">
                 Trippify ranks Alberta getaways and staycations by budget, drive
@@ -525,7 +571,7 @@ export default function HomePage() {
           </div>
         </section>
 
-        <section className="grid gap-6 xl:grid-cols-[1.45fr_0.75fr]">
+        <section className="grid items-start gap-6 xl:grid-cols-[1.45fr_0.75fr]">
           <div className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
             <TripForm
               key={tripFormKey}
@@ -536,29 +582,79 @@ export default function HomePage() {
             />
           </div>
 
-          <aside className="grid gap-4 sm:grid-cols-3 xl:grid-cols-1">
-            <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+          <aside className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
+            <div className="overflow-hidden rounded-[2rem] border border-slate-200 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,250,252,0.96))] p-6 shadow-sm">
               <div className="text-xs font-semibold uppercase tracking-[0.18em] text-violet-600">
                 Why Trippify
               </div>
-              <ul className="mt-4 space-y-3 text-sm leading-6 text-slate-600">
-                <li>Ranked trips based on your actual constraints</li>
-                <li>Budget-aware results with staycation support</li>
-                <li>Saveable plans with fuller itinerary details</li>
-              </ul>
-            </div>
-
-            <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
-              <div className="text-xs font-semibold uppercase tracking-[0.18em] text-violet-600">
-                Example fit
-              </div>
-              <div className="mt-3 text-xl font-semibold text-slate-900">
-                Jasper foodie weekend
+              <div className="mt-3 text-2xl font-semibold tracking-tight text-slate-950">
+                Faster short-trip decisions.
               </div>
               <p className="mt-2 text-sm leading-6 text-slate-600">
-                A strong Trippify match when you want scenic value, a manageable
-                drive, and solid food options without blowing a short-trip budget.
+                The planner narrows Alberta options using the constraints that
+                usually kill trip momentum: budget, drive time, timing, and style.
               </p>
+
+              <div className="mt-5 space-y-3">
+                <RailFeature
+                  title="Ranked around your limits"
+                  detail="Trips are filtered around your real drive hours, traveler count, and budget instead of generic inspiration."
+                />
+                <RailFeature
+                  title="Useful fallback and live data"
+                  detail="You still get strong recommendations when live providers are thin, but the planner upgrades results when current data exists."
+                />
+                <RailFeature
+                  title="Built to compare, save, and refine"
+                  detail="Generate three options, regenerate fresh sets, then save the one worth turning into a real itinerary."
+                />
+              </div>
+            </div>
+
+            <div className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+              <div className="flex items-center justify-between gap-3">
+                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-violet-600">
+                  How It Works
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSavedTripsOpen(true)}
+                  className="inline-flex h-9 items-center justify-center rounded-full border border-slate-300 bg-slate-50 px-4 text-xs font-semibold text-slate-700 transition hover:bg-slate-100"
+                >
+                  Open saved
+                </button>
+              </div>
+
+              <div className="mt-4 space-y-4">
+                <RailStep
+                  number="1"
+                  title="Set your trip constraints"
+                  detail="Choose your city, style, dates, group size, and budget to shape the shortlist."
+                />
+                <RailStep
+                  number="2"
+                  title="Compare your three strongest fits"
+                  detail="If none feel right, regenerate to get another set of destinations without restarting the form."
+                />
+                <RailStep
+                  number="3"
+                  title="Build the one worth booking"
+                  detail="Lock in a destination, refine the hotel and stops, then use saved trips to revisit better options later."
+                />
+              </div>
+
+              <div className="mt-5 rounded-[1.5rem] border border-amber-200 bg-[linear-gradient(135deg,#fff7ed,#fffbeb)] p-5">
+                <div className="text-xs font-semibold uppercase tracking-[0.16em] text-amber-700">
+                  Example fit
+                </div>
+                <div className="mt-2 text-xl font-semibold text-slate-900">
+                  Jasper foodie weekend
+                </div>
+                <p className="mt-2 text-sm leading-6 text-slate-600">
+                  Strong when you want mountain payoff, manageable drive value,
+                  and enough food density to make a short trip feel worth it.
+                </p>
+              </div>
             </div>
           </aside>
         </section>

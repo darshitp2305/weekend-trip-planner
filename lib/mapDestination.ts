@@ -1,4 +1,5 @@
 import { Destination, RawDestination, StyleScores, TripInput, TripStyle } from "./types";
+import { getPlanningHubForStartCity } from "./startCities";
 
 function getHiddenGemSignal(raw: RawDestination): number {
   const text = [
@@ -163,7 +164,7 @@ export function mapRawDestination(
   raw: RawDestination,
   input: TripInput
 ): Destination {
-  const startKey = input.startCity.toLowerCase();
+  const startKey = getPlanningHubForStartCity(input.startCity).toLowerCase();
   const driveHours = raw.drive_time_hours_from[startKey] ?? 999;
 
   const rawHotels = ((raw as RawDestination & { hotel_options?: RawHotelOption[] }).hotel_options ??

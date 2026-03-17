@@ -29,6 +29,8 @@ type StopOption = {
   subtitle?: string;
   rating?: number;
   estimatedCost?: number;
+  primaryUrl?: string;
+  primaryLabel?: string;
   mapsUrl?: string;
   websiteUrl?: string;
   category?: string;
@@ -126,9 +128,7 @@ function SelectorCard({
     buildPhotoUrl(option.photoRef) ?? option.photoUrl ?? option.fallbackPhotoUrl;
 
   return (
-    <button
-      type="button"
-      onClick={onSelect}
+    <div
       className={
         selected
           ? "group rounded-[1rem] border border-violet-300 bg-violet-50 p-3.5 text-left shadow-[inset_0_0_0_1px_rgba(139,92,246,0.06)]"
@@ -182,7 +182,43 @@ function SelectorCard({
           </div>
         </div>
       ) : null}
-    </button>
+
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={onSelect}
+          className={
+            selected
+              ? "inline-flex h-10 items-center justify-center rounded-full bg-violet-600 px-4 text-sm font-semibold text-white transition hover:bg-violet-500"
+              : "inline-flex h-10 items-center justify-center rounded-full bg-slate-950 px-4 text-sm font-semibold text-white transition hover:bg-slate-800"
+          }
+        >
+          {selected ? "Selected" : "Choose this"}
+        </button>
+
+        {option.primaryUrl ? (
+          <a
+            href={option.primaryUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex h-10 items-center justify-center rounded-full border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-800 transition hover:bg-slate-100"
+          >
+            {option.primaryLabel ?? "Visit site"}
+          </a>
+        ) : null}
+
+        {option.mapsUrl ? (
+          <a
+            href={option.mapsUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex h-10 items-center justify-center rounded-full border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-800 transition hover:bg-slate-100"
+          >
+            Open map
+          </a>
+        ) : null}
+      </div>
+    </div>
   );
 }
 
@@ -339,6 +375,9 @@ export default function InteractiveItinerary({
                               rating: hotel.rating,
                               pricePerNight: hotel.pricePerNight,
                               totalStayPrice: hotel.totalStayPrice,
+                              primaryUrl: hotel.bookingLink || hotel.websiteUrl,
+                              primaryLabel: "Hotel site",
+                              mapsUrl: hotel.mapsUrl,
                               photoRef: hotel.photoRef,
                               photoUrl: hotel.photoUrl,
                               fallbackPhotoUrl: destinationImageUrl,
@@ -391,6 +430,9 @@ export default function InteractiveItinerary({
                                 rating: spot.rating,
                                 estimatedCost,
                                 category: spot.category ?? spot.tags?.[0],
+                                primaryUrl: spot.websiteUrl || spot.link,
+                                primaryLabel: "Restaurant site",
+                                mapsUrl: spot.mapsUrl,
                                 photoRef: spot.photoRef,
                                 photoUrl: spot.photoUrl,
                               }}
@@ -449,6 +491,10 @@ export default function InteractiveItinerary({
                                 rating: activity.rating,
                                 estimatedCost,
                                 category: activity.type,
+                                primaryUrl:
+                                  activity.websiteUrl || activity.bookingLink,
+                                primaryLabel: "Activity site",
+                                mapsUrl: activity.mapsUrl,
                                 photoRef: activity.photoRef,
                                 photoUrl: activity.photoUrl,
                               }}

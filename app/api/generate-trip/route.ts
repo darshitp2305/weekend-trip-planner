@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { isStartCity } from "../../../lib/startCities";
 import { deriveTripEndDate, isIsoDate } from "../../../lib/tripDates";
 import { rankDestinations } from "../../../lib/rankDestinations";
 import { RankedDestination, TripInput } from "../../../lib/types";
@@ -17,7 +18,7 @@ function isTripInput(value: any): value is TripInput {
   return (
     value &&
     typeof value === "object" &&
-    (value.startCity === "Edmonton" || value.startCity === "Calgary") &&
+    isStartCity(value.startCity) &&
     typeof value.maxDriveHours === "number" &&
     typeof value.budget === "number" &&
     typeof value.budgetPerTraveler === "number" &&

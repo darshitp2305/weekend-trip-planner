@@ -1,7 +1,8 @@
 "use client";
 
-import { CSSProperties, useState } from "react";
+import { CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 import rawDestinations from "../data/destinations.json";
+import { isStartCity, START_CITY_OPTIONS, type StartCity } from "../lib/startCities";
 import {
   clampTripEndDate,
   clampTripStartDate,
@@ -22,7 +23,7 @@ type Props = {
 };
 
 type FormState = {
-  startCity: "Edmonton" | "Calgary";
+  startCity: StartCity;
   maxDriveHours: string;
   budgetPerTraveler: string;
   travelerCount: string;
@@ -40,7 +41,7 @@ const DEFAULT_FORM: FormState = {
   maxDriveHours: "5",
   budgetPerTraveler: "300",
   travelerCount: "2",
-  style: "foodie",
+  style: "adventure",
   veganFriendly: false,
   includeStaycations: false,
   strictBudget: false,
@@ -65,11 +66,13 @@ function buildFormState(
 
   return {
     ...DEFAULT_FORM,
-    startCity: initialInput?.startCity === "Calgary" ? "Calgary" : "Edmonton",
+    startCity: isStartCity(initialInput?.startCity)
+      ? initialInput.startCity
+      : "Edmonton",
     maxDriveHours: String(initialInput?.maxDriveHours ?? 5),
     budgetPerTraveler: String(initialInput?.budgetPerTraveler ?? 300),
     travelerCount: String(initialInput?.travelerCount ?? 2),
-    style: initialInput?.style ?? "foodie",
+    style: initialInput?.style ?? "adventure",
     veganFriendly: Boolean(initialInput?.veganFriendly),
     includeStaycations: Boolean(initialInput?.includeStaycations),
     strictBudget: Boolean(initialInput?.strictBudget),
@@ -95,6 +98,23 @@ const DESTINATION_OPTIONS = Array.from(
       .filter((name): name is string => Boolean(name))
   )
 ).sort((a, b) => a.localeCompare(b));
+
+function getFallbackImageUrl(name: string) {
+  const seed = encodeURIComponent(name.trim().toLowerCase());
+  return `https://picsum.photos/seed/${seed}/1200/800`;
+}
+
+function getLeadImage(name: string) {
+  const rawImage = (rawDestinations as Array<{ name?: string; image_url?: string }>)
+    .find((destination) => destination.name?.trim() === name)
+    ?.image_url;
+
+  if (typeof rawImage === "string" && rawImage.trim().length > 0) {
+    return rawImage;
+  }
+
+  return getFallbackImageUrl(name);
+}
 
 function parsePositiveInt(value: string, fallback: number) {
   const cleaned = value.replace(/[^\d]/g, "");
@@ -186,6 +206,17 @@ function ToggleRow({
   );
 }
 
+function findTypedMatch(options: readonly string[], query: string) {
+  const normalizedQuery = query.trim().toLowerCase();
+  if (!normalizedQuery) return null;
+
+  return (
+    options.find((option) => option.toLowerCase().startsWith(normalizedQuery)) ??
+    options.find((option) => option.toLowerCase().includes(normalizedQuery)) ??
+    null
+  );
+}
+
 const DATE_INPUT_CLASS =
   "h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-date-and-time-value]:text-slate-900 [&::-webkit-datetime-edit]:text-slate-900 [&::-webkit-datetime-edit-fields-wrapper]:text-slate-900";
 const DATE_INPUT_STYLE: CSSProperties = {
@@ -211,12 +242,101 @@ export default function TripForm({
     form.tripStartDate || undefined,
     form.tripEndDate || undefined
   );
+  const [activeSlide, setActiveSlide] = useState(0);
+  const selectTypeaheadRef = useRef<{
+    query: string;
+    timeoutId: ReturnType<typeof setTimeout> | null;
+  }>({
+    query: "",
+    timeoutId: null,
+  });
+
+  const rotatingSlides = useMemo(
+    () =>
+      (rawDestinations as Array<{
+        id?: string;
+        name?: string;
+        summary?: string;
+        vibes?: string[];
+        region?: string;
+      }>)
+        .filter((destination) => typeof destination.name === "string")
+        .map((destination, index) => {
+          const name = destination.name!.trim();
+          const region = destination.region?.trim() || "Alberta";
+          const vibeText = Array.isArray(destination.vibes)
+            ? destination.vibes.slice(0, 3).join(", ")
+            : "";
+
+          return {
+            id: destination.id ?? `${name}-${index}`,
+            title: name,
+            subtitle: vibeText
+              ? `${name} in ${region} is a strong ${vibeText} pick for a short Alberta trip.`
+              : `${name} is a strong Alberta option for a short getaway.`,
+            imageUrl: getLeadImage(name),
+          };
+        }),
+    []
+  );
+
+  const currentSlideIndex =
+    rotatingSlides.length > 0
+      ? Math.min(activeSlide, rotatingSlides.length - 1)
+      : 0;
+
+  useEffect(() => {
+    if (rotatingSlides.length <= 1) {
+      return;
+    }
+
+    const intervalId = window.setInterval(() => {
+      setActiveSlide((current) => (current + 1) % rotatingSlides.length);
+    }, 3500);
+
+    return () => window.clearInterval(intervalId);
+  }, [rotatingSlides]);
 
   function updateField<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({
       ...prev,
       [key]: value,
     }));
+  }
+
+  function handleSelectTypeahead(
+    event: React.KeyboardEvent<HTMLSelectElement>,
+    options: readonly string[],
+    onMatch: (value: string) => void
+  ) {
+    if (
+      event.key.length !== 1 ||
+      event.altKey ||
+      event.ctrlKey ||
+      event.metaKey
+    ) {
+      return;
+    }
+
+    const nextQuery = `${selectTypeaheadRef.current.query}${event.key}`;
+    const match = findTypedMatch(options, nextQuery);
+
+    if (!match) {
+      return;
+    }
+
+    event.preventDefault();
+    selectTypeaheadRef.current.query = nextQuery;
+    onMatch(match);
+
+    if (selectTypeaheadRef.current.timeoutId) {
+      clearTimeout(selectTypeaheadRef.current.timeoutId);
+    }
+
+    selectTypeaheadRef.current.timeoutId = setTimeout(() => {
+      selectTypeaheadRef.current.query = "";
+      selectTypeaheadRef.current.timeoutId = null;
+    }, 700);
   }
 
   function handleNumericChange(
@@ -377,6 +497,56 @@ export default function TripForm({
   return (
     <section className="w-full">
       <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="overflow-hidden rounded-[1.75rem] border border-slate-200 bg-slate-950 shadow-sm">
+          <div className="relative h-72 sm:h-80">
+            {rotatingSlides.map((slide, index) => (
+              <div
+                key={slide.id}
+                className={`absolute inset-0 transition-opacity duration-700 ${
+                  index === currentSlideIndex ? "opacity-100" : "opacity-0"
+                }`}
+              >
+                <img
+                  src={slide.imageUrl}
+                  alt={slide.title}
+                  className="h-full w-full object-cover"
+                />
+                <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(15,23,42,0.10),rgba(15,23,42,0.72))]" />
+              </div>
+            ))}
+
+            <div className="absolute inset-x-0 bottom-0 p-5 sm:p-6">
+              <div className="max-w-2xl">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/75">
+                  Weekend inspiration
+                </div>
+                <div className="mt-2 text-2xl font-semibold tracking-tight text-white sm:text-3xl">
+                  {rotatingSlides[currentSlideIndex]?.title}
+                </div>
+                <p className="mt-2 max-w-xl text-sm leading-6 text-white/85">
+                  {rotatingSlides[currentSlideIndex]?.subtitle}
+                </p>
+              </div>
+
+              <div className="mt-4 flex gap-2">
+                {rotatingSlides.map((slide, index) => (
+                  <button
+                    key={slide.id}
+                    type="button"
+                    onClick={() => setActiveSlide(index)}
+                    aria-label={`Show ${slide.title}`}
+                    className={`h-2.5 rounded-full transition-all ${
+                      index === currentSlideIndex
+                        ? "w-10 bg-white"
+                        : "w-2.5 bg-white/45 hover:bg-white/70"
+                    }`}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div className="grid gap-4 lg:grid-cols-3">
           <div>
             <FieldLabel htmlFor="startCity">Start city</FieldLabel>
@@ -386,10 +556,18 @@ export default function TripForm({
               onChange={(e) =>
                 updateField("startCity", e.target.value as FormState["startCity"])
               }
+              onKeyDown={(e) =>
+                handleSelectTypeahead(e, START_CITY_OPTIONS, (value) =>
+                  updateField("startCity", value as FormState["startCity"])
+                )
+              }
               className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
             >
-              <option value="Edmonton">Edmonton</option>
-              <option value="Calgary">Calgary</option>
+              {START_CITY_OPTIONS.map((city) => (
+                <option key={city} value={city}>
+                  {city}
+                </option>
+              ))}
             </select>
           </div>
 
@@ -518,6 +696,11 @@ export default function TripForm({
               id="preferredDestination"
               value={form.preferredDestination}
               onChange={(e) => updateField("preferredDestination", e.target.value)}
+              onKeyDown={(e) =>
+                handleSelectTypeahead(e, DESTINATION_OPTIONS, (value) =>
+                  updateField("preferredDestination", value)
+                )
+              }
               className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
             >
               <option value="">Pick from available destinations</option>

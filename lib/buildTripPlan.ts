@@ -16,7 +16,7 @@ const defaultInput: TripInput = {
   travelerCount: 2,
   tripLengthDays: 2,
   season: "Summer",
-  style: "foodie",
+  style: "adventure",
   veganFriendly: false,
   includeStaycations: false,
   strictBudget: false,
