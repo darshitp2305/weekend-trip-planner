@@ -403,6 +403,7 @@ export default function HomePage() {
     displayResults.length > 0 ? displayResults : rankedResults
   );
   const isDirectDestinationFlow = Boolean(lastInput?.preferredDestination);
+  const tripFormKey = lastInput ? JSON.stringify(lastInput) : "new-trip";
 
   return (
     <main className="min-h-screen bg-[#f8fafc] text-slate-900">
@@ -434,6 +435,7 @@ export default function HomePage() {
         <section className="grid gap-6 xl:grid-cols-[1.45fr_0.75fr]">
           <div className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
             <TripForm
+              key={tripFormKey}
               onGenerate={handleGenerate}
               loading={loading}
               results={compareTrips}

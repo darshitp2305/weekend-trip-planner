@@ -2,6 +2,36 @@ export function isIsoDate(value?: string): value is string {
   return Boolean(value && /^\d{4}-\d{2}-\d{2}$/.test(value));
 }
 
+function formatDateAsIso(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+export function getTodayIsoDate(referenceDate: Date = new Date()): string {
+  return formatDateAsIso(referenceDate);
+}
+
+function getUtcDayValue(value: string): number | undefined {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return undefined;
+
+  const [, year, month, day] = match;
+  return Date.UTC(Number(year), Number(month) - 1, Number(day));
+}
+
+export function clampTripStartDate(
+  value?: string,
+  minimumDate = getTodayIsoDate()
+): string {
+  if (!isIsoDate(value) || value < minimumDate) {
+    return minimumDate;
+  }
+
+  return value;
+}
+
 export function addDaysToIsoDate(
   startDate?: string,
   daysToAdd = 0
@@ -12,7 +42,7 @@ export function addDaysToIsoDate(
   if (Number.isNaN(date.getTime())) return undefined;
 
   date.setDate(date.getDate() + daysToAdd);
-  return date.toISOString().slice(0, 10);
+  return formatDateAsIso(date);
 }
 
 export function deriveTripEndDate(
@@ -20,6 +50,42 @@ export function deriveTripEndDate(
   tripLengthDays = 2
 ): string | undefined {
   return addDaysToIsoDate(startDate, Math.max(0, tripLengthDays - 1));
+}
+
+export function deriveTripLengthDays(
+  startDate?: string,
+  endDate?: string
+): number | undefined {
+  if (!isIsoDate(startDate) || !isIsoDate(endDate)) return undefined;
+
+  const startValue = getUtcDayValue(startDate);
+  const endValue = getUtcDayValue(endDate);
+  if (startValue === undefined || endValue === undefined || endValue < startValue) {
+    return undefined;
+  }
+
+  return Math.round((endValue - startValue) / 86_400_000) + 1;
+}
+
+export function clampTripEndDate(
+  value?: string,
+  startDate?: string,
+  maxTripLengthDays = 7
+): string | undefined {
+  if (!isIsoDate(startDate)) return undefined;
+
+  const maxEndDate =
+    deriveTripEndDate(startDate, Math.max(1, maxTripLengthDays)) ?? startDate;
+
+  if (!isIsoDate(value) || value < startDate) {
+    return startDate;
+  }
+
+  if (value > maxEndDate) {
+    return maxEndDate;
+  }
+
+  return value;
 }
 
 export function formatDisplayDate(value?: string): string | undefined {

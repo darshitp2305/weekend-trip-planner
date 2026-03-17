@@ -1,8 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import rawDestinations from "../data/destinations.json";
-import { deriveTripEndDate, formatDateRange } from "../lib/tripDates";
+import {
+  clampTripEndDate,
+  clampTripStartDate,
+  deriveTripEndDate,
+  deriveTripLengthDays,
+  formatDateRange,
+  getTodayIsoDate,
+} from "../lib/tripDates";
 import { RankedDestination, TripInput, TripStyle } from "../lib/types";
 
 type Props = {
@@ -18,7 +25,6 @@ type FormState = {
   maxDriveHours: string;
   budgetPerTraveler: string;
   travelerCount: string;
-  tripLengthDays: string;
   season: string;
   style: TripStyle;
   veganFriendly: boolean;
@@ -26,6 +32,7 @@ type FormState = {
   strictBudget: boolean;
   preferredDestination: string;
   tripStartDate: string;
+  tripEndDate: string;
 };
 
 const DEFAULT_FORM: FormState = {
@@ -33,7 +40,6 @@ const DEFAULT_FORM: FormState = {
   maxDriveHours: "5",
   budgetPerTraveler: "300",
   travelerCount: "2",
-  tripLengthDays: "2",
   season: "Summer",
   style: "foodie",
   veganFriendly: false,
@@ -41,7 +47,39 @@ const DEFAULT_FORM: FormState = {
   strictBudget: false,
   preferredDestination: "",
   tripStartDate: "",
+  tripEndDate: "",
 };
+
+function buildFormState(
+  initialInput?: Partial<TripInput>,
+  minimumDate = getTodayIsoDate()
+): FormState {
+  const tripStartDate = clampTripStartDate(
+    initialInput?.tripStartDate,
+    minimumDate
+  );
+  const requestedTripEndDate =
+    initialInput?.tripEndDate ??
+    deriveTripEndDate(tripStartDate, initialInput?.tripLengthDays ?? 2);
+  const tripEndDate =
+    clampTripEndDate(requestedTripEndDate, tripStartDate, 7) ?? tripStartDate;
+
+  return {
+    ...DEFAULT_FORM,
+    startCity: initialInput?.startCity === "Calgary" ? "Calgary" : "Edmonton",
+    maxDriveHours: String(initialInput?.maxDriveHours ?? 5),
+    budgetPerTraveler: String(initialInput?.budgetPerTraveler ?? 300),
+    travelerCount: String(initialInput?.travelerCount ?? 2),
+    season: initialInput?.season ?? "Summer",
+    style: initialInput?.style ?? "foodie",
+    veganFriendly: Boolean(initialInput?.veganFriendly),
+    includeStaycations: Boolean(initialInput?.includeStaycations),
+    strictBudget: Boolean(initialInput?.strictBudget),
+    preferredDestination: initialInput?.preferredDestination ?? "",
+    tripStartDate,
+    tripEndDate,
+  };
+}
 
 const SEASONS = ["Spring", "Summer", "Fall", "Winter"];
 
@@ -156,34 +194,16 @@ export default function TripForm({
   results = [],
   initialInput,
 }: Props) {
-  const [form, setForm] = useState<FormState>(DEFAULT_FORM);
-  const derivedTripEndDate = deriveTripEndDate(
-    form.tripStartDate || undefined,
-    Math.max(1, parsePositiveInt(form.tripLengthDays, 2))
+  const minTripStartDate = getTodayIsoDate();
+  const [form, setForm] = useState<FormState>(() =>
+    buildFormState(initialInput, minTripStartDate)
   );
+  const maxTripEndDate =
+    deriveTripEndDate(form.tripStartDate, 7) ?? form.tripStartDate;
   const tripDateRange = formatDateRange(
     form.tripStartDate || undefined,
-    derivedTripEndDate
+    form.tripEndDate || undefined
   );
-
-  useEffect(() => {
-    if (!initialInput) return;
-
-    setForm({
-      startCity: initialInput.startCity === "Calgary" ? "Calgary" : "Edmonton",
-      maxDriveHours: String(initialInput.maxDriveHours ?? 5),
-      budgetPerTraveler: String(initialInput.budgetPerTraveler ?? 300),
-      travelerCount: String(initialInput.travelerCount ?? 2),
-      tripLengthDays: String(initialInput.tripLengthDays ?? 2),
-      season: initialInput.season ?? "Summer",
-      style: initialInput.style ?? "foodie",
-      veganFriendly: Boolean(initialInput.veganFriendly),
-      includeStaycations: Boolean(initialInput.includeStaycations),
-      strictBudget: Boolean(initialInput.strictBudget),
-      preferredDestination: initialInput.preferredDestination ?? "",
-      tripStartDate: initialInput.tripStartDate ?? "",
-    });
-  }, [initialInput]);
 
   function updateField<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({
@@ -193,7 +213,7 @@ export default function TripForm({
   }
 
   function handleNumericChange(
-    key: "maxDriveHours" | "budgetPerTraveler" | "travelerCount" | "tripLengthDays",
+    key: "maxDriveHours" | "budgetPerTraveler" | "travelerCount",
     value: string
   ) {
     const digitsOnly = value.replace(/[^\d]/g, "");
@@ -201,7 +221,7 @@ export default function TripForm({
   }
 
   function handleNumericBlur(
-    key: "maxDriveHours" | "budgetPerTraveler" | "travelerCount" | "tripLengthDays"
+    key: "maxDriveHours" | "budgetPerTraveler" | "travelerCount"
   ) {
     if (key === "maxDriveHours") {
       updateField(
@@ -238,14 +258,35 @@ export default function TripForm({
       );
       return;
     }
+  }
 
+  function handleTripStartDateChange(value: string) {
+    const tripStartDate = clampTripStartDate(value, minTripStartDate);
+
+    setForm((prev) => {
+      const tripLengthDays =
+        deriveTripLengthDays(prev.tripStartDate, prev.tripEndDate) ?? 2;
+      const nextTripEndDate =
+        clampTripEndDate(
+          deriveTripEndDate(tripStartDate, tripLengthDays),
+          tripStartDate,
+          7
+        ) ??
+        tripStartDate;
+
+      return {
+        ...prev,
+        tripStartDate,
+        tripEndDate: nextTripEndDate,
+      };
+    });
+  }
+
+  function handleTripEndDateChange(value: string) {
     updateField(
-      key,
-      normalizeNumericString(form[key], {
-        min: 1,
-        max: 7,
-        fallback: 2,
-      }) as FormState[typeof key]
+      "tripEndDate",
+      (clampTripEndDate(value, form.tripStartDate, 7) ??
+        form.tripStartDate) as FormState["tripEndDate"]
     );
   }
 
@@ -265,6 +306,14 @@ export default function TripForm({
       5000,
       Math.max(50, parsePositiveInt(form.budgetPerTraveler, 300))
     );
+    const tripStartDate = clampTripStartDate(
+      form.tripStartDate,
+      minTripStartDate
+    );
+    const tripEndDate =
+      clampTripEndDate(form.tripEndDate, tripStartDate, 7) ?? tripStartDate;
+    const tripLengthDays =
+      deriveTripLengthDays(tripStartDate, tripEndDate) ?? 1;
 
     const cleanedInput: TripInput = {
       startCity: form.startCity,
@@ -275,18 +324,15 @@ export default function TripForm({
       budget: travelerCount * budgetPerTraveler,
       budgetPerTraveler,
       travelerCount,
-      tripLengthDays: Math.min(
-        7,
-        Math.max(1, parsePositiveInt(form.tripLengthDays, 2))
-      ),
+      tripLengthDays,
       season: form.season,
       style: form.style,
       veganFriendly: form.veganFriendly,
       includeStaycations: form.includeStaycations,
       strictBudget: form.strictBudget,
       preferredDestination: form.preferredDestination.trim() || undefined,
-      tripStartDate: form.tripStartDate || undefined,
-      tripEndDate: derivedTripEndDate,
+      tripStartDate,
+      tripEndDate,
     };
 
     setForm((prev) => ({
@@ -294,7 +340,8 @@ export default function TripForm({
       maxDriveHours: String(cleanedInput.maxDriveHours),
       budgetPerTraveler: String(cleanedInput.budgetPerTraveler),
       travelerCount: String(cleanedInput.travelerCount),
-      tripLengthDays: String(cleanedInput.tripLengthDays),
+      tripStartDate,
+      tripEndDate,
     }));
 
     const submitHandler = onGenerate ?? onSubmit;
@@ -417,26 +464,28 @@ export default function TripForm({
           </div>
 
           <div>
-            <FieldLabel htmlFor="tripLengthDays">Trip days</FieldLabel>
+            <FieldLabel htmlFor="tripStartDate">Trip start date</FieldLabel>
             <input
-              id="tripLengthDays"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              type="text"
-              value={form.tripLengthDays}
-              onChange={(e) => handleNumericChange("tripLengthDays", e.target.value)}
-              onBlur={() => handleNumericBlur("tripLengthDays")}
+              id="tripStartDate"
+              type="date"
+              min={minTripStartDate}
+              required
+              value={form.tripStartDate}
+              onChange={(e) => handleTripStartDateChange(e.target.value)}
               className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
             />
           </div>
 
           <div>
-            <FieldLabel htmlFor="tripStartDate">Trip start date</FieldLabel>
+            <FieldLabel htmlFor="tripEndDate">Trip end date</FieldLabel>
             <input
-              id="tripStartDate"
+              id="tripEndDate"
               type="date"
-              value={form.tripStartDate}
-              onChange={(e) => updateField("tripStartDate", e.target.value)}
+              min={form.tripStartDate}
+              max={maxTripEndDate}
+              required
+              value={form.tripEndDate}
+              onChange={(e) => handleTripEndDateChange(e.target.value)}
               className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
             />
           </div>
