@@ -57,10 +57,24 @@ function normalizeInput(raw: any): TripInput | null {
   return candidate;
 }
 
+function normalizeExcludedDestinationNames(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .filter((name): name is string => typeof name === "string")
+    .map((name) => name.trim())
+    .filter(Boolean);
+}
+
 export async function POST(req: Request) {
   try {
     const body = await req.json();
     const input = normalizeInput(body?.input ?? body);
+    const excludedDestinationNames = normalizeExcludedDestinationNames(
+      body?.excludedDestinationNames
+    );
 
     if (!input) {
       return NextResponse.json(
@@ -72,6 +86,7 @@ export async function POST(req: Request) {
     const pipeline = await generateRankedTrips(input, {
       shortlistSize: input.preferredDestination ? 3 : 6,
       finalLimit: input.preferredDestination ? 1 : 3,
+      excludedDestinationNames,
     });
 
     return NextResponse.json({

@@ -43,6 +43,8 @@ export interface Activity {
   mapsUrl?: string;
   photoRef?: string;
   photoUrl?: string;
+  latitude?: number;
+  longitude?: number;
 }
 
 export interface HotelOption {
@@ -58,6 +60,8 @@ export interface HotelOption {
   mapsUrl?: string;
   photoRef?: string;
   photoUrl?: string;
+  latitude?: number;
+  longitude?: number;
 }
 
 export interface FoodSpot {
@@ -72,6 +76,8 @@ export interface FoodSpot {
   mapsUrl?: string;
   photoRef?: string;
   photoUrl?: string;
+  latitude?: number;
+  longitude?: number;
 }
 
 export interface BudgetBreakdown {

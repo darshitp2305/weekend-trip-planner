@@ -66,6 +66,8 @@ export type LiveHotelRate = {
   totalStayPrice?: number;
   pricingSource: "SerpApi Google Hotels";
   photoUrl?: string;
+  latitude?: number;
+  longitude?: number;
 };
 
 function numericRateFromPrice(price?: SerpApiPrice): number | undefined {
@@ -151,6 +153,8 @@ export async function searchHotelsWithSerpApi(
         pricingSource: "SerpApi Google Hotels" as const,
         photoUrl:
           result.images?.[0]?.original_image || result.images?.[0]?.thumbnail,
+        latitude: result.gps_coordinates?.latitude,
+        longitude: result.gps_coordinates?.longitude,
       };
     })
     .filter((hotel) => Boolean(hotel.name))

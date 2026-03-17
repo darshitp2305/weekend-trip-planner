@@ -38,6 +38,10 @@ export type GooglePlace = {
   id?: string;
   displayName?: { text?: string };
   formattedAddress?: string;
+  location?: {
+    latitude?: number;
+    longitude?: number;
+  };
   rating?: number;
   websiteUri?: string;
   googleMapsUri?: string;
@@ -58,6 +62,7 @@ const FIELD_MASK = [
   "places.id",
   "places.displayName",
   "places.formattedAddress",
+  "places.location",
   "places.rating",
   "places.userRatingCount",
   "places.websiteUri",

@@ -946,12 +946,18 @@ function recalculateConfidence(
 
 export async function generateRankedTrips(
   input: TripInput,
-  options?: { shortlistSize?: number; finalLimit?: number }
+  options?: {
+    shortlistSize?: number;
+    finalLimit?: number;
+    excludedDestinationNames?: string[];
+  }
 ): Promise<GenerateRankedTripsResult> {
   const shortlistSize = options?.shortlistSize ?? 6;
   const finalLimit = options?.finalLimit ?? 3;
 
-  const initialCandidates = rankDestinations(input, shortlistSize);
+  const initialCandidates = rankDestinations(input, shortlistSize, {
+    excludedDestinationNames: options?.excludedDestinationNames,
+  });
 
   const enrichedTrips = await Promise.all(
     initialCandidates.map(async (trip) => {

@@ -1084,12 +1084,23 @@ function calculateConfidence(args: {
 
 export function rankDestinations(
   input: TripInput,
-  limit = 3
+  limit = 3,
+  options?: { excludedDestinationNames?: string[] }
 ): RankedDestination[] {
+  const excludedDestinationNames = new Set(
+    (options?.excludedDestinationNames ?? [])
+      .map((name) => name.trim().toLowerCase())
+      .filter(Boolean)
+  );
+
   const destinationList = (rawDestinations as RawDestination[])
     .map((raw) => mapRawDestination(raw, input))
     .filter((destination) =>
       destinationMatchesPreference(destination, input.preferredDestination)
+    )
+    .filter(
+      (destination) =>
+        !excludedDestinationNames.has(destination.name.trim().toLowerCase())
     );
 
   const ranked = destinationList

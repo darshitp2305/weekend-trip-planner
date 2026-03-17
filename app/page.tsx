@@ -125,6 +125,7 @@ export default function HomePage() {
   const [loading, setLoading] = useState(false);
   const [rankedResults, setRankedResults] = useState<RankedDestination[]>([]);
   const [displayResults, setDisplayResults] = useState<RankedDestination[]>([]);
+  const [shownDestinationNames, setShownDestinationNames] = useState<string[]>([]);
   const [lastInput, setLastInput] = useState<TripInput | null>(null);
   const [aiStatusMessage, setAiStatusMessage] = useState("");
   const [waitingForTripText, setWaitingForTripText] = useState(false);
@@ -134,6 +135,7 @@ export default function HomePage() {
   function persistPageState(nextState: {
     rankedResults?: RankedDestination[];
     displayResults?: RankedDestination[];
+    shownDestinationNames?: string[];
     lastInput?: TripInput | null;
     aiStatusMessage?: string;
   }) {
@@ -145,6 +147,8 @@ export default function HomePage() {
         JSON.stringify({
           rankedResults: nextState.rankedResults ?? rankedResults,
           displayResults: nextState.displayResults ?? displayResults,
+          shownDestinationNames:
+            nextState.shownDestinationNames ?? shownDestinationNames,
           lastInput: nextState.lastInput ?? lastInput,
           aiStatusMessage: nextState.aiStatusMessage ?? aiStatusMessage,
         })
@@ -164,6 +168,7 @@ export default function HomePage() {
       const saved = JSON.parse(raw) as {
         rankedResults?: RankedDestination[];
         displayResults?: RankedDestination[];
+        shownDestinationNames?: string[];
         lastInput?: TripInput | null;
         aiStatusMessage?: string;
       };
@@ -174,6 +179,14 @@ export default function HomePage() {
 
       if (Array.isArray(saved.displayResults)) {
         setDisplayResults(saved.displayResults);
+      }
+
+      if (Array.isArray(saved.shownDestinationNames)) {
+        setShownDestinationNames(
+          saved.shownDestinationNames.filter(
+            (name): name is string => typeof name === "string" && name.trim().length > 0
+          )
+        );
       }
 
       if (saved.lastInput) {
@@ -193,13 +206,38 @@ export default function HomePage() {
   useEffect(() => {
     if (!restored) return;
     persistPageState({});
-  }, [aiStatusMessage, displayResults, lastInput, rankedResults, restored]);
+  }, [
+    aiStatusMessage,
+    displayResults,
+    lastInput,
+    rankedResults,
+    restored,
+    shownDestinationNames,
+  ]);
 
-  async function handleGenerate(input: TripInput) {
+  function dedupeDestinationNames(names: string[]) {
+    return Array.from(
+      new Set(names.map((name) => name.trim()).filter(Boolean))
+    );
+  }
+
+  async function handleGenerate(
+    input: TripInput,
+    options?: {
+      excludedDestinationNames?: string[];
+      resetShownDestinationNames?: boolean;
+    }
+  ) {
     setLoading(true);
     setWaitingForTripText(true);
     setLastInput(input);
     setAiStatusMessage("");
+
+    const excludedDestinationNames = dedupeDestinationNames(
+      options?.excludedDestinationNames ?? []
+    );
+    const shouldResetShownDestinationNames =
+      options?.resetShownDestinationNames || excludedDestinationNames.length === 0;
 
     if (typeof window !== "undefined") {
       try {
@@ -213,6 +251,7 @@ export default function HomePage() {
       lastInput: input,
       rankedResults: [],
       displayResults: [],
+      shownDestinationNames: shouldResetShownDestinationNames ? [] : shownDestinationNames,
       aiStatusMessage: "",
     });
 
@@ -222,7 +261,10 @@ export default function HomePage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ input }),
+        body: JSON.stringify({
+          input,
+          excludedDestinationNames,
+        }),
       });
 
       const rankText = await rankResponse.text();
@@ -244,10 +286,14 @@ export default function HomePage() {
         console.error("/api/rank-trips failed:", rankResponse.status, rankData);
         setRankedResults([]);
         setDisplayResults([]);
+        if (shouldResetShownDestinationNames) {
+          setShownDestinationNames([]);
+        }
         setAiStatusMessage("");
         persistPageState({
           rankedResults: [],
           displayResults: [],
+          shownDestinationNames: shouldResetShownDestinationNames ? [] : shownDestinationNames,
           lastInput: input,
           aiStatusMessage: "",
         });
@@ -255,8 +301,14 @@ export default function HomePage() {
       }
 
       if (!rankData?.results || rankData.results.length === 0) {
+        if (excludedDestinationNames.length > 0) {
+          await handleGenerate(input, { resetShownDestinationNames: true });
+          return;
+        }
+
         setRankedResults([]);
         setDisplayResults([]);
+        setShownDestinationNames([]);
         const noMatchMessage =
           input.preferredDestination
             ? `Trippify could not find a destination match for "${input.preferredDestination}".`
@@ -265,17 +317,25 @@ export default function HomePage() {
         persistPageState({
           rankedResults: [],
           displayResults: [],
+          shownDestinationNames: [],
           lastInput: input,
           aiStatusMessage: noMatchMessage,
         });
         return;
       }
 
+      const nextShownDestinationNames = dedupeDestinationNames([
+        ...(shouldResetShownDestinationNames ? [] : shownDestinationNames),
+        ...rankData.results.map((trip) => trip.name),
+      ]);
+
       setRankedResults(rankData.results);
       setDisplayResults([]);
+      setShownDestinationNames(nextShownDestinationNames);
       persistPageState({
         rankedResults: rankData.results,
         displayResults: [],
+        shownDestinationNames: nextShownDestinationNames,
         lastInput: input,
         aiStatusMessage: "",
       });
@@ -321,6 +381,7 @@ export default function HomePage() {
           persistPageState({
             rankedResults: rankedTrips,
             displayResults: rankedTrips,
+            shownDestinationNames: nextShownDestinationNames,
             lastInput: input,
             aiStatusMessage: fallbackMessage,
           });
@@ -350,6 +411,7 @@ export default function HomePage() {
           persistPageState({
             rankedResults: rankedTrips,
             displayResults: aiTrips,
+            shownDestinationNames: nextShownDestinationNames,
             lastInput: input,
             aiStatusMessage: aiMessage,
           });
@@ -364,6 +426,7 @@ export default function HomePage() {
           persistPageState({
             rankedResults: rankedTrips,
             displayResults: rankedTrips,
+            shownDestinationNames: nextShownDestinationNames,
             lastInput: input,
             aiStatusMessage: fallbackMessage,
           });
@@ -379,6 +442,7 @@ export default function HomePage() {
         persistPageState({
           rankedResults: rankedTrips,
           displayResults: rankedTrips,
+          shownDestinationNames: nextShownDestinationNames,
           lastInput: input,
           aiStatusMessage: fallbackMessage,
         });
@@ -387,10 +451,14 @@ export default function HomePage() {
       console.error("Trip generation failed:", error);
       setRankedResults([]);
       setDisplayResults([]);
+      if (shouldResetShownDestinationNames) {
+        setShownDestinationNames([]);
+      }
       setAiStatusMessage("");
       persistPageState({
         rankedResults: [],
         displayResults: [],
+        shownDestinationNames: shouldResetShownDestinationNames ? [] : shownDestinationNames,
         lastInput: input,
         aiStatusMessage: "",
       });
@@ -398,6 +466,16 @@ export default function HomePage() {
       setLoading(false);
       setWaitingForTripText(false);
     }
+  }
+
+  async function handleRegenerate() {
+    if (!lastInput || lastInput.preferredDestination) {
+      return;
+    }
+
+    await handleGenerate(lastInput, {
+      excludedDestinationNames: shownDestinationNames,
+    });
   }
 
   const compareTrips = withUniqueTripImages(
@@ -509,6 +587,19 @@ export default function HomePage() {
                   : "Review the strongest fits side by side, then build the one worth turning into a full trip plan."}
               </p>
             </div>
+
+            {!isDirectDestinationFlow && !waitingForTripText ? (
+              <div className="mt-4 flex justify-end">
+                <button
+                  type="button"
+                  onClick={handleRegenerate}
+                  disabled={loading}
+                  className="inline-flex h-11 items-center justify-center rounded-full border border-slate-300 bg-white px-5 text-sm font-semibold text-slate-800 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {loading ? "Regenerating..." : "Regenerate 3 new trips"}
+                </button>
+              </div>
+            ) : null}
 
             {waitingForTripText ? (
               <div className="mt-8 space-y-6">

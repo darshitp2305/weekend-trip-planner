@@ -7,14 +7,39 @@ import TripHeader from "../../../components/TripHeader";
 import BudgetBreakdown from "../../../components/BudgetBreakdown";
 import TripActions from "../../../components/TripActions";
 import InteractiveItinerary from "../../../components/InteractiveItinerary";
+import TripStopMap from "../../../components/TripStopMap";
 import { formatDateRange } from "../../../lib/tripDates";
-import { Activity, FoodSpot, HotelOption } from "../../../lib/types";
+import {
+  Activity,
+  FoodSpot,
+  HotelOption,
+  ItineraryDayData,
+  TripPlan,
+} from "../../../lib/types";
 
 function formatMoney(value: number) {
   return `$${Math.round(value)}`;
 }
 
-function deriveTripLengthDays(trip: any): number {
+function normalized(value?: string) {
+  return (value ?? "").trim().toLowerCase();
+}
+
+function optionSortScore(name: string, preferredTitle?: string) {
+  const optionName = normalized(name);
+  const title = normalized(preferredTitle);
+
+  if (!title) return 0;
+  if (optionName === title) return 100;
+  if (optionName.includes(title) || title.includes(optionName)) return 80;
+  return 0;
+}
+
+function stopKey(dayIndex: number, stopIndex: number) {
+  return `day-${dayIndex}-stop-${stopIndex}`;
+}
+
+function deriveTripLengthDays(trip: TripPlan | null): number {
   const explicitLength = Number(trip?.tripLengthDays);
   if (Number.isFinite(explicitLength) && explicitLength > 0) {
     return explicitLength;
@@ -37,14 +62,14 @@ function deriveTripLengthDays(trip: any): number {
   return 2;
 }
 
-function getStartCityLabel(trip: any): string {
+function getStartCityLabel(trip: TripPlan | null): string {
   const raw = `${trip?.routeSummary?.origin?.label ?? ""} ${trip?.summary ?? ""} ${trip?.name ?? ""}`.toLowerCase();
 
   if (raw.includes("calgary")) return "Calgary, Alberta";
   return "Edmonton, Alberta";
 }
 
-function getDestinationLabel(trip: any): string {
+function getDestinationLabel(trip: TripPlan | null): string {
   if (typeof trip?.destinationName === "string" && trip.destinationName.trim()) {
     return `${trip.destinationName}, Alberta`;
   }
@@ -60,10 +85,45 @@ function getDestinationLabel(trip: any): string {
   return "Banff, Alberta";
 }
 
+function pickMatchedHotel(hotels: HotelOption[], stopTitle?: string) {
+  return [...hotels]
+    .sort((a, b) => {
+      const scoreDiff =
+        optionSortScore(a.name, stopTitle?.replace(/^Check in at\s+/i, "")) -
+        optionSortScore(b.name, stopTitle?.replace(/^Check in at\s+/i, ""));
+
+      if (scoreDiff !== 0) return -scoreDiff;
+      return (b.rating ?? 0) - (a.rating ?? 0);
+    })
+    .at(0);
+}
+
+function pickMatchedFood(foodSpots: FoodSpot[], stopTitle?: string) {
+  return [...foodSpots]
+    .sort((a, b) => {
+      const scoreDiff =
+        optionSortScore(a.name, stopTitle) - optionSortScore(b.name, stopTitle);
+      if (scoreDiff !== 0) return -scoreDiff;
+      return (b.rating ?? 0) - (a.rating ?? 0);
+    })
+    .at(0);
+}
+
+function pickMatchedActivity(activities: Activity[], stopTitle?: string) {
+  return [...activities]
+    .sort((a, b) => {
+      const scoreDiff =
+        optionSortScore(a.name, stopTitle) - optionSortScore(b.name, stopTitle);
+      if (scoreDiff !== 0) return -scoreDiff;
+      return (b.rating ?? 0) - (a.rating ?? 0);
+    })
+    .at(0);
+}
+
 export default function TripPage() {
   const params = useParams<{ tripId: string }>();
   const router = useRouter();
-  const [trip, setTrip] = useState<any>(null);
+  const [trip, setTrip] = useState<TripPlan | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -113,7 +173,7 @@ export default function TripPage() {
         const data = await response.json();
 
         if (!cancelled && response.ok && data?.success && data?.route) {
-          setTrip((prev: any) => {
+          setTrip((prev) => {
             if (!prev) return prev;
             return {
               ...prev,
@@ -133,7 +193,10 @@ export default function TripPage() {
     };
   }, [trip]);
 
-  const itineraryDays = Array.isArray(trip?.itineraryDays) ? trip.itineraryDays : [];
+  const itineraryDays = useMemo(
+    () => (Array.isArray(trip?.itineraryDays) ? trip.itineraryDays : []),
+    [trip]
+  );
   const tripDateRange = formatDateRange(trip?.tripStartDate, trip?.tripEndDate);
   const [selectionState, setSelectionState] = useState<{
     hotelName?: string;
@@ -264,6 +327,186 @@ export default function TripPage() {
     return 0;
   }, [estimatedTotalCost, travelerCount]);
 
+  const tripMapData = useMemo(() => {
+    if (!trip) {
+      return { pins: [], routePaths: [], missingLocationCount: 0 };
+    }
+
+    const hotels = trip.hotelOptions ?? [];
+    const foodSpots = trip.foodSpots ?? [];
+    const activities = trip.topActivities ?? [];
+    const pins: Array<{
+      id: string;
+      label: string;
+      day: number;
+      type: "stay" | "food" | "activity";
+      latitude: number;
+      longitude: number;
+      subtitle?: string;
+      mapsUrl?: string;
+    }> = [];
+    const routePaths: Array<{
+      day: number;
+      points: Array<{
+        latitude: number;
+        longitude: number;
+      }>;
+    }> = [];
+    let missingLocationCount = 0;
+    const selectedHotel =
+      hotels.find((hotel) => hotel.name === selectionState.hotelName) ??
+      hotels[0];
+
+    itineraryDays.forEach((day: ItineraryDayData, dayIndex) => {
+      const dayNumber = dayIndex + 1;
+      const routePoints: Array<{
+        latitude: number;
+        longitude: number;
+      }> = [];
+
+      if (
+        selectedHotel &&
+        typeof selectedHotel.latitude === "number" &&
+        typeof selectedHotel.longitude === "number"
+      ) {
+        routePoints.push({
+          latitude: selectedHotel.latitude,
+          longitude: selectedHotel.longitude,
+        });
+      }
+
+      (day.stops ?? []).forEach((stop, stopIndex) => {
+        const key = stopKey(dayIndex, stopIndex);
+
+        if (stop.kind === "stay") {
+          const selectedHotel =
+            hotels.find((hotel) => hotel.name === selectionState.hotelName) ??
+            pickMatchedHotel(hotels, stop.title);
+
+          if (!selectedHotel) {
+            return;
+          }
+
+          if (
+            typeof selectedHotel.latitude === "number" &&
+            typeof selectedHotel.longitude === "number"
+          ) {
+            pins.push({
+              id: `stay-${key}-${selectedHotel.name}`,
+              label: selectedHotel.name,
+              day: dayNumber,
+              type: "stay",
+              latitude: selectedHotel.latitude,
+              longitude: selectedHotel.longitude,
+              subtitle: selectedHotel.shortDescription,
+              mapsUrl: selectedHotel.mapsUrl || selectedHotel.bookingLink,
+            });
+
+            const alreadyAddedHotelRoutePoint = routePoints.some(
+              (point) =>
+                Math.abs(point.latitude - selectedHotel.latitude!) < 0.00001 &&
+                Math.abs(point.longitude - selectedHotel.longitude!) < 0.00001
+            );
+
+            if (!alreadyAddedHotelRoutePoint) {
+              routePoints.push({
+                latitude: selectedHotel.latitude,
+                longitude: selectedHotel.longitude,
+              });
+            }
+          } else {
+            missingLocationCount += 1;
+          }
+
+          return;
+        }
+
+        if (stop.kind === "food") {
+          const selectedName =
+            selectionState.foods[key] ?? pickMatchedFood(foodSpots, stop.title)?.name;
+          const selectedFood = foodSpots.find((spot) => spot.name === selectedName);
+
+          if (!selectedFood) {
+            return;
+          }
+
+          if (
+            typeof selectedFood.latitude === "number" &&
+            typeof selectedFood.longitude === "number"
+          ) {
+            pins.push({
+              id: `food-${key}-${selectedFood.name}`,
+              label: selectedFood.name,
+              day: dayNumber,
+              type: "food",
+              latitude: selectedFood.latitude,
+              longitude: selectedFood.longitude,
+              subtitle: selectedFood.shortDescription,
+              mapsUrl: selectedFood.mapsUrl || selectedFood.websiteUrl || selectedFood.link,
+            });
+
+            routePoints.push({
+              latitude: selectedFood.latitude,
+              longitude: selectedFood.longitude,
+            });
+          } else {
+            missingLocationCount += 1;
+          }
+
+          return;
+        }
+
+        if (stop.kind === "activity") {
+          const selectedName =
+            selectionState.activities[key] ??
+            pickMatchedActivity(activities, stop.title)?.name;
+          const selectedActivity = activities.find(
+            (activity) => activity.name === selectedName
+          );
+
+          if (!selectedActivity) {
+            return;
+          }
+
+          if (
+            typeof selectedActivity.latitude === "number" &&
+            typeof selectedActivity.longitude === "number"
+          ) {
+            pins.push({
+              id: `activity-${key}-${selectedActivity.name}`,
+              label: selectedActivity.name,
+              day: dayNumber,
+              type: "activity",
+              latitude: selectedActivity.latitude,
+              longitude: selectedActivity.longitude,
+              subtitle: selectedActivity.shortDescription,
+              mapsUrl:
+                selectedActivity.mapsUrl ||
+                selectedActivity.websiteUrl ||
+                selectedActivity.bookingLink,
+            });
+
+            routePoints.push({
+              latitude: selectedActivity.latitude,
+              longitude: selectedActivity.longitude,
+            });
+          } else {
+            missingLocationCount += 1;
+          }
+        }
+      });
+
+      if (routePoints.length >= 2) {
+        routePaths.push({
+          day: dayNumber,
+          points: routePoints,
+        });
+      }
+    });
+
+    return { pins, routePaths, missingLocationCount };
+  }, [itineraryDays, selectionState, trip]);
+
   if (loading) {
     return (
       <main className="min-h-screen bg-[#f8fafc] px-6 py-10 text-slate-900">
@@ -382,15 +625,23 @@ export default function TripPage() {
           </aside>
 
           {itineraryDays.length > 0 ? (
-            <InteractiveItinerary
-              days={itineraryDays}
-              hotels={trip.hotelOptions ?? []}
-              foodSpots={trip.foodSpots ?? []}
-              activities={trip.topActivities ?? []}
-              travelerCount={travelerCount}
-              destinationImageUrl={trip.imageUrl}
-              onSelectionChange={setSelectionState}
-            />
+            <div className="space-y-5">
+              <TripStopMap
+                pins={tripMapData.pins}
+                routePaths={tripMapData.routePaths}
+                missingLocationCount={tripMapData.missingLocationCount}
+              />
+
+              <InteractiveItinerary
+                days={itineraryDays}
+                hotels={trip.hotelOptions ?? []}
+                foodSpots={trip.foodSpots ?? []}
+                activities={trip.topActivities ?? []}
+                travelerCount={travelerCount}
+                destinationImageUrl={trip.imageUrl}
+                onSelectionChange={setSelectionState}
+              />
+            </div>
           ) : (
             <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
               <h2 className="text-2xl font-semibold text-slate-950">Itinerary</h2>
