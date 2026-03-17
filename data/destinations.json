@@ -5,7 +5,7 @@
     "region": "Alberta",
     "home_base_city": "Edmonton",
     "is_staycation": true,
-    "image_url": "https://images.unsplash.com/photo-1519501025264-65ba15a82390?auto=format&fit=crop&w=1400&q=80",
+    "image_url": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Skyline_Edmonton_Alberta_Canada_04A.jpg",
     "drive_time_hours_from": { "edmonton": 0.0, "calgary": 3.0 },
     "distance_km_from": { "edmonton": 0, "calgary": 300 },
     "cost_level": "low_mid",
@@ -86,7 +86,7 @@
     "region": "Alberta",
     "home_base_city": "Fort Saskatchewan (area)",
     "is_staycation": false,
-    "image_url": "https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?auto=format&fit=crop&w=1400&q=80",
+    "image_url": "https://commons.wikimedia.org/wiki/Special:Redirect/file/.Bison_in_Elk_Island_National_Park_05.jpg",
     "drive_time_hours_from": { "edmonton": 0.75, "calgary": 3.75 },
     "distance_km_from": { "edmonton": 55, "calgary": 360 },
     "cost_level": "low",
@@ -150,7 +150,7 @@
     "region": "Alberta",
     "home_base_city": "Banff",
     "is_staycation": false,
-    "image_url": "https://images.unsplash.com/photo-1510798831971-661eb04b3739?auto=format&fit=crop&w=1400&q=80",
+    "image_url": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Lake_Louise%2C_Canada%2C_Banff.jpg",
     "drive_time_hours_from": { "edmonton": 4.0, "calgary": 1.5 },
     "distance_km_from": { "edmonton": 415, "calgary": 130 },
     "cost_level": "high",
@@ -226,7 +226,7 @@
     "region": "Alberta",
     "home_base_city": "Canmore",
     "is_staycation": false,
-    "image_url": "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1400&q=80",
+    "image_url": "https://commons.wikimedia.org/wiki/Special:Redirect/file/1canmore.jpg",
     "drive_time_hours_from": { "edmonton": 4.0, "calgary": 1.25 },
     "distance_km_from": { "edmonton": 420, "calgary": 105 },
     "cost_level": "high",
@@ -302,7 +302,7 @@
     "region": "Alberta",
     "home_base_city": "Kananaskis Village (area)",
     "is_staycation": false,
-    "image_url": "https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=1400&q=80",
+    "image_url": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Barrier%20Lake%20Kananaskis%20country%20Alberta%20Canada%20%2811020261543%29.jpg",
     "drive_time_hours_from": { "edmonton": 4.5, "calgary": 1.5 },
     "distance_km_from": { "edmonton": 460, "calgary": 115 },
     "cost_level": "mid",
@@ -366,7 +366,7 @@
     "region": "Alberta",
     "home_base_city": "Jasper",
     "is_staycation": false,
-    "image_url": "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1400&q=80",
+    "image_url": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Jasper_National_Park_Pyramid_Lake.jpg",
     "drive_time_hours_from": { "edmonton": 4.0, "calgary": 4.5 },
     "distance_km_from": { "edmonton": 365, "calgary": 412 },
     "cost_level": "mid",
@@ -430,7 +430,7 @@
     "region": "Alberta",
     "home_base_city": "Sylvan Lake",
     "is_staycation": false,
-    "image_url": "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1400&q=80",
+    "image_url": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Sylvan%20Lake%202014%20Beach.jpg",
     "drive_time_hours_from": { "edmonton": 1.75, "calgary": 2.0 },
     "distance_km_from": { "edmonton": 175, "calgary": 150 },
     "cost_level": "mid",
@@ -494,7 +494,7 @@
     "region": "Alberta",
     "home_base_city": "Drumheller",
     "is_staycation": false,
-    "image_url": "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1400&q=80",
+    "image_url": "https://commons.wikimedia.org/wiki/Special:Redirect/file/A%20life%20in%20the%20dessert%20of%20Drumheller%20Alberta%20Canada.jpg",
     "drive_time_hours_from": { "edmonton": 3.0, "calgary": 1.5 },
     "distance_km_from": { "edmonton": 280, "calgary": 135 },
     "cost_level": "low_mid",
@@ -558,7 +558,7 @@
     "region": "Alberta",
     "home_base_city": "Red Deer",
     "is_staycation": false,
-    "image_url": "https://images.unsplash.com/photo-1472396961693-142e6e269027?auto=format&fit=crop&w=1400&q=80",
+    "image_url": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Gaetz%20Lake%20Migratory%20Bird%20Sanctuary%2C%20Alberta2.jpg",
     "drive_time_hours_from": { "edmonton": 1.5, "calgary": 1.5 },
     "distance_km_from": { "edmonton": 150, "calgary": 150 },
     "cost_level": "low",
@@ -622,7 +622,7 @@
     "region": "Alberta",
     "home_base_city": "Nordegg",
     "is_staycation": false,
-    "image_url": "https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=1400&q=80",
+    "image_url": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Abraham%20Lake%2C%20Alberta%2C%20Canada3.jpg",
     "drive_time_hours_from": { "edmonton": 3.5, "calgary": 3.0 },
     "distance_km_from": { "edmonton": 330, "calgary": 270 },
     "cost_level": "low_mid",
@@ -686,7 +686,7 @@
     "region": "Alberta",
     "home_base_city": "Calgary",
     "is_staycation": true,
-    "image_url": "https://images.unsplash.com/photo-1518005020951-eccb494ad742?auto=format&fit=crop&w=1400&q=80",
+    "image_url": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Calgary_panorama.jpg",
     "drive_time_hours_from": { "edmonton": 3.0, "calgary": 0.0 },
     "distance_km_from": { "edmonton": 300, "calgary": 0 },
     "cost_level": "low_mid",
@@ -758,6 +758,646 @@
         "tags": ["walkable shops + brunch", "cafés"],
         "link": "https://www.google.com/maps/search/?api=1&query=Kensington+Calgary+restaurants",
         "description": "Good daytime food/café anchor with a more relaxed pace."
+      }
+    ]
+  },
+  {
+    "id": "waterton_lakes_ab",
+    "name": "Waterton Lakes",
+    "region": "Alberta",
+    "home_base_city": "Waterton Park",
+    "is_staycation": false,
+    "image_url": "https://commons.wikimedia.org/wiki/Special:Redirect/file/WatertonMountains.jpg",
+    "drive_time_hours_from": { "edmonton": 5.5, "calgary": 3.0 },
+    "distance_km_from": { "edmonton": 540, "calgary": 270 },
+    "cost_level": "mid",
+    "vibes": ["nature", "adventure", "scenic", "relax"],
+    "best_seasons": ["spring", "summer", "fall"],
+    "avoid_seasons": ["winter"],
+    "style_scores": {
+      "chill": 2,
+      "outdoors": 3,
+      "foodie": 0,
+      "solo reset": 2,
+      "adventure": 3
+    },
+    "anchor_experiences": [
+      {
+        "title": "Prince of Wales shoreline viewpoint",
+        "type": "scenic",
+        "description": "Classic first-stop payoff with huge lake and mountain views.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Prince+of+Wales+Waterton"
+      },
+      {
+        "title": "Bear's Hump hike",
+        "type": "nature",
+        "description": "Short effort for a memorable overview of the park.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Bears+Hump+Waterton"
+      },
+      {
+        "title": "Red Rock Canyon stop",
+        "type": "adventure",
+        "description": "Flexible scenic add-on that makes the trip feel bigger.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Red+Rock+Canyon+Waterton"
+      }
+    ],
+    "neighborhoods": [
+      {
+        "name": "Waterton townsite",
+        "reason": "Walkable base for lakeshore views and easy meal stops",
+        "link": "https://www.google.com/maps/search/?api=1&query=Waterton+townsite"
+      }
+    ],
+    "hotel_options": [
+      {
+        "name": "Waterton lakeside base",
+        "price_per_night": 215,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Hotels+in+Waterton",
+        "description": "Best practical base if you want easy lake access and no extra driving."
+      }
+    ],
+    "food_spots": [
+      {
+        "name": "Waterton town dining",
+        "tags": ["mountain town", "casual dinner", "walkable"],
+        "link": "https://www.google.com/maps/search/?api=1&query=Waterton+restaurants",
+        "description": "Simple town dining that works well after hiking and viewpoints."
+      }
+    ]
+  },
+  {
+    "id": "slave_lake_ab",
+    "name": "Slave Lake",
+    "region": "Alberta",
+    "home_base_city": "Slave Lake",
+    "is_staycation": false,
+    "image_url": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Mainstreet_Alberta_Slave_Lake_3986.jpg",
+    "drive_time_hours_from": { "edmonton": 2.75, "calgary": 5.75 },
+    "distance_km_from": { "edmonton": 255, "calgary": 555 },
+    "cost_level": "low_mid",
+    "vibes": ["lakes", "relax", "nature", "hidden"],
+    "best_seasons": ["summer", "fall"],
+    "avoid_seasons": ["spring"],
+    "style_scores": {
+      "chill": 2,
+      "outdoors": 2,
+      "foodie": 0,
+      "solo reset": 2,
+      "adventure": 1
+    },
+    "anchor_experiences": [
+      {
+        "title": "Devonshire Beach walk",
+        "type": "lakes",
+        "description": "Low-friction beach and big-sky lake stop with strong weekend payoff.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Devonshire+Beach+Slave+Lake"
+      },
+      {
+        "title": "Marten River trail or boardwalk stop",
+        "type": "nature",
+        "description": "Easy nature add-on if you want more than waterfront time.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Marten+River+Slave+Lake"
+      },
+      {
+        "title": "Quiet sunset lake views",
+        "type": "relax",
+        "description": "Best if the goal is a calmer, less-crowded weekend.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Slave+Lake+sunset+view"
+      }
+    ],
+    "neighborhoods": [
+      {
+        "name": "Beach / marina area",
+        "reason": "Best access to waterfront and evening walking",
+        "link": "https://www.google.com/maps/search/?api=1&query=Slave+Lake+marina"
+      }
+    ],
+    "hotel_options": [
+      {
+        "name": "Slave Lake lakeside stay",
+        "price_per_night": 155,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Hotels+in+Slave+Lake",
+        "description": "Simple base if you want easy beach access and a quieter overnight."
+      }
+    ],
+    "food_spots": [
+      {
+        "name": "Local waterfront / town eats",
+        "tags": ["casual", "lake town", "simple"],
+        "link": "https://www.google.com/maps/search/?api=1&query=Slave+Lake+restaurants",
+        "description": "Functional meal stops that keep the trip easy."
+      }
+    ]
+  },
+  {
+    "id": "cypress_hills_ab",
+    "name": "Cypress Hills",
+    "region": "Alberta",
+    "home_base_city": "Cypress Hills Interprovincial Park",
+    "is_staycation": false,
+    "image_url": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Elkwater_Lake_2020.jpg",
+    "drive_time_hours_from": { "edmonton": 6.0, "calgary": 3.75 },
+    "distance_km_from": { "edmonton": 610, "calgary": 330 },
+    "cost_level": "mid",
+    "vibes": ["nature", "adventure", "hidden", "family"],
+    "best_seasons": ["summer", "fall"],
+    "avoid_seasons": ["winter", "spring"],
+    "style_scores": {
+      "chill": 1,
+      "outdoors": 3,
+      "foodie": 0,
+      "solo reset": 2,
+      "adventure": 2
+    },
+    "anchor_experiences": [
+      {
+        "title": "Elkwater lake and trail loop",
+        "type": "nature",
+        "description": "Best all-purpose anchor for a laid-back park weekend.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Elkwater+Cypress+Hills"
+      },
+      {
+        "title": "Scenic plateau drive",
+        "type": "scenic",
+        "description": "Adds a distinct landscape feel that is very unlike the Rockies.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Cypress+Hills+scenic+drive"
+      },
+      {
+        "title": "Quiet forest hike",
+        "type": "adventure",
+        "description": "Good fit when you want an outdoors trip without busy mountain towns.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Cypress+Hills+hiking"
+      }
+    ],
+    "neighborhoods": [
+      {
+        "name": "Elkwater area",
+        "reason": "Practical base for lake access and short drives to trails",
+        "link": "https://www.google.com/maps/search/?api=1&query=Elkwater"
+      }
+    ],
+    "hotel_options": [
+      {
+        "name": "Elkwater lodge or cabin base",
+        "price_per_night": 180,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Cypress+Hills+lodging",
+        "description": "Best if you want a quiet nature-first base rather than a town trip."
+      }
+    ],
+    "food_spots": [
+      {
+        "name": "Elkwater casual dining",
+        "tags": ["park base", "simple", "functional"],
+        "link": "https://www.google.com/maps/search/?api=1&query=Elkwater+restaurants",
+        "description": "Food is mostly convenience-driven, but it works well for a simple park stay."
+      }
+    ]
+  },
+  {
+    "id": "lac_la_biche_ab",
+    "name": "Lac La Biche",
+    "region": "Alberta",
+    "home_base_city": "Lac La Biche",
+    "is_staycation": false,
+    "image_url": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Sunset%20at%20Lac%20La%20Biche.jpg",
+    "drive_time_hours_from": { "edmonton": 2.5, "calgary": 5.5 },
+    "distance_km_from": { "edmonton": 235, "calgary": 525 },
+    "cost_level": "low_mid",
+    "vibes": ["lakes", "nature", "hidden", "relax"],
+    "best_seasons": ["summer", "fall", "winter"],
+    "avoid_seasons": ["spring"],
+    "style_scores": {
+      "chill": 2,
+      "outdoors": 2,
+      "foodie": 0,
+      "solo reset": 2,
+      "adventure": 1
+    },
+    "anchor_experiences": [
+      {
+        "title": "Sir Winston Churchill Provincial Park loop",
+        "type": "nature",
+        "description": "Strong lake-and-forest anchor with a quieter feel than busier parks.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Sir+Winston+Churchill+Provincial+Park"
+      },
+      {
+        "title": "Lakeshore boardwalk and marina stop",
+        "type": "relax",
+        "description": "Easy waterfront reset if you want minimal effort.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Lac+La+Biche+marina"
+      },
+      {
+        "title": "Night sky and quieter lake views",
+        "type": "scenic",
+        "description": "Best for a slower hidden-gem weekend with less crowd pressure.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Lac+La+Biche+lake+view"
+      }
+    ],
+    "neighborhoods": [
+      {
+        "name": "Town waterfront",
+        "reason": "Best base for easy access to the lake and park day loops",
+        "link": "https://www.google.com/maps/search/?api=1&query=Lac+La+Biche+waterfront"
+      }
+    ],
+    "hotel_options": [
+      {
+        "name": "Lac La Biche lakeside stay",
+        "price_per_night": 150,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Hotels+in+Lac+La+Biche",
+        "description": "Good fit for a quieter lake-focused overnight."
+      }
+    ],
+    "food_spots": [
+      {
+        "name": "Town casual eats",
+        "tags": ["local", "simple", "lake town"],
+        "link": "https://www.google.com/maps/search/?api=1&query=Lac+La+Biche+restaurants",
+        "description": "Mostly straightforward local dining that keeps the trip low-friction."
+      }
+    ]
+  },
+  {
+    "id": "medicine_hat_ab",
+    "name": "Medicine Hat",
+    "region": "Alberta",
+    "home_base_city": "Medicine Hat",
+    "is_staycation": false,
+    "image_url": "https://commons.wikimedia.org/wiki/Special:Redirect/file/St.%20Patrick%27s%20Roman%20Catholic%20Church%20Medicine%20Hat.JPG",
+    "drive_time_hours_from": { "edmonton": 5.5, "calgary": 3.0 },
+    "distance_km_from": { "edmonton": 535, "calgary": 295 },
+    "cost_level": "low_mid",
+    "vibes": ["culture", "food", "hidden", "scenic"],
+    "best_seasons": ["spring", "summer", "fall"],
+    "avoid_seasons": ["winter"],
+    "style_scores": {
+      "chill": 1,
+      "outdoors": 1,
+      "foodie": 2,
+      "solo reset": 1,
+      "adventure": 1
+    },
+    "anchor_experiences": [
+      {
+        "title": "Historic clay district and downtown stroll",
+        "type": "culture",
+        "description": "Adds a more distinctive local-history angle than a generic city stop.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Medicine+Hat+clay+district"
+      },
+      {
+        "title": "River valley viewpoint and park walk",
+        "type": "scenic",
+        "description": "Easy nature add-on that gives the city a stronger destination feel.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Medicine+Hat+river+valley"
+      },
+      {
+        "title": "Local brewery or dinner stop",
+        "type": "food",
+        "description": "Useful if you want the trip to feel more food-forward and local.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Medicine+Hat+restaurants"
+      }
+    ],
+    "neighborhoods": [
+      {
+        "name": "Downtown / river area",
+        "reason": "Best base for walkable food and local character",
+        "link": "https://www.google.com/maps/search/?api=1&query=Downtown+Medicine+Hat"
+      }
+    ],
+    "hotel_options": [
+      {
+        "name": "Central Medicine Hat stay",
+        "price_per_night": 150,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Hotels+in+Medicine+Hat",
+        "description": "Best practical base for a food-and-local-character weekend."
+      }
+    ],
+    "food_spots": [
+      {
+        "name": "Downtown Medicine Hat dining",
+        "tags": ["local", "casual dinner", "brewery"],
+        "link": "https://www.google.com/maps/search/?api=1&query=Downtown+Medicine+Hat+restaurants",
+        "description": "The best area for giving the trip a more distinctive local feel."
+      }
+    ]
+  },
+  {
+    "id": "grande_cache_ab",
+    "name": "Grande Cache",
+    "region": "Alberta",
+    "home_base_city": "Grande Cache",
+    "is_staycation": false,
+    "image_url": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Grande%20Cache%2C%20Alberta%20%2835779380475%29.jpg",
+    "drive_time_hours_from": { "edmonton": 4.75, "calgary": 7.0 },
+    "distance_km_from": { "edmonton": 430, "calgary": 660 },
+    "cost_level": "low_mid",
+    "vibes": ["nature", "adventure", "hidden", "scenic"],
+    "best_seasons": ["summer", "fall"],
+    "avoid_seasons": ["spring", "winter"],
+    "style_scores": {
+      "chill": 1,
+      "outdoors": 3,
+      "foodie": 0,
+      "solo reset": 2,
+      "adventure": 3
+    },
+    "anchor_experiences": [
+      {
+        "title": "Sulphur Gates viewpoint",
+        "type": "scenic",
+        "description": "Big visual reward and a more under-the-radar mountain stop.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Sulphur+Gates+Grande+Cache"
+      },
+      {
+        "title": "Grande Cache lake or trail stop",
+        "type": "nature",
+        "description": "Flexible outdoors anchor with less crowd pressure than major parks.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Grande+Cache+hiking"
+      },
+      {
+        "title": "Quiet mountain-town reset",
+        "type": "relax",
+        "description": "Best if the goal is a true getaway that still feels undiscovered.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Grande+Cache+viewpoint"
+      }
+    ],
+    "neighborhoods": [
+      {
+        "name": "Grande Cache townsite",
+        "reason": "Practical base for quick access to viewpoints and trailheads",
+        "link": "https://www.google.com/maps/search/?api=1&query=Grande+Cache"
+      }
+    ],
+    "hotel_options": [
+      {
+        "name": "Grande Cache mountain base",
+        "price_per_night": 155,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Hotels+in+Grande+Cache",
+        "description": "Simple base if you want scenery and lower-profile mountain access."
+      }
+    ],
+    "food_spots": [
+      {
+        "name": "Local town dining",
+        "tags": ["small town", "simple", "functional"],
+        "link": "https://www.google.com/maps/search/?api=1&query=Grande+Cache+restaurants",
+        "description": "Food is mostly local and straightforward, which fits the hidden-gem feel."
+      }
+    ]
+  },
+  {
+    "id": "cold_lake_ab",
+    "name": "Cold Lake",
+    "region": "Alberta",
+    "home_base_city": "Cold Lake",
+    "is_staycation": false,
+    "image_url": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Cold%20Lake%20featuring%20Kinosoo%20Beach.jpg",
+    "drive_time_hours_from": { "edmonton": 3.0, "calgary": 6.0 },
+    "distance_km_from": { "edmonton": 300, "calgary": 590 },
+    "cost_level": "low_mid",
+    "vibes": ["lakes", "nature", "relax", "hidden"],
+    "best_seasons": ["summer", "fall"],
+    "avoid_seasons": ["spring"],
+    "style_scores": {
+      "chill": 2,
+      "outdoors": 2,
+      "foodie": 0,
+      "solo reset": 2,
+      "adventure": 1
+    },
+    "anchor_experiences": [
+      {
+        "title": "Kinosoo Beach and marina walk",
+        "type": "lakes",
+        "description": "Easy waterfront anchor with enough activity to justify a full weekend.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Kinosoo+Beach+Cold+Lake"
+      },
+      {
+        "title": "Cold Lake Provincial Park stop",
+        "type": "nature",
+        "description": "Useful for a low-effort outdoors day with forest and lake access.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Cold+Lake+Provincial+Park"
+      },
+      {
+        "title": "Quiet sunset by the lake",
+        "type": "relax",
+        "description": "Best fit for a slower hidden-gem weekend away from busier hubs.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Cold+Lake+sunset+view"
+      }
+    ],
+    "neighborhoods": [
+      {
+        "name": "Lakeshore / marina area",
+        "reason": "Best access to the waterfront and evening walks",
+        "link": "https://www.google.com/maps/search/?api=1&query=Cold+Lake+marina"
+      }
+    ],
+    "hotel_options": [
+      {
+        "name": "Cold Lake lakeside stay",
+        "price_per_night": 160,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Hotels+in+Cold+Lake",
+        "description": "Straightforward base if you want a quieter lake destination with minimal planning."
+      }
+    ],
+    "food_spots": [
+      {
+        "name": "Marina and town casual dining",
+        "tags": ["lake town", "casual", "simple"],
+        "link": "https://www.google.com/maps/search/?api=1&query=Cold+Lake+restaurants",
+        "description": "Mostly practical, low-friction spots that work well for a short lake weekend."
+      }
+    ]
+  },
+  {
+    "id": "peace_river_ab",
+    "name": "Peace River",
+    "region": "Alberta",
+    "home_base_city": "Peace River",
+    "is_staycation": false,
+    "image_url": "https://commons.wikimedia.org/wiki/Special:Redirect/file/The%20Peace%20River%20in%20Peace%20River.jpg",
+    "drive_time_hours_from": { "edmonton": 5.5, "calgary": 8.5 },
+    "distance_km_from": { "edmonton": 485, "calgary": 785 },
+    "cost_level": "low_mid",
+    "vibes": ["scenic", "nature", "hidden", "culture"],
+    "best_seasons": ["summer", "fall"],
+    "avoid_seasons": ["spring", "winter"],
+    "style_scores": {
+      "chill": 1,
+      "outdoors": 2,
+      "foodie": 0,
+      "solo reset": 2,
+      "adventure": 1
+    },
+    "anchor_experiences": [
+      {
+        "title": "River valley lookout",
+        "type": "scenic",
+        "description": "Big visual payoff that gives the trip a distinct northern-Alberta feel.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Peace+River+lookout"
+      },
+      {
+        "title": "12 Foot Davis site and local history stop",
+        "type": "culture",
+        "description": "Adds more identity than a simple scenic drive weekend.",
+        "link": "https://www.google.com/maps/search/?api=1&query=12+Foot+Davis+Peace+River"
+      },
+      {
+        "title": "Riverfront walk or park time",
+        "type": "nature",
+        "description": "Low-effort way to keep the itinerary calm and scenic.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Peace+River+riverfront"
+      }
+    ],
+    "neighborhoods": [
+      {
+        "name": "Downtown ridge / river area",
+        "reason": "Best base for valley views and easy town access",
+        "link": "https://www.google.com/maps/search/?api=1&query=Downtown+Peace+River"
+      }
+    ],
+    "hotel_options": [
+      {
+        "name": "Peace River central stay",
+        "price_per_night": 150,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Hotels+in+Peace+River",
+        "description": "Simple base for a northern road-trip weekend with easy local access."
+      }
+    ],
+    "food_spots": [
+      {
+        "name": "Downtown local dining",
+        "tags": ["local", "casual", "small town"],
+        "link": "https://www.google.com/maps/search/?api=1&query=Peace+River+restaurants",
+        "description": "Mostly local spots that support the area's under-the-radar feel."
+      }
+    ]
+  },
+  {
+    "id": "writing_on_stone_ab",
+    "name": "Writing-on-Stone",
+    "region": "Alberta",
+    "home_base_city": "Milk River (area)",
+    "is_staycation": false,
+    "image_url": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Writing-on-Stone%20Provincial%20Park%20%286022736800%29.jpg",
+    "drive_time_hours_from": { "edmonton": 6.0, "calgary": 3.5 },
+    "distance_km_from": { "edmonton": 590, "calgary": 290 },
+    "cost_level": "low_mid",
+    "vibes": ["scenic", "culture", "adventure", "hidden"],
+    "best_seasons": ["spring", "summer", "fall"],
+    "avoid_seasons": ["winter"],
+    "style_scores": {
+      "chill": 1,
+      "outdoors": 2,
+      "foodie": 0,
+      "solo reset": 2,
+      "adventure": 2
+    },
+    "anchor_experiences": [
+      {
+        "title": "Hoodoo and canyon landscape walk",
+        "type": "scenic",
+        "description": "The main payoff: a landscape that feels unlike almost anywhere else in Alberta.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Writing-on-Stone+Provincial+Park"
+      },
+      {
+        "title": "Rock art and heritage area stop",
+        "type": "culture",
+        "description": "Adds a strong cultural reason to choose it over a generic road trip.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Writing-on-Stone+rock+art"
+      },
+      {
+        "title": "Milk River paddling or viewpoint time",
+        "type": "adventure",
+        "description": "Flexible outdoor add-on when weather and energy line up.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Milk+River+Writing-on-Stone"
+      }
+    ],
+    "neighborhoods": [
+      {
+        "name": "Park campground / heritage area",
+        "reason": "Best base for direct access to the landscape and interpretive stops",
+        "link": "https://www.google.com/maps/search/?api=1&query=Writing-on-Stone+campground"
+      }
+    ],
+    "hotel_options": [
+      {
+        "name": "Milk River overnight base",
+        "price_per_night": 145,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Hotels+near+Milk+River+Alberta",
+        "description": "Practical overnight option if you want the park as the trip anchor without camping."
+      }
+    ],
+    "food_spots": [
+      {
+        "name": "Milk River casual stops",
+        "tags": ["road trip", "casual", "simple"],
+        "link": "https://www.google.com/maps/search/?api=1&query=Milk+River+restaurants",
+        "description": "Food is limited and functional, which matches the scenery-first trip style."
+      }
+    ]
+  },
+  {
+    "id": "pincher_creek_ab",
+    "name": "Pincher Creek",
+    "region": "Alberta",
+    "home_base_city": "Pincher Creek",
+    "is_staycation": false,
+    "image_url": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Pincher%20Creek%20Alberta%20Panorama%20looking%20south%20from%20AB3.jpg",
+    "drive_time_hours_from": { "edmonton": 5.0, "calgary": 2.5 },
+    "distance_km_from": { "edmonton": 500, "calgary": 215 },
+    "cost_level": "low_mid",
+    "vibes": ["nature", "scenic", "adventure", "hidden"],
+    "best_seasons": ["spring", "summer", "fall"],
+    "avoid_seasons": ["winter"],
+    "style_scores": {
+      "chill": 1,
+      "outdoors": 2,
+      "foodie": 0,
+      "solo reset": 2,
+      "adventure": 2
+    },
+    "anchor_experiences": [
+      {
+        "title": "Lundbreck Falls stop",
+        "type": "scenic",
+        "description": "Quick visual payoff that works well as a flexible trip anchor.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Lundbreck+Falls"
+      },
+      {
+        "title": "Castle area scenic drive or hike",
+        "type": "adventure",
+        "description": "Lets the trip lean more outdoors without the Banff-level crowding.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Castle+Provincial+Park"
+      },
+      {
+        "title": "Small-town reset near the foothills",
+        "type": "relax",
+        "description": "Useful if the goal is a quieter southern-Alberta base for exploring.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Pincher+Creek+Alberta"
+      }
+    ],
+    "neighborhoods": [
+      {
+        "name": "Town centre",
+        "reason": "Practical overnight base with easy access to nearby scenic loops",
+        "link": "https://www.google.com/maps/search/?api=1&query=Downtown+Pincher+Creek"
+      }
+    ],
+    "hotel_options": [
+      {
+        "name": "Pincher Creek foothills base",
+        "price_per_night": 150,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Hotels+in+Pincher+Creek",
+        "description": "Good base if you want lower-cost access to Waterton, Castle, and nearby scenery."
+      }
+    ],
+    "food_spots": [
+      {
+        "name": "Town casual dining",
+        "tags": ["small town", "casual", "road trip"],
+        "link": "https://www.google.com/maps/search/?api=1&query=Pincher+Creek+restaurants",
+        "description": "Straightforward local meal stops that fit a scenery-first weekend."
       }
     ]
   }

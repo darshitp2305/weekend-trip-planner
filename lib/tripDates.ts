@@ -21,6 +21,15 @@ function getUtcDayValue(value: string): number | undefined {
   return Date.UTC(Number(year), Number(month) - 1, Number(day));
 }
 
+function getDateFromIso(value?: string): Date | undefined {
+  if (!isIsoDate(value)) return undefined;
+
+  const date = new Date(`${value}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return undefined;
+
+  return date;
+}
+
 export function clampTripStartDate(
   value?: string,
   minimumDate = getTodayIsoDate()
@@ -86,6 +95,32 @@ export function clampTripEndDate(
   }
 
   return value;
+}
+
+export function deriveSeasonFromDateRange(
+  startDate?: string,
+  endDate?: string
+): "Spring" | "Summer" | "Fall" | "Winter" {
+  const startValue = getUtcDayValue(startDate ?? "");
+  const endValue = getUtcDayValue(endDate ?? "");
+  const midpointValue =
+    startValue !== undefined
+      ? endValue !== undefined && endValue >= startValue
+        ? startValue + Math.floor((endValue - startValue) / 2)
+        : startValue
+      : undefined;
+
+  const date =
+    midpointValue !== undefined
+      ? new Date(midpointValue)
+      : getDateFromIso(startDate) ?? getDateFromIso(endDate) ?? new Date();
+
+  const month = date.getUTCMonth() + 1;
+
+  if (month >= 3 && month <= 5) return "Spring";
+  if (month >= 6 && month <= 8) return "Summer";
+  if (month >= 9 && month <= 11) return "Fall";
+  return "Winter";
 }
 
 export function formatDisplayDate(value?: string): string | undefined {

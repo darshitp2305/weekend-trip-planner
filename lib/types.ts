@@ -3,7 +3,8 @@ export type TripStyle =
   | "outdoors"
   | "foodie"
   | "solo reset"
-  | "adventure";
+  | "adventure"
+  | "hidden gems";
 
 export interface StyleScores {
   chill: number;

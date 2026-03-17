@@ -7,6 +7,7 @@ import {
   clampTripStartDate,
   deriveTripEndDate,
   deriveTripLengthDays,
+  deriveSeasonFromDateRange,
   formatDateRange,
   getTodayIsoDate,
 } from "../lib/tripDates";
@@ -25,7 +26,6 @@ type FormState = {
   maxDriveHours: string;
   budgetPerTraveler: string;
   travelerCount: string;
-  season: string;
   style: TripStyle;
   veganFriendly: boolean;
   includeStaycations: boolean;
@@ -40,7 +40,6 @@ const DEFAULT_FORM: FormState = {
   maxDriveHours: "5",
   budgetPerTraveler: "300",
   travelerCount: "2",
-  season: "Summer",
   style: "foodie",
   veganFriendly: false,
   includeStaycations: false,
@@ -70,7 +69,6 @@ function buildFormState(
     maxDriveHours: String(initialInput?.maxDriveHours ?? 5),
     budgetPerTraveler: String(initialInput?.budgetPerTraveler ?? 300),
     travelerCount: String(initialInput?.travelerCount ?? 2),
-    season: initialInput?.season ?? "Summer",
     style: initialInput?.style ?? "foodie",
     veganFriendly: Boolean(initialInput?.veganFriendly),
     includeStaycations: Boolean(initialInput?.includeStaycations),
@@ -81,14 +79,13 @@ function buildFormState(
   };
 }
 
-const SEASONS = ["Spring", "Summer", "Fall", "Winter"];
-
 const TRIP_STYLES: TripStyle[] = [
   "chill",
   "outdoors",
   "foodie",
   "solo reset",
   "adventure",
+  "hidden gems",
 ];
 
 const DESTINATION_OPTIONS = Array.from(
@@ -130,6 +127,8 @@ function displayStyleLabel(style: TripStyle) {
       return "Adventure";
     case "chill":
       return "Chill";
+    case "hidden gems":
+      return "Hidden gems";
     default:
       return style;
   }
@@ -322,6 +321,7 @@ export default function TripForm({
       clampTripEndDate(form.tripEndDate, tripStartDate, 7) ?? tripStartDate;
     const tripLengthDays =
       deriveTripLengthDays(tripStartDate, tripEndDate) ?? 1;
+    const season = deriveSeasonFromDateRange(tripStartDate, tripEndDate);
 
     const cleanedInput: TripInput = {
       startCity: form.startCity,
@@ -333,7 +333,7 @@ export default function TripForm({
       budgetPerTraveler,
       travelerCount,
       tripLengthDays,
-      season: form.season,
+      season,
       style: form.style,
       veganFriendly: form.veganFriendly,
       includeStaycations: form.includeStaycations,
@@ -390,22 +390,6 @@ export default function TripForm({
             >
               <option value="Edmonton">Edmonton</option>
               <option value="Calgary">Calgary</option>
-            </select>
-          </div>
-
-          <div>
-            <FieldLabel htmlFor="season">Season</FieldLabel>
-            <select
-              id="season"
-              value={form.season}
-              onChange={(e) => updateField("season", e.target.value)}
-              className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
-            >
-              {SEASONS.map((season) => (
-                <option key={season} value={season}>
-                  {season}
-                </option>
-              ))}
             </select>
           </div>
 

@@ -174,6 +174,64 @@ function getCalmSignal(destination: ReturnType<typeof mapRawDestination>): numbe
   return countMatches(text, strongKeywords) - 0.5 * countMatches(text, weakKeywords);
 }
 
+function getHiddenGemSignal(destination: ReturnType<typeof mapRawDestination>): number {
+  const text = getJoinedSignals(destination);
+
+  const strongKeywords = [
+    "hidden",
+    "quiet",
+    "small town",
+    "local",
+    "scenic",
+    "heritage",
+    "charming",
+    "quaint",
+    "badlands",
+    "canyon",
+    "lesser known",
+    "underrated",
+    "viewpoint",
+  ];
+
+  const weakKeywords = [
+    "nightlife",
+    "party",
+    "downtown",
+    "city",
+    "crowd",
+    "busy",
+    "popular",
+  ];
+
+  let signal =
+    countMatches(text, strongKeywords) - 0.5 * countMatches(text, weakKeywords);
+
+  if (!destination.isStaycation) {
+    signal += 0.75;
+  }
+
+  if (destination.driveHoursFromStart >= 1.5 && destination.driveHoursFromStart <= 5) {
+    signal += 0.5;
+  }
+
+  return signal;
+}
+
+function getRequestedStyleScore(
+  destination: ReturnType<typeof mapRawDestination>,
+  style: TripInput["style"]
+): number {
+  if (style === "hidden gems") {
+    const hiddenGemSignal = getHiddenGemSignal(destination);
+    if (hiddenGemSignal >= 4.5) return 3;
+    if (hiddenGemSignal >= 2.5) return 2;
+    if (hiddenGemSignal >= 1) return 1;
+    return 0;
+  }
+
+  return destination.styleScores[style];
+}
+
 function getGetawaySignal(destination: ReturnType<typeof mapRawDestination>): number {
   if (destination.isStaycation) return 0;
 
@@ -248,7 +306,7 @@ function calculateStyleScore(
   const matchReasons: string[] = [];
   const warnings: string[] = [];
 
-  const styleScore = destination.styleScores[input.style];
+  const styleScore = getRequestedStyleScore(destination, input.style);
 
   if (styleScore === 3) {
     matchReasons.push(`Strong ${input.style} match`);
@@ -319,6 +377,20 @@ function calculateStyleResolutionScore(
     } else if (rawSignal <= 1) {
       rankingReasons.push({
         label: "Less calm than ideal for this style",
+        impact: "negative",
+      });
+    }
+  } else if (input.style === "hidden gems") {
+    rawSignal = getHiddenGemSignal(destination);
+
+    if (rawSignal >= 4) {
+      rankingReasons.push({
+        label: "Feels more distinctive and under-the-radar than common picks",
+        impact: "positive",
+      });
+    } else if (rawSignal <= 1) {
+      rankingReasons.push({
+        label: "Feels more mainstream than a true hidden-gem pick",
         impact: "negative",
       });
     }
@@ -1074,7 +1146,7 @@ export function rankDestinations(
       const liveDataPart = calculateLiveDataScore(destination, input);
 
       const styleMatchStrength = getStyleMatchStrength(
-        destination.styleScores[input.style]
+        getRequestedStyleScore(destination, input.style)
       );
 
       const matchReasons = dedupeStrings([
@@ -1172,7 +1244,9 @@ export function rankDestinations(
         confidenceOrder[a.confidence ?? "low"];
       if (confidenceDiff !== 0) return confidenceDiff;
 
-      const styleDiff = b.styleScores[input.style] - a.styleScores[input.style];
+      const styleDiff =
+        getRequestedStyleScore(b, input.style) -
+        getRequestedStyleScore(a, input.style);
       if (styleDiff !== 0) return styleDiff;
 
       const budgetSlackA = input.budget - a.estimatedCost;

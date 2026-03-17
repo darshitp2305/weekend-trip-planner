@@ -256,6 +256,14 @@ export default function TripPage() {
     return 0;
   }, [selectedBudget, trip]);
 
+  const estimatedBudgetPerTraveler = useMemo(() => {
+    if (estimatedTotalCost > 0 && travelerCount > 0) {
+      return Math.round(estimatedTotalCost / travelerCount);
+    }
+
+    return 0;
+  }, [estimatedTotalCost, travelerCount]);
+
   if (loading) {
     return (
       <main className="min-h-screen bg-[#f8fafc] px-6 py-10 text-slate-900">
@@ -337,7 +345,7 @@ export default function TripPage() {
 
                     <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
                       <div className="text-[10px] font-medium uppercase tracking-[0.1em] text-slate-500">
-                        Target
+                        Target total
                       </div>
                       <div className="mt-1 text-base font-semibold text-slate-900">
                         {formatMoney(targetTotalBudget)}
@@ -346,7 +354,16 @@ export default function TripPage() {
 
                     <div className="rounded-xl border border-violet-200 bg-violet-50 p-3">
                       <div className="text-[10px] font-medium uppercase tracking-[0.1em] text-violet-700">
-                        Selected
+                        Selected each
+                      </div>
+                      <div className="mt-1 text-base font-semibold text-slate-950">
+                        {formatMoney(estimatedBudgetPerTraveler)}
+                      </div>
+                    </div>
+
+                    <div className="rounded-xl border border-violet-200 bg-violet-50 p-3">
+                      <div className="text-[10px] font-medium uppercase tracking-[0.1em] text-violet-700">
+                        Selected total
                       </div>
                       <div className="mt-1 text-base font-semibold text-slate-950">
                         {formatMoney(estimatedTotalCost)}

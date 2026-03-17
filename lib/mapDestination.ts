@@ -1,9 +1,58 @@
-import { Destination, RawDestination, TripInput, TripStyle } from "./types";
+import { Destination, RawDestination, StyleScores, TripInput, TripStyle } from "./types";
 
-function deriveTripStylesFromScores(styleScores: Record<TripStyle, number>): TripStyle[] {
-  return (Object.entries(styleScores) as [TripStyle, number][])
+function getHiddenGemSignal(raw: RawDestination): number {
+  const text = [
+    raw.name,
+    raw.region,
+    raw.home_base_city,
+    ...(raw.vibes ?? []),
+    ...(raw.anchor_experiences ?? []).map((item) => item.title),
+    ...(raw.anchor_experiences ?? []).map((item) => item.description ?? ""),
+    ...(raw.neighborhoods ?? []).map((item) => item.name),
+    ...(raw.neighborhoods ?? []).map((item) => item.reason),
+  ]
+    .join(" ")
+    .toLowerCase();
+
+  const strongKeywords = [
+    "hidden",
+    "quiet",
+    "small town",
+    "local",
+    "scenic",
+    "heritage",
+    "charming",
+    "quaint",
+    "badlands",
+    "canyon",
+    "lesser-known",
+    "underrated",
+  ];
+
+  const weakKeywords = ["downtown", "nightlife", "city", "popular", "busy"];
+
+  const strongCount = strongKeywords.reduce(
+    (count, keyword) => count + (text.includes(keyword) ? 1 : 0),
+    0
+  );
+  const weakCount = weakKeywords.reduce(
+    (count, keyword) => count + (text.includes(keyword) ? 1 : 0),
+    0
+  );
+
+  return strongCount - weakCount;
+}
+
+function deriveTripStylesFromScores(styleScores: StyleScores, raw: RawDestination): TripStyle[] {
+  const derivedStyles = (Object.entries(styleScores) as [TripStyle, number][])
     .filter(([, score]) => score >= 2)
     .map(([style]) => style);
+
+  if (getHiddenGemSignal(raw) >= 2) {
+    derivedStyles.push("hidden gems");
+  }
+
+  return Array.from(new Set(derivedStyles));
 }
 
 function mapCostLevel(
@@ -175,7 +224,7 @@ export function mapRawDestination(
     driveHoursFromStart: driveHours,
     bestSeasons: raw.best_seasons,
     avoidSeasons: raw.avoid_seasons,
-    tripStyles: deriveTripStylesFromScores(raw.style_scores),
+    tripStyles: deriveTripStylesFromScores(raw.style_scores, raw),
     styleScores: raw.style_scores,
     budgetLevel: mapCostLevel(raw.cost_level),
     veganFriendly: false,
