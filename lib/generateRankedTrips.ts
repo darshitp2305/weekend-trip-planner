@@ -549,7 +549,9 @@ function calculateChillLiveBoost(
   if (!summary) return { boost: 0, reasons, role: "general" };
 
   let boost = 0;
-  let role: BoardRole = isHomeCityTrip(trip, input.startCity) ? "home_city_anchor" : "balanced_alt";
+  const role: BoardRole = isHomeCityTrip(trip, input.startCity)
+    ? "home_city_anchor"
+    : "balanced_alt";
   const hotelCount = summary.hotelCount ?? 0;
 
   if (hotelCount >= 5) {

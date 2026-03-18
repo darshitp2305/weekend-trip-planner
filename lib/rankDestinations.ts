@@ -31,17 +31,6 @@ function dedupeStrings(items: string[]): string[] {
   return Array.from(new Set(items));
 }
 
-function dedupeRankingReasons(items: RankingReason[]): RankingReason[] {
-  const seen = new Set<string>();
-
-  return items.filter((item) => {
-    const key = `${item.impact}:${item.label}`;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-}
-
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
@@ -552,6 +541,18 @@ function calculateStaycationAdjustment(
       : input.budget / Math.max(1, input.travelerCount);
 
   if (!destination.isStaycation) {
+    if (input.style === "solo reset" && budgetPerTraveler <= 375) {
+      warnings.push("A true getaway may add more cost and logistics than this reset trip needs");
+      return {
+        score: -8,
+        warnings,
+        extraReason: {
+          label: "A lower-friction base fits this solo reset better",
+          impact: "negative",
+        },
+      };
+    }
+
     return { score: 0, warnings };
   }
 
@@ -564,6 +565,20 @@ function calculateStaycationAdjustment(
       warnings,
       extraReason: {
         label: "Staycation fits this low-friction trip well",
+        impact: "positive",
+      },
+    };
+  }
+
+  if (
+    input.style === "solo reset" &&
+    (input.maxDriveHours <= 4 || budgetPerTraveler <= 375)
+  ) {
+    return {
+      score: 8,
+      warnings,
+      extraReason: {
+        label: "Staycation fits a low-friction solo reset especially well",
         impact: "positive",
       },
     };
@@ -1107,7 +1122,9 @@ export function rankDestinations(
     .map((destination) => {
       const travelerCount = Math.max(1, input.travelerCount);
       const nights = Math.max(1, input.tripLengthDays - 1);
-      const nightlyHotel = destination.hotelOptions?.[0]?.pricePerNight ?? 150;
+      const nightlyHotel = destination.isStaycation
+        ? 0
+        : destination.hotelOptions?.[0]?.pricePerNight ?? 150;
 
       const foodPerDayPerTraveler =
         input.style === "foodie"

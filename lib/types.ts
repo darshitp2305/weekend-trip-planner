@@ -168,6 +168,7 @@ export interface RawDestination {
 export interface TripInput {
   startCity: StartCity;
   maxDriveHours: number;
+  maxDriveMinutesBetweenStops: number;
   budget: number;
   budgetPerTraveler: number;
   travelerCount: number;
@@ -240,6 +241,7 @@ export type TripDataSource =
 export interface TripPlan {
   id: string;
   destinationName: string;
+  startCity?: StartCity;
   region?: string;
   summary: string;
   driveTimeText: string;
@@ -267,6 +269,7 @@ export interface TripPlan {
   tripLengthDays?: number;
   tripStartDate?: string;
   tripEndDate?: string;
+  maxDriveMinutesBetweenStops?: number;
 
   // compatibility fields used by saved trip page / header
   name?: string;

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -20,6 +21,12 @@ type Props = {
   onSave?: (tripName: string) => void;
   onRemoveSaved?: (tripName: string) => void;
   isSaved?: boolean;
+};
+
+type EnrichTripResponse = {
+  success?: boolean;
+  trip?: RankedDestination | null;
+  source?: TripDataSource;
 };
 
 function strengthLabel(strength: RankedDestination["styleMatchStrength"]) {
@@ -128,6 +135,9 @@ function normalizeTripInput(input?: Partial<TripInput> | null): TripInput | unde
     includeStaycations: Boolean(input.includeStaycations),
     strictBudget: Boolean(input.strictBudget),
     maxDriveHours: Number(input.maxDriveHours ?? 5),
+    maxDriveMinutesBetweenStops: Number(
+      input.maxDriveMinutesBetweenStops ?? 45
+    ),
     budget: Number(input.budget ?? computedBudget),
     budgetPerTraveler,
     travelerCount,
@@ -170,7 +180,7 @@ function Badge({
 
   return (
     <span
-      className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium ${toneClass}`}
+      className={`inline-flex items-center whitespace-nowrap rounded-full border px-2.5 py-1 text-xs font-medium ${toneClass}`}
     >
       {children}
     </span>
@@ -276,7 +286,7 @@ export default function TripCard({
           });
 
           const text = await enrichRes.text();
-          let enrichData: any = null;
+          let enrichData: EnrichTripResponse | null = null;
 
           if (text) {
             try {
@@ -327,9 +337,12 @@ export default function TripCard({
     <article className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
       {trip.imageUrl ? (
         <div className="aspect-[16/10] w-full overflow-hidden bg-slate-100 dark:bg-slate-800">
-          <img
+          <Image
             src={trip.imageUrl}
             alt={trip.name}
+            width={1600}
+            height={1000}
+            unoptimized
             className="h-full w-full object-cover"
           />
         </div>

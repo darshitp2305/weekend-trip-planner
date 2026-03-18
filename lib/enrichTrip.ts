@@ -1,4 +1,5 @@
 import {
+  HotelOption,
   RankedDestination,
   RankingReason,
   TripDataSource,
@@ -92,6 +93,10 @@ function mergeHotelSources<
   });
 }
 
+function hasName<T extends { name?: string }>(item: T): item is T & { name: string } {
+  return typeof item.name === "string" && item.name.trim().length > 0;
+}
+
 function interleaveArrays<T>(...arrays: T[][]): T[] {
   const result: T[] = [];
   const maxLength = Math.max(...arrays.map((arr) => arr.length), 0);
@@ -159,29 +164,29 @@ export async function enrichRankedTrip(
     const liveRestaurants = dedupeByName(
       (restaurantsRes.places ?? [])
         .map(mapGooglePlaceToFoodSpot)
-        .filter((item) => item.name)
+        .filter(hasName)
     );
 
     const liveCafes = dedupeByName(
       (cafesRes.places ?? [])
         .map(mapGooglePlaceToFoodSpot)
-        .filter((item) => item.name)
+        .filter(hasName)
     );
 
     const liveActivities = dedupeByName(
       (activitiesRes.places ?? [])
         .map(mapGooglePlaceToActivity)
-        .filter((item) => item.name)
+        .filter(hasName)
     );
 
     const serpApiHotels = dedupeByName(
-      (serpHotels ?? []).filter((item) => item.name)
+      (serpHotels ?? []).filter(hasName)
     );
 
     const placesHotels = dedupeByName(
       (hotelsRes.places ?? [])
         .map(mapGooglePlaceToHotel)
-        .filter((item) => item.name)
+        .filter(hasName)
     );
 
     const liveHotels =
@@ -218,9 +223,9 @@ export async function enrichRankedTrip(
       : "static-fallback";
 
     const liveDataSummary = buildLiveSummary(
-      balancedFoodSpots,
-      liveActivities,
-      liveHotels,
+      balancedFoodSpots as Array<{ rating?: number }>,
+      liveActivities as Array<{ rating?: number }>,
+      liveHotels as Array<{ rating?: number }>,
       hasLiveResults
     );
 
@@ -244,7 +249,7 @@ export async function enrichRankedTrip(
       ...trip,
       foodSpots: mergedFoodSpots,
       topActivities: mergedActivities,
-      hotelOptions: mergedHotels,
+      hotelOptions: mergedHotels as HotelOption[],
       liveDataSummary,
       rankingReasons: rankingReasons.slice(0, 4),
     };

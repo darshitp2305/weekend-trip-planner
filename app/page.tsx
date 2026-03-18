@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import AccountPanel from "../components/AccountPanel";
 import TripCard from "../components/TripCard";
 import TripForm from "../components/TripForm";
@@ -52,7 +52,16 @@ function withUniqueTripImages(results: RankedDestination[]) {
   });
 }
 
-function extractResults(payload: any): RankedDestination[] | null {
+type ResultsPayload = {
+  results?: RankedDestination[];
+  trips?: RankedDestination[];
+  destinations?: RankedDestination[];
+  rankings?: RankedDestination[];
+};
+
+function extractResults(
+  payload: ResultsPayload | null | undefined
+): RankedDestination[] | null {
   if (Array.isArray(payload?.results)) return payload.results;
   if (Array.isArray(payload?.trips)) return payload.trips;
   if (Array.isArray(payload?.destinations)) return payload.destinations;
@@ -169,13 +178,13 @@ export default function HomePage() {
   const [restored, setRestored] = useState(false);
   const [savedTripsOpen, setSavedTripsOpen] = useState(false);
 
-  function persistPageState(nextState: {
+  const persistPageState = useCallback((nextState: {
     rankedResults?: RankedDestination[];
     displayResults?: RankedDestination[];
     shownDestinationNames?: string[];
     lastInput?: TripInput | null;
     aiStatusMessage?: string;
-  }) {
+  }) => {
     if (typeof window === "undefined") return;
 
     try {
@@ -193,7 +202,7 @@ export default function HomePage() {
     } catch (error) {
       console.error("Failed to persist planner page state:", error);
     }
-  }
+  }, [aiStatusMessage, displayResults, lastInput, rankedResults, shownDestinationNames]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -243,14 +252,7 @@ export default function HomePage() {
   useEffect(() => {
     if (!restored) return;
     persistPageState({});
-  }, [
-    aiStatusMessage,
-    displayResults,
-    lastInput,
-    rankedResults,
-    restored,
-    shownDestinationNames,
-  ]);
+  }, [persistPageState, restored]);
 
   function dedupeDestinationNames(names: string[]) {
     return Array.from(

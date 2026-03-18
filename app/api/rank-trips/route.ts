@@ -4,51 +4,79 @@ import { deriveTripEndDate, isIsoDate } from "../../../lib/tripDates";
 import { generateRankedTrips } from "../../../lib/generateRankedTrips";
 import { TripInput } from "../../../lib/types";
 
-function isTripInput(value: any): value is TripInput {
-  return (
+type TripInputCandidate = Partial<TripInput> & {
+  startCity?: unknown;
+  maxDriveHours?: unknown;
+  maxDriveMinutesBetweenStops?: unknown;
+  budget?: unknown;
+  budgetPerTraveler?: unknown;
+  travelerCount?: unknown;
+  tripLengthDays?: unknown;
+  season?: unknown;
+  style?: unknown;
+  veganFriendly?: unknown;
+  includeStaycations?: unknown;
+  strictBudget?: unknown;
+  preferredDestination?: unknown;
+  tripStartDate?: unknown;
+  tripEndDate?: unknown;
+};
+
+function isTripInput(value: unknown): value is TripInput {
+  const candidate = value as TripInputCandidate;
+
+  return Boolean(
     value &&
     typeof value === "object" &&
-    isStartCity(value.startCity) &&
-    typeof value.maxDriveHours === "number" &&
-    typeof value.budget === "number" &&
-    typeof value.budgetPerTraveler === "number" &&
-    typeof value.travelerCount === "number" &&
-    typeof value.tripLengthDays === "number" &&
-    typeof value.season === "string" &&
-    typeof value.style === "string" &&
-    typeof value.veganFriendly === "boolean" &&
-    typeof value.includeStaycations === "boolean" &&
-    typeof value.strictBudget === "boolean" &&
-    (value.preferredDestination === undefined ||
-      typeof value.preferredDestination === "string") &&
-    (value.tripStartDate === undefined || typeof value.tripStartDate === "string") &&
-    (value.tripEndDate === undefined || typeof value.tripEndDate === "string")
+    isStartCity(candidate.startCity) &&
+    typeof candidate.maxDriveHours === "number" &&
+    typeof candidate.maxDriveMinutesBetweenStops === "number" &&
+    typeof candidate.budget === "number" &&
+    typeof candidate.budgetPerTraveler === "number" &&
+    typeof candidate.travelerCount === "number" &&
+    typeof candidate.tripLengthDays === "number" &&
+    typeof candidate.season === "string" &&
+    typeof candidate.style === "string" &&
+    typeof candidate.veganFriendly === "boolean" &&
+    typeof candidate.includeStaycations === "boolean" &&
+    typeof candidate.strictBudget === "boolean" &&
+    (candidate.preferredDestination === undefined ||
+      typeof candidate.preferredDestination === "string") &&
+    (candidate.tripStartDate === undefined ||
+      typeof candidate.tripStartDate === "string") &&
+    (candidate.tripEndDate === undefined || typeof candidate.tripEndDate === "string")
   );
 }
 
-function normalizeInput(raw: any): TripInput | null {
+function normalizeInput(raw: unknown): TripInput | null {
   if (!raw || typeof raw !== "object") return null;
+  const candidateInput = raw as TripInputCandidate;
 
-  const travelerCount = Number(raw.travelerCount);
-  const budgetPerTraveler = Number(raw.budgetPerTraveler);
-  const tripStartDate = isIsoDate(raw.tripStartDate) ? raw.tripStartDate : undefined;
-  const tripLengthDays = Number(raw.tripLengthDays);
+  const travelerCount = Number(candidateInput.travelerCount);
+  const budgetPerTraveler = Number(candidateInput.budgetPerTraveler);
+  const tripStartDate = isIsoDate(candidateInput.tripStartDate)
+    ? candidateInput.tripStartDate
+    : undefined;
+  const tripLengthDays = Number(candidateInput.tripLengthDays);
 
   const candidate = {
-    startCity: raw.startCity,
-    maxDriveHours: Number(raw.maxDriveHours),
+    startCity: candidateInput.startCity,
+    maxDriveHours: Number(candidateInput.maxDriveHours),
+    maxDriveMinutesBetweenStops: Number(
+      candidateInput.maxDriveMinutesBetweenStops
+    ),
     budget: travelerCount * budgetPerTraveler,
     budgetPerTraveler,
     travelerCount,
     tripLengthDays,
-    season: raw.season,
-    style: raw.style,
-    veganFriendly: Boolean(raw.veganFriendly),
-    includeStaycations: Boolean(raw.includeStaycations),
-    strictBudget: Boolean(raw.strictBudget),
+    season: candidateInput.season,
+    style: candidateInput.style,
+    veganFriendly: Boolean(candidateInput.veganFriendly),
+    includeStaycations: Boolean(candidateInput.includeStaycations),
+    strictBudget: Boolean(candidateInput.strictBudget),
     preferredDestination:
-      typeof raw.preferredDestination === "string"
-        ? raw.preferredDestination.trim() || undefined
+      typeof candidateInput.preferredDestination === "string"
+        ? candidateInput.preferredDestination.trim() || undefined
         : undefined,
     tripStartDate,
     tripEndDate: deriveTripEndDate(tripStartDate, tripLengthDays),

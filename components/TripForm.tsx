@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 import rawDestinations from "../data/destinations.json";
 import { formatDisplayText } from "../lib/displayText";
@@ -26,6 +27,7 @@ type Props = {
 type FormState = {
   startCity: StartCity;
   maxDriveHours: string;
+  maxDriveMinutesBetweenStops: string;
   budgetPerTraveler: string;
   travelerCount: string;
   style: TripStyle;
@@ -40,6 +42,7 @@ type FormState = {
 const DEFAULT_FORM: FormState = {
   startCity: "Edmonton",
   maxDriveHours: "5",
+  maxDriveMinutesBetweenStops: "45",
   budgetPerTraveler: "300",
   travelerCount: "2",
   style: "adventure",
@@ -71,6 +74,9 @@ function buildFormState(
       ? initialInput.startCity
       : "Edmonton",
     maxDriveHours: String(initialInput?.maxDriveHours ?? 5),
+    maxDriveMinutesBetweenStops: String(
+      initialInput?.maxDriveMinutesBetweenStops ?? 45
+    ),
     budgetPerTraveler: String(initialInput?.budgetPerTraveler ?? 300),
     travelerCount: String(initialInput?.travelerCount ?? 2),
     style: initialInput?.style ?? "adventure",
@@ -341,7 +347,11 @@ export default function TripForm({
   }
 
   function handleNumericChange(
-    key: "maxDriveHours" | "budgetPerTraveler" | "travelerCount",
+    key:
+      | "maxDriveHours"
+      | "maxDriveMinutesBetweenStops"
+      | "budgetPerTraveler"
+      | "travelerCount",
     value: string
   ) {
     const digitsOnly = value.replace(/[^\d]/g, "");
@@ -349,7 +359,11 @@ export default function TripForm({
   }
 
   function handleNumericBlur(
-    key: "maxDriveHours" | "budgetPerTraveler" | "travelerCount"
+    key:
+      | "maxDriveHours"
+      | "maxDriveMinutesBetweenStops"
+      | "budgetPerTraveler"
+      | "travelerCount"
   ) {
     if (key === "maxDriveHours") {
       updateField(
@@ -370,6 +384,18 @@ export default function TripForm({
           min: 50,
           max: 5000,
           fallback: 300,
+        }) as FormState[typeof key]
+      );
+      return;
+    }
+
+    if (key === "maxDriveMinutesBetweenStops") {
+      updateField(
+        key,
+        normalizeNumericString(form[key], {
+          min: 10,
+          max: 180,
+          fallback: 45,
         }) as FormState[typeof key]
       );
       return;
@@ -450,6 +476,10 @@ export default function TripForm({
         12,
         Math.max(1, parsePositiveInt(form.maxDriveHours, 5))
       ),
+      maxDriveMinutesBetweenStops: Math.min(
+        180,
+        Math.max(10, parsePositiveInt(form.maxDriveMinutesBetweenStops, 45))
+      ),
       budget: travelerCount * budgetPerTraveler,
       budgetPerTraveler,
       travelerCount,
@@ -467,6 +497,9 @@ export default function TripForm({
     setForm((prev) => ({
       ...prev,
       maxDriveHours: String(cleanedInput.maxDriveHours),
+      maxDriveMinutesBetweenStops: String(
+        cleanedInput.maxDriveMinutesBetweenStops
+      ),
       budgetPerTraveler: String(cleanedInput.budgetPerTraveler),
       travelerCount: String(cleanedInput.travelerCount),
       tripStartDate,
@@ -507,9 +540,11 @@ export default function TripForm({
                   index === currentSlideIndex ? "opacity-100" : "opacity-0"
                 }`}
               >
-                <img
+                <Image
                   src={slide.imageUrl}
                   alt={slide.title}
+                  fill
+                  unoptimized
                   className="h-full w-full object-cover"
                 />
                 <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(15,23,42,0.10),rgba(15,23,42,0.72))]" />
@@ -627,6 +662,27 @@ export default function TripForm({
               onChange={(e) => handleTripStartDateChange(e.target.value)}
               className={DATE_INPUT_CLASS}
               style={DATE_INPUT_STYLE}
+            />
+          </div>
+
+          <div>
+            <FieldLabel htmlFor="maxDriveMinutesBetweenStops">
+              Max drive between stops (min)
+            </FieldLabel>
+            <input
+              id="maxDriveMinutesBetweenStops"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              type="text"
+              value={form.maxDriveMinutesBetweenStops}
+              onChange={(e) =>
+                handleNumericChange(
+                  "maxDriveMinutesBetweenStops",
+                  e.target.value
+                )
+              }
+              onBlur={() => handleNumericBlur("maxDriveMinutesBetweenStops")}
+              className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-violet-500/20"
             />
           </div>
 

@@ -11,6 +11,7 @@ import { deriveTripEndDate } from "./tripDates";
 const defaultInput: TripInput = {
   startCity: "Edmonton",
   maxDriveHours: 5,
+  maxDriveMinutesBetweenStops: 45,
   budget: 600,
   budgetPerTraveler: 300,
   travelerCount: 2,
@@ -39,6 +40,10 @@ function normalizeInput(input?: Partial<TripInput>): TripInput {
     ...defaultInput,
     ...input,
     maxDriveHours: Number(input?.maxDriveHours ?? defaultInput.maxDriveHours),
+    maxDriveMinutesBetweenStops: Number(
+      input?.maxDriveMinutesBetweenStops ??
+        defaultInput.maxDriveMinutesBetweenStops
+    ),
     budget:
       Number(input?.budget) ||
       travelerCount * budgetPerTraveler ||
@@ -63,7 +68,8 @@ function makeDriveText(trip: RankedDestination) {
 
 function buildBudgetBreakdown(
   trip: RankedDestination,
-  input: TripInput
+  input: TripInput,
+  itineraryDays: ItineraryDayData[]
 ): BudgetBreakdown {
   const nights = Math.max(input.tripLengthDays - 1, 1);
   const travelerCount = Math.max(1, input.travelerCount);
@@ -71,7 +77,9 @@ function buildBudgetBreakdown(
   const firstHotelPrice = trip.hotelOptions?.[0]?.pricePerNight;
   const firstHotelTotal = trip.hotelOptions?.[0]?.totalStayPrice;
   const hotelBase =
-    typeof firstHotelTotal === "number"
+    trip.isStaycation
+      ? 0
+      : typeof firstHotelTotal === "number"
       ? firstHotelTotal
       : typeof firstHotelPrice === "number"
       ? firstHotelPrice * nights
@@ -85,9 +93,19 @@ function buildBudgetBreakdown(
         : 50;
 
   const foodBase =
-    trip.budgetBreakdown?.food && trip.budgetBreakdown.food > 0
+    itineraryDays
+      .flatMap((day) => day.stops)
+      .filter((stop) => stop.kind === "food")
+      .reduce((sum, stop) => {
+        const estimated =
+          typeof stop.estimatedCost === "number" && stop.estimatedCost > 0
+            ? stop.estimatedCost
+            : fallbackFoodPerDayPerTraveler * travelerCount * 0.8;
+        return sum + estimated;
+      }, 0) ||
+    (trip.budgetBreakdown?.food && trip.budgetBreakdown.food > 0
       ? trip.budgetBreakdown.food
-      : input.tripLengthDays * fallbackFoodPerDayPerTraveler * travelerCount;
+      : input.tripLengthDays * fallbackFoodPerDayPerTraveler * travelerCount);
 
   const gasBase = trip.isStaycation
     ? 0
@@ -95,16 +113,14 @@ function buildBudgetBreakdown(
     ? trip.budgetBreakdown.gas
     : Math.max(40, trip.driveHoursFromStart * 22);
 
-  const activitiesFromList = trip.topActivities?.length
-  ? trip.topActivities.reduce(
-      (sum, item) => sum + (item.costEstimate || item.estimatedCost || 0),
-      0
-    )
-  : 0;
+  const activitiesFromItinerary = itineraryDays
+    .flatMap((day) => day.stops)
+    .filter((stop) => stop.kind === "activity")
+    .reduce((sum, stop) => sum + (stop.estimatedCost || 0), 0);
 
   const activitiesBase =
-    activitiesFromList > 0
-      ? activitiesFromList * travelerCount
+    activitiesFromItinerary > 0
+      ? activitiesFromItinerary
       : (trip.budgetBreakdown?.activities ?? 0);
 
   const miscBase = roundMoney(
@@ -114,6 +130,15 @@ function buildBudgetBreakdown(
   const totalExpected = roundMoney(
     hotelBase + foodBase + gasBase + activitiesBase + miscBase
   );
+
+  if (
+    typeof trip.estimatedCost === "number" &&
+    trip.estimatedCost > 0 &&
+    totalExpected > trip.estimatedCost * 1.05 &&
+    trip.budgetBreakdown
+  ) {
+    return trip.budgetBreakdown;
+  }
 
   return {
     hotel: roundMoney(hotelBase),
@@ -130,12 +155,33 @@ function buildBudgetBreakdown(
 
 type FoodSpot = NonNullable<RankedDestination["foodSpots"]>[number];
 type ActivitySpot = NonNullable<RankedDestination["topActivities"]>[number];
+type CoordinateItem = {
+  name?: string;
+  latitude?: number;
+  longitude?: number;
+};
+type StopCoordinate = {
+  latitude: number;
+  longitude: number;
+};
 
 type BuildContext = {
   remainingFoods: FoodSpot[];
   remainingActivities: ActivitySpot[];
   previousDayFoodNames: Set<string>;
   previousDayActivityNames: Set<string>;
+};
+
+type TripPacing = "easy" | "balanced" | "fatiguing";
+
+type ProximityOptions = {
+  reference?: StopCoordinate;
+  maxDistanceKm?: number;
+  minimumNearbyCount?: number;
+  fallbackReference?: StopCoordinate;
+  distancePenaltyStartKm?: number;
+  distanceWeight?: number;
+  keepUnknownCoordinates?: boolean;
 };
 
 function dedupeByName<T extends { name?: string }>(items: T[] | undefined): T[] {
@@ -157,6 +203,91 @@ function dedupeByName<T extends { name?: string }>(items: T[] | undefined): T[] 
 
 function itemName(item?: { name?: string }) {
   return (item?.name ?? "").trim().toLowerCase();
+}
+
+function toCoordinate(item?: CoordinateItem): StopCoordinate | undefined {
+  if (
+    typeof item?.latitude !== "number" ||
+    typeof item?.longitude !== "number"
+  ) {
+    return undefined;
+  }
+
+  return {
+    latitude: item.latitude,
+    longitude: item.longitude,
+  };
+}
+
+function haversineDistanceKm(from: StopCoordinate, to: StopCoordinate) {
+  const earthRadiusKm = 6371;
+  const toRadians = (value: number) => (value * Math.PI) / 180;
+  const deltaLat = toRadians(to.latitude - from.latitude);
+  const deltaLon = toRadians(to.longitude - from.longitude);
+  const lat1 = toRadians(from.latitude);
+  const lat2 = toRadians(to.latitude);
+
+  const a =
+    Math.sin(deltaLat / 2) ** 2 +
+    Math.cos(lat1) * Math.cos(lat2) * Math.sin(deltaLon / 2) ** 2;
+
+  return earthRadiusKm * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function distanceFromReference(
+  reference: StopCoordinate | undefined,
+  item?: CoordinateItem
+) {
+  const coordinate = toCoordinate(item);
+  if (!reference || !coordinate) return undefined;
+  return haversineDistanceKm(reference, coordinate);
+}
+
+function maxLegDistanceKm(input: TripInput) {
+  return Math.max(8, (input.maxDriveMinutesBetweenStops / 60) * 55);
+}
+
+function buildBaseCoordinate(trip: RankedDestination) {
+  return (
+    toCoordinate(trip.hotelOptions?.[0]) ??
+    toCoordinate(trip) ??
+    toCoordinate(trip.topActivities?.[0]) ??
+    toCoordinate(trip.foodSpots?.[0])
+  );
+}
+
+function proximityScore(
+  distanceKm: number | undefined,
+  options?: Pick<
+    ProximityOptions,
+    "maxDistanceKm" | "distancePenaltyStartKm" | "distanceWeight"
+  >
+) {
+  if (distanceKm === undefined) return 0;
+
+  const maxDistanceKm = options?.maxDistanceKm ?? Number.POSITIVE_INFINITY;
+  const distancePenaltyStartKm = options?.distancePenaltyStartKm ?? maxDistanceKm * 0.5;
+  const distanceWeight = options?.distanceWeight ?? 1.2;
+
+  if (distanceKm <= Math.max(2, distancePenaltyStartKm)) {
+    return 16 - distanceKm * 0.6;
+  }
+
+  if (distanceKm <= maxDistanceKm) {
+    return Math.max(-10, 8 - (distanceKm - distancePenaltyStartKm) * distanceWeight);
+  }
+
+  return -30 - (distanceKm - maxDistanceKm) * distanceWeight * 1.4;
+}
+
+function normalizeSignalText(parts: Array<string | undefined>) {
+  return parts.join(" ").toLowerCase();
+}
+
+function getTripPacing(trip: RankedDestination): TripPacing {
+  if (trip.isStaycation || trip.driveHoursFromStart <= 1.75) return "easy";
+  if (trip.driveHoursFromStart <= 4) return "balanced";
+  return "fatiguing";
 }
 
 function setPreviousDayFoods(
@@ -183,24 +314,126 @@ function buildContext(trip: RankedDestination): BuildContext {
 }
 
 function normalizedFoodSignals(food?: FoodSpot) {
-  return [
+  return normalizeSignalText([
     ...(food?.tags ?? []),
     food?.category ?? "",
     food?.name ?? "",
     food?.shortDescription ?? "",
-  ]
-    .join(" ")
-    .toLowerCase();
+  ]);
 }
 
 function normalizedActivitySignals(activity?: ActivitySpot) {
-  return [
+  return normalizeSignalText([
     activity?.type ?? "",
     activity?.name ?? "",
     activity?.shortDescription ?? "",
-  ]
-    .join(" ")
-    .toLowerCase();
+  ]);
+}
+
+function styleActivityScore(activity: ActivitySpot | undefined, input: TripInput) {
+  const text = normalizedActivitySignals(activity);
+  let score = 0;
+
+  if (input.style === "foodie") {
+    if (
+      text.includes("market") ||
+      text.includes("food") ||
+      text.includes("brew") ||
+      text.includes("distillery") ||
+      text.includes("tour")
+    ) {
+      score += 6;
+    }
+    if (
+      text.includes("museum") ||
+      text.includes("historic") ||
+      text.includes("downtown")
+    ) {
+      score += 3;
+    }
+  }
+
+  if (input.style === "adventure" || input.style === "outdoors") {
+    if (
+      text.includes("trail") ||
+      text.includes("hike") ||
+      text.includes("summit") ||
+      text.includes("gondola") ||
+      text.includes("lake") ||
+      text.includes("canyon") ||
+      text.includes("waterfall") ||
+      text.includes("park")
+    ) {
+      score += 6;
+    }
+  }
+
+  if (input.style === "chill" || input.style === "solo reset") {
+    if (
+      text.includes("spa") ||
+      text.includes("hot spring") ||
+      text.includes("viewpoint") ||
+      text.includes("lake") ||
+      text.includes("garden") ||
+      text.includes("scenic") ||
+      text.includes("wellness")
+    ) {
+      score += 6;
+    }
+  }
+
+  if (input.style === "hidden gems") {
+    if (
+      text.includes("historic") ||
+      text.includes("heritage") ||
+      text.includes("local") ||
+      text.includes("lookout") ||
+      text.includes("museum") ||
+      text.includes("trail")
+    ) {
+      score += 5;
+    }
+  }
+
+  return score;
+}
+
+function styleFoodScore(food: FoodSpot | undefined, input: TripInput) {
+  const text = normalizedFoodSignals(food);
+  let score = 0;
+
+  if (input.style === "foodie") {
+    if (
+      text.includes("restaurant") ||
+      text.includes("chef") ||
+      text.includes("market") ||
+      text.includes("bakery") ||
+      text.includes("coffee") ||
+      text.includes("brew")
+    ) {
+      score += 5;
+    }
+  }
+
+  if (input.style === "chill" || input.style === "solo reset") {
+    if (
+      text.includes("cafe") ||
+      text.includes("coffee") ||
+      text.includes("bakery") ||
+      text.includes("brunch") ||
+      text.includes("tea")
+    ) {
+      score += 4;
+    }
+  }
+
+  if (input.veganFriendly) {
+    if (text.includes("vegan") || text.includes("vegetarian") || text.includes("plant")) {
+      score += 4;
+    }
+  }
+
+  return score;
 }
 
 function isAdminLikeActivity(activity?: ActivitySpot) {
@@ -463,18 +696,20 @@ function activityFinalLightScore(activity?: ActivitySpot) {
   return score;
 }
 
-function popBestItem<T extends { name?: string }>(
+function popBestItem<T extends CoordinateItem>(
   pool: T[],
   previousDayNames: Set<string>,
   blockedNames: Set<string>,
   scorer: (item: T) => number,
-  minScore: number
+  minScore: number,
+  proximity?: ProximityOptions
 ): T | undefined {
   const candidates = pool
     .map((item, index) => ({
       item,
       index,
-      score: scorer(item),
+      distanceKm: distanceFromReference(proximity?.reference, item),
+      fallbackDistanceKm: distanceFromReference(proximity?.fallbackReference, item),
       wasYesterday: previousDayNames.has(itemName(item)),
       key: itemName(item),
     }))
@@ -482,13 +717,55 @@ function popBestItem<T extends { name?: string }>(
 
   if (candidates.length === 0) return undefined;
 
-  candidates.sort((a, b) => {
+  const maxDistanceKm = proximity?.maxDistanceKm;
+  const minimumNearbyCount = proximity?.minimumNearbyCount ?? 2;
+  const keepUnknownCoordinates = proximity?.keepUnknownCoordinates ?? false;
+  const nearEnoughCandidates =
+    maxDistanceKm === undefined
+      ? candidates
+      : candidates.filter(
+          ({ distanceKm }) =>
+            distanceKm !== undefined && distanceKm <= maxDistanceKm
+        );
+
+  const effectiveCandidates =
+    maxDistanceKm !== undefined &&
+    proximity?.reference &&
+    nearEnoughCandidates.length >= minimumNearbyCount
+      ? candidates.filter(
+          ({ distanceKm }) =>
+            distanceKm !== undefined
+              ? distanceKm <= maxDistanceKm
+              : keepUnknownCoordinates
+        )
+      : candidates;
+
+  const scoredCandidates = effectiveCandidates.map((candidate) => {
+    const distanceKm = candidate.distanceKm ?? candidate.fallbackDistanceKm;
+
+    return {
+      ...candidate,
+      distanceKm,
+      score:
+        scorer(candidate.item) +
+        proximityScore(distanceKm, {
+          maxDistanceKm,
+          distancePenaltyStartKm: proximity?.distancePenaltyStartKm,
+          distanceWeight: proximity?.distanceWeight,
+        }),
+    };
+  });
+
+  scoredCandidates.sort((a, b) => {
     if (b.score !== a.score) return b.score - a.score;
+    if ((a.distanceKm ?? Infinity) !== (b.distanceKm ?? Infinity)) {
+      return (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity);
+    }
     if (a.wasYesterday !== b.wasYesterday) return a.wasYesterday ? 1 : -1;
     return a.key.localeCompare(b.key);
   });
 
-  const best = candidates[0];
+  const best = scoredCandidates[0];
   if (!best || best.score < minScore) return undefined;
 
   const [picked] = pool.splice(best.index, 1);
@@ -497,92 +774,150 @@ function popBestItem<T extends { name?: string }>(
 
 function pickMorningFood(
   ctx: BuildContext,
-  blockedNames: Set<string> = new Set<string>()
+  input: TripInput,
+  blockedNames: Set<string> = new Set<string>(),
+  proximity?: ProximityOptions
 ) {
   return popBestItem(
     ctx.remainingFoods,
     ctx.previousDayFoodNames,
     blockedNames,
-    foodScoreForMorning,
-    4
+    (food) => foodScoreForMorning(food) + styleFoodScore(food, input),
+    4,
+    proximity
   );
 }
 
 function pickDinnerFood(
   ctx: BuildContext,
-  blockedNames: Set<string> = new Set<string>()
+  input: TripInput,
+  blockedNames: Set<string> = new Set<string>(),
+  proximity?: ProximityOptions
 ) {
   return popBestItem(
     ctx.remainingFoods,
     ctx.previousDayFoodNames,
     blockedNames,
-    foodScoreForDinner,
-    4
+    (food) => foodScoreForDinner(food) + styleFoodScore(food, input),
+    4,
+    proximity
   );
 }
 
 function pickArrivalDinnerFood(
   ctx: BuildContext,
-  blockedNames: Set<string> = new Set<string>()
+  input: TripInput,
+  blockedNames: Set<string> = new Set<string>(),
+  proximity?: ProximityOptions
 ) {
   return popBestItem(
     ctx.remainingFoods,
     ctx.previousDayFoodNames,
     blockedNames,
-    foodScoreForArrivalDinner,
-    6
+    (food) => foodScoreForArrivalDinner(food) + styleFoodScore(food, input),
+    6,
+    proximity
   );
 }
 
 function pickLightFinalFood(
   ctx: BuildContext,
-  blockedNames: Set<string> = new Set<string>()
+  input: TripInput,
+  blockedNames: Set<string> = new Set<string>(),
+  proximity?: ProximityOptions
 ) {
   return popBestItem(
     ctx.remainingFoods,
     ctx.previousDayFoodNames,
     blockedNames,
-    foodScoreForFinalLightStop,
-    5
+    (food) => foodScoreForFinalLightStop(food) + styleFoodScore(food, input),
+    5,
+    proximity
+  );
+}
+
+function pickFlexibleFood(
+  ctx: BuildContext,
+  input: TripInput,
+  blockedNames: Set<string> = new Set<string>(),
+  proximity?: ProximityOptions
+) {
+  return popBestItem(
+    ctx.remainingFoods,
+    ctx.previousDayFoodNames,
+    blockedNames,
+    (food) => styleFoodScore(food, input) + normalizedFoodSignals(food).length * 0.001,
+    0,
+    proximity
   );
 }
 
 function pickAnchorActivity(
   ctx: BuildContext,
-  blockedNames: Set<string> = new Set<string>()
+  input: TripInput,
+  blockedNames: Set<string> = new Set<string>(),
+  proximity?: ProximityOptions
 ) {
   return popBestItem(
     ctx.remainingActivities,
     ctx.previousDayActivityNames,
     blockedNames,
-    activityAnchorScore,
-    4
+    (activity) => activityAnchorScore(activity) + styleActivityScore(activity, input),
+    4,
+    proximity
   );
 }
 
 function pickSecondaryActivity(
   ctx: BuildContext,
-  blockedNames: Set<string> = new Set<string>()
+  input: TripInput,
+  blockedNames: Set<string> = new Set<string>(),
+  proximity?: ProximityOptions
 ) {
   return popBestItem(
     ctx.remainingActivities,
     ctx.previousDayActivityNames,
     blockedNames,
-    activitySecondaryScore,
-    1
+    (activity) =>
+      activitySecondaryScore(activity) + styleActivityScore(activity, input),
+    1,
+    proximity
   );
 }
 
 function pickFinalLightActivity(
   ctx: BuildContext,
-  blockedNames: Set<string> = new Set<string>()
+  input: TripInput,
+  blockedNames: Set<string> = new Set<string>(),
+  proximity?: ProximityOptions
 ) {
   return popBestItem(
     ctx.remainingActivities,
     ctx.previousDayActivityNames,
     blockedNames,
-    activityFinalLightScore,
-    2
+    (activity) =>
+      activityFinalLightScore(activity) + styleActivityScore(activity, input),
+    2,
+    proximity
+  );
+}
+
+function pickFlexibleActivity(
+  ctx: BuildContext,
+  input: TripInput,
+  blockedNames: Set<string> = new Set<string>(),
+  proximity?: ProximityOptions
+) {
+  return popBestItem(
+    ctx.remainingActivities,
+    ctx.previousDayActivityNames,
+    blockedNames,
+    (activity) =>
+      styleActivityScore(activity, input) +
+      activitySecondaryScore(activity) +
+      normalizedActivitySignals(activity).length * 0.001,
+    0,
+    proximity
   );
 }
 
@@ -635,14 +970,200 @@ function middleDaySummary(
   return `Keep the trip varied by balancing one main anchor with food and flexible exploration on day ${dayNumber}.`;
 }
 
+function styleFoodDescription(input: TripInput, venueName: string, phase: "start" | "end" | "light") {
+  if (input.style === "foodie") {
+    if (phase === "start") return `Start with a strong local food stop at ${venueName}.`;
+    if (phase === "end") return `Use ${venueName} as the dinner anchor so the day still feels food-forward.`;
+    return `Use ${venueName} for one more local bite, bakery stop, or coffee run before you head out.`;
+  }
+
+  if (input.style === "hidden gems") {
+    return `Use ${venueName} as a lower-key local heritage stop that still feels specific to the area.`;
+  }
+
+  return phase === "end"
+    ? `Finish with dinner at ${venueName}.`
+    : `Start the day at ${venueName}.`;
+}
+
+function styleActivityDescription(
+  input: TripInput,
+  activityName: string,
+  phase: "anchor" | "secondary" | "light"
+) {
+  if (input.style === "hidden gems") {
+    if (phase === "secondary") {
+      return `Add ${activityName} for more local or heritage texture without overpacking the day.`;
+    }
+    return `Use ${activityName} as a scenic or local anchor that keeps the trip feeling distinctive.`;
+  }
+
+  if (input.style === "foodie") {
+    return phase === "secondary"
+      ? `Add ${activityName} if it still fits around the main food stops.`
+      : `Use ${activityName} as a lighter anchor between the main meal stops.`;
+  }
+
+  return phase === "secondary"
+    ? `Add ${activityName} if you still have energy.`
+    : `Use ${activityName} as the main daytime anchor.`;
+}
+
+function makeFlexibleFoodStop(
+  input: TripInput,
+  trip: RankedDestination,
+  time: string,
+  title: string
+) {
+  return {
+    time,
+    title,
+    description:
+      input.style === "foodie"
+        ? `Keep this slot for a local food crawl, bakery stop, coffee stop, or neighborhood restaurant in ${trip.name}.`
+        : `Keep this slot flexible for one good local stop in ${trip.name}.`,
+    estimatedCost:
+      (input.style === "foodie" ? 36 : 22) * Math.max(1, input.travelerCount),
+    kind: "food" as const,
+  };
+}
+
+function makeFlexibleActivityStop(
+  input: TripInput,
+  trip: RankedDestination,
+  time: string,
+  title: string
+) {
+  return {
+    time,
+    title,
+    description:
+      input.style === "hidden gems"
+        ? `Use this block for a scenic, heritage, local, or trail-side stop around ${trip.name}.`
+        : input.style === "adventure" || input.style === "outdoors"
+          ? `Use this block for one more outdoor anchor around ${trip.name}.`
+          : `Keep this block open for a low-friction stop around ${trip.name}.`,
+    estimatedCost: 0,
+    kind: "activity" as const,
+  };
+}
+
+function withDistanceCap<T extends CoordinateItem>(
+  items: T[] | undefined,
+  reference: StopCoordinate | undefined,
+  maxDistanceKm: number,
+  minimumNearbyCount: number
+) {
+  const safeItems = dedupeByName(items);
+  if (!reference) return safeItems;
+
+  const nearby = safeItems.filter((item) => {
+    const distanceKm = distanceFromReference(reference, item);
+    return distanceKm !== undefined && distanceKm <= maxDistanceKm;
+  });
+
+  if (nearby.length >= minimumNearbyCount) {
+    return nearby;
+  }
+
+  return safeItems;
+}
+
+function buildFoodProximity(
+  input: TripInput,
+  reference: StopCoordinate | undefined,
+  fallbackReference: StopCoordinate | undefined
+): ProximityOptions {
+  return {
+    reference,
+    fallbackReference,
+    maxDistanceKm: maxLegDistanceKm(input),
+    minimumNearbyCount: 2,
+    distancePenaltyStartKm: Math.max(2, maxLegDistanceKm(input) * 0.35),
+    distanceWeight: 1.5,
+  };
+}
+
+function buildActivityProximity(
+  input: TripInput,
+  reference: StopCoordinate | undefined,
+  fallbackReference: StopCoordinate | undefined
+): ProximityOptions {
+  return {
+    reference,
+    fallbackReference,
+    maxDistanceKm: maxLegDistanceKm(input) * 1.4,
+    minimumNearbyCount: 2,
+    distancePenaltyStartKm: Math.max(3, maxLegDistanceKm(input) * 0.5),
+    distanceWeight: 1.2,
+  };
+}
+
 function buildStaycationDayOne(
   trip: RankedDestination,
   input: TripInput,
   ctx: BuildContext
 ): ItineraryDayData {
-  const breakfast = pickMorningFood(ctx);
-  const activity = pickAnchorActivity(ctx);
-  const dinner = pickDinnerFood(ctx, new Set([itemName(breakfast)]));
+  const baseCoordinate = buildBaseCoordinate(trip);
+  const breakfast =
+    pickMorningFood(
+      ctx,
+      input,
+      new Set<string>(),
+      buildFoodProximity(input, baseCoordinate, baseCoordinate)
+    ) ??
+    pickFlexibleFood(
+      ctx,
+      input,
+      new Set<string>(),
+      buildFoodProximity(input, baseCoordinate, baseCoordinate)
+    );
+  const breakfastCoordinate = toCoordinate(breakfast);
+  const activity =
+    pickAnchorActivity(
+      ctx,
+      input,
+      new Set<string>(),
+      buildActivityProximity(
+        input,
+        breakfastCoordinate ?? baseCoordinate,
+        baseCoordinate
+      )
+    ) ??
+    pickFlexibleActivity(
+      ctx,
+      input,
+      new Set<string>(),
+      buildActivityProximity(
+        input,
+        breakfastCoordinate ?? baseCoordinate,
+        baseCoordinate
+      )
+    );
+  const activityCoordinate = toCoordinate(activity);
+  const dinner =
+    pickDinnerFood(
+      ctx,
+      input,
+      new Set([itemName(breakfast)]),
+      buildFoodProximity(
+        input,
+        activityCoordinate ?? breakfastCoordinate ?? baseCoordinate,
+        baseCoordinate
+      )
+    ) ??
+    (input.style === "foodie" || input.style === "chill" || input.style === "solo reset"
+      ? pickFlexibleFood(
+          ctx,
+          input,
+          new Set([itemName(breakfast)]),
+          buildFoodProximity(
+            input,
+            activityCoordinate ?? breakfastCoordinate ?? baseCoordinate,
+            baseCoordinate
+          )
+        )
+      : undefined);
 
   setPreviousDayFoods(ctx, [breakfast, dinner]);
   setPreviousDayActivities(ctx, [activity]);
@@ -654,14 +1175,17 @@ function buildStaycationDayOne(
       breakfast && {
         time: "Morning",
         title: breakfast.name,
-        description: `Start with food at ${breakfast.name}.`,
+        description: styleFoodDescription(input, breakfast.name, "start"),
         websiteUrl: breakfast.link,
+        estimatedCost:
+          (input.style === "foodie" ? 26 : input.style === "chill" || input.style === "solo reset" ? 20 : 22) *
+          Math.max(1, input.travelerCount),
         kind: "food" as const,
       },
       activity && {
         time: "Afternoon",
         title: activity.name,
-        description: `Use ${activity.name} as the anchor activity for the afternoon.`,
+        description: styleActivityDescription(input, activity.name, "anchor"),
         websiteUrl: activity.bookingLink ?? activity.websiteUrl,
         estimatedCost: activity.costEstimate ?? activity.estimatedCost ?? 0,
         kind: "activity" as const,
@@ -669,20 +1193,66 @@ function buildStaycationDayOne(
       dinner && {
         time: "Evening",
         title: dinner.name,
-        description: `Wrap up with food at ${dinner.name}.`,
+        description: styleFoodDescription(input, dinner.name, "end"),
         websiteUrl: dinner.link,
+        estimatedCost:
+          (input.style === "foodie" ? 42 : 34) * Math.max(1, input.travelerCount),
         kind: "food" as const,
       },
+      !breakfast &&
+        !activity &&
+        !dinner && {
+          time: "Anytime",
+          title: `Flexible ${input.style} day in ${trip.name}`,
+          description:
+            "Use this day for a low-friction local plan while more destination data loads in.",
+          kind: "activity" as const,
+        },
     ]),
   };
 }
 
 function buildStaycationFinalDay(
   trip: RankedDestination,
+  input: TripInput,
   ctx: BuildContext
 ): ItineraryDayData {
-  const breakfast = pickLightFinalFood(ctx);
-  const activity = pickFinalLightActivity(ctx);
+  const baseCoordinate = buildBaseCoordinate(trip);
+  const breakfast =
+    pickLightFinalFood(
+      ctx,
+      input,
+      new Set<string>(),
+      buildFoodProximity(input, baseCoordinate, baseCoordinate)
+    ) ??
+    pickFlexibleFood(
+      ctx,
+      input,
+      new Set<string>(),
+      buildFoodProximity(input, baseCoordinate, baseCoordinate)
+    );
+  const breakfastCoordinate = toCoordinate(breakfast);
+  const activity =
+    pickFinalLightActivity(
+      ctx,
+      input,
+      new Set<string>(),
+      buildActivityProximity(
+        input,
+        breakfastCoordinate ?? baseCoordinate,
+        baseCoordinate
+      )
+    ) ??
+    pickFlexibleActivity(
+      ctx,
+      input,
+      new Set<string>(),
+      buildActivityProximity(
+        input,
+        breakfastCoordinate ?? baseCoordinate,
+        baseCoordinate
+      )
+    );
 
   setPreviousDayFoods(ctx, [breakfast]);
   setPreviousDayActivities(ctx, [activity]);
@@ -690,23 +1260,47 @@ function buildStaycationFinalDay(
   return {
     title: "Second local day",
     summary:
-      "Use day two for one more meaningful stop without travel friction.",
+      input.style === "foodie"
+        ? "Use day two for one more meaningful local food stop without travel friction."
+        : input.style === "hidden gems"
+          ? "Use day two for one more scenic local stop without travel friction."
+          : "Use day two for one more meaningful stop without travel friction.",
     stops: compactStops([
       breakfast && {
         time: "Morning",
         title: breakfast.name,
-        description: `Start with another good local stop at ${breakfast.name}.`,
+        description: styleFoodDescription(input, breakfast.name, "light"),
         websiteUrl: breakfast.link,
+        estimatedCost: 20 * Math.max(1, input.travelerCount),
         kind: "food" as const,
       },
       activity && {
         time: "Afternoon",
         title: activity.name,
-        description: `Use ${activity.name} as the second-day anchor.`,
+        description: styleActivityDescription(input, activity.name, "light"),
         websiteUrl: activity.bookingLink ?? activity.websiteUrl,
         estimatedCost: activity.costEstimate ?? activity.estimatedCost ?? 0,
         kind: "activity" as const,
       },
+      input.style === "foodie" &&
+        !breakfast &&
+        makeFlexibleFoodStop(
+          input,
+          trip,
+          "Morning",
+          `Local brunch or bakery stop in ${trip.name}`
+        ),
+      !breakfast &&
+        !activity && {
+          ...makeFlexibleActivityStop(
+            input,
+            trip,
+            "Flexible",
+            input.style === "hidden gems"
+              ? `Low-key scenic heritage day in ${trip.name}`
+              : `Low-key final day in ${trip.name}`
+          ),
+        },
     ]),
   };
 }
@@ -717,15 +1311,52 @@ function buildGetawayDayOne(
   ctx: BuildContext
 ): ItineraryDayData {
   const hotel = trip.hotelOptions?.[0];
-  const dinner = pickArrivalDinnerFood(ctx);
+  const baseCoordinate = toCoordinate(hotel) ?? buildBaseCoordinate(trip);
+  const dinner =
+    pickArrivalDinnerFood(
+      ctx,
+      input,
+      new Set<string>(),
+      buildFoodProximity(input, baseCoordinate, baseCoordinate)
+    ) ??
+    (input.style === "foodie"
+      ? pickFlexibleFood(
+          ctx,
+          input,
+          new Set<string>(),
+          buildFoodProximity(input, baseCoordinate, baseCoordinate)
+        )
+      : undefined);
+  const pacing = getTripPacing(trip);
+  const arrivalActivity =
+    pacing === "easy" || (pacing === "balanced" && (input.style === "adventure" || input.style === "outdoors"))
+      ? pickFinalLightActivity(
+          ctx,
+          input,
+          new Set<string>(),
+          buildActivityProximity(input, baseCoordinate, baseCoordinate)
+        ) ??
+        pickFlexibleActivity(
+          ctx,
+          input,
+          new Set<string>(),
+          buildActivityProximity(input, baseCoordinate, baseCoordinate)
+        )
+      : undefined;
 
   setPreviousDayFoods(ctx, [dinner]);
-  setPreviousDayActivities(ctx, []);
+  setPreviousDayActivities(ctx, [arrivalActivity]);
 
   return {
     title: "Arrival and easy first day",
     summary:
-      "Get there, settle in, and avoid wasting day one by cramming too much into it.",
+      input.style === "hidden gems"
+        ? "Arrive, settle in, and keep the first day focused on a distinctive local feel instead of rushing the trip."
+        : pacing === "fatiguing"
+          ? "Use day one to arrive, settle in, and avoid burning the trip on an overstuffed first evening."
+        : pacing === "balanced"
+          ? "Get there, settle in, and keep the first day useful without forcing too much into it."
+          : "Because the drive is short, day one can include one real stop without making the trip feel rushed.",
     stops: compactStops([
       {
         time: "Morning",
@@ -740,11 +1371,22 @@ function buildGetawayDayOne(
         websiteUrl: hotel.bookingLink ?? hotel.websiteUrl,
         kind: "stay" as const,
       },
+      arrivalActivity && {
+        time: "Late afternoon",
+        title: arrivalActivity.name,
+        description: `Add ${arrivalActivity.name} as a short arrival-day stop before dinner.`,
+        websiteUrl: arrivalActivity.bookingLink ?? arrivalActivity.websiteUrl,
+        estimatedCost:
+          arrivalActivity.costEstimate ?? arrivalActivity.estimatedCost ?? 0,
+        kind: "activity" as const,
+      },
       dinner && {
         time: "Evening",
         title: dinner.name,
-        description: `Dinner at ${dinner.name}, then keep the night relaxed.`,
+        description: styleFoodDescription(input, dinner.name, "end"),
         websiteUrl: dinner.link,
+        estimatedCost:
+          (input.style === "foodie" ? 42 : 34) * Math.max(1, input.travelerCount),
         kind: "food" as const,
       },
     ]),
@@ -756,32 +1398,83 @@ function buildGetawayFinalDay(
   input: TripInput,
   ctx: BuildContext
 ): ItineraryDayData {
-  const breakfast = pickLightFinalFood(ctx);
-  const finalActivity = pickFinalLightActivity(ctx);
+  const baseCoordinate =
+    toCoordinate(trip.hotelOptions?.[0]) ?? buildBaseCoordinate(trip);
+  const breakfast =
+    pickLightFinalFood(
+      ctx,
+      input,
+      new Set<string>(),
+      buildFoodProximity(input, baseCoordinate, baseCoordinate)
+    ) ??
+    ((input.style === "foodie" || input.style === "chill" || input.style === "solo reset")
+      ? pickFlexibleFood(
+          ctx,
+          input,
+          new Set<string>(),
+          buildFoodProximity(input, baseCoordinate, baseCoordinate)
+        )
+      : undefined);
+  const breakfastCoordinate = toCoordinate(breakfast);
+  const finalActivity =
+    pickFinalLightActivity(
+      ctx,
+      input,
+      new Set<string>(),
+      buildActivityProximity(
+        input,
+        breakfastCoordinate ?? baseCoordinate,
+        baseCoordinate
+      )
+    ) ??
+    ((input.style === "adventure" || input.style === "outdoors" || input.style === "hidden gems")
+      ? pickFlexibleActivity(
+          ctx,
+          input,
+          new Set<string>(),
+          buildActivityProximity(
+            input,
+            breakfastCoordinate ?? baseCoordinate,
+            baseCoordinate
+          )
+        )
+      : undefined);
 
   setPreviousDayFoods(ctx, [breakfast]);
   setPreviousDayActivities(ctx, [finalActivity]);
 
   return {
     title: "Final half-day and drive back",
-    summary: `Keep the final day lighter so the return to ${input.startCity} does not feel rushed.`,
+    summary:
+      input.style === "hidden gems"
+        ? `Keep the final day lighter and use it for one more scenic or heritage stop before returning to ${input.startCity}.`
+        : `Keep the final day lighter so the return to ${input.startCity} does not feel rushed.`,
     stops: compactStops([
       breakfast && {
         time: "Morning",
         title: breakfast.name,
-        description: `Get one more good local stop at ${breakfast.name} before leaving.`,
+        description: styleFoodDescription(input, breakfast.name, "light"),
         websiteUrl: breakfast.link,
+        estimatedCost: 20 * Math.max(1, input.travelerCount),
         kind: "food" as const,
       },
       finalActivity && {
         time: "Late morning",
         title: finalActivity.name,
-        description: `Optional final stop at ${finalActivity.name} before the drive home.`,
+        description: styleActivityDescription(input, finalActivity.name, "light"),
         websiteUrl: finalActivity.bookingLink ?? finalActivity.websiteUrl,
         estimatedCost:
           finalActivity.costEstimate ?? finalActivity.estimatedCost ?? 0,
         kind: "activity" as const,
       },
+      input.style === "foodie" &&
+        !breakfast &&
+        makeFlexibleFoodStop(
+          input,
+          trip,
+          "Morning",
+          `Last local coffee, bakery, or market stop in ${trip.name}`
+        ),
       {
         time: "Afternoon",
         title: `Drive back to ${input.startCity}`,
@@ -800,15 +1493,103 @@ function buildMiddleDay(
   totalDays: number,
   ctx: BuildContext
 ): ItineraryDayData {
-  const breakfast = pickMorningFood(ctx);
-  const mainActivity = pickAnchorActivity(ctx);
+  const baseCoordinate =
+    toCoordinate(trip.hotelOptions?.[0]) ?? buildBaseCoordinate(trip);
+  const breakfast =
+    pickMorningFood(
+      ctx,
+      input,
+      new Set<string>(),
+      buildFoodProximity(input, baseCoordinate, baseCoordinate)
+    ) ??
+    ((input.style === "foodie" || input.style === "chill" || input.style === "solo reset")
+      ? pickFlexibleFood(
+          ctx,
+          input,
+          new Set<string>(),
+          buildFoodProximity(input, baseCoordinate, baseCoordinate)
+        )
+      : undefined);
+  const breakfastCoordinate = toCoordinate(breakfast);
+  const mainActivity =
+    pickAnchorActivity(
+      ctx,
+      input,
+      new Set<string>(),
+      buildActivityProximity(
+        input,
+        breakfastCoordinate ?? baseCoordinate,
+        baseCoordinate
+      )
+    ) ??
+    pickFlexibleActivity(
+      ctx,
+      input,
+      new Set<string>(),
+      buildActivityProximity(
+        input,
+        breakfastCoordinate ?? baseCoordinate,
+        baseCoordinate
+      )
+    );
+  const mainActivityCoordinate = toCoordinate(mainActivity);
 
   const buildLightDay = dayNumber % 2 === 0 && totalDays >= 5;
   const secondaryActivity = buildLightDay
     ? undefined
-    : pickSecondaryActivity(ctx, new Set([itemName(mainActivity)]));
+    : pickSecondaryActivity(
+        ctx,
+        input,
+        new Set([itemName(mainActivity)]),
+        buildActivityProximity(
+          input,
+          mainActivityCoordinate ?? breakfastCoordinate ?? baseCoordinate,
+          baseCoordinate
+        )
+      ) ??
+      ((input.style === "adventure" || input.style === "outdoors" || input.style === "hidden gems")
+        ? pickFlexibleActivity(
+            ctx,
+            input,
+            new Set([itemName(mainActivity)]),
+            buildActivityProximity(
+              input,
+              mainActivityCoordinate ?? breakfastCoordinate ?? baseCoordinate,
+              baseCoordinate
+            )
+          )
+        : undefined);
+  const secondaryActivityCoordinate = toCoordinate(secondaryActivity);
 
-  const dinner = pickDinnerFood(ctx, new Set([itemName(breakfast)]));
+  const dinner =
+    pickDinnerFood(
+      ctx,
+      input,
+      new Set([itemName(breakfast)]),
+      buildFoodProximity(
+        input,
+        secondaryActivityCoordinate ??
+          mainActivityCoordinate ??
+          breakfastCoordinate ??
+          baseCoordinate,
+        baseCoordinate
+      )
+    ) ??
+    ((input.style === "foodie" || input.style === "chill" || input.style === "solo reset")
+      ? pickFlexibleFood(
+          ctx,
+          input,
+          new Set([itemName(breakfast)]),
+          buildFoodProximity(
+            input,
+            secondaryActivityCoordinate ??
+              mainActivityCoordinate ??
+              breakfastCoordinate ??
+              baseCoordinate,
+            baseCoordinate
+          )
+        )
+      : undefined);
 
   setPreviousDayFoods(ctx, [breakfast, dinner]);
   setPreviousDayActivities(ctx, [mainActivity, secondaryActivity]);
@@ -825,14 +1606,16 @@ function buildMiddleDay(
       breakfast && {
         time: "Morning",
         title: breakfast.name,
-        description: `Start the day at ${breakfast.name}.`,
+        description: styleFoodDescription(input, breakfast.name, "start"),
         websiteUrl: breakfast.link,
+        estimatedCost:
+          (input.style === "foodie" ? 24 : 20) * Math.max(1, input.travelerCount),
         kind: "food" as const,
       },
       mainActivity && {
         time: "Late morning",
         title: mainActivity.name,
-        description: `Use ${mainActivity.name} as the main daytime anchor.`,
+        description: styleActivityDescription(input, mainActivity.name, "anchor"),
         websiteUrl: mainActivity.bookingLink ?? mainActivity.websiteUrl,
         estimatedCost: mainActivity.costEstimate ?? mainActivity.estimatedCost ?? 0,
         kind: "activity" as const,
@@ -840,7 +1623,7 @@ function buildMiddleDay(
       secondaryActivity && {
         time: "Afternoon",
         title: secondaryActivity.name,
-        description: `Add ${secondaryActivity.name} if you still have energy.`,
+        description: styleActivityDescription(input, secondaryActivity.name, "secondary"),
         websiteUrl:
           secondaryActivity.bookingLink ?? secondaryActivity.websiteUrl,
         estimatedCost:
@@ -852,10 +1635,32 @@ function buildMiddleDay(
       dinner && {
         time: "Evening",
         title: dinner.name,
-        description: `Finish with dinner at ${dinner.name}.`,
+        description: styleFoodDescription(input, dinner.name, "end"),
         websiteUrl: dinner.link,
+        estimatedCost:
+          (input.style === "foodie" ? 42 : 34) * Math.max(1, input.travelerCount),
         kind: "food" as const,
       },
+      !breakfast &&
+        !mainActivity &&
+        !secondaryActivity &&
+        !dinner &&
+        makeFlexibleActivityStop(
+          input,
+          trip,
+          "Flexible",
+          input.style === "hidden gems"
+            ? `${middleDayTitle(dayNumber, totalDays, trip.isStaycation)} scenic local fallback`
+            : `${middleDayTitle(dayNumber, totalDays, trip.isStaycation)} fallback`
+        ),
+      input.style === "foodie" &&
+        !dinner &&
+        makeFlexibleFoodStop(
+          input,
+          trip,
+          "Evening",
+          `Local dinner, bakery, or coffee window in ${trip.name}`
+        ),
     ]),
   };
 }
@@ -874,7 +1679,7 @@ function buildItineraryDays(
     if (input.tripLengthDays === 2) {
       return [
         buildStaycationDayOne(trip, input, ctx),
-        buildStaycationFinalDay(trip, ctx),
+        buildStaycationFinalDay(trip, input, ctx),
       ];
     }
 
@@ -882,7 +1687,7 @@ function buildItineraryDays(
     for (let day = 2; day < input.tripLengthDays; day += 1) {
       days.push(buildMiddleDay(trip, input, day, input.tripLengthDays, ctx));
     }
-    days.push(buildStaycationFinalDay(trip, ctx));
+    days.push(buildStaycationFinalDay(trip, input, ctx));
     return days;
   }
 
@@ -911,8 +1716,39 @@ export function buildTripPlan(
   dataSource: TripDataSource = "static-fallback"
 ): TripPlan {
   const safeInput = normalizeInput(input);
-  const budgetBreakdown = buildBudgetBreakdown(trip, safeInput);
-  const itineraryDays = buildItineraryDays(trip, safeInput);
+  const baseCoordinate = buildBaseCoordinate(trip);
+  const foodDistanceCapKm = maxLegDistanceKm(safeInput);
+  const activityDistanceCapKm = foodDistanceCapKm * 1.4;
+  const filteredHotels = withDistanceCap(
+    trip.hotelOptions ?? [],
+    toCoordinate(trip) ?? baseCoordinate,
+    activityDistanceCapKm,
+    2
+  );
+  const filteredFoodSpots = withDistanceCap(
+    trip.foodSpots ?? [],
+    toCoordinate(filteredHotels[0]) ?? baseCoordinate,
+    foodDistanceCapKm,
+    3
+  );
+  const filteredActivities = withDistanceCap(
+    trip.topActivities ?? [],
+    toCoordinate(filteredHotels[0]) ?? baseCoordinate,
+    activityDistanceCapKm,
+    3
+  );
+  const filteredTrip: RankedDestination = {
+    ...trip,
+    hotelOptions: filteredHotels,
+    foodSpots: filteredFoodSpots,
+    topActivities: filteredActivities,
+  };
+  const itineraryDays = buildItineraryDays(filteredTrip, safeInput);
+  const budgetBreakdown = buildBudgetBreakdown(
+    filteredTrip,
+    safeInput,
+    itineraryDays
+  );
 
   const driveHoursFromStart = trip.isStaycation ? 0 : trip.driveHoursFromStart;
   const driveTimeText = trip.isStaycation ? "0 hours" : makeDriveText(trip);
@@ -921,6 +1757,7 @@ export function buildTripPlan(
     id: crypto.randomUUID(),
 
     destinationName: trip.name,
+    startCity: safeInput.startCity,
     region: trip.province,
     summary: trip.summary,
     imageUrl: trip.imageUrl,
@@ -934,9 +1771,9 @@ export function buildTripPlan(
     tags: trip.rawVibes ?? [],
 
     budgetBreakdown,
-    hotelOptions: trip.hotelOptions ?? [],
-    foodSpots: trip.foodSpots ?? [],
-    topActivities: trip.topActivities ?? [],
+    hotelOptions: filteredHotels,
+    foodSpots: filteredFoodSpots,
+    topActivities: filteredActivities,
     itineraryDays,
 
     aiSummary: trip.aiSummary ?? "",
@@ -951,6 +1788,7 @@ export function buildTripPlan(
     tripLengthDays: safeInput.tripLengthDays,
     tripStartDate: safeInput.tripStartDate,
     tripEndDate: safeInput.tripEndDate,
+    maxDriveMinutesBetweenStops: safeInput.maxDriveMinutesBetweenStops,
 
     name: trip.name,
     title: trip.name,

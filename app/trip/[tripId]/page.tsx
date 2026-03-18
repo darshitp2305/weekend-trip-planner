@@ -9,6 +9,7 @@ import TripActions from "../../../components/TripActions";
 import InteractiveItinerary from "../../../components/InteractiveItinerary";
 import TripStopMap from "../../../components/TripStopMap";
 import { formatDateRange } from "../../../lib/tripDates";
+import { isStartCity } from "../../../lib/startCities";
 import {
   Activity,
   FoodSpot,
@@ -63,6 +64,10 @@ function deriveTripLengthDays(trip: TripPlan | null): number {
 }
 
 function getStartCityLabel(trip: TripPlan | null): string {
+  if (isStartCity(trip?.startCity)) {
+    return `${trip.startCity}, Alberta`;
+  }
+
   const raw = `${trip?.routeSummary?.origin?.label ?? ""} ${trip?.summary ?? ""} ${trip?.name ?? ""}`.toLowerCase();
 
   if (raw.includes("calgary")) return "Calgary, Alberta";
@@ -70,16 +75,33 @@ function getStartCityLabel(trip: TripPlan | null): string {
 }
 
 function getDestinationLabel(trip: TripPlan | null): string {
-  if (typeof trip?.destinationName === "string" && trip.destinationName.trim()) {
-    return `${trip.destinationName}, Alberta`;
+  const province = typeof trip?.province === "string" && trip.province.trim()
+    ? trip.province.trim()
+    : "Alberta";
+
+  const cleanLabel = (value?: string) =>
+    typeof value === "string"
+      ? value.replace(/\s*\([^)]*\)\s*/g, " ").replace(/\s+/g, " ").trim()
+      : "";
+
+  const homeBase = cleanLabel(trip?.homeBaseCity);
+  if (homeBase) {
+    return `${homeBase}, ${province}`;
   }
 
-  if (typeof trip?.destination === "string" && trip.destination.trim()) {
-    return `${trip.destination}, Alberta`;
+  const destinationName = cleanLabel(trip?.destinationName);
+  if (destinationName) {
+    return `${destinationName}, ${province}`;
   }
 
-  if (typeof trip?.name === "string" && trip.name.trim()) {
-    return `${trip.name}, Alberta`;
+  const destination = cleanLabel(trip?.destination);
+  if (destination) {
+    return `${destination}, ${province}`;
+  }
+
+  const name = cleanLabel(trip?.name);
+  if (name) {
+    return `${name}, ${province}`;
   }
 
   return "Banff, Alberta";
@@ -639,6 +661,16 @@ export default function TripPage() {
                 activities={trip.topActivities ?? []}
                 travelerCount={travelerCount}
                 destinationImageUrl={trip.imageUrl}
+                startCityLabel={trip.startCity ?? undefined}
+                startCityCoordinate={
+                  typeof trip.routeSummary?.origin?.lat === "number" &&
+                  typeof trip.routeSummary?.origin?.lon === "number"
+                    ? {
+                        latitude: trip.routeSummary.origin.lat,
+                        longitude: trip.routeSummary.origin.lon,
+                      }
+                    : undefined
+                }
                 onSelectionChange={setSelectionState}
               />
             </div>

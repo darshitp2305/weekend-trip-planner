@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { formatDisplayTag, formatDisplayText } from "../lib/displayText";
 
 type TripHeaderProps = {
@@ -146,9 +147,12 @@ export default function TripHeader({ trip }: TripHeaderProps) {
     <section className="overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
       {trip.imageUrl ? (
         <div className="aspect-[16/4.5] w-full overflow-hidden bg-slate-100 dark:bg-slate-800">
-          <img
+          <Image
             src={trip.imageUrl}
             alt={title}
+            width={1600}
+            height={450}
+            unoptimized
             className="h-full w-full object-cover"
           />
         </div>
