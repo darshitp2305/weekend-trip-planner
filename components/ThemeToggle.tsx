@@ -14,15 +14,9 @@ export default function ThemeToggle() {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
     const syncTheme = () => {
       const storedTheme = localStorage.getItem(STORAGE_KEY);
-      const nextTheme =
-        storedTheme === "light" || storedTheme === "dark"
-          ? storedTheme
-          : mediaQuery.matches
-            ? "dark"
-            : "light";
+      const nextTheme = storedTheme === "dark" ? "dark" : "light";
 
       setTheme(nextTheme);
       applyTheme(nextTheme);
@@ -30,22 +24,8 @@ export default function ThemeToggle() {
     };
 
     const frameId = window.requestAnimationFrame(syncTheme);
-
-    const handleChange = (event: MediaQueryListEvent) => {
-      const latestStoredTheme = localStorage.getItem(STORAGE_KEY);
-      if (latestStoredTheme === "light" || latestStoredTheme === "dark") {
-        return;
-      }
-
-      const nextTheme = event.matches ? "dark" : "light";
-      setTheme(nextTheme);
-      applyTheme(nextTheme);
-    };
-
-    mediaQuery.addEventListener("change", handleChange);
     return () => {
       window.cancelAnimationFrame(frameId);
-      mediaQuery.removeEventListener("change", handleChange);
     };
   }, []);
 
