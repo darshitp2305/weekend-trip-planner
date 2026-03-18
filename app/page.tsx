@@ -62,41 +62,41 @@ function extractResults(payload: any): RankedDestination[] | null {
 
 function SkeletonTripCard() {
   return (
-    <div className="animate-pulse overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-      <div className="h-56 w-full bg-slate-100" />
+    <div className="animate-pulse overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <div className="h-56 w-full bg-slate-100 dark:bg-slate-800" />
 
       <div className="p-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="flex-1">
-            <div className="h-8 w-56 rounded bg-slate-200" />
-            <div className="mt-3 h-4 w-64 rounded bg-slate-200" />
-            <div className="mt-2 h-3 w-24 rounded bg-slate-200" />
+            <div className="h-8 w-56 rounded bg-slate-200 dark:bg-slate-700" />
+            <div className="mt-3 h-4 w-64 rounded bg-slate-200 dark:bg-slate-700" />
+            <div className="mt-2 h-3 w-24 rounded bg-slate-200 dark:bg-slate-700" />
           </div>
 
           <div className="flex gap-2">
-            <div className="h-7 w-28 rounded-full bg-slate-200" />
-            <div className="h-7 w-24 rounded-full bg-slate-200" />
+            <div className="h-7 w-28 rounded-full bg-slate-200 dark:bg-slate-700" />
+            <div className="h-7 w-24 rounded-full bg-slate-200 dark:bg-slate-700" />
           </div>
         </div>
 
         <div className="mt-5 space-y-2">
-          <div className="h-4 w-full rounded bg-slate-200" />
-          <div className="h-4 w-11/12 rounded bg-slate-200" />
-          <div className="h-4 w-8/12 rounded bg-slate-200" />
+          <div className="h-4 w-full rounded bg-slate-200 dark:bg-slate-700" />
+          <div className="h-4 w-11/12 rounded bg-slate-200 dark:bg-slate-700" />
+          <div className="h-4 w-8/12 rounded bg-slate-200 dark:bg-slate-700" />
         </div>
 
         <div className="mt-5 grid gap-3 sm:grid-cols-3">
-          <div className="rounded-2xl bg-slate-50 p-4">
-            <div className="h-3 w-24 rounded bg-slate-200" />
-            <div className="mt-3 h-7 w-20 rounded bg-slate-200" />
+          <div className="rounded-2xl bg-slate-50 p-4 dark:bg-slate-800/80">
+            <div className="h-3 w-24 rounded bg-slate-200 dark:bg-slate-700" />
+            <div className="mt-3 h-7 w-20 rounded bg-slate-200 dark:bg-slate-700" />
           </div>
-          <div className="rounded-2xl bg-slate-50 p-4">
-            <div className="h-3 w-24 rounded bg-slate-200" />
-            <div className="mt-3 h-7 w-20 rounded bg-slate-200" />
+          <div className="rounded-2xl bg-slate-50 p-4 dark:bg-slate-800/80">
+            <div className="h-3 w-24 rounded bg-slate-200 dark:bg-slate-700" />
+            <div className="mt-3 h-7 w-20 rounded bg-slate-200 dark:bg-slate-700" />
           </div>
-          <div className="rounded-2xl bg-slate-50 p-4">
-            <div className="h-3 w-24 rounded bg-slate-200" />
-            <div className="mt-3 h-7 w-36 rounded bg-slate-200" />
+          <div className="rounded-2xl bg-slate-50 p-4 dark:bg-slate-800/80">
+            <div className="h-3 w-24 rounded bg-slate-200 dark:bg-slate-700" />
+            <div className="mt-3 h-7 w-36 rounded bg-slate-200 dark:bg-slate-700" />
           </div>
         </div>
       </div>
@@ -112,11 +112,11 @@ function MiniStat({
   value: string;
 }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-      <div className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
+    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/80">
+      <div className="text-xs font-medium uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
         {label}
       </div>
-      <div className="mt-2 text-xl font-semibold text-slate-900">{value}</div>
+      <div className="mt-2 text-xl font-semibold text-slate-900 dark:text-slate-100">{value}</div>
     </div>
   );
 }
@@ -129,9 +129,9 @@ function RailFeature({
   detail: string;
 }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white/80 p-4 backdrop-blur-sm">
-      <div className="text-sm font-semibold text-slate-900">{title}</div>
-      <p className="mt-1 text-sm leading-6 text-slate-600">{detail}</p>
+    <div className="rounded-2xl border border-slate-200 bg-white/80 p-4 backdrop-blur-sm dark:border-slate-800 dark:bg-slate-900/70">
+      <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{title}</div>
+      <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">{detail}</p>
     </div>
   );
 }
@@ -151,8 +151,8 @@ function RailStep({
         {number}
       </div>
       <div>
-        <div className="text-sm font-semibold text-slate-900">{title}</div>
-        <p className="mt-1 text-sm leading-6 text-slate-600">{detail}</p>
+        <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{title}</div>
+        <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">{detail}</p>
       </div>
     </div>
   );
@@ -522,20 +522,20 @@ export default function HomePage() {
   const tripFormKey = lastInput ? JSON.stringify(lastInput) : "new-trip";
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[linear-gradient(180deg,#f5f1e8_0%,#f8fafc_18%,#f8fbff_100%)] text-slate-900">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(251,146,60,0.10),transparent_24%),radial-gradient(circle_at_top_right,rgba(96,165,250,0.10),transparent_24%),radial-gradient(circle_at_bottom_right,rgba(139,92,246,0.08),transparent_22%)]" />
+    <main className="relative min-h-screen overflow-hidden bg-[linear-gradient(180deg,#f5f1e8_0%,#f8fafc_18%,#f8fbff_100%)] text-slate-900 dark:bg-[linear-gradient(180deg,#020617_0%,#0f172a_38%,#111827_100%)] dark:text-slate-100">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(251,146,60,0.10),transparent_24%),radial-gradient(circle_at_top_right,rgba(96,165,250,0.10),transparent_24%),radial-gradient(circle_at_bottom_right,rgba(139,92,246,0.08),transparent_22%)] dark:bg-[radial-gradient(circle_at_top_left,rgba(249,115,22,0.16),transparent_24%),radial-gradient(circle_at_top_right,rgba(59,130,246,0.18),transparent_24%),radial-gradient(circle_at_bottom_right,rgba(34,197,94,0.12),transparent_22%)]" />
 
       <AccountPanel open={savedTripsOpen} onClose={() => setSavedTripsOpen(false)} />
 
       <div className="relative mx-auto max-w-7xl px-6 py-8 sm:px-8 lg:px-10">
         <section className="mb-8">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/70 bg-white/75 px-2 py-2 shadow-sm backdrop-blur-sm">
-              <div className="inline-flex rounded-full border border-violet-200 bg-violet-50 px-3 py-1 text-xs font-medium text-violet-700">
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/70 bg-white/75 px-2 py-2 shadow-sm backdrop-blur-sm dark:border-slate-700 dark:bg-slate-900/70">
+              <div className="inline-flex rounded-full border border-violet-200 bg-violet-50 px-3 py-1 text-xs font-medium text-violet-700 dark:border-violet-500/40 dark:bg-violet-500/10 dark:text-violet-200">
                 Trippify for Alberta
               </div>
-              <div className="hidden h-5 w-px bg-slate-200 sm:block" />
-              <div className="hidden text-xs font-medium text-slate-500 sm:block">
+              <div className="hidden h-5 w-px bg-slate-200 dark:bg-slate-700 sm:block" />
+              <div className="hidden text-xs font-medium text-slate-500 dark:text-slate-400 sm:block">
                 Weekend planning without guesswork
               </div>
             </div>
@@ -543,9 +543,9 @@ export default function HomePage() {
             <button
               type="button"
               onClick={() => setSavedTripsOpen(true)}
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-full border border-slate-300 bg-white/85 px-5 text-sm font-semibold text-slate-800 shadow-sm backdrop-blur-sm transition hover:-translate-y-0.5 hover:bg-white"
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-full border border-slate-300 bg-white/85 px-5 pr-14 text-sm font-semibold text-slate-800 shadow-sm backdrop-blur-sm transition hover:-translate-y-0.5 hover:bg-white dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-100 dark:hover:bg-slate-900"
             >
-              <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-slate-950 text-[11px] font-semibold text-white">
+              <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-slate-950 text-[11px] font-semibold text-white dark:bg-slate-100 dark:text-slate-950">
                 {Math.max(1, compareTrips.length || 3)}
               </span>
               Saved trips
@@ -554,10 +554,10 @@ export default function HomePage() {
 
           <div className="mt-5 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-3xl">
-              <h1 className="text-4xl font-semibold tracking-tight text-slate-950 sm:text-5xl">
+              <h1 className="text-4xl font-semibold tracking-tight text-slate-950 dark:text-white sm:text-5xl">
                 Find a trip that actually fits.
               </h1>
-              <p className="mt-3 text-base leading-7 text-slate-600 sm:text-lg">
+              <p className="mt-3 text-base leading-7 text-slate-600 dark:text-slate-300 sm:text-lg">
                 Trippify ranks Alberta getaways and staycations by budget, drive
                 time, and travel style, so you can stop guessing and pick faster.
               </p>
@@ -572,7 +572,7 @@ export default function HomePage() {
         </section>
 
         <section className="grid items-start gap-6 xl:grid-cols-[1.45fr_0.75fr]">
-          <div className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
+          <div className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/90 sm:p-7">
             <TripForm
               key={tripFormKey}
               onGenerate={handleGenerate}
@@ -583,14 +583,14 @@ export default function HomePage() {
           </div>
 
           <aside className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
-            <div className="overflow-hidden rounded-[2rem] border border-slate-200 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,250,252,0.96))] p-6 shadow-sm">
-              <div className="text-xs font-semibold uppercase tracking-[0.18em] text-violet-600">
+            <div className="overflow-hidden rounded-[2rem] border border-slate-200 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,250,252,0.96))] p-6 shadow-sm dark:border-slate-800 dark:bg-[linear-gradient(180deg,rgba(15,23,42,0.96),rgba(15,23,42,0.82))]">
+              <div className="text-xs font-semibold uppercase tracking-[0.18em] text-violet-600 dark:text-violet-300">
                 Why Trippify
               </div>
-              <div className="mt-3 text-2xl font-semibold tracking-tight text-slate-950">
+              <div className="mt-3 text-2xl font-semibold tracking-tight text-slate-950 dark:text-white">
                 Faster short-trip decisions.
               </div>
-              <p className="mt-2 text-sm leading-6 text-slate-600">
+              <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
                 The planner narrows Alberta options using the constraints that
                 usually kill trip momentum: budget, drive time, timing, and style.
               </p>
@@ -611,15 +611,15 @@ export default function HomePage() {
               </div>
             </div>
 
-            <div className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900/90">
               <div className="flex items-center justify-between gap-3">
-                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-violet-600">
+                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-violet-600 dark:text-violet-300">
                   How It Works
                 </div>
                 <button
                   type="button"
                   onClick={() => setSavedTripsOpen(true)}
-                  className="inline-flex h-9 items-center justify-center rounded-full border border-slate-300 bg-slate-50 px-4 text-xs font-semibold text-slate-700 transition hover:bg-slate-100"
+                  className="inline-flex h-9 items-center justify-center rounded-full border border-slate-300 bg-slate-50 px-4 text-xs font-semibold text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
                 >
                   Open saved
                 </button>
@@ -643,14 +643,14 @@ export default function HomePage() {
                 />
               </div>
 
-              <div className="mt-5 rounded-[1.5rem] border border-amber-200 bg-[linear-gradient(135deg,#fff7ed,#fffbeb)] p-5">
-                <div className="text-xs font-semibold uppercase tracking-[0.16em] text-amber-700">
+              <div className="mt-5 rounded-[1.5rem] border border-amber-200 bg-[linear-gradient(135deg,#fff7ed,#fffbeb)] p-5 dark:border-amber-500/30 dark:bg-[linear-gradient(135deg,rgba(120,53,15,0.35),rgba(68,64,60,0.3))]">
+                <div className="text-xs font-semibold uppercase tracking-[0.16em] text-amber-700 dark:text-amber-300">
                   Example fit
                 </div>
-                <div className="mt-2 text-xl font-semibold text-slate-900">
+                <div className="mt-2 text-xl font-semibold text-slate-900 dark:text-slate-100">
                   Jasper foodie weekend
                 </div>
-                <p className="mt-2 text-sm leading-6 text-slate-600">
+                <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
                   Strong when you want mountain payoff, manageable drive value,
                   and enough food density to make a short trip feel worth it.
                 </p>
@@ -660,7 +660,7 @@ export default function HomePage() {
         </section>
 
         {aiStatusMessage ? (
-          <div className="mt-6 rounded-2xl border border-violet-200 bg-violet-50 px-5 py-4 text-sm text-violet-900">
+          <div className="mt-6 rounded-2xl border border-violet-200 bg-violet-50 px-5 py-4 text-sm text-violet-900 dark:border-violet-500/40 dark:bg-violet-500/10 dark:text-violet-100">
             {aiStatusMessage}
           </div>
         ) : null}
@@ -669,15 +669,15 @@ export default function HomePage() {
           <section className="mt-10">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
               <div>
-                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-violet-600">
+                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-violet-600 dark:text-violet-300">
                   {isDirectDestinationFlow ? "Your trip" : "Your Trippify matches"}
                 </div>
-                <h2 className="mt-2 text-3xl font-semibold tracking-tight text-slate-950">
+                <h2 className="mt-2 text-3xl font-semibold tracking-tight text-slate-950 dark:text-white">
                   {isDirectDestinationFlow ? "Destination build" : "Your best options"}
                 </h2>
               </div>
 
-              <p className="max-w-xl text-sm leading-6 text-slate-600">
+              <p className="max-w-xl text-sm leading-6 text-slate-600 dark:text-slate-300">
                 {isDirectDestinationFlow
                   ? "Trippify found the destination you asked for and built the trip directly."
                   : "Review the strongest fits side by side, then build the one worth turning into a full trip plan."}
@@ -690,7 +690,7 @@ export default function HomePage() {
                   type="button"
                   onClick={handleRegenerate}
                   disabled={loading}
-                  className="inline-flex h-11 items-center justify-center rounded-full border border-slate-300 bg-white px-5 text-sm font-semibold text-slate-800 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="inline-flex h-11 items-center justify-center rounded-full border border-slate-300 bg-white px-5 text-sm font-semibold text-slate-800 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
                 >
                   {loading ? "Regenerating..." : "Regenerate 3 new trips"}
                 </button>
@@ -699,7 +699,7 @@ export default function HomePage() {
 
             {waitingForTripText ? (
               <div className="mt-8 space-y-6">
-                <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-slate-600 shadow-sm">
+                <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-slate-600 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
                   Trippify is building your trip summaries and itinerary text...
                 </div>
 

@@ -306,10 +306,10 @@ export default function TripStopMap({
 
   if (mappedPins.length === 0) {
     return (
-      <section className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm">
+      <section className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <div className="flex flex-col gap-1">
-          <h2 className="text-xl font-semibold text-slate-950">Trip map</h2>
-          <p className="text-sm leading-5 text-slate-600">
+          <h2 className="text-xl font-semibold text-slate-950 dark:text-slate-100">Trip map</h2>
+          <p className="text-sm leading-5 text-slate-600 dark:text-slate-300">
             This trip does not have enough location coordinates yet to render a
             map for the selected stays, food stops, and activities.
           </p>
@@ -319,7 +319,7 @@ export default function TripStopMap({
   }
 
   return (
-    <section className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm">
+    <section className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
       <style jsx>{`
         .trip-stop-map-shell :global(.leaflet-container) {
           height: 100%;
@@ -468,13 +468,13 @@ export default function TripStopMap({
 
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div className="max-w-3xl">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-violet-600">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-violet-600 dark:text-violet-300">
             Trip map
           </div>
-          <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">
+          <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">
             Selected stays, meals, and activities on a real map
           </h2>
-          <p className="mt-2 text-sm leading-6 text-slate-600">
+          <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
             The map updates from your itinerary builder selections. Day colors stay
             consistent, marker shapes identify the stop type, and each day gets its
             own route line to make the trip easier to read.
@@ -482,25 +482,25 @@ export default function TripStopMap({
         </div>
 
         <div className="flex flex-wrap gap-2">
-          <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-700">
+          <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
             {mappedPins.length} mapped stop{mappedPins.length === 1 ? "" : "s"}
           </span>
           {missingLocationCount > 0 ? (
-            <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700">
+            <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
               {missingLocationCount} without coordinates
             </span>
           ) : null}
         </div>
       </div>
 
-      <div className="mt-5 grid gap-4 xl:grid-cols-[minmax(0,1.45fr)_340px]">
-        <div className="trip-stop-map-shell overflow-hidden rounded-[1.4rem] border border-slate-200 bg-slate-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.4)]">
-          <div ref={mapElementRef} className="h-[520px] w-full" />
+      <div className="mt-5 grid items-start gap-4 xl:grid-cols-[minmax(0,1.45fr)_340px]">
+        <div className="trip-stop-map-shell h-[520px] self-start overflow-hidden rounded-[1.4rem] border border-slate-200 bg-slate-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.4)] dark:border-slate-700 dark:bg-slate-800">
+          <div ref={mapElementRef} className="h-full w-full" />
         </div>
 
-        <div className="space-y-4">
-          <div className="rounded-[1.2rem] border border-slate-200 bg-slate-50 p-4">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+        <div className="flex h-[520px] flex-col gap-4">
+          <div className="rounded-[1.2rem] border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/80">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
               Legend
             </div>
 
@@ -508,7 +508,7 @@ export default function TripStopMap({
               {(["stay", "food", "activity"] as const).map((type) => (
                 <span
                   key={type}
-                  className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-700"
+                  className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
                 >
                   <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-slate-900 text-white">
                     <span
@@ -525,7 +525,7 @@ export default function TripStopMap({
               {dayList.map((day) => (
                 <span
                   key={day}
-                  className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-700"
+                  className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
                 >
                   <span
                     className="inline-flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold text-white"
@@ -539,12 +539,12 @@ export default function TripStopMap({
             </div>
           </div>
 
-          <div className="rounded-[1.2rem] border border-slate-200 bg-white p-4">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+          <div className="flex min-h-0 flex-1 flex-col rounded-[1.2rem] border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
               Selected stops
             </div>
 
-            <div className="mt-3 space-y-2.5">
+            <div className="mt-3 min-h-0 flex-1 space-y-2.5 overflow-y-auto pr-1">
               {mappedPins.map((pin) => {
                 const cardContent = (
                   <>
@@ -555,17 +555,17 @@ export default function TripStopMap({
                       >
                         {pin.day}
                       </span>
-                      <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
                         {TYPE_LABELS[pin.type]}
                       </div>
                     </div>
 
-                    <div className="mt-2 text-sm font-semibold text-slate-950">
+                    <div className="mt-2 text-sm font-semibold text-slate-950 dark:text-slate-100">
                       {pin.label}
                     </div>
 
                     {pin.subtitle ? (
-                      <div className="mt-1 text-sm leading-6 text-slate-600">
+                      <div className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">
                         {pin.subtitle}
                       </div>
                     ) : null}
@@ -578,14 +578,14 @@ export default function TripStopMap({
                     href={pin.mapsUrl}
                     target="_blank"
                     rel="noreferrer"
-                    className="block rounded-[1rem] border border-slate-200 bg-slate-50 p-3 transition hover:-translate-y-0.5 hover:bg-slate-100"
+                    className="block rounded-[1rem] border border-slate-200 bg-slate-50 p-3 transition hover:-translate-y-0.5 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800/80 dark:hover:bg-slate-800"
                   >
                     {cardContent}
                   </a>
                 ) : (
                   <div
                     key={pin.id}
-                    className="rounded-[1rem] border border-slate-200 bg-slate-50 p-3"
+                    className="rounded-[1rem] border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/80"
                   >
                     {cardContent}
                   </div>

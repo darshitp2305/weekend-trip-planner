@@ -8,6 +8,7 @@ import {
   TripInput,
 } from "../lib/types";
 import { buildTripPlan } from "../lib/buildTripPlan";
+import { formatDisplayTag, formatDisplayText } from "../lib/displayText";
 import { deriveTripEndDate } from "../lib/tripDates";
 import { saveTripPlan } from "../lib/tripStore";
 
@@ -162,10 +163,10 @@ function Badge({
 }) {
   const toneClass =
     tone === "green"
-      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+      ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200"
       : tone === "violet"
-        ? "border-violet-200 bg-violet-50 text-violet-700"
-        : "border-slate-200 bg-slate-50 text-slate-700";
+        ? "border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-violet-200"
+        : "border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200";
 
   return (
     <span
@@ -184,11 +185,11 @@ function Stat({
   value: string;
 }) {
   return (
-    <div className="rounded-2xl bg-slate-50 p-3">
-      <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-slate-500">
+    <div className="rounded-2xl bg-slate-50 p-3 dark:bg-slate-800/80">
+      <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
         {label}
       </div>
-      <div className="mt-1 text-sm font-semibold text-slate-900">{value}</div>
+      <div className="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">{value}</div>
     </div>
   );
 }
@@ -205,17 +206,17 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-slate-50">
+    <div className="rounded-2xl border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800/80">
       <button
         type="button"
         onClick={onToggle}
         className="flex w-full items-center justify-between px-4 py-3 text-left"
       >
-        <span className="text-sm font-semibold text-slate-900">{title}</span>
-        <span className="text-sm text-slate-500">{open ? "Hide" : "Show"}</span>
+        <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">{title}</span>
+        <span className="text-sm text-slate-500 dark:text-slate-400">{open ? "Hide" : "Show"}</span>
       </button>
 
-      {open ? <div className="border-t border-slate-200 px-4 py-4">{children}</div> : null}
+      {open ? <div className="border-t border-slate-200 px-4 py-4 dark:border-slate-700">{children}</div> : null}
     </div>
   );
 }
@@ -323,9 +324,9 @@ export default function TripCard({
   }
 
   return (
-    <article className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm">
+    <article className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
       {trip.imageUrl ? (
-        <div className="aspect-[16/10] w-full overflow-hidden bg-slate-100">
+        <div className="aspect-[16/10] w-full overflow-hidden bg-slate-100 dark:bg-slate-800">
           <img
             src={trip.imageUrl}
             alt={trip.name}
@@ -337,10 +338,10 @@ export default function TripCard({
       <div className="p-5">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h3 className="text-2xl font-semibold tracking-tight text-slate-950">
+            <h3 className="text-2xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">
               {trip.name}
             </h3>
-            <p className="mt-1 text-sm text-slate-600">
+            <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
               {trip.homeBaseCity} • {trip.driveHoursFromStart}h drive
             </p>
           </div>
@@ -355,7 +356,9 @@ export default function TripCard({
           <Badge>{sourceLabel(trip)}</Badge>
         </div>
 
-        <p className="mt-4 text-sm leading-6 text-slate-600">{trip.summary}</p>
+        <p className="mt-4 text-sm leading-6 text-slate-600 dark:text-slate-300">
+          {formatDisplayText(trip.summary)}
+        </p>
 
         <div className="mt-5 grid grid-cols-3 gap-3">
           <Stat label="Budget total" value={`$${Math.round(displayCost)}`} />
@@ -363,11 +366,11 @@ export default function TripCard({
           <Stat label="Style fit" value={strengthLabel(trip.styleMatchStrength)} />
         </div>
 
-        <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-          <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-slate-500">
+        <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/80">
+          <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
             Why this ranked
           </div>
-          <p className="mt-2 text-sm leading-6 text-slate-700">{topWhyRanked}</p>
+          <p className="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-200">{topWhyRanked}</p>
         </div>
 
         {tags.length > 0 ? (
@@ -375,9 +378,9 @@ export default function TripCard({
             {tags.map((tag) => (
               <span
                 key={tag}
-                className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600"
+                className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300"
               >
-                {tag}
+                {formatDisplayTag(tag)}
               </span>
             ))}
           </div>
@@ -387,7 +390,7 @@ export default function TripCard({
           <button
             type="button"
             onClick={() => navigator.clipboard.writeText(shortCopyText(trip, normalizedPropInput))}
-            className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
           >
             Copy short
           </button>
@@ -395,7 +398,7 @@ export default function TripCard({
           <button
             type="button"
             onClick={() => navigator.clipboard.writeText(fullCopyText(trip, normalizedPropInput))}
-            className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
           >
             Copy full
           </button>
@@ -404,7 +407,7 @@ export default function TripCard({
             <button
               type="button"
               onClick={() => onRemoveSaved?.(trip.name)}
-              className="rounded-xl border border-rose-200 px-3 py-2 text-sm font-medium text-rose-700 hover:bg-rose-50"
+              className="rounded-xl border border-rose-200 px-3 py-2 text-sm font-medium text-rose-700 hover:bg-rose-50 dark:border-rose-500/30 dark:text-rose-200 dark:hover:bg-rose-500/10"
             >
               Remove saved
             </button>
@@ -413,7 +416,7 @@ export default function TripCard({
               type="button"
               onClick={handleSaveTrip}
               disabled={saving}
-              className="rounded-xl bg-slate-950 px-3 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-60"
+              className="rounded-xl bg-slate-950 px-3 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-60 dark:bg-violet-500 dark:text-slate-950 dark:hover:bg-violet-400"
             >
               {saving ? "Building..." : "Build trip"}
             </button>
@@ -428,12 +431,12 @@ export default function TripCard({
               setOpenSection(openSection === "overview" ? null : "overview")
             }
           >
-            <p className="text-sm leading-6 text-slate-700">{trip.summary}</p>
+            <p className="text-sm leading-6 text-slate-700 dark:text-slate-200">{trip.summary}</p>
 
             {trip.aiSummary ? (
               <div className="mt-4">
-                <div className="text-sm font-semibold text-slate-900">AI trip summary</div>
-                <p className="mt-2 text-sm leading-6 text-slate-700">
+                <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">AI trip summary</div>
+                <p className="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-200">
                   {trip.aiSummary}
                 </p>
               </div>
@@ -449,8 +452,8 @@ export default function TripCard({
           >
             {trip.rankingReasons?.length ? (
               <div>
-                <div className="text-sm font-semibold text-slate-900">Ranking summary</div>
-                <ul className="mt-2 space-y-2 text-sm text-slate-700">
+                <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">Ranking summary</div>
+                <ul className="mt-2 space-y-2 text-sm text-slate-700 dark:text-slate-200">
                   {trip.rankingReasons.map((reason, index) => (
                     <li key={`${reason.label}-${index}`}>• {reason.label}</li>
                   ))}
@@ -459,29 +462,29 @@ export default function TripCard({
             ) : null}
 
             <div className="mt-4">
-              <div className="text-sm font-semibold text-slate-900">Match reasons</div>
+              <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">Match reasons</div>
               {trip.matchReasons?.length ? (
-                <ul className="mt-2 space-y-2 text-sm text-slate-700">
+                <ul className="mt-2 space-y-2 text-sm text-slate-700 dark:text-slate-200">
                   {trip.matchReasons.map((reason, index) => (
                     <li key={`${reason}-${index}`}>• {reason}</li>
                   ))}
                 </ul>
               ) : (
-                <p className="mt-2 text-sm text-slate-600">No match reasons available.</p>
+                <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">No match reasons available.</p>
               )}
             </div>
 
             {trip.aiBestFit ? (
               <div className="mt-4">
-                <div className="text-sm font-semibold text-slate-900">Best fit</div>
-                <p className="mt-2 text-sm leading-6 text-slate-700">{trip.aiBestFit}</p>
+                <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">Best fit</div>
+                <p className="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-200">{trip.aiBestFit}</p>
               </div>
             ) : null}
 
             {trip.warnings?.length ? (
               <div className="mt-4">
-                <div className="text-sm font-semibold text-slate-900">Warnings</div>
-                <ul className="mt-2 space-y-2 text-sm text-amber-700">
+                <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">Warnings</div>
+                <ul className="mt-2 space-y-2 text-sm text-amber-700 dark:text-amber-300">
                   {trip.warnings.map((warning, index) => (
                     <li key={`${warning}-${index}`}>• {warning}</li>
                   ))}
@@ -498,30 +501,30 @@ export default function TripCard({
             }
           >
             {trip.budgetBreakdown ? (
-              <div className="grid grid-cols-2 gap-3 text-sm text-slate-700">
-                <div className="rounded-xl bg-white p-3">Hotel: ${trip.budgetBreakdown.hotel}</div>
-                <div className="rounded-xl bg-white p-3">Food: ${trip.budgetBreakdown.food}</div>
-                <div className="rounded-xl bg-white p-3">Gas: ${trip.budgetBreakdown.gas}</div>
-                <div className="rounded-xl bg-white p-3">
+              <div className="grid grid-cols-2 gap-3 text-sm text-slate-700 dark:text-slate-200">
+                <div className="rounded-xl bg-white p-3 dark:bg-slate-900">Hotel: ${trip.budgetBreakdown.hotel}</div>
+                <div className="rounded-xl bg-white p-3 dark:bg-slate-900">Food: ${trip.budgetBreakdown.food}</div>
+                <div className="rounded-xl bg-white p-3 dark:bg-slate-900">Gas: ${trip.budgetBreakdown.gas}</div>
+                <div className="rounded-xl bg-white p-3 dark:bg-slate-900">
                   Activities: ${trip.budgetBreakdown.activities}
                 </div>
-                <div className="rounded-xl bg-white p-3">
+                <div className="rounded-xl bg-white p-3 dark:bg-slate-900">
                   Per traveler: ${perTravelerDisplay}
                 </div>
-                <div className="rounded-xl bg-white p-3">
+                <div className="rounded-xl bg-white p-3 dark:bg-slate-900">
                   Travelers: {travelerCount}
                 </div>
-                <div className="col-span-2 rounded-xl bg-slate-100 p-3 font-semibold text-slate-900">
+                <div className="col-span-2 rounded-xl bg-slate-100 p-3 font-semibold text-slate-900 dark:bg-slate-800 dark:text-slate-100">
                   Total: $
                   {trip.budgetBreakdown.totalExpected ?? trip.budgetBreakdown.total}
                 </div>
               </div>
             ) : (
-              <p className="text-sm text-slate-600">No budget breakdown available.</p>
+              <p className="text-sm text-slate-600 dark:text-slate-300">No budget breakdown available.</p>
             )}
 
             {trip.aiBudgetNote ? (
-              <p className="mt-4 text-sm leading-6 text-slate-700">{trip.aiBudgetNote}</p>
+              <p className="mt-4 text-sm leading-6 text-slate-700 dark:text-slate-200">{trip.aiBudgetNote}</p>
             ) : null}
           </Section>
 
@@ -534,28 +537,28 @@ export default function TripCard({
           >
             {trip.aiSummary ? (
               <div>
-                <div className="text-sm font-semibold text-slate-900">AI trip summary</div>
-                <p className="mt-2 text-sm leading-6 text-slate-700">{trip.aiSummary}</p>
+                <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">AI trip summary</div>
+                <p className="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-200">{trip.aiSummary}</p>
               </div>
             ) : null}
 
             {trip.aiBestFit ? (
               <div className="mt-4">
-                <div className="text-sm font-semibold text-slate-900">Best fit</div>
-                <p className="mt-2 text-sm leading-6 text-slate-700">{trip.aiBestFit}</p>
+                <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">Best fit</div>
+                <p className="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-200">{trip.aiBestFit}</p>
               </div>
             ) : null}
 
             <div className="mt-4">
-              <div className="text-sm font-semibold text-slate-900">Suggested itinerary</div>
+              <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">Suggested itinerary</div>
               {trip.aiItinerary?.length ? (
-                <ul className="mt-2 space-y-2 text-sm text-slate-700">
+                <ul className="mt-2 space-y-2 text-sm text-slate-700 dark:text-slate-200">
                   {trip.aiItinerary.map((line, index) => (
                     <li key={`${line}-${index}`}>• {line}</li>
                   ))}
                 </ul>
               ) : (
-                <p className="mt-2 text-sm text-slate-600">No AI itinerary available yet.</p>
+                <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">No AI itinerary available yet.</p>
               )}
             </div>
           </Section>

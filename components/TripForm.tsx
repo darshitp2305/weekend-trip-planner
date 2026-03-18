@@ -2,6 +2,7 @@
 
 import { CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 import rawDestinations from "../data/destinations.json";
+import { formatDisplayText } from "../lib/displayText";
 import { isStartCity, START_CITY_OPTIONS, type StartCity } from "../lib/startCities";
 import {
   clampTripEndDate,
@@ -172,7 +173,7 @@ function FieldLabel({
   return (
     <label
       htmlFor={htmlFor}
-      className="mb-2 block text-sm font-medium text-slate-700"
+      className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300"
     >
       {children}
     </label>
@@ -189,8 +190,8 @@ function ToggleRow({
   onChange: (checked: boolean) => void;
 }) {
   return (
-    <label className="flex cursor-pointer items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 transition hover:bg-slate-100">
-      <span className="text-sm font-medium text-slate-800">{title}</span>
+    <label className="flex cursor-pointer items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800/80 dark:hover:bg-slate-800">
+      <span className="text-sm font-medium text-slate-800 dark:text-slate-100">{title}</span>
 
       <div className="relative">
         <input
@@ -199,7 +200,7 @@ function ToggleRow({
           onChange={(e) => onChange(e.target.checked)}
           className="peer sr-only"
         />
-        <div className="h-6 w-11 rounded-full bg-slate-300 transition peer-checked:bg-violet-500" />
+        <div className="h-6 w-11 rounded-full bg-slate-300 transition peer-checked:bg-violet-500 dark:bg-slate-600" />
         <div className="absolute left-1 top-1 h-4 w-4 rounded-full bg-white transition peer-checked:translate-x-5" />
       </div>
     </label>
@@ -218,10 +219,10 @@ function findTypedMatch(options: readonly string[], query: string) {
 }
 
 const DATE_INPUT_CLASS =
-  "h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-date-and-time-value]:text-slate-900 [&::-webkit-datetime-edit]:text-slate-900 [&::-webkit-datetime-edit-fields-wrapper]:text-slate-900";
+  "h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-violet-500/20 dark:[&::-webkit-calendar-picker-indicator]:invert [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-date-and-time-value]:text-slate-900 dark:[&::-webkit-date-and-time-value]:text-slate-100 [&::-webkit-datetime-edit]:text-slate-900 dark:[&::-webkit-datetime-edit]:text-slate-100 [&::-webkit-datetime-edit-fields-wrapper]:text-slate-900 dark:[&::-webkit-datetime-edit-fields-wrapper]:text-slate-100";
 const DATE_INPUT_STYLE: CSSProperties = {
-  color: "#0f172a",
-  WebkitTextFillColor: "#0f172a",
+  color: "var(--date-input-foreground)",
+  WebkitTextFillColor: "var(--date-input-foreground)",
   opacity: 1,
 };
 
@@ -265,7 +266,7 @@ export default function TripForm({
           const name = destination.name!.trim();
           const region = destination.region?.trim() || "Alberta";
           const vibeText = Array.isArray(destination.vibes)
-            ? destination.vibes.slice(0, 3).join(", ")
+            ? formatDisplayText(destination.vibes.slice(0, 3).join(", "))
             : "";
 
           return {
@@ -497,7 +498,7 @@ export default function TripForm({
   return (
     <section className="w-full">
       <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="overflow-hidden rounded-[1.75rem] border border-slate-200 bg-slate-950 shadow-sm">
+        <div className="overflow-hidden rounded-[1.75rem] border border-slate-200 bg-slate-950 shadow-sm dark:border-slate-800">
           <div className="relative h-72 sm:h-80">
             {rotatingSlides.map((slide, index) => (
               <div
@@ -561,7 +562,7 @@ export default function TripForm({
                   updateField("startCity", value as FormState["startCity"])
                 )
               }
-              className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+              className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-violet-500/20"
             >
               {START_CITY_OPTIONS.map((city) => (
                 <option key={city} value={city}>
@@ -577,7 +578,7 @@ export default function TripForm({
               id="style"
               value={form.style}
               onChange={(e) => updateField("style", e.target.value as TripStyle)}
-              className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+              className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-violet-500/20"
             >
               {TRIP_STYLES.map((style) => (
                 <option key={style} value={style}>
@@ -585,24 +586,6 @@ export default function TripForm({
                 </option>
               ))}
             </select>
-          </div>
-
-          <div>
-            <FieldLabel htmlFor="budgetPerTraveler">
-              Budget per traveller ($)
-            </FieldLabel>
-            <input
-              id="budgetPerTraveler"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              type="text"
-              value={form.budgetPerTraveler}
-              onChange={(e) =>
-                handleNumericChange("budgetPerTraveler", e.target.value)
-              }
-              onBlur={() => handleNumericBlur("budgetPerTraveler")}
-              className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
-            />
           </div>
 
           <div>
@@ -615,7 +598,7 @@ export default function TripForm({
               value={form.travelerCount}
               onChange={(e) => handleNumericChange("travelerCount", e.target.value)}
               onBlur={() => handleNumericBlur("travelerCount")}
-              className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+              className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-violet-500/20"
             />
           </div>
 
@@ -629,7 +612,7 @@ export default function TripForm({
               value={form.maxDriveHours}
               onChange={(e) => handleNumericChange("maxDriveHours", e.target.value)}
               onBlur={() => handleNumericBlur("maxDriveHours")}
-              className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+              className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-violet-500/20"
             />
           </div>
 
@@ -661,30 +644,48 @@ export default function TripForm({
               style={DATE_INPUT_STYLE}
             />
           </div>
+
+          <div>
+            <FieldLabel htmlFor="budgetPerTraveler">
+              Budget per traveller ($)
+            </FieldLabel>
+            <input
+              id="budgetPerTraveler"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              type="text"
+              value={form.budgetPerTraveler}
+              onChange={(e) =>
+                handleNumericChange("budgetPerTraveler", e.target.value)
+              }
+              onBlur={() => handleNumericBlur("budgetPerTraveler")}
+              className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-violet-500/20"
+            />
+          </div>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-          <div className="text-sm font-medium text-slate-800">
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/80">
+          <div className="text-sm font-medium text-slate-800 dark:text-slate-100">
             Estimated total budget: {formatCurrency(totalBudget)}
           </div>
-          <div className="mt-1 text-xs text-slate-600">
+          <div className="mt-1 text-xs text-slate-600 dark:text-slate-300">
             Based on {liveTravelerCount} traveler
             {liveTravelerCount === 1 ? "" : "s"} at{" "}
             {formatCurrency(liveBudgetPerTraveler)} each.
           </div>
           {tripDateRange ? (
-            <div className="mt-1 text-xs text-slate-600">
+            <div className="mt-1 text-xs text-slate-600 dark:text-slate-300">
               Trip window: {tripDateRange}
             </div>
           ) : null}
         </div>
 
-        <div className="rounded-[1.5rem] border border-slate-200 bg-white p-5">
+        <div className="rounded-[1.5rem] border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900/80">
           <div>
-            <h3 className="text-lg font-semibold text-slate-950">
+            <h3 className="text-lg font-semibold text-slate-950 dark:text-slate-100">
               Already know where you want to go?
             </h3>
-            <p className="mt-1 text-sm leading-6 text-slate-600">
+            <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">
               Enter a destination and Trippify will try to build that trip directly
               instead of making you choose from recommendations.
             </p>
@@ -701,7 +702,7 @@ export default function TripForm({
                   updateField("preferredDestination", value)
                 )
               }
-              className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+              className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-violet-500/20"
             >
               <option value="">Pick from available destinations</option>
               {DESTINATION_OPTIONS.map((destination) => (
@@ -731,8 +732,8 @@ export default function TripForm({
           />
         </div>
 
-        <div className="flex flex-col gap-4 border-t border-slate-200 pt-5 lg:flex-row lg:items-center lg:justify-between">
-          <div className="text-sm text-slate-600">
+        <div className="flex flex-col gap-4 border-t border-slate-200 pt-5 dark:border-slate-800 lg:flex-row lg:items-center lg:justify-between">
+          <div className="text-sm text-slate-600 dark:text-slate-300">
             {form.preferredDestination.trim()
               ? `Trippify will try to build a trip for ${form.preferredDestination.trim()}.`
               : results.length > 0
@@ -742,7 +743,7 @@ export default function TripForm({
 
           <div className="flex flex-col items-end gap-2">
             {!form.tripStartDate ? (
-              <div className="text-sm text-amber-700">
+              <div className="text-sm text-amber-700 dark:text-amber-300">
                 Select a trip start date to generate a trip.
               </div>
             ) : null}
@@ -750,7 +751,7 @@ export default function TripForm({
             <button
               type="submit"
               disabled={loading || !form.tripStartDate}
-              className="inline-flex h-12 items-center justify-center rounded-2xl bg-slate-950 px-6 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex h-12 items-center justify-center rounded-2xl bg-slate-950 px-6 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-violet-500 dark:text-slate-950 dark:hover:bg-violet-400"
             >
               {loading
                 ? form.preferredDestination.trim()

@@ -1,3 +1,5 @@
+import { formatDisplayTag, formatDisplayText } from "../lib/displayText";
+
 type TripHeaderProps = {
   trip: {
     title?: string;
@@ -39,10 +41,10 @@ function Badge({
 }) {
   const toneClass =
     tone === "green"
-      ? "border border-emerald-200 bg-emerald-50 text-emerald-700"
+      ? "border border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200"
       : tone === "violet"
-        ? "border border-violet-200 bg-violet-50 text-violet-700"
-        : "border border-slate-200 bg-slate-100 text-slate-700";
+        ? "border border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-violet-200"
+        : "border border-slate-200 bg-slate-100 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200";
 
   return (
     <span
@@ -61,11 +63,11 @@ function Stat({
   value: string;
 }) {
   return (
-    <div className="rounded-[1.1rem] border border-slate-200 bg-slate-50 px-3.5 py-3">
-      <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+    <div className="rounded-[1.1rem] border border-slate-200 bg-slate-50 px-3.5 py-3 dark:border-slate-700 dark:bg-slate-800/80">
+      <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
         {label}
       </div>
-      <div className="mt-1 text-[15px] font-semibold text-slate-950">{value}</div>
+      <div className="mt-1 text-[15px] font-semibold text-slate-950 dark:text-slate-100">{value}</div>
     </div>
   );
 }
@@ -141,9 +143,9 @@ export default function TripHeader({ trip }: TripHeaderProps) {
   const destinationLabel = trip.routeSummary?.destination?.label;
 
   return (
-    <section className="overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-sm">
+    <section className="overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
       {trip.imageUrl ? (
-        <div className="aspect-[16/4.5] w-full overflow-hidden bg-slate-100">
+        <div className="aspect-[16/4.5] w-full overflow-hidden bg-slate-100 dark:bg-slate-800">
           <img
             src={trip.imageUrl}
             alt={title}
@@ -161,18 +163,18 @@ export default function TripHeader({ trip }: TripHeaderProps) {
         </div>
 
         <div className="mt-3.5">
-          <h1 className="text-3xl font-semibold tracking-tight text-slate-950 sm:text-[2.15rem]">
+          <h1 className="text-3xl font-semibold tracking-tight text-slate-950 dark:text-slate-100 sm:text-[2.15rem]">
             {title}
           </h1>
 
           {trip.summary ? (
-            <p className="mt-2.5 max-w-4xl text-[15px] leading-7 text-slate-600">
-              {trip.summary}
+            <p className="mt-2.5 max-w-4xl text-[15px] leading-7 text-slate-600 dark:text-slate-300">
+              {formatDisplayText(trip.summary)}
             </p>
           ) : null}
 
           {originLabel && destinationLabel ? (
-            <p className="mt-3 text-sm text-slate-500">
+            <p className="mt-3 text-sm text-slate-500 dark:text-slate-400">
               Route: {originLabel} -&gt; {destinationLabel}
             </p>
           ) : null}
@@ -193,9 +195,9 @@ export default function TripHeader({ trip }: TripHeaderProps) {
             {vibes.map((tag) => (
               <span
                 key={tag}
-                className="inline-flex shrink-0 items-center whitespace-nowrap rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600"
+                className="inline-flex shrink-0 items-center whitespace-nowrap rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
               >
-                {tag}
+                {formatDisplayTag(tag)}
               </span>
             ))}
           </div>

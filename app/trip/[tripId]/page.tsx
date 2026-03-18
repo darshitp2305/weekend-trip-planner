@@ -509,8 +509,8 @@ export default function TripPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-[#f8fafc] px-6 py-10 text-slate-900">
-        <div className="mx-auto max-w-7xl rounded-[2rem] border border-slate-200 bg-white p-8 shadow-sm">
+      <main className="min-h-screen bg-[#f8fafc] px-6 py-10 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
+        <div className="mx-auto max-w-7xl rounded-[2rem] border border-slate-200 bg-white p-8 shadow-sm dark:border-slate-800 dark:bg-slate-900">
           Loading trip...
         </div>
       </main>
@@ -519,15 +519,15 @@ export default function TripPage() {
 
   if (!trip) {
     return (
-      <main className="min-h-screen bg-[#f8fafc] px-6 py-10 text-slate-900">
-        <div className="mx-auto max-w-3xl rounded-[2rem] border border-slate-200 bg-white p-8 shadow-sm">
-          <h1 className="text-2xl font-semibold text-slate-950">Trip not found</h1>
-          <p className="mt-3 text-slate-600">
+      <main className="min-h-screen bg-[#f8fafc] px-6 py-10 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
+        <div className="mx-auto max-w-3xl rounded-[2rem] border border-slate-200 bg-white p-8 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <h1 className="text-2xl font-semibold text-slate-950 dark:text-slate-100">Trip not found</h1>
+          <p className="mt-3 text-slate-600 dark:text-slate-300">
             This trip could not be found locally or in the shared trip database.
           </p>
           <button
             onClick={() => router.push("/")}
-            className="mt-6 rounded-2xl bg-slate-950 px-5 py-3 text-white transition hover:bg-slate-800"
+            className="mt-6 rounded-2xl bg-slate-950 px-5 py-3 text-white transition hover:bg-slate-800 dark:bg-violet-500 dark:text-slate-950 dark:hover:bg-violet-400"
           >
             Back to planner
           </button>
@@ -537,18 +537,18 @@ export default function TripPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#f6f8fb] px-4 py-6 text-slate-900 sm:px-6">
+    <main className="min-h-screen bg-[#f6f8fb] px-4 py-6 text-slate-900 dark:bg-slate-950 dark:text-slate-100 sm:px-6">
       <div className="mx-auto max-w-[1400px] space-y-5">
         <TripHeader trip={trip} />
 
         <div className="grid gap-5 xl:grid-cols-[320px_minmax(0,1fr)] xl:items-start">
           <aside className="xl:sticky xl:top-5">
-            <div className="overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-sm">
-              <div className="border-b border-slate-200 bg-slate-50/80 px-5 py-4">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-violet-600">
+            <div className="overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+              <div className="border-b border-slate-200 bg-slate-50/80 px-5 py-4 dark:border-slate-800 dark:bg-slate-900/80">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-violet-600 dark:text-violet-300">
                   Planner rail
                 </div>
-                <h2 className="mt-1 text-xl font-semibold tracking-tight text-slate-950">
+                <h2 className="mt-1 text-xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">
                   Budget and actions
                 </h2>
               </div>
@@ -556,59 +556,59 @@ export default function TripPage() {
               <div className="space-y-5 p-5">
                 <section>
                   <div className="mb-4">
-                    <h3 className="text-lg font-semibold text-slate-950">Budget</h3>
-                    <p className="mt-1 text-sm text-slate-600">
+                    <h3 className="text-lg font-semibold text-slate-950 dark:text-slate-100">Budget</h3>
+                    <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
                   Compare your target budget against the estimated trip cost.
                     </p>
                     {tripDateRange ? (
-                      <p className="mt-1 text-sm text-slate-500">
+                      <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                         Travel dates: {tripDateRange}
                       </p>
                     ) : null}
                   </div>
 
                   <div className="mb-4 grid grid-cols-2 gap-2">
-                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                      <div className="text-[10px] font-medium uppercase tracking-[0.1em] text-slate-500">
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/80">
+                      <div className="text-[10px] font-medium uppercase tracking-[0.1em] text-slate-500 dark:text-slate-400">
                         Travelers
                       </div>
-                      <div className="mt-1 text-base font-semibold text-slate-900">
+                      <div className="mt-1 text-base font-semibold text-slate-900 dark:text-slate-100">
                         {travelerCount}
                       </div>
                     </div>
 
-                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                      <div className="text-[10px] font-medium uppercase tracking-[0.1em] text-slate-500">
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/80">
+                      <div className="text-[10px] font-medium uppercase tracking-[0.1em] text-slate-500 dark:text-slate-400">
                         Budget each
                       </div>
-                      <div className="mt-1 text-base font-semibold text-slate-900">
+                      <div className="mt-1 text-base font-semibold text-slate-900 dark:text-slate-100">
                         {formatMoney(budgetPerTraveler)}
                       </div>
                     </div>
 
-                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                      <div className="text-[10px] font-medium uppercase tracking-[0.1em] text-slate-500">
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/80">
+                      <div className="text-[10px] font-medium uppercase tracking-[0.1em] text-slate-500 dark:text-slate-400">
                         Target total
                       </div>
-                      <div className="mt-1 text-base font-semibold text-slate-900">
+                      <div className="mt-1 text-base font-semibold text-slate-900 dark:text-slate-100">
                         {formatMoney(targetTotalBudget)}
                       </div>
                     </div>
 
-                    <div className="rounded-xl border border-violet-200 bg-violet-50 p-3">
-                      <div className="text-[10px] font-medium uppercase tracking-[0.1em] text-violet-700">
+                    <div className="rounded-xl border border-violet-200 bg-violet-50 p-3 dark:border-violet-500/30 dark:bg-violet-500/10">
+                      <div className="text-[10px] font-medium uppercase tracking-[0.1em] text-violet-700 dark:text-violet-300">
                         Selected each
                       </div>
-                      <div className="mt-1 text-base font-semibold text-slate-950">
+                      <div className="mt-1 text-base font-semibold text-slate-950 dark:text-slate-100">
                         {formatMoney(estimatedBudgetPerTraveler)}
                       </div>
                     </div>
 
-                    <div className="rounded-xl border border-violet-200 bg-violet-50 p-3">
-                      <div className="text-[10px] font-medium uppercase tracking-[0.1em] text-violet-700">
+                    <div className="rounded-xl border border-violet-200 bg-violet-50 p-3 dark:border-violet-500/30 dark:bg-violet-500/10">
+                      <div className="text-[10px] font-medium uppercase tracking-[0.1em] text-violet-700 dark:text-violet-300">
                         Selected total
                       </div>
-                      <div className="mt-1 text-base font-semibold text-slate-950">
+                      <div className="mt-1 text-base font-semibold text-slate-950 dark:text-slate-100">
                         {formatMoney(estimatedTotalCost)}
                       </div>
                     </div>
@@ -617,7 +617,7 @@ export default function TripPage() {
                   <BudgetBreakdown breakdown={selectedBudget ?? trip.budgetBreakdown} />
                 </section>
 
-                <div className="border-t border-slate-200" />
+                <div className="border-t border-slate-200 dark:border-slate-800" />
 
                 <TripActions trip={trip} />
               </div>
@@ -643,9 +643,9 @@ export default function TripPage() {
               />
             </div>
           ) : (
-            <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
-              <h2 className="text-2xl font-semibold text-slate-950">Itinerary</h2>
-              <p className="mt-4 text-slate-600">No itinerary generated yet.</p>
+            <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+              <h2 className="text-2xl font-semibold text-slate-950 dark:text-slate-100">Itinerary</h2>
+              <p className="mt-4 text-slate-600 dark:text-slate-300">No itinerary generated yet.</p>
             </section>
           )}
         </div>

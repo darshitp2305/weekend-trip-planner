@@ -6,6 +6,7 @@ import {
   getBrowserSupabaseAccessToken,
   supabaseBrowserAuth,
 } from "../lib/supabaseBrowserAuth";
+import { formatDisplayText } from "../lib/displayText";
 import { getAllTripPlans, TRIP_STORE_UPDATED_EVENT } from "../lib/tripStore";
 import { TripPlan } from "../lib/types";
 
@@ -68,11 +69,11 @@ function SectionHeader({
 }) {
   return (
     <div>
-      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-violet-600">
+      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-violet-600 dark:text-violet-300">
         {eyebrow}
       </div>
-      <div className="mt-1 text-lg font-semibold text-slate-950">{title}</div>
-      <p className="mt-1 text-sm leading-6 text-slate-600">{copy}</p>
+      <div className="mt-1 text-lg font-semibold text-slate-950 dark:text-slate-100">{title}</div>
+      <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">{copy}</p>
     </div>
   );
 }
@@ -89,21 +90,21 @@ function SavedTripCard({
   const imageUrl = trip.imageUrl?.trim() || getFallbackImageUrl(getTripTitle(trip));
   const badgeClass =
     tone === "violet"
-      ? "border-violet-200 bg-violet-50 text-violet-700"
-      : "border-slate-200 bg-slate-100 text-slate-600";
+      ? "border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-violet-200"
+      : "border-slate-200 bg-slate-100 text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300";
 
   return (
     <article
       tabIndex={0}
-      className="group overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-sm outline-none transition hover:-translate-y-0.5 hover:border-violet-300 hover:shadow-md focus-visible:border-violet-400 focus-visible:ring-2 focus-visible:ring-violet-200"
+      className="group overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-sm outline-none transition hover:-translate-y-0.5 hover:border-violet-300 hover:shadow-md focus-visible:border-violet-400 focus-visible:ring-2 focus-visible:ring-violet-200 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-violet-500/50 dark:focus-visible:ring-violet-500/20"
     >
       <div className="flex items-start justify-between gap-3 px-4 py-4">
         <div className="min-w-0 flex-1">
-          <div className="text-base font-semibold text-slate-950">
+          <div className="text-base font-semibold text-slate-950 dark:text-slate-100">
             {getTripTitle(trip)}
           </div>
           {getTripSubtitle(trip) ? (
-            <div className="mt-1 text-sm text-slate-500">{getTripSubtitle(trip)}</div>
+            <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">{getTripSubtitle(trip)}</div>
           ) : null}
         </div>
 
@@ -115,20 +116,22 @@ function SavedTripCard({
       </div>
 
       <div className="max-h-0 overflow-hidden opacity-0 transition-all duration-300 group-hover:max-h-[32rem] group-hover:opacity-100 group-focus-within:max-h-[32rem] group-focus-within:opacity-100">
-        <div className="border-t border-slate-200 px-4 py-4">
+        <div className="border-t border-slate-200 px-4 py-4 dark:border-slate-800">
           <div
-            className="h-36 rounded-[1.25rem] bg-slate-200 bg-cover bg-center"
+            className="h-36 rounded-[1.25rem] bg-slate-200 bg-cover bg-center dark:bg-slate-800"
             style={{ backgroundImage: `url("${imageUrl}")` }}
           />
 
           {trip.summary ? (
-            <p className="mt-3 text-sm leading-6 text-slate-600">{trip.summary}</p>
+            <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
+              {formatDisplayText(trip.summary)}
+            </p>
           ) : null}
 
           <div className="mt-4 flex flex-wrap gap-2">
             <Link
               href={`/trip/${trip.id}`}
-              className="inline-flex h-10 items-center justify-center rounded-xl bg-slate-950 px-4 text-sm font-medium text-white transition hover:bg-slate-800"
+              className="inline-flex h-10 items-center justify-center rounded-xl bg-slate-950 px-4 text-sm font-medium text-white transition hover:bg-slate-800 dark:bg-violet-500 dark:text-slate-950 dark:hover:bg-violet-400"
             >
               See details
             </Link>
@@ -391,14 +394,14 @@ export default function AccountPanel({
       />
 
       <aside
-        className={`absolute inset-y-0 left-0 flex w-full max-w-[430px] flex-col border-r border-slate-200 bg-[#fffdf8] shadow-2xl transition-transform duration-300 ${open ? "translate-x-0" : "-translate-x-full"}`}
+        className={`absolute inset-y-0 left-0 flex w-full max-w-[430px] flex-col border-r border-slate-200 bg-[#fffdf8] shadow-2xl transition-transform duration-300 dark:border-slate-800 dark:bg-slate-950 ${open ? "translate-x-0" : "-translate-x-full"}`}
       >
-        <div className="flex items-center justify-between border-b border-slate-200 px-5 py-5">
+        <div className="flex items-center justify-between border-b border-slate-200 px-5 py-5 dark:border-slate-800">
           <div>
-            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-violet-600">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-violet-600 dark:text-violet-300">
               Saved trips
             </div>
-            <div className="mt-1 text-xl font-semibold text-slate-950">
+            <div className="mt-1 text-xl font-semibold text-slate-950 dark:text-slate-100">
               Your save drawer
             </div>
           </div>
@@ -406,14 +409,14 @@ export default function AccountPanel({
           <button
             type="button"
             onClick={onClose}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-100"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
           >
             X
           </button>
         </div>
 
         <div className="flex-1 space-y-8 overflow-y-auto px-5 py-5">
-          <section className="rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm">
+          <section className="rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
             <SectionHeader
               eyebrow={user ? "Account" : "Save access"}
               title={user ? user.email : "Sign in to sync saves"}
@@ -425,14 +428,14 @@ export default function AccountPanel({
             />
             {user ? (
               <div className="mt-4 flex flex-wrap gap-2">
-                <span className="inline-flex h-10 items-center justify-center rounded-full border border-violet-200 bg-violet-50 px-4 text-xs font-semibold text-violet-700">
+                <span className="inline-flex h-10 items-center justify-center rounded-full border border-violet-200 bg-violet-50 px-4 text-xs font-semibold text-violet-700 dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-violet-200">
                   Account connected
                 </span>
                 <button
                   type="button"
                   onClick={handleLogout}
                   disabled={loading}
-                  className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-100 disabled:opacity-60"
+                  className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-100 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
                 >
                   Log out
                 </button>
@@ -444,21 +447,21 @@ export default function AccountPanel({
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="Email"
-                  className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+                  className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-violet-500/20"
                 />
                 <input
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Password"
-                  className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+                  className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-violet-500/20"
                 />
                 <div className="flex flex-wrap gap-2">
                   <button
                     type="button"
                     onClick={() => handleAuth("/api/auth/login")}
                     disabled={loading}
-                    className="inline-flex h-10 items-center justify-center rounded-xl bg-slate-950 px-4 text-sm font-medium text-white transition hover:bg-slate-800 disabled:opacity-60"
+                    className="inline-flex h-10 items-center justify-center rounded-xl bg-slate-950 px-4 text-sm font-medium text-white transition hover:bg-slate-800 disabled:opacity-60 dark:bg-violet-500 dark:text-slate-950 dark:hover:bg-violet-400"
                   >
                     Log in
                   </button>
@@ -466,7 +469,7 @@ export default function AccountPanel({
                     type="button"
                     onClick={() => handleAuth("/api/auth/signup")}
                     disabled={loading}
-                    className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-100 disabled:opacity-60"
+                    className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-100 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
                   >
                     Create account
                   </button>
@@ -475,7 +478,7 @@ export default function AccountPanel({
                   type="button"
                   onClick={handleGoogleAuth}
                   disabled={loading}
-                  className="inline-flex h-11 w-full items-center justify-center rounded-2xl border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-100 disabled:opacity-60"
+                  className="inline-flex h-11 w-full items-center justify-center rounded-2xl border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-100 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
                 >
                   Continue with Google
                 </button>
@@ -502,7 +505,7 @@ export default function AccountPanel({
                           type="button"
                           onClick={() => handleRemoveTrip(trip.id)}
                           disabled={removingTripId === trip.id}
-                          className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-100 disabled:opacity-60"
+                          className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-100 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
                         >
                           {removingTripId === trip.id ? "Removing..." : "Remove"}
                         </button>
@@ -511,7 +514,7 @@ export default function AccountPanel({
                   ))}
                 </div>
               ) : (
-                <p className="mt-3 text-sm leading-6 text-slate-600">
+                <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
                   No account-saved trips yet.
                 </p>
               )}
@@ -535,14 +538,14 @@ export default function AccountPanel({
                 ))}
               </div>
             ) : (
-              <p className="mt-3 text-sm leading-6 text-slate-600">
+              <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
                 No locally saved trips yet.
               </p>
             )}
           </section>
 
           {status ? (
-            <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 shadow-sm">
+            <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
               {status}
             </div>
           ) : null}
