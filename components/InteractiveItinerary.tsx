@@ -197,12 +197,14 @@ function SelectorCard({
   selected,
   recommended,
   distanceFromPrevious,
+  selectedElsewhereLabel,
   onSelect,
 }: {
   option: StopOption;
   selected: boolean;
   recommended: boolean;
   distanceFromPrevious?: string;
+  selectedElsewhereLabel?: string;
   onSelect: () => void;
 }) {
   const previewImageUrl =
@@ -230,6 +232,9 @@ function SelectorCard({
 
         <div className="flex flex-wrap justify-end gap-1.5">
           {recommended ? <OptionPill tone="violet">Recommended</OptionPill> : null}
+          {selectedElsewhereLabel ? (
+            <OptionPill tone="slate">{selectedElsewhereLabel}</OptionPill>
+          ) : null}
           {option.rating !== undefined ? (
             <OptionPill tone="green">Rating {option.rating}</OptionPill>
           ) : null}
@@ -557,6 +562,38 @@ export default function InteractiveItinerary({
     return undefined;
   }
 
+  function elsewhereSelectionLabel(
+    kind: "food" | "activity",
+    optionName: string,
+    currentDayIndex: number,
+    currentStopIndex: number
+  ) {
+    const selections =
+      kind === "food" ? selection.foods : selection.activities;
+    const normalizedOptionName = normalized(optionName);
+
+    for (let dayIndex = 0; dayIndex < days.length; dayIndex += 1) {
+      const stops = days[dayIndex]?.stops ?? [];
+
+      for (let stopIndex = 0; stopIndex < stops.length; stopIndex += 1) {
+        if (dayIndex === currentDayIndex && stopIndex === currentStopIndex) {
+          continue;
+        }
+
+        const stop = stops[stopIndex];
+        if (stop.kind !== kind) continue;
+
+        const selectedName = selections[stopKey(dayIndex, stopIndex)];
+        if (normalized(selectedName) !== normalizedOptionName) continue;
+
+        const dayLabel = `Chosen for day ${dayIndex + 1}`;
+        return stop.time ? `${dayLabel} ${stop.time.toLowerCase()}` : dayLabel;
+      }
+    }
+
+    return undefined;
+  }
+
   return (
     <section className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
       <div className="flex flex-col gap-1">
@@ -716,6 +753,12 @@ export default function InteractiveItinerary({
                                       spot.longitude
                                     )
                                   )}
+                                  selectedElsewhereLabel={elsewhereSelectionLabel(
+                                    "food",
+                                    spot.name,
+                                    dayIndex,
+                                    stopIndex
+                                  )}
                                   onSelect={() =>
                                     setSelection((prev) => ({
                                       ...prev,
@@ -787,6 +830,12 @@ export default function InteractiveItinerary({
                                       activity.latitude,
                                       activity.longitude
                                     )
+                                  )}
+                                  selectedElsewhereLabel={elsewhereSelectionLabel(
+                                    "activity",
+                                    activity.name,
+                                    dayIndex,
+                                    stopIndex
                                   )}
                                   onSelect={() =>
                                     setSelection((prev) => ({

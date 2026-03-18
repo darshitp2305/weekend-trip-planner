@@ -666,6 +666,21 @@ export default function TripForm({
           </div>
 
           <div>
+            <FieldLabel htmlFor="tripEndDate">Trip end date</FieldLabel>
+            <input
+              id="tripEndDate"
+              type="date"
+              min={form.tripStartDate}
+              max={maxTripEndDate}
+              required
+              value={form.tripEndDate}
+              onChange={(e) => handleTripEndDateChange(e.target.value)}
+              className={DATE_INPUT_CLASS}
+              style={DATE_INPUT_STYLE}
+            />
+          </div>
+
+          <div>
             <FieldLabel htmlFor="maxDriveMinutesBetweenStops">
               Max drive between stops (min)
             </FieldLabel>
@@ -683,21 +698,6 @@ export default function TripForm({
               }
               onBlur={() => handleNumericBlur("maxDriveMinutesBetweenStops")}
               className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-violet-500/20"
-            />
-          </div>
-
-          <div>
-            <FieldLabel htmlFor="tripEndDate">Trip end date</FieldLabel>
-            <input
-              id="tripEndDate"
-              type="date"
-              min={form.tripStartDate}
-              max={maxTripEndDate}
-              required
-              value={form.tripEndDate}
-              onChange={(e) => handleTripEndDateChange(e.target.value)}
-              className={DATE_INPUT_CLASS}
-              style={DATE_INPUT_STYLE}
             />
           </div>
 
