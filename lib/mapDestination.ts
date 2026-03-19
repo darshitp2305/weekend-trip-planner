@@ -1,4 +1,5 @@
 import { Destination, RawDestination, StyleScores, TripInput, TripStyle } from "./types";
+import { formatDisplayText } from "./displayText";
 import { getPlanningHubForStartCity } from "./startCities";
 
 function getHiddenGemSignal(raw: RawDestination): number {
@@ -84,7 +85,7 @@ function buildSummary(raw: RawDestination): string {
     .map((exp) => exp.title)
     .join(" and ");
 
-  return `${raw.name} is a ${raw.vibes.join(", ")} getaway in ${raw.region} with highlights like ${topHighlights}.`;
+  return `${raw.name} is a ${formatDisplayText(raw.vibes.join(", "))} getaway in ${raw.region} with highlights like ${topHighlights}.`;
 }
 
 function estimateActivityCost(type: string): number {
