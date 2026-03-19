@@ -20,18 +20,36 @@ function formatMoney(value?: number) {
 function BudgetChip({
   label,
   value,
+  info,
 }: {
   label: string;
   value?: number;
+  info?: string;
 }) {
   return (
-    <div className="min-w-0 rounded-[1rem] border border-slate-200 bg-slate-50 px-3.5 py-3 dark:border-slate-700 dark:bg-slate-800/80">
-      <div className="text-[10px] font-medium uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
-        {label}
+    <div className="group relative min-w-0 rounded-[1rem] border border-slate-200 bg-slate-50 px-3.5 py-3 dark:border-slate-700 dark:bg-slate-800/80">
+      <div className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
+        <span>{label}</span>
+        {info ? (
+          <button
+            type="button"
+            aria-label={`${label} explanation`}
+            className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 bg-white text-[10px] font-semibold normal-case tracking-normal text-slate-600 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-300"
+            title={info}
+          >
+            i
+          </button>
+        ) : null}
       </div>
       <div className="mt-1 text-lg font-semibold tracking-tight text-slate-950 dark:text-slate-100">
         {formatMoney(value)}
       </div>
+
+      {info ? (
+        <div className="pointer-events-none absolute left-3.5 top-full z-10 mt-2 max-w-[220px] rounded-xl border border-slate-200 bg-white px-3 py-2 text-[12px] normal-case tracking-normal text-slate-600 opacity-0 shadow-lg transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+          {info}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -86,7 +104,11 @@ export default function BudgetBreakdown({ breakdown }: Props) {
         <BudgetChip label="Hotel" value={breakdown?.hotel} />
         <BudgetChip label="Food" value={breakdown?.food} />
         <BudgetChip label="Activities" value={breakdown?.activities} />
-        <BudgetChip label="Misc" value={breakdown?.misc} />
+        <BudgetChip
+          label="Misc"
+          value={breakdown?.misc}
+          info="10% contingency buffer for small trip costs like parking, tips, snacks, and incidental fees."
+        />
       </div>
 
       <div className="mt-4 grid gap-2.5 md:grid-cols-3">

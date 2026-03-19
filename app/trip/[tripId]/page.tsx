@@ -1,15 +1,16 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import dynamic from "next/dynamic";
 import { useParams, useRouter } from "next/navigation";
 import { getTripPlanById } from "../../../lib/tripStore";
 import TripHeader from "../../../components/TripHeader";
 import BudgetBreakdown from "../../../components/BudgetBreakdown";
 import TripActions from "../../../components/TripActions";
 import InteractiveItinerary from "../../../components/InteractiveItinerary";
-import TripStopMap from "../../../components/TripStopMap";
 import { formatDateRange } from "../../../lib/tripDates";
 import { isStartCity } from "../../../lib/startCities";
+import { estimateFoodCostForGroup } from "../../../lib/foodPricing";
 import {
   Activity,
   FoodSpot,
@@ -17,6 +18,10 @@ import {
   ItineraryDayData,
   TripPlan,
 } from "../../../lib/types";
+
+const TripStopMap = dynamic(() => import("../../../components/TripStopMap"), {
+  ssr: false,
+});
 
 function formatMoney(value: number) {
   return `$${Math.round(value)}`;
@@ -260,22 +265,7 @@ export default function TripPage() {
 
       if (!spot) return sum;
 
-      if (typeof spot.estimatedCost === "number") {
-        return sum + spot.estimatedCost * travelerCount;
-      }
-
-      const text = [spot.category, ...(spot.tags ?? []), spot.name]
-        .join(" ")
-        .toLowerCase();
-
-      const base =
-        text.includes("cafe") || text.includes("coffee") || text.includes("bakery")
-          ? 18
-          : text.includes("restaurant") || text.includes("steak") || text.includes("bar")
-            ? 38
-            : 26;
-
-      return sum + base * travelerCount;
+      return sum + estimateFoodCostForGroup(spot, travelerCount);
     }, 0);
 
     const activities = Object.values(selectionState.activities).reduce(

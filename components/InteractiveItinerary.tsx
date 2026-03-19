@@ -8,6 +8,11 @@ import {
   HotelOption,
   ItineraryDayData,
 } from "../lib/types";
+import {
+  estimateFoodCostForGroup,
+  estimateFoodCostRangeForGroup,
+  foodPricingSourceLabel,
+} from "../lib/foodPricing";
 
 type SelectionState = {
   hotelName?: string;
@@ -35,6 +40,7 @@ type StopOption = {
   subtitle?: string;
   rating?: number;
   estimatedCost?: number;
+  estimatedCostLabel?: string;
   primaryUrl?: string;
   primaryLabel?: string;
   mapsUrl?: string;
@@ -75,24 +81,11 @@ function optionSortScore(name: string, preferredTitle?: string) {
 }
 
 function guessFoodCost(spot: FoodSpot, travelers: number) {
-  if (typeof spot.estimatedCost === "number") {
-    return spot.estimatedCost * Math.max(1, travelers);
-  }
+  return estimateFoodCostForGroup(spot, travelers);
+}
 
-  const text = [spot.category, ...(spot.tags ?? []), spot.name]
-    .join(" ")
-    .toLowerCase();
-
-  const base =
-    text.includes("cafe") || text.includes("coffee") || text.includes("bakery")
-      ? 18
-      : text.includes("restaurant") ||
-          text.includes("steak") ||
-          text.includes("bar")
-        ? 38
-        : 26;
-
-  return base * Math.max(1, travelers);
+function formatMoney(value: number) {
+  return `$${Math.round(value)}`;
 }
 
 function guessActivityCost(activity: Activity, travelers: number) {
@@ -251,7 +244,9 @@ function SelectorCard({
         ) : null}
         {option.estimatedCost !== undefined ? (
           <OptionPill>
-            {option.estimatedCost === 0 ? "Free" : `$${option.estimatedCost}`}
+            {option.estimatedCost === 0
+              ? "Free"
+              : option.estimatedCostLabel ?? `$${option.estimatedCost}`}
           </OptionPill>
         ) : null}
       </div>
@@ -317,6 +312,114 @@ function SelectorCard({
   );
 }
 
+function CompactSelectionCard({
+  label,
+  title,
+  subtitle,
+  pills,
+  primaryUrl,
+  primaryLabel,
+  mapsUrl,
+  photoRef,
+  photoUrl,
+  fallbackPhotoUrl,
+  editing,
+  onToggleEditing,
+}: {
+  label: string;
+  title: string;
+  subtitle?: string;
+  pills?: string[];
+  primaryUrl?: string;
+  primaryLabel?: string;
+  mapsUrl?: string;
+  photoRef?: string;
+  photoUrl?: string;
+  fallbackPhotoUrl?: string;
+  editing: boolean;
+  onToggleEditing: () => void;
+}) {
+  const previewImageUrl =
+    buildPhotoUrl(photoRef) ?? photoUrl ?? fallbackPhotoUrl;
+
+  return (
+    <div className="group rounded-[1rem] border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/70">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+            {label}
+          </div>
+          <div className="mt-1 text-sm font-semibold text-slate-950 dark:text-slate-100">
+            {title}
+          </div>
+          {subtitle ? (
+            <p className="mt-1 text-[13px] leading-5 text-slate-600 dark:text-slate-300">
+              {subtitle}
+            </p>
+          ) : null}
+        </div>
+
+        <button
+          type="button"
+          onClick={onToggleEditing}
+          className="inline-flex h-9 shrink-0 items-center justify-center rounded-full border border-slate-300 bg-white px-3.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+        >
+          {editing ? "Hide options" : "Change"}
+        </button>
+      </div>
+
+      {pills && pills.length > 0 ? (
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {pills.map((pill) => (
+            <OptionPill key={pill}>{pill}</OptionPill>
+          ))}
+        </div>
+      ) : null}
+
+      {(primaryUrl || mapsUrl) ? (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {primaryUrl ? (
+            <a
+              href={primaryUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex h-9 items-center justify-center rounded-full border border-slate-300 bg-white px-3.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+            >
+              {primaryLabel ?? "Visit site"}
+            </a>
+          ) : null}
+          {mapsUrl ? (
+            <a
+              href={mapsUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex h-9 items-center justify-center rounded-full border border-slate-300 bg-white px-3.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+            >
+              Open map
+            </a>
+          ) : null}
+        </div>
+      ) : null}
+
+      {previewImageUrl ? (
+        <div className="max-h-0 overflow-hidden opacity-0 transition-all duration-200 ease-out group-hover:mt-3 group-hover:max-h-40 group-hover:opacity-100 group-focus-within:mt-3 group-focus-within:max-h-40 group-focus-within:opacity-100">
+          <div className="overflow-hidden rounded-[0.9rem] border border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800">
+            <Image
+              src={previewImageUrl}
+              alt={title}
+              width={800}
+              height={288}
+              unoptimized
+              className="h-36 w-full object-cover"
+              loading="lazy"
+            />
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export default function InteractiveItinerary({
   days,
   hotels,
@@ -366,11 +469,8 @@ export default function InteractiveItinerary({
     return initial;
   }, [activities, days, foodSpots, hotels]);
 
-  const [selection, setSelection] = useState<SelectionState>(defaultSelection);
-
-  useEffect(() => {
-    setSelection(defaultSelection);
-  }, [defaultSelection]);
+  const [selection, setSelection] = useState<SelectionState>(() => defaultSelection);
+  const [editingStopKey, setEditingStopKey] = useState<string | null>(null);
 
   useEffect(() => {
     onSelectionChange?.(selection);
@@ -594,6 +694,10 @@ export default function InteractiveItinerary({
     return undefined;
   }
 
+  function toggleEditing(key: string) {
+    setEditingStopKey((current) => (current === key ? null : key));
+  }
+
   return (
     <section className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
       <div className="flex flex-col gap-1">
@@ -642,6 +746,10 @@ export default function InteractiveItinerary({
 
                     if (stop.kind === "stay") {
                       const options = rankedHotelOptions(stop.title);
+                      const selectedHotel =
+                        hotels.find((hotel) => hotel.name === selection.hotelName) ??
+                        options[0];
+                      const isEditing = editingStopKey === key;
 
                       return (
                         <div
@@ -660,50 +768,98 @@ export default function InteractiveItinerary({
                             </p>
                           ) : null}
 
-                          <div className="mt-3 grid gap-2.5 lg:grid-cols-2">
-                            {options.map((hotel, optionIndex) => (
-                              <SelectorCard
-                                key={hotel.name}
-                                option={{
-                                  name: hotel.name,
-                                  subtitle: hotel.shortDescription,
-                                  rating: hotel.rating,
-                                  pricePerNight: hotel.pricePerNight,
-                                  totalStayPrice: hotel.totalStayPrice,
-                                  primaryUrl: hotel.bookingLink || hotel.websiteUrl,
-                                  primaryLabel: "Hotel site",
-                                  mapsUrl: hotel.mapsUrl,
-                                  photoRef: hotel.photoRef,
-                                  photoUrl: hotel.photoUrl,
-                                  fallbackPhotoUrl: destinationImageUrl,
-                                  latitude: hotel.latitude,
-                                  longitude: hotel.longitude,
-                                }}
-                                selected={selection.hotelName === hotel.name}
-                                recommended={optionIndex === 0}
-                                distanceFromPrevious={formatDistanceFromPrevious(
-                                  priorStop,
-                                  toStopCoordinate(
-                                    hotel.name,
-                                    hotel.latitude,
-                                    hotel.longitude
-                                  )
-                                )}
-                                onSelect={() =>
-                                  setSelection((prev) => ({
-                                    ...prev,
-                                    hotelName: hotel.name,
-                                  }))
+                          {selectedHotel ? (
+                            <div className="mt-3">
+                              <CompactSelectionCard
+                                label="Current stay"
+                                title={selectedHotel.name}
+                                subtitle={
+                                  formatDistanceFromPrevious(
+                                    priorStop,
+                                    toStopCoordinate(
+                                      selectedHotel.name,
+                                      selectedHotel.latitude,
+                                      selectedHotel.longitude
+                                    )
+                                  ) ?? selectedHotel.shortDescription
                                 }
+                                pills={[
+                                  ...(typeof selectedHotel.rating === "number"
+                                    ? [`Rating ${selectedHotel.rating}`]
+                                    : []),
+                                  ...(typeof selectedHotel.pricePerNight === "number"
+                                    ? [`$${selectedHotel.pricePerNight}/night`]
+                                    : []),
+                                  ...(typeof selectedHotel.totalStayPrice === "number"
+                                    ? [`Total $${selectedHotel.totalStayPrice}`]
+                                    : []),
+                                ]}
+                                primaryUrl={selectedHotel.bookingLink || selectedHotel.websiteUrl}
+                                primaryLabel="Hotel site"
+                                mapsUrl={selectedHotel.mapsUrl}
+                                photoRef={selectedHotel.photoRef}
+                                photoUrl={selectedHotel.photoUrl}
+                                fallbackPhotoUrl={destinationImageUrl}
+                                editing={isEditing}
+                                onToggleEditing={() => toggleEditing(key)}
                               />
-                            ))}
-                          </div>
+                            </div>
+                          ) : null}
+
+                          {isEditing ? (
+                            <div className="mt-3 grid gap-2.5 lg:grid-cols-2">
+                              {options.map((hotel, optionIndex) => (
+                                <SelectorCard
+                                  key={hotel.name}
+                                  option={{
+                                    name: hotel.name,
+                                    subtitle: hotel.shortDescription,
+                                    rating: hotel.rating,
+                                    pricePerNight: hotel.pricePerNight,
+                                    totalStayPrice: hotel.totalStayPrice,
+                                    primaryUrl: hotel.bookingLink || hotel.websiteUrl,
+                                    primaryLabel: "Hotel site",
+                                    mapsUrl: hotel.mapsUrl,
+                                    photoRef: hotel.photoRef,
+                                    photoUrl: hotel.photoUrl,
+                                    fallbackPhotoUrl: destinationImageUrl,
+                                    latitude: hotel.latitude,
+                                    longitude: hotel.longitude,
+                                  }}
+                                  selected={selection.hotelName === hotel.name}
+                                  recommended={optionIndex === 0}
+                                  distanceFromPrevious={formatDistanceFromPrevious(
+                                    priorStop,
+                                    toStopCoordinate(
+                                      hotel.name,
+                                      hotel.latitude,
+                                      hotel.longitude
+                                    )
+                                  )}
+                                  onSelect={() => {
+                                    setSelection((prev) => ({
+                                      ...prev,
+                                      hotelName: hotel.name,
+                                    }));
+                                    setEditingStopKey(null);
+                                  }}
+                                />
+                              ))}
+                            </div>
+                          ) : null}
                         </div>
                       );
                     }
 
                     if (stop.kind === "food") {
                       const options = rankedFoodOptions(stop.title, priorStop);
+                      const selectedSpot =
+                        foodSpots.find((spot) => spot.name === selection.foods[key]) ??
+                        options[0];
+                      const isEditing = editingStopKey === key;
+                      const selectedSpotRange = selectedSpot
+                        ? estimateFoodCostRangeForGroup(selectedSpot, travelerCount)
+                        : null;
 
                       return (
                         <div
@@ -722,62 +878,121 @@ export default function InteractiveItinerary({
                             </p>
                           ) : null}
 
-                          <div className="mt-3 grid gap-2.5 lg:grid-cols-2">
-                            {options.map((spot, optionIndex) => {
-                              const estimatedCost = guessFoodCost(spot, travelerCount);
-
-                              return (
-                                <SelectorCard
-                                  key={spot.name}
-                                  option={{
-                                    name: spot.name,
-                                    subtitle: spot.shortDescription,
-                                    rating: spot.rating,
-                                    estimatedCost,
-                                    category: spot.category ?? spot.tags?.[0],
-                                    primaryUrl: spot.websiteUrl || spot.link,
-                                    primaryLabel: "Restaurant site",
-                                    mapsUrl: spot.mapsUrl,
-                                    photoRef: spot.photoRef,
-                                    photoUrl: spot.photoUrl,
-                                    latitude: spot.latitude,
-                                    longitude: spot.longitude,
-                                  }}
-                                  selected={selection.foods[key] === spot.name}
-                                  recommended={optionIndex === 0}
-                                  distanceFromPrevious={formatDistanceFromPrevious(
+                          {selectedSpot ? (
+                            <div className="mt-3">
+                              <CompactSelectionCard
+                                label="Current food stop"
+                                title={selectedSpot.name}
+                                subtitle={
+                                  formatDistanceFromPrevious(
                                     priorStop,
                                     toStopCoordinate(
-                                      spot.name,
-                                      spot.latitude,
-                                      spot.longitude
+                                      selectedSpot.name,
+                                      selectedSpot.latitude,
+                                      selectedSpot.longitude
                                     )
-                                  )}
-                                  selectedElsewhereLabel={elsewhereSelectionLabel(
-                                    "food",
-                                    spot.name,
-                                    dayIndex,
-                                    stopIndex
-                                  )}
-                                  onSelect={() =>
-                                    setSelection((prev) => ({
-                                      ...prev,
-                                      foods: {
-                                        ...prev.foods,
-                                        [key]: spot.name,
-                                      },
-                                    }))
-                                  }
-                                />
-                              );
-                            })}
-                          </div>
+                                  ) ?? selectedSpot.shortDescription
+                                }
+                                pills={[
+                                  ...(selectedSpot.category ? [selectedSpot.category] : []),
+                                  ...(typeof selectedSpot.rating === "number"
+                                    ? [`Rating ${selectedSpot.rating}`]
+                                    : []),
+                                  ...(selectedSpotRange
+                                    ? [
+                                        `Est. group spend ${formatMoney(selectedSpotRange.low)}-${formatMoney(selectedSpotRange.high)}`,
+                                      ]
+                                    : []),
+                                ]}
+                                primaryUrl={selectedSpot.websiteUrl || selectedSpot.link}
+                                primaryLabel="Restaurant site"
+                                mapsUrl={selectedSpot.mapsUrl}
+                                photoRef={selectedSpot.photoRef}
+                                photoUrl={selectedSpot.photoUrl}
+                                editing={isEditing}
+                                onToggleEditing={() => toggleEditing(key)}
+                              />
+                              <p className="mt-2 text-[12px] leading-5 text-slate-500 dark:text-slate-400">
+                                {foodPricingSourceLabel(selectedSpot)}
+                              </p>
+                            </div>
+                          ) : null}
+
+                          {isEditing ? (
+                            <div className="mt-3 grid gap-2.5 lg:grid-cols-2">
+                              {options.map((spot, optionIndex) => {
+                                const estimatedCost = guessFoodCost(spot, travelerCount);
+                                const estimatedRange = estimateFoodCostRangeForGroup(
+                                  spot,
+                                  travelerCount
+                                );
+
+                                return (
+                                  <SelectorCard
+                                    key={spot.name}
+                                    option={{
+                                      name: spot.name,
+                                      subtitle: `${spot.shortDescription ?? ""}${
+                                        spot.shortDescription ? " " : ""
+                                      }${foodPricingSourceLabel(spot)}`,
+                                      rating: spot.rating,
+                                      estimatedCost,
+                                      estimatedCostLabel: `Est. ${formatMoney(
+                                        estimatedRange.low
+                                      )}-${formatMoney(estimatedRange.high)}`,
+                                      category:
+                                        spot.category ??
+                                        spot.tags?.[0] ??
+                                        "Food stop",
+                                      primaryUrl: spot.websiteUrl || spot.link,
+                                      primaryLabel: "Restaurant site",
+                                      mapsUrl: spot.mapsUrl,
+                                      photoRef: spot.photoRef,
+                                      photoUrl: spot.photoUrl,
+                                      latitude: spot.latitude,
+                                      longitude: spot.longitude,
+                                    }}
+                                    selected={selection.foods[key] === spot.name}
+                                    recommended={optionIndex === 0}
+                                    distanceFromPrevious={formatDistanceFromPrevious(
+                                      priorStop,
+                                      toStopCoordinate(
+                                        spot.name,
+                                        spot.latitude,
+                                        spot.longitude
+                                      )
+                                    )}
+                                    selectedElsewhereLabel={elsewhereSelectionLabel(
+                                      "food",
+                                      spot.name,
+                                      dayIndex,
+                                      stopIndex
+                                    )}
+                                    onSelect={() => {
+                                      setSelection((prev) => ({
+                                        ...prev,
+                                        foods: {
+                                          ...prev.foods,
+                                          [key]: spot.name,
+                                        },
+                                      }));
+                                      setEditingStopKey(null);
+                                    }}
+                                  />
+                                );
+                              })}
+                            </div>
+                          ) : null}
                         </div>
                       );
                     }
 
                     if (stop.kind === "activity") {
                       const options = rankedActivityOptions(stop.title, priorStop);
+                      const selectedActivity =
+                        activities.find((activity) => activity.name === selection.activities[key]) ??
+                        options[0];
+                      const isEditing = editingStopKey === key;
 
                       return (
                         <div
@@ -796,60 +1011,100 @@ export default function InteractiveItinerary({
                             </p>
                           ) : null}
 
-                          <div className="mt-3 grid gap-2.5 lg:grid-cols-2">
-                            {options.map((activity, optionIndex) => {
-                              const estimatedCost = guessActivityCost(
-                                activity,
-                                travelerCount
-                              );
-
-                              return (
-                                <SelectorCard
-                                  key={activity.name}
-                                  option={{
-                                    name: activity.name,
-                                    subtitle: activity.shortDescription,
-                                    rating: activity.rating,
-                                    estimatedCost,
-                                    category: activity.type,
-                                    primaryUrl:
-                                      activity.websiteUrl || activity.bookingLink,
-                                    primaryLabel: "Activity site",
-                                    mapsUrl: activity.mapsUrl,
-                                    photoRef: activity.photoRef,
-                                    photoUrl: activity.photoUrl,
-                                    latitude: activity.latitude,
-                                    longitude: activity.longitude,
-                                  }}
-                                  selected={selection.activities[key] === activity.name}
-                                  recommended={optionIndex === 0}
-                                  distanceFromPrevious={formatDistanceFromPrevious(
+                          {selectedActivity ? (
+                            <div className="mt-3">
+                              <CompactSelectionCard
+                                label="Current activity"
+                                title={selectedActivity.name}
+                                subtitle={
+                                  formatDistanceFromPrevious(
                                     priorStop,
                                     toStopCoordinate(
-                                      activity.name,
-                                      activity.latitude,
-                                      activity.longitude
+                                      selectedActivity.name,
+                                      selectedActivity.latitude,
+                                      selectedActivity.longitude
                                     )
-                                  )}
-                                  selectedElsewhereLabel={elsewhereSelectionLabel(
-                                    "activity",
-                                    activity.name,
-                                    dayIndex,
-                                    stopIndex
-                                  )}
-                                  onSelect={() =>
-                                    setSelection((prev) => ({
-                                      ...prev,
-                                      activities: {
-                                        ...prev.activities,
-                                        [key]: activity.name,
-                                      },
-                                    }))
-                                  }
-                                />
-                              );
-                            })}
-                          </div>
+                                  ) ?? selectedActivity.shortDescription
+                                }
+                                pills={[
+                                  selectedActivity.type,
+                                  ...(typeof selectedActivity.rating === "number"
+                                    ? [`Rating ${selectedActivity.rating}`]
+                                    : []),
+                                  ...(guessActivityCost(selectedActivity, travelerCount) > 0
+                                    ? [`$${guessActivityCost(selectedActivity, travelerCount)}`]
+                                    : ["Free"]),
+                                ]}
+                                primaryUrl={
+                                  selectedActivity.websiteUrl || selectedActivity.bookingLink
+                                }
+                                primaryLabel="Activity site"
+                                mapsUrl={selectedActivity.mapsUrl}
+                                photoRef={selectedActivity.photoRef}
+                                photoUrl={selectedActivity.photoUrl}
+                                editing={isEditing}
+                                onToggleEditing={() => toggleEditing(key)}
+                              />
+                            </div>
+                          ) : null}
+
+                          {isEditing ? (
+                            <div className="mt-3 grid gap-2.5 lg:grid-cols-2">
+                              {options.map((activity, optionIndex) => {
+                                const estimatedCost = guessActivityCost(
+                                  activity,
+                                  travelerCount
+                                );
+
+                                return (
+                                  <SelectorCard
+                                    key={activity.name}
+                                    option={{
+                                      name: activity.name,
+                                      subtitle: activity.shortDescription,
+                                      rating: activity.rating,
+                                      estimatedCost,
+                                      category: activity.type,
+                                      primaryUrl:
+                                        activity.websiteUrl || activity.bookingLink,
+                                      primaryLabel: "Activity site",
+                                      mapsUrl: activity.mapsUrl,
+                                      photoRef: activity.photoRef,
+                                      photoUrl: activity.photoUrl,
+                                      latitude: activity.latitude,
+                                      longitude: activity.longitude,
+                                    }}
+                                    selected={selection.activities[key] === activity.name}
+                                    recommended={optionIndex === 0}
+                                    distanceFromPrevious={formatDistanceFromPrevious(
+                                      priorStop,
+                                      toStopCoordinate(
+                                        activity.name,
+                                        activity.latitude,
+                                        activity.longitude
+                                      )
+                                    )}
+                                    selectedElsewhereLabel={elsewhereSelectionLabel(
+                                      "activity",
+                                      activity.name,
+                                      dayIndex,
+                                      stopIndex
+                                    )}
+                                    onSelect={() => {
+                                      setSelection((prev) => ({
+                                        ...prev,
+                                        activities: {
+                                          ...prev.activities,
+                                          [key]: activity.name,
+                                        },
+                                      }));
+                                      setEditingStopKey(null);
+                                    }}
+                                  />
+                                );
+                              })}
+                            </div>
+                          ) : null}
                         </div>
                       );
                     }

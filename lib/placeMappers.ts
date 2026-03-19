@@ -1,5 +1,6 @@
 import { Activity, FoodSpot, HotelOption } from "./types";
 import { GooglePlace } from "./googlePlaces";
+import { estimateFoodCostPerTraveler } from "./foodPricing";
 
 function getLatitude(place: GooglePlace): number | undefined {
   return typeof place.location?.latitude === "number" &&
@@ -34,7 +35,7 @@ function humanizePrimaryType(primaryType?: string): string | undefined {
 }
 
 export function mapGooglePlaceToFoodSpot(place: GooglePlace): FoodSpot {
-  return {
+  const mapped: FoodSpot = {
     name: place.displayName?.text ?? "Unnamed food spot",
     tags: humanizePrimaryType(place.primaryType)
       ? [humanizePrimaryType(place.primaryType)!]
@@ -42,11 +43,19 @@ export function mapGooglePlaceToFoodSpot(place: GooglePlace): FoodSpot {
     link: place.googleMapsUri || place.websiteUri || "",
     websiteUrl: place.websiteUri || "",
     mapsUrl: place.googleMapsUri || "",
+    category: humanizePrimaryType(place.primaryType),
+    priceLevel: place.priceLevel,
     rating: place.rating,
     shortDescription: place.formattedAddress || "Live Google Places result.",
+    estimatedCost: undefined,
     photoRef: place.photos?.[0]?.name,
     latitude: getLatitude(place),
     longitude: getLongitude(place),
+  };
+
+  return {
+    ...mapped,
+    estimatedCost: estimateFoodCostPerTraveler(mapped),
   };
 }
 

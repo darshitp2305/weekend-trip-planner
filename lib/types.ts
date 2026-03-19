@@ -72,6 +72,7 @@ export interface FoodSpot {
   link?: string;
   shortDescription?: string;
   category?: string;
+  priceLevel?: string;
   rating?: number;
   estimatedCost?: number;
   websiteUrl?: string;
