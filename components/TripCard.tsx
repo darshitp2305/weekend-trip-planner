@@ -117,6 +117,41 @@ function fullCopyText(trip: RankedDestination, input?: TripInput) {
   ].join("\n");
 }
 
+function cleanItineraryLine(line: string) {
+  return line.replace(/^day\s*\d+\s*:\s*/i, "").trim();
+}
+
+function getItineraryPreviewItems(trip: RankedDestination, input?: TripInput) {
+  if (trip.aiItinerary?.length) {
+    return trip.aiItinerary.slice(0, 3).map((line, index) => ({
+      label: `Day ${index + 1}`,
+      text: cleanItineraryLine(line),
+    }));
+  }
+
+  const activityPreview = trip.topActivities
+    .slice(0, 3)
+    .map((activity, index) => ({
+      label: `Stop ${index + 1}`,
+      text: activity.name,
+    }));
+
+  if (activityPreview.length > 0) {
+    return activityPreview;
+  }
+
+  if (input?.startCity) {
+    return [
+      {
+        label: "Trip flow",
+        text: `Drive out from ${input.startCity}, keep one anchor stop in ${trip.name}, then head back with buffer.`,
+      },
+    ];
+  }
+
+  return [];
+}
+
 function normalizeTripInput(input?: Partial<TripInput> | null): TripInput | undefined {
   if (!input) return undefined;
 
@@ -256,6 +291,10 @@ export default function TripCard({
   const normalizedPropInput = normalizeTripInput(input);
   const travelerCount = Math.max(1, normalizedPropInput?.travelerCount ?? 1);
   const perTravelerDisplay = Math.round(displayCost / travelerCount);
+  const itineraryPreviewItems = getItineraryPreviewItems(trip, normalizedPropInput);
+  const anchorActivities = trip.topActivities.slice(0, 3);
+  const itineraryPreviewDays =
+    (normalizedPropInput?.tripLengthDays ?? itineraryPreviewItems.length) || 2;
 
   async function handleSaveTrip() {
     try {
@@ -438,25 +477,6 @@ export default function TripCard({
 
         <div className="mt-5 space-y-3">
           <Section
-            title="Overview"
-            open={openSection === "overview"}
-            onToggle={() =>
-              setOpenSection(openSection === "overview" ? null : "overview")
-            }
-          >
-            <p className="text-sm leading-6 text-slate-700 dark:text-slate-200">{trip.summary}</p>
-
-            {trip.aiSummary ? (
-              <div className="mt-4">
-                <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">AI trip summary</div>
-                <p className="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-200">
-                  {trip.aiSummary}
-                </p>
-              </div>
-            ) : null}
-          </Section>
-
-          <Section
             title="Why it matched"
             open={openSection === "matched"}
             onToggle={() =>
@@ -548,25 +568,85 @@ export default function TripCard({
               setOpenSection(openSection === "itinerary" ? null : "itinerary")
             }
           >
-            {trip.aiSummary ? (
-              <div>
-                <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">AI trip summary</div>
-                <p className="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-200">{trip.aiSummary}</p>
-              </div>
-            ) : null}
+            <p className="text-sm leading-6 text-slate-600 dark:text-slate-300">
+              Quick skim before you build the full editable itinerary.
+            </p>
 
-            {trip.aiBestFit ? (
+            <div className="mt-4 grid grid-cols-3 gap-3 text-sm text-slate-700 dark:text-slate-200">
+              <div className="rounded-xl bg-white p-3 dark:bg-slate-900">
+                <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+                  Trip length
+                </div>
+                <div className="mt-1 font-semibold text-slate-900 dark:text-slate-100">
+                  {itineraryPreviewDays} day
+                  {itineraryPreviewDays === 1 ? "" : "s"}
+                </div>
+              </div>
+              <div className="rounded-xl bg-white p-3 dark:bg-slate-900">
+                <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+                  Drive plan
+                </div>
+                <div className="mt-1 font-semibold text-slate-900 dark:text-slate-100">
+                  {trip.driveHoursFromStart}h each way
+                </div>
+              </div>
+              <div className="rounded-xl bg-white p-3 dark:bg-slate-900">
+                <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+                  Tempo
+                </div>
+                <div className="mt-1 font-semibold text-slate-900 dark:text-slate-100">
+                  {trip.styleMatchStrength === "strong" ? "Purposeful" : "Flexible"}
+                </div>
+              </div>
+            </div>
+
+            {anchorActivities.length ? (
               <div className="mt-4">
-                <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">Best fit</div>
-                <p className="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-200">{trip.aiBestFit}</p>
+                <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">Anchor stops</div>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {anchorActivities.map((activity) => (
+                    <span
+                      key={activity.name}
+                      className="rounded-full bg-white px-3 py-1 text-xs font-medium text-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                    >
+                      {activity.name}
+                    </span>
+                  ))}
+                </div>
               </div>
             ) : null}
 
             <div className="mt-4">
+              <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">Trip flow</div>
+              {itineraryPreviewItems.length ? (
+                <div className="mt-2 space-y-3">
+                  {itineraryPreviewItems.map((item) => (
+                    <div
+                      key={`${item.label}-${item.text}`}
+                      className="rounded-xl bg-white p-3 dark:bg-slate-900"
+                    >
+                      <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+                        {item.label}
+                      </div>
+                      <p className="mt-1 text-sm leading-6 text-slate-700 dark:text-slate-200">
+                        {item.text}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+                  Build trip to generate the detailed stop-by-stop itinerary.
+                </p>
+              )}
+            </div>
+
+            {false ? (
+            <div className="mt-4">
               <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">Suggested itinerary</div>
               {trip.aiItinerary?.length ? (
                 <ul className="mt-2 space-y-2 text-sm text-slate-700 dark:text-slate-200">
-                  {trip.aiItinerary.map((line, index) => (
+                  {trip.aiItinerary?.map((line, index) => (
                     <li key={`${line}-${index}`}>• {line}</li>
                   ))}
                 </ul>
@@ -574,6 +654,7 @@ export default function TripCard({
                 <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">No AI itinerary available yet.</p>
               )}
             </div>
+            ) : null}
           </Section>
         </div>
       </div>

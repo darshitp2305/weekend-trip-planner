@@ -5,6 +5,7 @@ import {
   TripDataSource,
   TripInput,
 } from "./types";
+import { GooglePlace } from "./googlePlaces";
 import {
   searchActivities,
   searchCafes,
@@ -17,6 +18,15 @@ import {
   mapGooglePlaceToHotel,
 } from "./placeMappers";
 import { searchHotelsWithSerpApi } from "./serpApiHotels";
+
+const ENRICH_CACHE_TTL_MS = 1000 * 60 * 20;
+
+type EnrichmentCacheEntry = {
+  expiresAt: number;
+  value: { trip: RankedDestination; source: TripDataSource };
+};
+
+const enrichCache = new Map<string, EnrichmentCacheEntry>();
 
 function averageRating(
   items: Array<{ rating?: number }>
@@ -46,6 +56,161 @@ function dedupeByName<T extends { name?: string }>(items: T[]): T[] {
 
 function normalizeName(value?: string) {
   return (value ?? "").trim().toLowerCase();
+}
+
+function normalizeText(value?: string) {
+  return (value ?? "").trim().toLowerCase();
+}
+
+function destinationTokens(trip: RankedDestination) {
+  return Array.from(
+    new Set(
+      [
+        trip.name,
+        trip.province,
+        trip.homeBaseCity,
+        ...(trip.rawVibes ?? []),
+      ]
+        .flatMap((value) =>
+          normalizeText(value)
+            .replace(/[^\p{L}\p{N}\s]/gu, " ")
+            .split(/\s+/)
+        )
+        .filter((token) => token.length >= 4)
+    )
+  );
+}
+
+function placeSearchText(place: GooglePlace) {
+  return normalizeText(
+    [
+      place.displayName?.text,
+      place.formattedAddress,
+      place.primaryType,
+    ].join(" ")
+  );
+}
+
+function shouldRejectPlace(place: GooglePlace, kind: "food" | "activity" | "hotel") {
+  const text = placeSearchText(place);
+
+  const bannedTerms = [
+    "visitor centre",
+    "visitor center",
+    "tourism office",
+    "information centre",
+    "information center",
+    "government office",
+    "corporate office",
+    "office tower",
+    "city hall",
+    "administration",
+  ];
+
+  if (bannedTerms.some((term) => text.includes(term))) {
+    return true;
+  }
+
+  if (kind === "food") {
+    const foodBanned = [
+      "gas station",
+      "convenience store",
+      "grocery store",
+      "supermarket",
+      "liquor store",
+    ];
+    if (foodBanned.some((term) => text.includes(term))) {
+      return true;
+    }
+  }
+
+  if (kind === "hotel") {
+    const hotelBanned = ["rv park", "campground", "hostel desk"];
+    if (hotelBanned.some((term) => text.includes(term))) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function placeRelevanceScore(
+  place: GooglePlace,
+  trip: RankedDestination,
+  kind: "food" | "activity" | "hotel",
+  input: TripInput
+) {
+  const text = placeSearchText(place);
+  const tokens = destinationTokens(trip);
+  let score = 0;
+
+  for (const token of tokens) {
+    if (text.includes(token)) {
+      score += 8;
+    }
+  }
+
+  const rating = place.rating ?? 0;
+  const userRatingCount = place.userRatingCount ?? 0;
+  score += rating * 8;
+  score += Math.min(18, Math.log10(Math.max(1, userRatingCount)) * 8);
+
+  if (kind === "food") {
+    const foodSignals = ["restaurant", "cafe", "coffee", "bakery", "brunch", "bistro"];
+    if (foodSignals.some((term) => text.includes(term))) score += 10;
+    if (input.style === "foodie" && ["market", "brew", "chef", "dining"].some((term) => text.includes(term))) {
+      score += 8;
+    }
+  }
+
+  if (kind === "activity") {
+    const styleSignals =
+      input.style === "foodie"
+        ? ["market", "tour", "museum", "downtown"]
+        : input.style === "adventure" || input.style === "outdoors"
+          ? ["trail", "hike", "lake", "viewpoint", "park", "gondola", "canyon", "waterfall"]
+          : input.style === "chill" || input.style === "solo reset"
+            ? ["spa", "scenic", "viewpoint", "garden", "lake", "walk"]
+            : ["heritage", "museum", "lookout", "historic", "local"];
+
+    if (styleSignals.some((term) => text.includes(term))) {
+      score += 12;
+    }
+  }
+
+  if (kind === "hotel") {
+    const hotelSignals = ["hotel", "resort", "inn", "lodge", "suites"];
+    if (hotelSignals.some((term) => text.includes(term))) score += 10;
+  }
+
+  return score;
+}
+
+function rankPlaces(
+  places: GooglePlace[],
+  trip: RankedDestination,
+  kind: "food" | "activity" | "hotel",
+  input: TripInput
+) {
+  return [...places]
+    .filter((place) => !shouldRejectPlace(place, kind))
+    .sort(
+      (a, b) =>
+        placeRelevanceScore(b, trip, kind, input) -
+        placeRelevanceScore(a, trip, kind, input)
+    );
+}
+
+function createEnrichCacheKey(trip: RankedDestination, input: TripInput) {
+  return JSON.stringify({
+    name: trip.name,
+    province: trip.province,
+    startCity: input.startCity,
+    style: input.style,
+    tripStartDate: input.tripStartDate,
+    tripEndDate: input.tripEndDate,
+    travelerCount: input.travelerCount,
+  });
 }
 
 function mergeHotelSources<
@@ -133,6 +298,12 @@ export async function enrichRankedTrip(
   trip: RankedDestination,
   input: TripInput
 ): Promise<{ trip: RankedDestination; source: TripDataSource }> {
+  const cacheKey = createEnrichCacheKey(trip, input);
+  const cached = enrichCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.value;
+  }
+
   const destinationQuery = `${trip.name}, ${trip.province}`;
 
   try {
@@ -162,19 +333,19 @@ export async function enrichRankedTrip(
       ]);
 
     const liveRestaurants = dedupeByName(
-      (restaurantsRes.places ?? [])
+      rankPlaces(restaurantsRes.places ?? [], trip, "food", input)
         .map(mapGooglePlaceToFoodSpot)
         .filter(hasName)
     );
 
     const liveCafes = dedupeByName(
-      (cafesRes.places ?? [])
+      rankPlaces(cafesRes.places ?? [], trip, "food", input)
         .map(mapGooglePlaceToFoodSpot)
         .filter(hasName)
     );
 
     const liveActivities = dedupeByName(
-      (activitiesRes.places ?? [])
+      rankPlaces(activitiesRes.places ?? [], trip, "activity", input)
         .map(mapGooglePlaceToActivity)
         .filter(hasName)
     );
@@ -184,7 +355,7 @@ export async function enrichRankedTrip(
     );
 
     const placesHotels = dedupeByName(
-      (hotelsRes.places ?? [])
+      rankPlaces(hotelsRes.places ?? [], trip, "hotel", input)
         .map(mapGooglePlaceToHotel)
         .filter(hasName)
     );
@@ -254,7 +425,16 @@ export async function enrichRankedTrip(
       rankingReasons: rankingReasons.slice(0, 4),
     };
 
-    return { trip: mergedTrip, source };
+    const result: { trip: RankedDestination; source: TripDataSource } = {
+      trip: mergedTrip,
+      source,
+    };
+    enrichCache.set(cacheKey, {
+      expiresAt: Date.now() + ENRICH_CACHE_TTL_MS,
+      value: result,
+    });
+
+    return result;
   } catch (error) {
     console.error(
       "Google Places enrichment failed. Falling back to static trip data.",
@@ -269,7 +449,7 @@ export async function enrichRankedTrip(
       ...(trip.rankingReasons ?? []),
     ];
 
-    return {
+    const result: { trip: RankedDestination; source: TripDataSource } = {
       trip: {
         ...trip,
         liveDataSummary: buildLiveSummary(
@@ -282,5 +462,12 @@ export async function enrichRankedTrip(
       },
       source: "static-fallback",
     };
+
+    enrichCache.set(cacheKey, {
+      expiresAt: Date.now() + ENRICH_CACHE_TTL_MS,
+      value: result,
+    });
+
+    return result;
   }
 }

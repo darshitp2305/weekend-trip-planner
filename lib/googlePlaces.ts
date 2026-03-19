@@ -1,6 +1,15 @@
 const API_KEY = process.env.GOOGLE_MAPS_API_KEY;
 
 const TEXT_SEARCH_URL = "https://places.googleapis.com/v1/places:searchText";
+const REQUEST_TIMEOUT_MS = 12000;
+const CACHE_TTL_MS = 1000 * 60 * 30;
+
+type CacheEntry = {
+  expiresAt: number;
+  value: unknown;
+};
+
+const textSearchCache = new Map<string, CacheEntry>();
 
 type TextSearchRequest = {
   textQuery: string;
@@ -15,23 +24,49 @@ async function placesTextSearch<T>(
     throw new Error("Missing GOOGLE_MAPS_API_KEY in .env.local");
   }
 
-  const res = await fetch(TEXT_SEARCH_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Goog-Api-Key": API_KEY,
-      "X-Goog-FieldMask": fieldMask,
-    },
-    body: JSON.stringify(body),
-    cache: "no-store",
-  });
+  const cacheKey = JSON.stringify({ body, fieldMask });
+  const cached = textSearchCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.value as T;
+  }
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+  let res: Response;
+  try {
+    res = await fetch(TEXT_SEARCH_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Goog-Api-Key": API_KEY,
+        "X-Goog-FieldMask": fieldMask,
+      },
+      body: JSON.stringify(body),
+      cache: "no-store",
+      signal: controller.signal,
+    });
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new Error("Google Places Text Search timed out.");
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
 
   if (!res.ok) {
     const text = await res.text();
     throw new Error(`Google Places Text Search failed: ${res.status} ${text}`);
   }
 
-  return res.json();
+  const parsed = (await res.json()) as T;
+  textSearchCache.set(cacheKey, {
+    expiresAt: Date.now() + CACHE_TTL_MS,
+    value: parsed,
+  });
+
+  return parsed;
 }
 
 export type GooglePlace = {
@@ -93,9 +128,25 @@ export async function searchCafes(destination: string) {
 }
 
 export async function searchActivities(destination: string, style: string) {
+  const normalizedStyle = style.trim().toLowerCase();
+  const styleQuery =
+    normalizedStyle === "foodie"
+      ? "food tours, markets, cooking classes, scenic walks"
+      : normalizedStyle === "adventure"
+        ? "hikes, lakes, viewpoints, outdoor adventure"
+        : normalizedStyle === "outdoors"
+          ? "trails, lakes, parks, scenic lookouts"
+          : normalizedStyle === "chill"
+            ? "scenic spots, spas, easy walks, relaxing attractions"
+            : normalizedStyle === "solo reset"
+              ? "quiet cafes, scenic spots, spas, easy walks"
+              : normalizedStyle === "hidden gems"
+                ? "local landmarks, heritage sites, lookouts, lesser-known attractions"
+                : `${style} attractions`;
+
   return placesTextSearch<{ places?: GooglePlace[] }>(
     {
-      textQuery: `top attractions and activities in ${destination} for ${style} travelers`,
+      textQuery: `top ${styleQuery} in ${destination}`,
       maxResultCount: 12,
     },
     FIELD_MASK
