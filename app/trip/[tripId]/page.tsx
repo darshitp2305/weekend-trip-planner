@@ -875,6 +875,9 @@ export default function TripPage() {
                 travelerCount={travelerCount}
                 initialSelection={trip.savedSelectionState}
                 destinationImageUrl={trip.imageUrl}
+                destinationLabel={getDestinationLabel(trip)}
+                tripStartDate={trip.tripStartDate}
+                tripEndDate={trip.tripEndDate}
                 startCityLabel={trip.startCity ?? undefined}
                 startCityCoordinate={
                   typeof trip.routeSummary?.origin?.lat === "number" &&

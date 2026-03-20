@@ -4,6 +4,7 @@ import {
   getTodayIsoDate,
   isIsoDate,
 } from "./tripDates";
+import { preferredHotelBookingUrl } from "./expediaLinks";
 import { TripPlan, TripSelectionState } from "./types";
 
 const TRACKING_PARAMS = [
@@ -118,14 +119,13 @@ function cleanShareUrl(value?: string) {
 }
 
 function preferredHotelShareUrl(trip: TripPlan, selection: TripSelectionState) {
-  const hotel = selectedHotel(trip, selection);
-  if (!hotel) return undefined;
-
-  return (
-    cleanShareUrl(hotel.websiteUrl) ??
-    cleanShareUrl(hotel.bookingLink) ??
-    cleanShareUrl(hotel.mapsUrl)
-  );
+  return preferredHotelBookingUrl({
+    hotel: selectedHotel(trip, selection),
+    destination: trip.destinationName || trip.name,
+    tripStartDate: trip.tripStartDate,
+    tripEndDate: trip.tripEndDate,
+    travelerCount: trip.travelerCount,
+  });
 }
 
 function formatMoney(value?: number) {

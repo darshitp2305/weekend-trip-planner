@@ -14,6 +14,7 @@ import {
   estimateFoodCostRangeForGroup,
   foodPricingSourceLabel,
 } from "../lib/foodPricing";
+import { preferredHotelBookingUrl } from "../lib/expediaLinks";
 
 type Props = {
   days: ItineraryDayData[];
@@ -23,6 +24,9 @@ type Props = {
   travelerCount: number;
   initialSelection?: TripSelectionState;
   destinationImageUrl?: string;
+  destinationLabel?: string;
+  tripStartDate?: string;
+  tripEndDate?: string;
   startCityLabel?: string;
   startCityCoordinate?: {
     latitude: number;
@@ -471,6 +475,9 @@ export default function InteractiveItinerary({
   travelerCount,
   initialSelection,
   destinationImageUrl,
+  destinationLabel,
+  tripStartDate,
+  tripEndDate,
   startCityLabel,
   startCityCoordinate,
   onSelectionChange,
@@ -988,7 +995,13 @@ export default function InteractiveItinerary({
                                     ? [`Total $${selectedHotel.totalStayPrice}`]
                                     : []),
                                 ]}
-                                primaryUrl={selectedHotel.bookingLink || selectedHotel.websiteUrl}
+                                primaryUrl={preferredHotelBookingUrl({
+                                  hotel: selectedHotel,
+                                  destination: destinationLabel,
+                                  tripStartDate,
+                                  tripEndDate,
+                                  travelerCount,
+                                })}
                                 primaryLabel="Hotel site"
                                 mapsUrl={selectedHotel.mapsUrl}
                                 photoRef={selectedHotel.photoRef}
@@ -1005,14 +1018,20 @@ export default function InteractiveItinerary({
                               {options.map((hotel, optionIndex) => (
                                 <SelectorCard
                                   key={hotel.name}
-                                  option={{
-                                    name: hotel.name,
-                                    subtitle: hotel.shortDescription,
-                                    rating: hotel.rating,
-                                    pricePerNight: hotel.pricePerNight,
-                                    totalStayPrice: hotel.totalStayPrice,
-                                    primaryUrl: hotel.bookingLink || hotel.websiteUrl,
-                                    primaryLabel: "Hotel site",
+                                    option={{
+                                      name: hotel.name,
+                                      subtitle: hotel.shortDescription,
+                                      rating: hotel.rating,
+                                      pricePerNight: hotel.pricePerNight,
+                                      totalStayPrice: hotel.totalStayPrice,
+                                      primaryUrl: preferredHotelBookingUrl({
+                                        hotel,
+                                        destination: destinationLabel,
+                                        tripStartDate,
+                                        tripEndDate,
+                                        travelerCount,
+                                      }),
+                                      primaryLabel: "Hotel site",
                                     mapsUrl: hotel.mapsUrl,
                                     photoRef: hotel.photoRef,
                                     photoUrl: hotel.photoUrl,

@@ -6,6 +6,7 @@ import {
   buildTripSummaryText,
   suggestedCalendarFileName,
 } from "../lib/calendarExport";
+import { preferredHotelBookingUrl } from "../lib/expediaLinks";
 import { saveTripPlan } from "../lib/tripStore";
 import { TripPlan } from "../lib/types";
 
@@ -98,8 +99,13 @@ export default function TripActions({ trip }: Props) {
     }
   }
 
-  const firstHotelSite =
-    trip.hotelOptions?.[0]?.websiteUrl || trip.hotelOptions?.[0]?.bookingLink;
+  const firstHotelSite = preferredHotelBookingUrl({
+    hotel: trip.hotelOptions?.[0],
+    destination: trip.destinationName || trip.name,
+    tripStartDate: trip.tripStartDate,
+    tripEndDate: trip.tripEndDate,
+    travelerCount: trip.travelerCount,
+  });
 
   return (
     <section>
