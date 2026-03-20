@@ -29,6 +29,7 @@ function round2(value: number): number {
   return Math.round(value * 100) / 100;
 }
 
+// Convert confidence labels into a stable sort weight for tie-breaking.
 function confidenceOrder(confidence?: RankedDestination["confidence"]): number {
   switch (confidence) {
     case "high":
@@ -77,6 +78,8 @@ function tripBaseCity(trip: RankedDestination): string {
   return "";
 }
 
+// Some destinations are attractive because they are close to home, but we do
+// not want "stay in your own city" and "quick getaway" to collapse together.
 function isHomeCityTrip(trip: RankedDestination, startCity: string): boolean {
   const start = normalizeCity(startCity);
   const base = tripBaseCity(trip);
@@ -99,6 +102,8 @@ function makeReason(
   return { label, impact, priority, weight, family };
 }
 
+// Ranking reasons arrive from multiple stages as freeform copy. This maps the
+// important phrases into comparable families so we can dedupe and sort them.
 function normalizeExistingReason(reason: RankingReason, index: number): PrioritizedReason {
   const lower = reason.label.toLowerCase();
 
@@ -211,6 +216,8 @@ function mergeAndRankReasons(
   return sortReasons(deduped);
 }
 
+// Fold the destination's visible fields into a single signal blob for the
+// heuristic passes below.
 function joinedTripText(trip: RankedDestination): string {
   return [
     trip.name,

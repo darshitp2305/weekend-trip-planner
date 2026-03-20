@@ -2,6 +2,8 @@ import { Activity, FoodSpot, HotelOption } from "./types";
 import { GooglePlace } from "./googlePlaces";
 import { estimateFoodCostPerTraveler } from "./foodPricing";
 
+// Google sometimes omits coordinates or sends partial location objects. These
+// helpers keep that cleanup in one place before we map into app types.
 function getLatitude(place: GooglePlace): number | undefined {
   return typeof place.location?.latitude === "number" &&
     Number.isFinite(place.location.latitude)
@@ -35,6 +37,8 @@ function humanizePrimaryType(primaryType?: string): string | undefined {
 }
 
 export function mapGooglePlaceToFoodSpot(place: GooglePlace): FoodSpot {
+  // Build the full mapped object first so the pricing heuristic can use the
+  // same normalized fields the UI will later display.
   const mapped: FoodSpot = {
     name: place.displayName?.text ?? "Unnamed food spot",
     tags: humanizePrimaryType(place.primaryType)
@@ -60,6 +64,8 @@ export function mapGooglePlaceToFoodSpot(place: GooglePlace): FoodSpot {
 }
 
 export function mapGooglePlaceToActivity(place: GooglePlace): Activity {
+  // Activities still use a narrow heuristic because Places rarely gives usable
+  // ticket pricing. We only infer paid categories where the signal is obvious.
   const cost = inferActivityCost(place.primaryType);
 
   return {
@@ -79,6 +85,8 @@ export function mapGooglePlaceToActivity(place: GooglePlace): Activity {
 }
 
 export function mapGooglePlaceToHotel(place: GooglePlace): HotelOption {
+  // Hotels rely on SerpApi or existing trip pricing for actual rate data. The
+  // Places mapping is mainly for identity, links, rating, and imagery.
   return {
     name: place.displayName?.text ?? "Unnamed hotel",
     pricePerNight: undefined,

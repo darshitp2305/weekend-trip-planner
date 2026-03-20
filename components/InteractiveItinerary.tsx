@@ -80,12 +80,34 @@ function optionSortScore(name: string, preferredTitle?: string) {
   return 0;
 }
 
+// Keep food pricing consistent with the shared trip budget logic.
 function guessFoodCost(spot: FoodSpot, travelers: number) {
   return estimateFoodCostForGroup(spot, travelers);
 }
 
 function formatMoney(value: number) {
   return `$${Math.round(value)}`;
+}
+
+function timeWindowLabel(time?: string) {
+  switch (normalized(time)) {
+    case "morning":
+      return "8:00-10:00 AM";
+    case "late morning":
+      return "10:30 AM-12:30 PM";
+    case "afternoon":
+      return "1:00-4:00 PM";
+    case "late afternoon":
+      return "4:00-6:00 PM";
+    case "evening":
+      return "6:00-8:30 PM";
+    case "night":
+      return "After 8:00 PM";
+    case "anytime":
+      return "Flexible timing";
+    default:
+      return undefined;
+  }
 }
 
 function guessActivityCost(activity: Activity, travelers: number) {
@@ -135,6 +157,8 @@ function distanceKmFromCoordinate(
 }
 
 function proximitySortScore(distanceKm?: number) {
+  // Nearby swaps keep the generated day coherent, so distance heavily shapes
+  // the recommended alternatives shown in the picker.
   if (distanceKm === undefined) return 0;
   if (distanceKm <= 0.5) return 140;
   if (distanceKm <= 2) return 110;
@@ -154,12 +178,35 @@ function formatDistanceFromPrevious(
 
   const distanceKm = haversineDistanceKm(previous, current);
   const formattedDistance = formatDistanceKm(distanceKm);
+  const transferMinutes = estimateTransferMinutes(distanceKm);
 
-  return `Approx. ${formattedDistance} from ${previous.label}`;
+  return `${formatTransferMinutes(transferMinutes)} / ${formattedDistance} from ${previous.label}`;
 }
 
 function formatDistanceKm(distanceKm: number) {
   return `${distanceKm.toFixed(distanceKm >= 10 ? 0 : 1)} km`;
+}
+
+function estimateTransferMinutes(distanceKm: number) {
+  if (!Number.isFinite(distanceKm) || distanceKm <= 0) return 0;
+
+  const minutes = Math.round((distanceKm / 55) * 60);
+  return Math.max(5, minutes);
+}
+
+function formatTransferMinutes(minutes: number) {
+  if (minutes < 60) {
+    return `~${minutes} min`;
+  }
+
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+
+  if (remainingMinutes === 0) {
+    return `~${hours} hr`;
+  }
+
+  return `~${hours} hr ${remainingMinutes} min`;
 }
 
 function OptionPill({
@@ -431,6 +478,8 @@ export default function InteractiveItinerary({
   startCityCoordinate,
   onSelectionChange,
 }: Props) {
+  // Seed the planner from the generated itinerary so each day already has a
+  // sensible default hotel, food stop, and activity before the user edits it.
   const defaultSelection = useMemo<SelectionState>(() => {
     const initial: SelectionState = {
       hotelName: hotels[0]?.name,
@@ -470,6 +519,8 @@ export default function InteractiveItinerary({
   }, [activities, days, foodSpots, hotels]);
 
   const [selection, setSelection] = useState<SelectionState>(() => defaultSelection);
+  // Keep only one option grid open at a time so the long trip page stays
+  // easier to scan and compare.
   const [editingStopKey, setEditingStopKey] = useState<string | null>(null);
 
   useEffect(() => {
@@ -506,6 +557,8 @@ export default function InteractiveItinerary({
       };
     });
 
+    // If we already have enough nearby choices, prefer local options over
+    // highly rated but impractical detours elsewhere in the destination.
     const nearbyCount = scored.filter(
       ({ distanceKm }) => distanceKm !== undefined && distanceKm <= 20
     ).length;
@@ -698,6 +751,22 @@ export default function InteractiveItinerary({
     setEditingStopKey((current) => (current === key ? null : key));
   }
 
+  function selectedFoodForKey(key: string, stopTitle?: string, previousStop?: StopCoordinate) {
+    const options = rankedFoodOptions(stopTitle, previousStop);
+    return foodSpots.find((spot) => spot.name === selection.foods[key]) ?? options[0];
+  }
+
+  function selectedActivityForKey(
+    key: string,
+    stopTitle?: string,
+    previousStop?: StopCoordinate
+  ) {
+    const options = rankedActivityOptions(stopTitle, previousStop);
+    return (
+      activities.find((activity) => activity.name === selection.activities[key]) ?? options[0]
+    );
+  }
+
   return (
     <section className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
       <div className="flex flex-col gap-1">
@@ -717,6 +786,71 @@ export default function InteractiveItinerary({
               hotelCoordinate && lastStopOfDay
                 ? haversineDistanceKm(lastStopOfDay, hotelCoordinate)
                 : undefined;
+            const dayStops = day.stops ?? [];
+            const anchorNames: string[] = [];
+            let editableStopCount = 0;
+            let driveSegmentCount = 0;
+            let daySpendEstimate = 0;
+
+            dayStops.forEach((stop, stopIndex) => {
+              const key = stopKey(dayIndex, stopIndex);
+              const priorStop = previousStopCoordinate(dayIndex, stopIndex, stop.kind);
+
+              if (stop.kind === "travel") {
+                driveSegmentCount += 1;
+                return;
+              }
+
+              if (stop.kind === "stay") {
+                editableStopCount += 1;
+                const selectedHotel =
+                  hotels.find((hotel) => hotel.name === selection.hotelName) ??
+                  rankedHotelOptions(stop.title)[0];
+
+                if (selectedHotel?.name && !anchorNames.includes(selectedHotel.name)) {
+                  anchorNames.push(selectedHotel.name);
+                }
+                return;
+              }
+
+              if (stop.kind === "food") {
+                editableStopCount += 1;
+                const selectedSpot = selectedFoodForKey(key, stop.title, priorStop);
+                if (selectedSpot) {
+                  daySpendEstimate += guessFoodCost(selectedSpot, travelerCount);
+                  if (!anchorNames.includes(selectedSpot.name)) {
+                    anchorNames.push(selectedSpot.name);
+                  }
+                }
+                return;
+              }
+
+              if (stop.kind === "activity") {
+                editableStopCount += 1;
+                const selectedActivity = selectedActivityForKey(
+                  key,
+                  stop.title,
+                  priorStop
+                );
+                if (selectedActivity) {
+                  daySpendEstimate += guessActivityCost(selectedActivity, travelerCount);
+                  if (!anchorNames.includes(selectedActivity.name)) {
+                    anchorNames.push(selectedActivity.name);
+                  }
+                }
+              }
+            });
+
+            const tempoLabel =
+              editableStopCount <= 2
+                ? "Easy pace"
+                : editableStopCount <= 4
+                  ? "Balanced pace"
+                  : "Full day";
+            const routeShape =
+              anchorNames.length > 0
+                ? anchorNames.slice(0, 3).join(" -> ")
+                : "Travel-only day";
 
             return (
               <section
@@ -735,8 +869,64 @@ export default function InteractiveItinerary({
                   ) : null}
                 </div>
 
+                <div className="mb-3 grid gap-2.5 md:grid-cols-2 xl:grid-cols-4">
+                  <div className="rounded-[0.95rem] border border-slate-200 bg-white px-3.5 py-3 dark:border-slate-700 dark:bg-slate-900">
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
+                      Tempo
+                    </div>
+                    <div className="mt-1 text-sm font-semibold text-slate-950 dark:text-slate-100">
+                      {tempoLabel}
+                    </div>
+                    <p className="mt-1 text-[12px] leading-5 text-slate-600 dark:text-slate-300">
+                      {editableStopCount} decision stop{editableStopCount === 1 ? "" : "s"} and {driveSegmentCount} travel leg{driveSegmentCount === 1 ? "" : "s"}.
+                    </p>
+                  </div>
+
+                  <div className="rounded-[0.95rem] border border-slate-200 bg-white px-3.5 py-3 dark:border-slate-700 dark:bg-slate-900">
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
+                      Day flow
+                    </div>
+                    <div className="mt-1 text-sm font-semibold text-slate-950 dark:text-slate-100">
+                      {routeShape}
+                    </div>
+                    <p className="mt-1 text-[12px] leading-5 text-slate-600 dark:text-slate-300">
+                      Current selected anchors for this day.
+                    </p>
+                  </div>
+
+                  <div className="rounded-[0.95rem] border border-slate-200 bg-white px-3.5 py-3 dark:border-slate-700 dark:bg-slate-900">
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
+                      Day spend picks
+                    </div>
+                    <div className="mt-1 text-sm font-semibold text-slate-950 dark:text-slate-100">
+                      {daySpendEstimate > 0 ? formatMoney(daySpendEstimate) : "Mostly free"}
+                    </div>
+                    <p className="mt-1 text-[12px] leading-5 text-slate-600 dark:text-slate-300">
+                      Food and activity selections only. Hotel stays remain in the trip budget rail.
+                    </p>
+                  </div>
+
+                  <div className="rounded-[0.95rem] border border-slate-200 bg-white px-3.5 py-3 dark:border-slate-700 dark:bg-slate-900">
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
+                      Route note
+                    </div>
+                    <div className="mt-1 text-sm font-semibold text-slate-950 dark:text-slate-100">
+                      {driveBackDistance !== undefined
+                        ? `${formatTransferMinutes(
+                            estimateTransferMinutes(driveBackDistance)
+                          )} back to stay`
+                        : dayIndex === 0 && startCityLabel
+                          ? `Leaves from ${startCityLabel}`
+                          : "Follow selected stop order"}
+                    </div>
+                    <p className="mt-1 text-[12px] leading-5 text-slate-600 dark:text-slate-300">
+                      Built from the current hotel and stop choices.
+                    </p>
+                  </div>
+                </div>
+
                 <div className="space-y-3">
-                  {(day.stops ?? []).map((stop, stopIndex) => {
+                  {dayStops.map((stop, stopIndex) => {
                     const key = stopKey(dayIndex, stopIndex);
                     const priorStop = previousStopCoordinate(
                       dayIndex,
@@ -759,6 +949,11 @@ export default function InteractiveItinerary({
                           <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
                             {stop.time ?? "Stay"}
                           </div>
+                          {timeWindowLabel(stop.time) ? (
+                            <div className="mt-1 text-[12px] font-medium leading-5 text-slate-500 dark:text-slate-400">
+                              {timeWindowLabel(stop.time)}
+                            </div>
+                          ) : null}
                           <h4 className="mt-1 text-sm font-semibold text-slate-950 dark:text-slate-100">
                             Pick where to stay
                           </h4>
@@ -853,10 +1048,10 @@ export default function InteractiveItinerary({
 
                     if (stop.kind === "food") {
                       const options = rankedFoodOptions(stop.title, priorStop);
-                      const selectedSpot =
-                        foodSpots.find((spot) => spot.name === selection.foods[key]) ??
-                        options[0];
+                      const selectedSpot = selectedFoodForKey(key, stop.title, priorStop);
                       const isEditing = editingStopKey === key;
+                      // Show a range instead of a fake exact amount because the
+                      // food pricing is heuristic, not live menu data.
                       const selectedSpotRange = selectedSpot
                         ? estimateFoodCostRangeForGroup(selectedSpot, travelerCount)
                         : null;
@@ -869,6 +1064,11 @@ export default function InteractiveItinerary({
                           <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
                             {stop.time ?? "Food"}
                           </div>
+                          {timeWindowLabel(stop.time) ? (
+                            <div className="mt-1 text-[12px] font-medium leading-5 text-slate-500 dark:text-slate-400">
+                              {timeWindowLabel(stop.time)}
+                            </div>
+                          ) : null}
                           <h4 className="mt-1 text-sm font-semibold text-slate-950 dark:text-slate-100">
                             Pick a food stop
                           </h4>
@@ -989,9 +1189,11 @@ export default function InteractiveItinerary({
 
                     if (stop.kind === "activity") {
                       const options = rankedActivityOptions(stop.title, priorStop);
-                      const selectedActivity =
-                        activities.find((activity) => activity.name === selection.activities[key]) ??
-                        options[0];
+                      const selectedActivity = selectedActivityForKey(
+                        key,
+                        stop.title,
+                        priorStop
+                      );
                       const isEditing = editingStopKey === key;
 
                       return (
@@ -1002,6 +1204,11 @@ export default function InteractiveItinerary({
                           <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
                             {stop.time ?? "Activity"}
                           </div>
+                          {timeWindowLabel(stop.time) ? (
+                            <div className="mt-1 text-[12px] font-medium leading-5 text-slate-500 dark:text-slate-400">
+                              {timeWindowLabel(stop.time)}
+                            </div>
+                          ) : null}
                           <h4 className="mt-1 text-sm font-semibold text-slate-950 dark:text-slate-100">
                             Pick an activity
                           </h4>
@@ -1119,6 +1326,11 @@ export default function InteractiveItinerary({
                             {stop.time}
                           </div>
                         ) : null}
+                        {timeWindowLabel(stop.time) ? (
+                          <div className="mt-1 text-[12px] font-medium leading-5 text-slate-500 dark:text-slate-400">
+                            {timeWindowLabel(stop.time)}
+                          </div>
+                        ) : null}
                         <h4 className="mt-1 text-sm font-semibold text-slate-950 dark:text-slate-100">
                           {stop.title}
                         </h4>
@@ -1133,15 +1345,17 @@ export default function InteractiveItinerary({
                         priorStop &&
                         startCityCoordinate ? (
                           <div className="mt-2 text-[12px] font-medium leading-5 text-slate-500 dark:text-slate-400">
-                            Approx.{" "}
-                            {formatDistanceKm(
-                              haversineDistanceKm(priorStop, {
+                            {(() => {
+                              const distanceKm = haversineDistanceKm(priorStop, {
                                 label: startCityLabel ?? "start city",
                                 latitude: startCityCoordinate.latitude,
                                 longitude: startCityCoordinate.longitude,
-                              })
-                            )}{" "}
-                            from {priorStop.label} to{" "}
+                              });
+
+                              return `${formatTransferMinutes(
+                                estimateTransferMinutes(distanceKm)
+                              )} / ${formatDistanceKm(distanceKm)} from ${priorStop.label} to `;
+                            })()}
                             {startCityLabel ?? "your starting city"}
                           </div>
                         ) : null}
@@ -1164,7 +1378,10 @@ export default function InteractiveItinerary({
                         Wrap up the day and head back to your hotel from {lastStopOfDay.label}.
                       </p>
                       <div className="mt-2 text-[12px] font-medium leading-5 text-slate-500 dark:text-slate-400">
-                        Approx. {formatDistanceKm(driveBackDistance)} back to hotel
+                        {formatTransferMinutes(
+                          estimateTransferMinutes(driveBackDistance)
+                        )}{" "}
+                        / {formatDistanceKm(driveBackDistance)} back to hotel
                       </div>
                     </div>
                   ) : null}

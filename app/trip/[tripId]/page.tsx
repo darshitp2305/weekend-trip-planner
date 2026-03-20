@@ -27,6 +27,35 @@ function formatMoney(value: number) {
   return `$${Math.round(value)}`;
 }
 
+function formatDistanceMeters(distanceMeters?: number) {
+  if (typeof distanceMeters !== "number" || !Number.isFinite(distanceMeters) || distanceMeters <= 0) {
+    return undefined;
+  }
+
+  const distanceKm = distanceMeters / 1000;
+  return `${distanceKm.toFixed(distanceKm >= 10 ? 0 : 1)} km`;
+}
+
+function formatDurationSeconds(durationSeconds?: number) {
+  if (typeof durationSeconds !== "number" || !Number.isFinite(durationSeconds) || durationSeconds <= 0) {
+    return undefined;
+  }
+
+  const totalMinutes = Math.round(durationSeconds / 60);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+
+  if (hours <= 0) {
+    return `${minutes} min`;
+  }
+
+  if (minutes === 0) {
+    return `${hours} hr`;
+  }
+
+  return `${hours} hr ${minutes} min`;
+}
+
 function normalized(value?: string) {
   return (value ?? "").trim().toLowerCase();
 }
@@ -240,6 +269,14 @@ export default function TripPage() {
     return Number.isFinite(value) && value > 0 ? value : 1;
   }, [trip]);
 
+  const selectedHotel = useMemo(() => {
+    if (!trip) return undefined;
+
+    return (trip.hotelOptions ?? []).find(
+      (hotel: HotelOption) => hotel.name === selectionState.hotelName
+    ) ?? trip.hotelOptions?.[0];
+  }, [selectionState.hotelName, trip]);
+
   const selectedBudget = useMemo(() => {
     if (!trip) return null;
 
@@ -338,6 +375,55 @@ export default function TripPage() {
 
     return 0;
   }, [estimatedTotalCost, travelerCount]);
+
+  const budgetStatus = useMemo(() => {
+    if (targetTotalBudget <= 0 || estimatedTotalCost <= 0) {
+      return null;
+    }
+
+    const delta = estimatedTotalCost - targetTotalBudget;
+
+    if (Math.abs(delta) <= Math.max(50, targetTotalBudget * 0.05)) {
+      return {
+        label: "On target",
+        detail: `Within ${formatMoney(Math.abs(delta))} of your target budget.`,
+      };
+    }
+
+    if (delta < 0) {
+      return {
+        label: "Under target",
+        detail: `${formatMoney(Math.abs(delta))} under the target total.`,
+      };
+    }
+
+    return {
+      label: "Over target",
+      detail: `${formatMoney(delta)} over the target total.`,
+    };
+  }, [estimatedTotalCost, targetTotalBudget]);
+
+  const itineraryOverview = useMemo(() => {
+    const editableStops = itineraryDays.reduce((sum, day) => {
+      return (
+        sum +
+        (day.stops ?? []).filter((stop) =>
+          stop.kind === "stay" || stop.kind === "food" || stop.kind === "activity"
+        ).length
+      );
+    }, 0);
+
+    const foodStops = itineraryDays.reduce(
+      (sum, day) => sum + (day.stops ?? []).filter((stop) => stop.kind === "food").length,
+      0
+    );
+    const activityStops = itineraryDays.reduce(
+      (sum, day) => sum + (day.stops ?? []).filter((stop) => stop.kind === "activity").length,
+      0
+    );
+
+    return { editableStops, foodStops, activityStops };
+  }, [itineraryDays]);
 
   const tripMapData = useMemo(() => {
     if (!trip) {
@@ -638,6 +724,74 @@ export default function TripPage() {
 
           {itineraryDays.length > 0 ? (
             <div className="space-y-5">
+              <section className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                <div className="flex flex-col gap-1">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-violet-600 dark:text-violet-300">
+                    Trip at a glance
+                  </div>
+                  <h2 className="text-xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">
+                    Ready-to-go snapshot
+                  </h2>
+                  <p className="max-w-3xl text-sm leading-5 text-slate-600 dark:text-slate-300">
+                    Scan the weekend shape first, then fine-tune stops below. Food and budget numbers are shown as estimates, not live checkout prices.
+                  </p>
+                </div>
+
+                <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                  <div className="rounded-[1rem] border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/70">
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
+                      Trip shape
+                    </div>
+                    <div className="mt-1 text-base font-semibold text-slate-950 dark:text-slate-100">
+                      {deriveTripLengthDays(trip)} day{deriveTripLengthDays(trip) === 1 ? "" : "s"}
+                    </div>
+                    <p className="mt-1 text-sm leading-5 text-slate-600 dark:text-slate-300">
+                      {itineraryOverview.editableStops} editable stops, {itineraryOverview.foodStops} food pick{itineraryOverview.foodStops === 1 ? "" : "s"}, {itineraryOverview.activityStops} activity pick{itineraryOverview.activityStops === 1 ? "" : "s"}.
+                    </p>
+                  </div>
+
+                  <div className="rounded-[1rem] border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/70">
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
+                      Route reality
+                    </div>
+                    <div className="mt-1 text-base font-semibold text-slate-950 dark:text-slate-100">
+                      {formatDurationSeconds(trip.routeSummary?.durationSeconds) ?? trip.driveTimeText}
+                    </div>
+                    <p className="mt-1 text-sm leading-5 text-slate-600 dark:text-slate-300">
+                      {formatDistanceMeters(trip.routeSummary?.distanceMeters)
+                        ? `${formatDistanceMeters(trip.routeSummary?.distanceMeters)} from ${getStartCityLabel(trip)} to ${getDestinationLabel(trip)}.`
+                        : `${getStartCityLabel(trip)} to ${getDestinationLabel(trip)}.`}
+                    </p>
+                  </div>
+
+                  <div className="rounded-[1rem] border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/70">
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
+                      Stay plan
+                    </div>
+                    <div className="mt-1 text-base font-semibold text-slate-950 dark:text-slate-100">
+                      {selectedHotel?.name ?? trip.homeBaseCity ?? trip.destinationName}
+                    </div>
+                    <p className="mt-1 text-sm leading-5 text-slate-600 dark:text-slate-300">
+                      {selectedHotel?.shortDescription ??
+                        "Your current hotel choice acts as the anchor for route and nearby-stop suggestions."}
+                    </p>
+                  </div>
+
+                  <div className="rounded-[1rem] border border-violet-200 bg-violet-50 p-4 dark:border-violet-500/30 dark:bg-violet-500/10">
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-violet-700 dark:text-violet-300">
+                      Budget fit
+                    </div>
+                    <div className="mt-1 text-base font-semibold text-slate-950 dark:text-slate-100">
+                      {budgetStatus?.label ?? "Estimated spend"}
+                    </div>
+                    <p className="mt-1 text-sm leading-5 text-slate-700 dark:text-slate-200">
+                      {budgetStatus?.detail ??
+                        `${formatMoney(estimatedTotalCost)} total estimated spend for ${travelerCount} traveler${travelerCount === 1 ? "" : "s"}.`}
+                    </p>
+                  </div>
+                </div>
+              </section>
+
               <TripStopMap
                 pins={tripMapData.pins}
                 routePaths={tripMapData.routePaths}

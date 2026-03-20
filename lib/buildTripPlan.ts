@@ -23,6 +23,8 @@ const defaultInput: TripInput = {
   strictBudget: false,
 };
 
+// Normalize partial API/UI input into a complete trip request so the planner
+// runs with consistent assumptions everywhere.
 function normalizeInput(input?: Partial<TripInput>): TripInput {
   const travelerCount = Number(
     input?.travelerCount ?? defaultInput.travelerCount
@@ -76,6 +78,8 @@ function buildBudgetBreakdown(
 
   const firstHotelPrice = trip.hotelOptions?.[0]?.pricePerNight;
   const firstHotelTotal = trip.hotelOptions?.[0]?.totalStayPrice;
+  // Prefer concrete hotel totals when we have them, then fall back through
+  // nightly rate and any upstream trip-level budget estimate.
   const hotelBase =
     trip.isStaycation
       ? 0
@@ -89,9 +93,11 @@ function buildBudgetBreakdown(
     input.style === "foodie"
       ? 65
       : input.style === "chill" || input.style === "solo reset"
-        ? 45
-        : 50;
+          ? 45
+          : 50;
 
+  // Use itinerary-selected food stops first so builder edits immediately
+  // change the trip budget instead of waiting for a fresh generation pass.
   const foodBase =
     itineraryDays
       .flatMap((day) => day.stops)
@@ -123,6 +129,8 @@ function buildBudgetBreakdown(
       ? activitiesFromItinerary
       : (trip.budgetBreakdown?.activities ?? 0);
 
+  // Misc is an explicit contingency bucket for parking, tips, snacks, and
+  // other small spend we do not model directly.
   const miscBase = roundMoney(
     (hotelBase + foodBase + gasBase + activitiesBase) * 0.1
   );
@@ -248,6 +256,8 @@ function maxLegDistanceKm(input: TripInput) {
 }
 
 function buildBaseCoordinate(trip: RankedDestination) {
+  // Anchor proximity around the hotel first, then fall back to the destination
+  // or top-ranked stops when lodging coordinates are missing.
   return (
     toCoordinate(trip.hotelOptions?.[0]) ??
     toCoordinate(trip) ??
@@ -263,6 +273,8 @@ function proximityScore(
     "maxDistanceKm" | "distancePenaltyStartKm" | "distanceWeight"
   >
 ) {
+  // Nearby options are easier to stitch into a realistic day plan, so we
+  // reward short hops and strongly penalize awkward detours.
   if (distanceKm === undefined) return 0;
 
   const maxDistanceKm = options?.maxDistanceKm ?? Number.POSITIVE_INFINITY;

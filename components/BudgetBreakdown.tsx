@@ -97,6 +97,9 @@ export default function BudgetBreakdown({ breakdown }: Props) {
         <p className="text-sm leading-5 text-slate-600 dark:text-slate-300">
           Estimated cost split into useful buckets, plus a realistic trip range.
         </p>
+        <p className="text-[12px] leading-5 text-slate-500 dark:text-slate-400">
+          Food and activity totals are planning estimates based on your current selections.
+        </p>
       </div>
 
       <div className="mt-4 grid grid-cols-2 gap-2.5 sm:grid-cols-3">

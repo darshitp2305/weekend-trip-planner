@@ -4,12 +4,16 @@ type FoodPricingInput = Pick<FoodSpot, "category" | "tags" | "name" | "estimated
   priceLevel?: string;
 };
 
+// Collapse the available text signals into one searchable string so the
+// heuristic can stay simple and consistent across the app.
 function normalizedFoodText(spot: FoodPricingInput) {
   return [spot.category, ...(spot.tags ?? []), spot.name]
     .join(" ")
     .toLowerCase();
 }
 
+// These are intentionally coarse buckets. The UI presents them as estimates,
+// not live menu pricing, because provider data does not expose real menu totals.
 function categoryBaseCost(text: string) {
   if (
     text.includes("cafe") ||
@@ -61,6 +65,8 @@ function priceLevelAdjustment(priceLevel?: string) {
   }
 }
 
+// Preserve any upstream estimate first, then fall back to our type + priceLevel
+// heuristic so mapped places and stored trips behave the same way.
 export function estimateFoodCostPerTraveler(spot: FoodPricingInput) {
   if (typeof spot.estimatedCost === "number" && spot.estimatedCost > 0) {
     return spot.estimatedCost;
@@ -72,6 +78,8 @@ export function estimateFoodCostPerTraveler(spot: FoodPricingInput) {
   return Math.max(10, Math.round(estimate));
 }
 
+// Builder cards and budget summaries reason in group totals, so this helper is
+// the single place where per-traveler estimates become trip-level spend.
 export function estimateFoodCostForGroup(
   spot: FoodPricingInput,
   travelers: number
@@ -79,6 +87,8 @@ export function estimateFoodCostForGroup(
   return estimateFoodCostPerTraveler(spot) * Math.max(1, travelers);
 }
 
+// Show a band instead of a fake exact number to make the heuristic nature of
+// the estimate clear in the UI.
 export function estimateFoodCostRangeForGroup(
   spot: FoodPricingInput,
   travelers: number
@@ -90,6 +100,7 @@ export function estimateFoodCostRangeForGroup(
   return { low, expected, high };
 }
 
+// Keep the UI copy honest about where the estimate came from.
 export function foodPricingSourceLabel(spot: FoodPricingInput) {
   const category = spot.category?.trim();
 
