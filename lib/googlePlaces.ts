@@ -93,6 +93,10 @@ type HotelSearchOptions = {
   tripEndDate?: string;
 };
 
+type FoodSearchOptions = {
+  veganFriendly?: boolean;
+};
+
 const FIELD_MASK = [
   "places.id",
   "places.displayName",
@@ -107,20 +111,31 @@ const FIELD_MASK = [
   "places.photos.name",
 ].join(",");
 
-export async function searchRestaurants(destination: string) {
+export async function searchRestaurants(
+  destination: string,
+  options?: FoodSearchOptions
+) {
+  const textQuery = options?.veganFriendly
+    ? `best vegan and vegetarian restaurants in ${destination}`
+    : `best restaurants in ${destination}`;
+
   return placesTextSearch<{ places?: GooglePlace[] }>(
     {
-      textQuery: `best restaurants in ${destination}`,
+      textQuery,
       maxResultCount: 10,
     },
     FIELD_MASK
   );
 }
 
-export async function searchCafes(destination: string) {
+export async function searchCafes(destination: string, options?: FoodSearchOptions) {
+  const textQuery = options?.veganFriendly
+    ? `best vegan cafes, plant-based brunch, and coffee shops in ${destination}`
+    : `best cafes and coffee shops in ${destination}`;
+
   return placesTextSearch<{ places?: GooglePlace[] }>(
     {
-      textQuery: `best cafes and coffee shops in ${destination}`,
+      textQuery,
       maxResultCount: 8,
     },
     FIELD_MASK

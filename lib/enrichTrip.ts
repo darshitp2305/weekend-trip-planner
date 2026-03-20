@@ -28,6 +28,8 @@ type EnrichmentCacheEntry = {
 
 const enrichCache = new Map<string, EnrichmentCacheEntry>();
 
+// Use averages only as a supporting signal for ranking copy and confidence.
+// Missing ratings are common in provider responses, so undefined is meaningful.
 function averageRating(
   items: Array<{ rating?: number }>
 ): number | undefined {
@@ -94,6 +96,8 @@ function placeSearchText(place: GooglePlace) {
 function shouldRejectPlace(place: GooglePlace, kind: "food" | "activity" | "hotel") {
   const text = placeSearchText(place);
 
+  // Broad text searches bring back plenty of operational or utility locations
+  // that technically match the query but should never shape trip quality.
   const bannedTerms = [
     "visitor centre",
     "visitor center",
@@ -144,6 +148,8 @@ function placeRelevanceScore(
   const tokens = destinationTokens(trip);
   let score = 0;
 
+  // Reward places that clearly belong to the destination instead of generic
+  // regional results returned from broad travel queries.
   for (const token of tokens) {
     if (text.includes(token)) {
       score += 8;
@@ -152,6 +158,7 @@ function placeRelevanceScore(
 
   const rating = place.rating ?? 0;
   const userRatingCount = place.userRatingCount ?? 0;
+  // Ratings without review volume are noisy, so count helps stabilize ordering.
   score += rating * 8;
   score += Math.min(18, Math.log10(Math.max(1, userRatingCount)) * 8);
 
@@ -161,9 +168,18 @@ function placeRelevanceScore(
     if (input.style === "foodie" && ["market", "brew", "chef", "dining"].some((term) => text.includes(term))) {
       score += 8;
     }
+    if (input.veganFriendly) {
+      if (["vegan", "vegetarian", "plant", "salad", "organic"].some((term) => text.includes(term))) {
+        score += 18;
+      } else {
+        score -= 6;
+      }
+    }
   }
 
   if (kind === "activity") {
+    // Activity relevance depends heavily on trip style, so we bias the score
+    // toward terms that match the user's stated intent.
     const styleSignals =
       input.style === "foodie"
         ? ["market", "tour", "museum", "downtown"]
@@ -192,6 +208,8 @@ function rankPlaces(
   kind: "food" | "activity" | "hotel",
   input: TripInput
 ) {
+  // Filter first, then sort by trip-specific relevance so downstream mapping
+  // sees the best provider candidates in a stable order.
   return [...places]
     .filter((place) => !shouldRejectPlace(place, kind))
     .sort(
@@ -207,6 +225,7 @@ function createEnrichCacheKey(trip: RankedDestination, input: TripInput) {
     province: trip.province,
     startCity: input.startCity,
     style: input.style,
+    veganFriendly: input.veganFriendly,
     tripStartDate: input.tripStartDate,
     tripEndDate: input.tripEndDate,
     travelerCount: input.travelerCount,
@@ -235,6 +254,8 @@ function mergeHotelSources<
     rating?: number;
   },
 >(primary: TPrimary[], fallback: TFallback[]) {
+  // Google Places is better for identity and photos; SerpApi is better for
+  // hotel commerce fields. Merge by normalized name so each source fills gaps.
   const fallbackByName = new Map(
     fallback.map((item) => [normalizeName(item.name), item] as const)
   );
@@ -322,8 +343,12 @@ export async function enrichRankedTrip(
 
     const [restaurantsRes, cafesRes, activitiesRes, hotelsRes, serpHotels] =
       await Promise.all([
-        searchRestaurants(destinationQuery),
-        searchCafes(destinationQuery),
+        searchRestaurants(destinationQuery, {
+          veganFriendly: input.veganFriendly,
+        }),
+        searchCafes(destinationQuery, {
+          veganFriendly: input.veganFriendly,
+        }),
         searchActivities(destinationQuery, input.style),
         searchHotels(destinationQuery, {
           tripStartDate: input.tripStartDate,
