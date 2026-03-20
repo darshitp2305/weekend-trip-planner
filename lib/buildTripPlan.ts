@@ -334,6 +334,20 @@ function normalizedFoodSignals(food?: FoodSpot) {
   ]);
 }
 
+function isUtilityLikeFood(food?: FoodSpot) {
+  const text = normalizedFoodSignals(food);
+
+  return (
+    text.includes("general store") ||
+    text.includes("convenience") ||
+    text.includes("convenience store") ||
+    text.includes("grocery") ||
+    text.includes("supermarket") ||
+    text.includes("gas station") ||
+    text.includes("liquor store")
+  );
+}
+
 function normalizedActivitySignals(activity?: ActivitySpot) {
   return normalizeSignalText([
     activity?.type ?? "",
@@ -414,6 +428,10 @@ function styleFoodScore(food: FoodSpot | undefined, input: TripInput) {
   const text = normalizedFoodSignals(food);
   let score = 0;
 
+  if (isUtilityLikeFood(food)) {
+    score -= 12;
+  }
+
   if (input.style === "foodie") {
     if (
       text.includes("restaurant") ||
@@ -471,6 +489,10 @@ function foodScoreForMorning(food?: FoodSpot) {
   const text = normalizedFoodSignals(food);
   let score = 0;
 
+  if (isUtilityLikeFood(food)) {
+    score -= 10;
+  }
+
   if (
     text.includes("coffee") ||
     text.includes("cafe") ||
@@ -507,6 +529,10 @@ function foodScoreForDinner(food?: FoodSpot) {
   const text = normalizedFoodSignals(food);
   let score = 0;
 
+  if (isUtilityLikeFood(food)) {
+    return -40;
+  }
+
   if (
     text.includes("restaurant") ||
     text.includes("bistro") ||
@@ -521,14 +547,15 @@ function foodScoreForDinner(food?: FoodSpot) {
     score += 8;
   }
 
-  if (text.includes("cafe")) score += 1;
+  if (text.includes("cafe")) score -= 6;
 
   if (
     text.includes("coffee") ||
     text.includes("bakery") ||
     text.includes("breakfast") ||
     text.includes("brunch") ||
-    text.includes("waffle")
+    text.includes("waffle") ||
+    text.includes("provisions")
   ) {
     score -= 7;
   }
@@ -539,6 +566,10 @@ function foodScoreForDinner(food?: FoodSpot) {
 function foodScoreForArrivalDinner(food?: FoodSpot) {
   const text = normalizedFoodSignals(food);
   let score = 0;
+
+  if (isUtilityLikeFood(food)) {
+    return -40;
+  }
 
   if (
     text.includes("restaurant") ||
@@ -554,7 +585,7 @@ function foodScoreForArrivalDinner(food?: FoodSpot) {
     score += 10;
   }
 
-  if (text.includes("cafe")) score -= 2;
+  if (text.includes("cafe")) score -= 8;
 
   if (
     text.includes("coffee") ||
@@ -573,6 +604,10 @@ function foodScoreForArrivalDinner(food?: FoodSpot) {
 function foodScoreForFinalLightStop(food?: FoodSpot) {
   const text = normalizedFoodSignals(food);
   let score = 0;
+
+  if (isUtilityLikeFood(food)) {
+    score -= 12;
+  }
 
   if (
     text.includes("coffee") ||
@@ -811,7 +846,7 @@ function pickDinnerFood(
     ctx.previousDayFoodNames,
     blockedNames,
     (food) => foodScoreForDinner(food) + styleFoodScore(food, input),
-    4,
+    8,
     proximity
   );
 }
@@ -827,7 +862,7 @@ function pickArrivalDinnerFood(
     ctx.previousDayFoodNames,
     blockedNames,
     (food) => foodScoreForArrivalDinner(food) + styleFoodScore(food, input),
-    6,
+    8,
     proximity
   );
 }

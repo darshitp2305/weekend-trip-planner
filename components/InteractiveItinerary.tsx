@@ -7,6 +7,7 @@ import {
   FoodSpot,
   HotelOption,
   ItineraryDayData,
+  TripSelectionState,
 } from "../lib/types";
 import {
   estimateFoodCostForGroup,
@@ -14,25 +15,20 @@ import {
   foodPricingSourceLabel,
 } from "../lib/foodPricing";
 
-type SelectionState = {
-  hotelName?: string;
-  foods: Record<string, string>;
-  activities: Record<string, string>;
-};
-
 type Props = {
   days: ItineraryDayData[];
   hotels: HotelOption[];
   foodSpots: FoodSpot[];
   activities: Activity[];
   travelerCount: number;
+  initialSelection?: TripSelectionState;
   destinationImageUrl?: string;
   startCityLabel?: string;
   startCityCoordinate?: {
     latitude: number;
     longitude: number;
   };
-  onSelectionChange?: (selection: SelectionState) => void;
+  onSelectionChange?: (selection: TripSelectionState) => void;
 };
 
 type StopOption = {
@@ -473,6 +469,7 @@ export default function InteractiveItinerary({
   foodSpots,
   activities,
   travelerCount,
+  initialSelection,
   destinationImageUrl,
   startCityLabel,
   startCityCoordinate,
@@ -480,8 +477,8 @@ export default function InteractiveItinerary({
 }: Props) {
   // Seed the planner from the generated itinerary so each day already has a
   // sensible default hotel, food stop, and activity before the user edits it.
-  const defaultSelection = useMemo<SelectionState>(() => {
-    const initial: SelectionState = {
+  const defaultSelection = useMemo<TripSelectionState>(() => {
+    const initial: TripSelectionState = {
       hotelName: hotels[0]?.name,
       foods: {},
       activities: {},
@@ -518,7 +515,9 @@ export default function InteractiveItinerary({
     return initial;
   }, [activities, days, foodSpots, hotels]);
 
-  const [selection, setSelection] = useState<SelectionState>(() => defaultSelection);
+  const [selection, setSelection] = useState<TripSelectionState>(
+    () => initialSelection ?? defaultSelection
+  );
   // Keep only one option grid open at a time so the long trip page stays
   // easier to scan and compare.
   const [editingStopKey, setEditingStopKey] = useState<string | null>(null);

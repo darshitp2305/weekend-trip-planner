@@ -234,6 +234,12 @@ export interface ItineraryDayData {
   stops: ItineraryStop[];
 }
 
+export interface TripSelectionState {
+  hotelName?: string;
+  foods: Record<string, string>;
+  activities: Record<string, string>;
+}
+
 export type TripDataSource =
   | "live-google-places"
   | "static-fallback"
@@ -271,6 +277,7 @@ export interface TripPlan {
   tripStartDate?: string;
   tripEndDate?: string;
   maxDriveMinutesBetweenStops?: number;
+  savedSelectionState?: TripSelectionState;
 
   // compatibility fields used by saved trip page / header
   name?: string;

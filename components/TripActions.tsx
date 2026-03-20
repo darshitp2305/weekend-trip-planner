@@ -1,6 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import {
+  buildTripCalendarIcs,
+  buildTripSummaryText,
+  suggestedCalendarFileName,
+} from "../lib/calendarExport";
 import { saveTripPlan } from "../lib/tripStore";
 import { TripPlan } from "../lib/types";
 
@@ -22,6 +27,7 @@ function InfoPill({
 
 export default function TripActions({ trip }: Props) {
   const [copied, setCopied] = useState(false);
+  const [summaryCopied, setSummaryCopied] = useState(false);
   const [saveStatus, setSaveStatus] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -60,6 +66,38 @@ export default function TripActions({ trip }: Props) {
     }
   }
 
+  function handleExportCalendar() {
+    try {
+      const ics = buildTripCalendarIcs(trip);
+      const blob = new Blob([ics], { type: "text/calendar;charset=utf-8" });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = suggestedCalendarFileName(trip);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      setSaveStatus("Calendar export downloaded.");
+    } catch (error) {
+      console.error("Calendar export failed:", error);
+      setSaveStatus("Calendar export failed.");
+    }
+  }
+
+  async function handleCopySummary() {
+    try {
+      await navigator.clipboard.writeText(buildTripSummaryText(trip));
+      setSummaryCopied(true);
+      setSaveStatus("Trip summary copied.");
+      window.setTimeout(() => setSummaryCopied(false), 1600);
+    } catch (error) {
+      console.error("Trip summary copy failed:", error);
+      setSummaryCopied(false);
+      setSaveStatus("Trip summary copy failed.");
+    }
+  }
+
   const firstHotelSite =
     trip.hotelOptions?.[0]?.websiteUrl || trip.hotelOptions?.[0]?.bookingLink;
 
@@ -95,6 +133,22 @@ export default function TripActions({ trip }: Props) {
           className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
         >
           {copied ? "Link copied" : "Copy page link"}
+        </button>
+
+        <button
+          type="button"
+          onClick={handleExportCalendar}
+          className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+        >
+          Export calendar
+        </button>
+
+        <button
+          type="button"
+          onClick={handleCopySummary}
+          className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+        >
+          {summaryCopied ? "Summary copied" : "Copy trip summary"}
         </button>
 
         {firstHotelSite ? (

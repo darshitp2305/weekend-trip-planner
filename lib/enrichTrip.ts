@@ -120,6 +120,7 @@ function shouldRejectPlace(place: GooglePlace, kind: "food" | "activity" | "hote
       "gas station",
       "convenience store",
       "grocery store",
+      "general store",
       "supermarket",
       "liquor store",
     ];

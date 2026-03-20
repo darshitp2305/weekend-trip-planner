@@ -27,11 +27,15 @@ function writeLocalPlans(plans: TripPlan[]) {
   }
 }
 
-export async function saveTripPlan(plan: TripPlan) {
+export function upsertLocalTripPlan(plan: TripPlan) {
   const plans = readLocalPlans();
   const next = plans.filter((p) => p.id !== plan.id);
   next.push(plan);
   writeLocalPlans(next);
+}
+
+export async function saveTripPlan(plan: TripPlan) {
+  upsertLocalTripPlan(plan);
 
   try {
     const accessToken =
@@ -94,10 +98,7 @@ export async function getTripPlanById(id: string): Promise<TripPlan | null> {
 
     const trip = data.trip as TripPlan;
 
-    const plans = readLocalPlans();
-    const next = plans.filter((p) => p.id !== trip.id);
-    next.push(trip);
-    writeLocalPlans(next);
+    upsertLocalTripPlan(trip);
 
     return trip;
   } catch (error) {

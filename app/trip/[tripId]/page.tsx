@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { useParams, useRouter } from "next/navigation";
-import { getTripPlanById } from "../../../lib/tripStore";
+import { getTripPlanById, upsertLocalTripPlan } from "../../../lib/tripStore";
 import TripHeader from "../../../components/TripHeader";
 import BudgetBreakdown from "../../../components/BudgetBreakdown";
 import TripActions from "../../../components/TripActions";
@@ -16,6 +16,7 @@ import {
   FoodSpot,
   HotelOption,
   ItineraryDayData,
+  TripSelectionState,
   TripPlan,
 } from "../../../lib/types";
 
@@ -72,6 +73,18 @@ function optionSortScore(name: string, preferredTitle?: string) {
 
 function stopKey(dayIndex: number, stopIndex: number) {
   return `day-${dayIndex}-stop-${stopIndex}`;
+}
+
+function emptySelectionState(): TripSelectionState {
+  return {
+    hotelName: undefined,
+    foods: {},
+    activities: {},
+  };
+}
+
+function selectionStatesEqual(a: TripSelectionState, b: TripSelectionState) {
+  return JSON.stringify(a) === JSON.stringify(b);
 }
 
 function deriveTripLengthDays(trip: TripPlan | null): number {
@@ -255,14 +268,24 @@ export default function TripPage() {
   );
   const tripDateRange = formatDateRange(trip?.tripStartDate, trip?.tripEndDate);
   const [selectionState, setSelectionState] = useState<{
-    hotelName?: string;
-    foods: Record<string, string>;
-    activities: Record<string, string>;
+    tripId?: string;
+    selection: TripSelectionState;
   }>({
-    hotelName: undefined,
-    foods: {},
-    activities: {},
+    tripId: undefined,
+    selection: emptySelectionState(),
   });
+
+  const activeSelectionState = useMemo(() => {
+    if (!trip) {
+      return emptySelectionState();
+    }
+
+    if (selectionState.tripId === trip.id) {
+      return selectionState.selection;
+    }
+
+    return trip.savedSelectionState ?? emptySelectionState();
+  }, [selectionState, trip]);
 
   const travelerCount = useMemo(() => {
     const value = Number(trip?.travelerCount ?? 1);
@@ -273,9 +296,9 @@ export default function TripPage() {
     if (!trip) return undefined;
 
     return (trip.hotelOptions ?? []).find(
-      (hotel: HotelOption) => hotel.name === selectionState.hotelName
+      (hotel: HotelOption) => hotel.name === activeSelectionState.hotelName
     ) ?? trip.hotelOptions?.[0];
-  }, [selectionState.hotelName, trip]);
+  }, [activeSelectionState.hotelName, trip]);
 
   const selectedBudget = useMemo(() => {
     if (!trip) return null;
@@ -285,7 +308,7 @@ export default function TripPage() {
     const gas = Number(trip?.budgetBreakdown?.gas ?? 0);
 
     const selectedHotel = (trip.hotelOptions ?? []).find(
-      (hotel: HotelOption) => hotel.name === selectionState.hotelName
+      (hotel: HotelOption) => hotel.name === activeSelectionState.hotelName
     );
 
     const hotel =
@@ -295,7 +318,7 @@ export default function TripPage() {
           ? selectedHotel.pricePerNight * nights
           : Number(trip?.budgetBreakdown?.hotel ?? 0);
 
-    const food = Object.values(selectionState.foods).reduce((sum, selectedName) => {
+    const food = Object.values(activeSelectionState.foods).reduce((sum, selectedName) => {
       const spot = (trip.foodSpots ?? []).find(
         (item: FoodSpot) => item.name === selectedName
       );
@@ -305,7 +328,7 @@ export default function TripPage() {
       return sum + estimateFoodCostForGroup(spot, travelerCount);
     }, 0);
 
-    const activities = Object.values(selectionState.activities).reduce(
+    const activities = Object.values(activeSelectionState.activities).reduce(
       (sum, selectedName) => {
         const activity = (trip.topActivities ?? []).find(
           (item: Activity) => item.name === selectedName
@@ -329,11 +352,12 @@ export default function TripPage() {
       gas: Math.round(gas),
       activities: Math.round(activities),
       misc,
+      total: totalExpected,
       totalExpected,
       totalLow: Math.round(totalExpected * 0.9),
       totalHigh: Math.round(totalExpected * 1.15),
     };
-  }, [selectionState, travelerCount, trip]);
+  }, [activeSelectionState, travelerCount, trip]);
 
   const targetTotalBudget = useMemo(() => {
     const fromSavedField = Number(trip?.totalBudget);
@@ -452,7 +476,7 @@ export default function TripPage() {
     }> = [];
     let missingLocationCount = 0;
     const selectedHotel =
-      hotels.find((hotel) => hotel.name === selectionState.hotelName) ??
+      hotels.find((hotel) => hotel.name === activeSelectionState.hotelName) ??
       hotels[0];
 
     itineraryDays.forEach((day: ItineraryDayData, dayIndex) => {
@@ -478,7 +502,7 @@ export default function TripPage() {
 
         if (stop.kind === "stay") {
           const selectedHotel =
-            hotels.find((hotel) => hotel.name === selectionState.hotelName) ??
+            hotels.find((hotel) => hotel.name === activeSelectionState.hotelName) ??
             pickMatchedHotel(hotels, stop.title);
 
           if (!selectedHotel) {
@@ -521,7 +545,8 @@ export default function TripPage() {
 
         if (stop.kind === "food") {
           const selectedName =
-            selectionState.foods[key] ?? pickMatchedFood(foodSpots, stop.title)?.name;
+            activeSelectionState.foods[key] ??
+            pickMatchedFood(foodSpots, stop.title)?.name;
           const selectedFood = foodSpots.find((spot) => spot.name === selectedName);
 
           if (!selectedFood) {
@@ -556,7 +581,7 @@ export default function TripPage() {
 
         if (stop.kind === "activity") {
           const selectedName =
-            selectionState.activities[key] ??
+            activeSelectionState.activities[key] ??
             pickMatchedActivity(activities, stop.title)?.name;
           const selectedActivity = activities.find(
             (activity) => activity.name === selectedName
@@ -603,7 +628,50 @@ export default function TripPage() {
     });
 
     return { pins, routePaths, missingLocationCount };
-  }, [itineraryDays, selectionState, trip]);
+  }, [activeSelectionState, itineraryDays, trip]);
+
+  const persistedTrip = useMemo(() => {
+    if (!trip) return null;
+
+    return {
+      ...trip,
+      savedSelectionState: activeSelectionState,
+      budgetBreakdown: selectedBudget ?? trip.budgetBreakdown,
+    } satisfies TripPlan;
+  }, [activeSelectionState, selectedBudget, trip]);
+
+  useEffect(() => {
+    if (!persistedTrip?.id) return;
+
+    const timeout = window.setTimeout(() => {
+      upsertLocalTripPlan(persistedTrip);
+    }, 250);
+
+    return () => {
+      window.clearTimeout(timeout);
+    };
+  }, [persistedTrip]);
+
+  const handleSelectionChange = useCallback(
+    (nextSelection: TripSelectionState) => {
+      if (!trip) return;
+
+      setSelectionState((current) => {
+        if (
+          current.tripId === trip.id &&
+          selectionStatesEqual(current.selection, nextSelection)
+        ) {
+          return current;
+        }
+
+        return {
+          tripId: trip.id,
+          selection: nextSelection,
+        };
+      });
+    },
+    [trip]
+  );
 
   if (loading) {
     return (
@@ -637,7 +705,7 @@ export default function TripPage() {
   return (
     <main className="min-h-screen bg-[#f6f8fb] px-4 py-6 text-slate-900 dark:bg-slate-950 dark:text-slate-100 sm:px-6">
       <div className="mx-auto max-w-[1400px] space-y-5">
-        <TripHeader trip={trip} />
+        <TripHeader trip={persistedTrip ?? trip} />
 
         <div className="grid gap-5 xl:grid-cols-[320px_minmax(0,1fr)] xl:items-start">
           <aside className="xl:sticky xl:top-5">
@@ -717,7 +785,7 @@ export default function TripPage() {
 
                 <div className="border-t border-slate-200 dark:border-slate-800" />
 
-                <TripActions trip={trip} />
+                <TripActions trip={persistedTrip ?? trip} />
               </div>
             </div>
           </aside>
@@ -799,11 +867,13 @@ export default function TripPage() {
               />
 
               <InteractiveItinerary
+                key={`${trip.id}:${JSON.stringify(trip.savedSelectionState ?? emptySelectionState())}`}
                 days={itineraryDays}
                 hotels={trip.hotelOptions ?? []}
                 foodSpots={trip.foodSpots ?? []}
                 activities={trip.topActivities ?? []}
                 travelerCount={travelerCount}
+                initialSelection={trip.savedSelectionState}
                 destinationImageUrl={trip.imageUrl}
                 startCityLabel={trip.startCity ?? undefined}
                 startCityCoordinate={
@@ -815,7 +885,7 @@ export default function TripPage() {
                       }
                     : undefined
                 }
-                onSelectionChange={setSelectionState}
+                onSelectionChange={handleSelectionChange}
               />
             </div>
           ) : (
