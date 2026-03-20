@@ -17,7 +17,11 @@ export async function POST(request: Request) {
 
     const sharedTripRecord = {
       id: plan.id,
-      trip_data: plan,
+      trip_data: {
+        ...plan,
+        ownerUserId: authUser?.userId ?? plan.ownerUserId,
+        ownerEmail: authUser?.email ?? plan.ownerEmail,
+      },
     };
 
     const records = [sharedTripRecord];
@@ -28,6 +32,7 @@ export async function POST(request: Request) {
         trip_data: {
           ...plan,
           ownerUserId: authUser.userId,
+          ownerEmail: authUser.email,
         },
       });
     }

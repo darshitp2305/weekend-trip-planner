@@ -2,10 +2,17 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
-import { useParams, useRouter } from "next/navigation";
-import { getTripPlanById, upsertLocalTripPlan } from "../../../lib/tripStore";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
+import {
+  getTripPlanById,
+  saveTripPlan,
+  upsertLocalTripPlan,
+} from "../../../lib/tripStore";
 import TripHeader from "../../../components/TripHeader";
 import BudgetBreakdown from "../../../components/BudgetBreakdown";
+import FinalizeTripPanel from "../../../components/FinalizeTripPanel";
+import SharedTripSnapshot from "../../../components/SharedTripSnapshot";
+import TripFeedbackPanel from "../../../components/TripFeedbackPanel";
 import TripActions from "../../../components/TripActions";
 import InteractiveItinerary from "../../../components/InteractiveItinerary";
 import { formatDateRange } from "../../../lib/tripDates";
@@ -192,8 +199,11 @@ function pickMatchedActivity(activities: Activity[], stopTitle?: string) {
 export default function TripPage() {
   const params = useParams<{ tripId: string }>();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [trip, setTrip] = useState<TripPlan | null>(null);
   const [loading, setLoading] = useState(true);
+  const [finalizeStatus, setFinalizeStatus] = useState("");
+  const [finalizing, setFinalizing] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -427,6 +437,14 @@ export default function TripPage() {
     };
   }, [estimatedTotalCost, targetTotalBudget]);
 
+  const budgetDelta = useMemo(() => {
+    if (targetTotalBudget <= 0 || estimatedTotalCost <= 0) {
+      return null;
+    }
+
+    return estimatedTotalCost - targetTotalBudget;
+  }, [estimatedTotalCost, targetTotalBudget]);
+
   const itineraryOverview = useMemo(() => {
     const editableStops = itineraryDays.reduce((sum, day) => {
       return (
@@ -640,6 +658,28 @@ export default function TripPage() {
     } satisfies TripPlan;
   }, [activeSelectionState, selectedBudget, trip]);
 
+  const routeSummaryLabel = useMemo(() => {
+    const duration = formatDurationSeconds(trip?.routeSummary?.durationSeconds);
+    const distance = formatDistanceMeters(trip?.routeSummary?.distanceMeters);
+
+    if (duration && distance) {
+      return `${duration} drive covering about ${distance}.`;
+    }
+
+    if (duration) {
+      return `${duration} drive.`;
+    }
+
+    if (distance) {
+      return `About ${distance} on the road.`;
+    }
+
+    return undefined;
+  }, [trip]);
+
+  const requestedShareView = searchParams.get("view") === "share";
+  const isShareView = requestedShareView && trip?.status === "finalized";
+
   useEffect(() => {
     if (!persistedTrip?.id) return;
 
@@ -655,6 +695,8 @@ export default function TripPage() {
   const handleSelectionChange = useCallback(
     (nextSelection: TripSelectionState) => {
       if (!trip) return;
+
+      setFinalizeStatus("");
 
       setSelectionState((current) => {
         if (
@@ -672,6 +714,52 @@ export default function TripPage() {
     },
     [trip]
   );
+
+  const handleFinalizeTrip = useCallback(async () => {
+    if (!persistedTrip) return;
+
+    try {
+      setFinalizing(true);
+      setFinalizeStatus("");
+
+      const finalizedTrip: TripPlan = {
+        ...persistedTrip,
+        status: "finalized",
+        finalizedAt: new Date().toISOString(),
+      };
+
+      const result = await saveTripPlan(finalizedTrip);
+
+      if (!result.success) {
+        setFinalizeStatus("Finalized trip save failed.");
+        return;
+      }
+
+      setTrip(finalizedTrip);
+      setSelectionState({
+        tripId: finalizedTrip.id,
+        selection: finalizedTrip.savedSelectionState ?? emptySelectionState(),
+      });
+      setFinalizeStatus(
+        result.accountSaved
+          ? "Finalized trip saved to your account."
+          : "Finalized trip saved locally."
+      );
+    } catch (error) {
+      console.error("Failed to finalize trip:", error);
+      setFinalizeStatus("Finalized trip save failed.");
+    } finally {
+      setFinalizing(false);
+    }
+  }, [persistedTrip]);
+
+  const handleTripUpdated = useCallback((nextTrip: TripPlan) => {
+    setTrip(nextTrip);
+    setSelectionState({
+      tripId: nextTrip.id,
+      selection: nextTrip.savedSelectionState ?? emptySelectionState(),
+    });
+  }, []);
 
   if (loading) {
     return (
@@ -704,9 +792,57 @@ export default function TripPage() {
 
   return (
     <main className="min-h-screen bg-[#f6f8fb] px-4 py-6 text-slate-900 dark:bg-slate-950 dark:text-slate-100 sm:px-6">
-      <div className="mx-auto max-w-[1400px] space-y-5">
+      <div className={`mx-auto space-y-5 ${isShareView ? "max-w-6xl" : "max-w-[1400px]"}`}>
         <TripHeader trip={persistedTrip ?? trip} />
 
+        {isShareView ? (
+          <div className="space-y-5">
+            <section className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-violet-600 dark:text-violet-300">
+                Share mode
+              </div>
+              <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">
+                Partner-friendly trip view
+              </h2>
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600 dark:text-slate-300">
+                This version strips out itinerary editing controls and keeps the finalized plan focused on the decision: where you are staying, what the trip costs, and how the weekend flows.
+              </p>
+            </section>
+
+            <section className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+              <TripActions
+                trip={persistedTrip ?? trip}
+                shareMode={true}
+                onTripUpdated={handleTripUpdated}
+              />
+            </section>
+
+            <SharedTripSnapshot
+              trip={persistedTrip ?? trip}
+              selection={activeSelectionState}
+              tripDateRange={tripDateRange}
+              routeSummary={routeSummaryLabel}
+              estimatedTotalCost={estimatedTotalCost}
+              estimatedBudgetPerTraveler={estimatedBudgetPerTraveler}
+              travelerCount={travelerCount}
+            />
+
+            <TripFeedbackPanel
+              trip={persistedTrip ?? trip}
+              onTripUpdated={handleTripUpdated}
+            />
+
+            <TripStopMap
+              pins={tripMapData.pins}
+              routePaths={tripMapData.routePaths}
+              missingLocationCount={tripMapData.missingLocationCount}
+            />
+
+            <section className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+              <BudgetBreakdown breakdown={selectedBudget ?? trip.budgetBreakdown} />
+            </section>
+          </div>
+        ) : (
         <div className="grid gap-5 xl:grid-cols-[320px_minmax(0,1fr)] xl:items-start">
           <aside className="xl:sticky xl:top-5">
             <div className="overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
@@ -785,13 +921,27 @@ export default function TripPage() {
 
                 <div className="border-t border-slate-200 dark:border-slate-800" />
 
-                <TripActions trip={persistedTrip ?? trip} />
+                <TripActions
+                  trip={persistedTrip ?? trip}
+                  onTripUpdated={handleTripUpdated}
+                />
               </div>
             </div>
           </aside>
 
           {itineraryDays.length > 0 ? (
             <div className="space-y-5">
+              <FinalizeTripPanel
+                trip={persistedTrip ?? trip}
+                selection={activeSelectionState}
+                estimatedTotalCost={estimatedTotalCost}
+                budgetDelta={budgetDelta}
+                routeSummary={routeSummaryLabel}
+                onFinalize={handleFinalizeTrip}
+                finalizing={finalizing}
+                statusMessage={finalizeStatus}
+              />
+
               <section className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
                 <div className="flex flex-col gap-1">
                   <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-violet-600 dark:text-violet-300">
@@ -898,6 +1048,7 @@ export default function TripPage() {
             </section>
           )}
         </div>
+        )}
       </div>
     </main>
   );

@@ -1836,6 +1836,22 @@ export function buildTripPlan(
     tripStartDate: safeInput.tripStartDate,
     tripEndDate: safeInput.tripEndDate,
     maxDriveMinutesBetweenStops: safeInput.maxDriveMinutesBetweenStops,
+    status: "draft",
+    decisionStatus: "waiting_on_partner",
+    bookingChecklist: {
+      reservedStay: {
+        done: false,
+      },
+      exportedCalendar: {
+        done: false,
+      },
+      confirmedTravelers: {
+        done: false,
+      },
+      sharedItinerary: {
+        done: false,
+      },
+    },
 
     name: trip.name,
     title: trip.name,

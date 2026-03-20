@@ -240,6 +240,46 @@ export interface TripSelectionState {
   activities: Record<string, string>;
 }
 
+export type TripFeedbackReaction = "love" | "maybe" | "pass";
+export type TripDecisionStatus =
+  | "waiting_on_partner"
+  | "needs_changes"
+  | "approved"
+  | "booked";
+
+export interface TripReactionEntry {
+  id: string;
+  visitorId: string;
+  userId?: string;
+  author?: string;
+  reaction: TripFeedbackReaction;
+  createdAt: string;
+}
+
+export interface TripCommentEntry {
+  id: string;
+  visitorId: string;
+  userId?: string;
+  author?: string;
+  message: string;
+  createdAt: string;
+}
+
+export interface TripChecklistItemState {
+  done: boolean;
+  updatedAt?: string;
+  updatedBy?: string;
+  visitorId?: string;
+  userId?: string;
+}
+
+export interface TripBookingChecklist {
+  reservedStay: TripChecklistItemState;
+  exportedCalendar: TripChecklistItemState;
+  confirmedTravelers: TripChecklistItemState;
+  sharedItinerary: TripChecklistItemState;
+}
+
 export type TripDataSource =
   | "live-google-places"
   | "static-fallback"
@@ -278,6 +318,16 @@ export interface TripPlan {
   tripEndDate?: string;
   maxDriveMinutesBetweenStops?: number;
   savedSelectionState?: TripSelectionState;
+  status?: "draft" | "finalized";
+  finalizedAt?: string;
+  decisionStatus?: TripDecisionStatus;
+  decisionUpdatedAt?: string;
+  decisionUpdatedBy?: string;
+  reactions?: TripReactionEntry[];
+  comments?: TripCommentEntry[];
+  bookingChecklist?: TripBookingChecklist;
+  ownerUserId?: string;
+  ownerEmail?: string;
 
   // compatibility fields used by saved trip page / header
   name?: string;

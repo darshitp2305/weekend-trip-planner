@@ -16,6 +16,9 @@ type TripHeaderProps = {
     source?: string;
     rawVibes?: string[];
     confidence?: string;
+    status?: "draft" | "finalized";
+    finalizedAt?: string;
+    decisionStatus?: "waiting_on_partner" | "needs_changes" | "approved" | "booked";
     routeSummary?: {
       distanceMeters?: number;
       durationSeconds?: number;
@@ -95,6 +98,47 @@ function sourceLabel(trip: TripHeaderProps["trip"]) {
   return "Saved trip";
 }
 
+function decisionLabel(status?: TripHeaderProps["trip"]["decisionStatus"]) {
+  switch (status) {
+    case "approved":
+      return "Approved";
+    case "booked":
+      return "Booked";
+    case "needs_changes":
+      return "Needs changes";
+    case "waiting_on_partner":
+      return "Waiting on partner";
+    default:
+      return null;
+  }
+}
+
+function decisionTone(status?: TripHeaderProps["trip"]["decisionStatus"]) {
+  switch (status) {
+    case "approved":
+    case "booked":
+      return "green" as const;
+    case "needs_changes":
+      return "violet" as const;
+    case "waiting_on_partner":
+    default:
+      return "slate" as const;
+  }
+}
+
+function formatFinalizedAt(value?: string) {
+  if (!value) return null;
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+
+  return new Intl.DateTimeFormat("en-CA", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(date);
+}
+
 function formatDriveHours(hours?: number) {
   if (hours === undefined || !Number.isFinite(hours)) return "-";
   if (hours < 1) return `${Math.round(hours * 60)} min`;
@@ -142,6 +186,8 @@ export default function TripHeader({ trip }: TripHeaderProps) {
 
   const originLabel = trip.routeSummary?.origin?.label;
   const destinationLabel = trip.routeSummary?.destination?.label;
+  const finalizedDateLabel = formatFinalizedAt(trip.finalizedAt);
+  const tripDecisionLabel = decisionLabel(trip.decisionStatus);
 
   return (
     <section className="overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
@@ -161,6 +207,14 @@ export default function TripHeader({ trip }: TripHeaderProps) {
       <div className="p-5 sm:p-6">
         <div className="flex flex-wrap items-center gap-2">
           <Badge>{trip.province ?? "Alberta"}</Badge>
+          <Badge tone={trip.status === "finalized" ? "green" : "slate"}>
+            {trip.status === "finalized" ? "Finalized trip" : "Draft trip"}
+          </Badge>
+          {tripDecisionLabel ? (
+            <Badge tone={decisionTone(trip.decisionStatus)}>
+              {tripDecisionLabel}
+            </Badge>
+          ) : null}
           <Badge tone="violet">{confidenceLabel(trip.confidence)}</Badge>
           <Badge tone="green">{sourceLabel(trip)}</Badge>
           {trip.routeSummary ? <Badge>OpenStreetMap route</Badge> : null}
@@ -180,6 +234,12 @@ export default function TripHeader({ trip }: TripHeaderProps) {
           {originLabel && destinationLabel ? (
             <p className="mt-3 text-sm text-slate-500 dark:text-slate-400">
               Route: {originLabel} -&gt; {destinationLabel}
+            </p>
+          ) : null}
+
+          {trip.status === "finalized" && finalizedDateLabel ? (
+            <p className="mt-2 text-sm font-medium text-emerald-700 dark:text-emerald-300">
+              Finalized on {finalizedDateLabel}
             </p>
           ) : null}
         </div>
