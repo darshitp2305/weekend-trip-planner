@@ -1,7 +1,16 @@
 import Image from "next/image";
 import { formatDisplayTag, formatDisplayText } from "../lib/displayText";
+import { getTripMomentumSummary, getTripUrgencyLevel } from "../lib/tripMomentum";
+import { LiveDataSummary, TripDataSource, TripPlan } from "../lib/types";
+import {
+  tripFreshnessLabel,
+  tripProviderStatusText,
+  tripSourceLabel,
+  tripSourceTone,
+} from "../lib/trustSignals";
 
 type TripHeaderProps = {
+  shareMode?: boolean;
   trip: {
     title?: string;
     name?: string;
@@ -11,11 +20,11 @@ type TripHeaderProps = {
     summary?: string;
     driveHours?: number;
     driveHoursFromStart?: number;
-    styleMatchStrength?: string;
+    styleMatchStrength?: TripPlan["styleMatchStrength"];
     score?: number;
-    source?: string;
+    source?: TripDataSource;
     rawVibes?: string[];
-    confidence?: string;
+    confidence?: TripPlan["confidence"];
     status?: "draft" | "finalized";
     finalizedAt?: string;
     decisionStatus?: "waiting_on_partner" | "needs_changes" | "approved" | "booked";
@@ -29,9 +38,12 @@ type TripHeaderProps = {
         label?: string;
       };
     };
-    liveDataSummary?: {
-      usedPlacesData?: boolean;
-      usedFallbackData?: boolean;
+    liveDataSummary?: LiveDataSummary;
+    sourceCheckedAt?: string;
+    providerStatus?: {
+      places?: "live_success" | "live_unavailable" | "fallback_used";
+      hotels?: "live_success" | "live_unavailable" | "fallback_used";
+      tripCopy?: "live_success" | "live_unavailable" | "fallback_used";
     };
   };
 };
@@ -90,12 +102,7 @@ function confidenceLabel(confidence?: string) {
 }
 
 function sourceLabel(trip: TripHeaderProps["trip"]) {
-  if (trip.source === "live-google-places") return "Live Google Places";
-  if (trip.source === "static-fallback") return "Fallback data";
-  if (trip.source === "static-ranking") return "Static ranking";
-  if (trip.liveDataSummary?.usedPlacesData) return "Live Google Places";
-  if (trip.liveDataSummary?.usedFallbackData) return "Fallback data";
-  return "Saved trip";
+  return tripSourceLabel(trip);
 }
 
 function decisionLabel(status?: TripHeaderProps["trip"]["decisionStatus"]) {
@@ -163,9 +170,69 @@ function formatDistanceFromMeters(meters?: number) {
   return `${Math.round(km)} km`;
 }
 
-export default function TripHeader({ trip }: TripHeaderProps) {
+export default function TripHeader({ trip, shareMode = false }: TripHeaderProps) {
+  const isDraft = trip.status !== "finalized";
+  const isShareReviewState = shareMode;
   const title = trip.title ?? trip.name ?? trip.destination ?? "Saved trip";
   const vibes = Array.isArray(trip.rawVibes) ? trip.rawVibes.slice(0, 5) : [];
+  const momentumTrip: TripPlan = {
+    id: trip.name ?? trip.title ?? trip.destination ?? "trip",
+    destinationName: trip.destination ?? trip.name ?? trip.title ?? "Trip",
+    summary: trip.summary ?? "",
+    driveTimeText: "",
+    tags: [],
+    budgetBreakdown: {
+      hotel: 0,
+      food: 0,
+      gas: 0,
+      activities: 0,
+      misc: 0,
+      total: 0,
+      totalLow: 0,
+      totalExpected: 0,
+      totalHigh: 0,
+    },
+    hotelOptions: [],
+    foodSpots: [],
+    topActivities: [],
+    itineraryDays: [],
+    dataSource: trip.source ?? "static-ranking",
+    createdAt: trip.finalizedAt ?? trip.sourceCheckedAt ?? new Date().toISOString(),
+    title: trip.title,
+    name: trip.name,
+    destination: trip.destination,
+    province: trip.province,
+    imageUrl: trip.imageUrl,
+    confidence: trip.confidence,
+    styleMatchStrength: trip.styleMatchStrength,
+    score: trip.score,
+    rawVibes: trip.rawVibes,
+    source: trip.source,
+    status: trip.status,
+    finalizedAt: trip.finalizedAt,
+    decisionStatus: trip.decisionStatus,
+    sourceCheckedAt: trip.sourceCheckedAt,
+    liveDataSummary: trip.liveDataSummary,
+    providerStatus: trip.providerStatus,
+    routeSummary:
+      typeof trip.routeSummary?.distanceMeters === "number" &&
+      typeof trip.routeSummary?.durationSeconds === "number"
+        ? {
+            distanceMeters: trip.routeSummary.distanceMeters,
+            durationSeconds: trip.routeSummary.durationSeconds,
+            origin: trip.routeSummary.origin?.label
+              ? { lat: 0, lon: 0, label: trip.routeSummary.origin.label }
+              : undefined,
+            destination: trip.routeSummary.destination?.label
+              ? { lat: 0, lon: 0, label: trip.routeSummary.destination.label }
+              : undefined,
+          }
+        : undefined,
+  };
+  const momentumSummary = getTripMomentumSummary({
+    ...momentumTrip,
+  });
+  const followUpUrgency = getTripUrgencyLevel(momentumTrip);
 
   const fallbackDriveHours =
     trip.driveHours !== undefined
@@ -184,8 +251,6 @@ export default function TripHeader({ trip }: TripHeaderProps) {
     trip.routeSummary?.distanceMeters
   );
 
-  const originLabel = trip.routeSummary?.origin?.label;
-  const destinationLabel = trip.routeSummary?.destination?.label;
   const finalizedDateLabel = formatFinalizedAt(trip.finalizedAt);
   const tripDecisionLabel = decisionLabel(trip.decisionStatus);
 
@@ -210,13 +275,13 @@ export default function TripHeader({ trip }: TripHeaderProps) {
           <Badge tone={trip.status === "finalized" ? "green" : "slate"}>
             {trip.status === "finalized" ? "Finalized trip" : "Draft trip"}
           </Badge>
-          {tripDecisionLabel ? (
+          {!isDraft && tripDecisionLabel ? (
             <Badge tone={decisionTone(trip.decisionStatus)}>
               {tripDecisionLabel}
             </Badge>
           ) : null}
           <Badge tone="violet">{confidenceLabel(trip.confidence)}</Badge>
-          <Badge tone="green">{sourceLabel(trip)}</Badge>
+          <Badge tone={tripSourceTone(trip)}>{sourceLabel(trip)}</Badge>
           {trip.routeSummary ? <Badge>OpenStreetMap route</Badge> : null}
         </div>
 
@@ -231,15 +296,19 @@ export default function TripHeader({ trip }: TripHeaderProps) {
             </p>
           ) : null}
 
-          {originLabel && destinationLabel ? (
-            <p className="mt-3 text-sm text-slate-500 dark:text-slate-400">
-              Route: {originLabel} -&gt; {destinationLabel}
-            </p>
-          ) : null}
-
           {trip.status === "finalized" && finalizedDateLabel ? (
             <p className="mt-2 text-sm font-medium text-emerald-700 dark:text-emerald-300">
               Finalized on {finalizedDateLabel}
+            </p>
+          ) : null}
+          {!isDraft ? (
+            <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+              {tripFreshnessLabel(trip)}
+            </p>
+          ) : null}
+          {!isDraft && tripProviderStatusText(trip) ? (
+            <p className="mt-2 text-xs font-medium uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
+              {tripProviderStatusText(trip)}
             </p>
           ) : null}
         </div>
@@ -253,6 +322,46 @@ export default function TripHeader({ trip }: TripHeaderProps) {
             value={trip.score !== undefined ? String(trip.score) : "-"}
           />
         </div>
+
+        {!isDraft && !isShareReviewState ? (
+          <div className="mt-4 grid gap-2.5 sm:grid-cols-3 lg:max-w-4xl">
+            <Stat label="Momentum" value={momentumSummary.label} />
+            <Stat
+              label="Responses"
+              value={String(momentumSummary.responses)}
+            />
+            <Stat
+              label="Checklist"
+              value={`${momentumSummary.checklistProgress.completed}/${momentumSummary.checklistProgress.total}`}
+            />
+          </div>
+        ) : null}
+
+        {!isDraft && !isShareReviewState ? (
+          <div className="mt-2.5 max-w-4xl">
+            <Badge
+              tone={
+                followUpUrgency === "urgent"
+                  ? "violet"
+                  : followUpUrgency === "watch"
+                    ? "slate"
+                    : "green"
+              }
+            >
+              {followUpUrgency === "urgent"
+                ? "High follow-up urgency"
+                : followUpUrgency === "watch"
+                  ? "Medium follow-up urgency"
+                  : "Low follow-up urgency"}
+            </Badge>
+          </div>
+        ) : null}
+
+        {!isDraft && !isShareReviewState && momentumSummary.stale ? (
+          <div className="mt-4 rounded-[1.1rem] border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-100">
+            {momentumSummary.stale.detail}
+          </div>
+        ) : null}
 
         {vibes.length > 0 ? (
           <div className="mt-4 flex flex-wrap gap-2">

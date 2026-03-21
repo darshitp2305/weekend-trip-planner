@@ -1,13 +1,34 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useEffectEvent, useState } from "react";
+import { useEffect, useEffectEvent, useMemo, useState } from "react";
 import {
   getBrowserSupabaseAccessToken,
   supabaseBrowserAuth,
 } from "../lib/supabaseBrowserAuth";
 import { formatDisplayText } from "../lib/displayText";
-import { getAllTripPlans, TRIP_STORE_UPDATED_EVENT } from "../lib/tripStore";
+import {
+} from "../lib/tripFollowUpState";
+import {
+  getTripBudgetStatus,
+  getTripCountdownDays,
+  getTripDeparturePlanCompletion,
+  getTripNextDeadline,
+  getTripPhaseLabel,
+  getTripReadinessBlockers,
+  getTripReadinessSummary,
+} from "../lib/tripOperations";
+import {
+  getAllTripPlans,
+  removeLocalTripPlan,
+  removeLocalTripPlans,
+  saveTripPlan,
+  TRIP_STORE_UPDATED_EVENT,
+} from "../lib/tripStore";
+import {
+} from "../lib/productAnalytics";
+import {
+} from "../lib/tripMomentum";
 import { TripPlan } from "../lib/types";
 
 type AccountUser = {
@@ -20,6 +41,19 @@ type Props = {
   open: boolean;
   onClose: () => void;
 };
+
+type TripListFilter =
+  | "all"
+  | "draft"
+  | "waiting"
+  | "approved"
+  | "booked"
+  | "departing_soon"
+  | "ready"
+  | "at_risk";
+
+type TripSortMode = "recent" | "countdown" | "readiness" | "name";
+type DrawerCategory = "saved" | "shared";
 
 function formatDate(value?: string) {
   if (!value) return null;
@@ -58,6 +92,118 @@ function getFallbackImageUrl(name?: string) {
   return `https://picsum.photos/seed/${seed}/1200/800`;
 }
 
+function SavedTripMeta({ trip }: { trip: TripPlan }) {
+  const readiness = getTripReadinessSummary(trip);
+  const countdown = getTripCountdownDays(trip);
+  const blockers = getTripReadinessBlockers(trip);
+  const nextDeadline = getTripNextDeadline(trip);
+  const budgetStatus = getTripBudgetStatus(trip);
+  const departurePlan = getTripDeparturePlanCompletion(trip);
+
+  return (
+    <div className="rounded-[1rem] border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/70">
+      <div className="flex flex-wrap gap-2">
+        <span className="inline-flex rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+          {getTripPhaseLabel(trip)}
+        </span>
+        <span className="inline-flex rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+          Readiness {readiness.score}%
+        </span>
+        <span className="inline-flex rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+          {countdown === null ? "Dates open" : `${countdown}d countdown`}
+        </span>
+      </div>
+      <div className="mt-3 h-2 rounded-full bg-slate-200 dark:bg-slate-900">
+        <div
+          className="h-2 rounded-full bg-slate-950 dark:bg-violet-400"
+          style={{ width: `${Math.max(8, readiness.score)}%` }}
+        />
+      </div>
+      <div className="mt-3 grid gap-2 text-xs text-slate-600 dark:text-slate-300">
+        <div>Travelers {readiness.travelerSummary.confirmed}/{readiness.travelerSummary.total}</div>
+        <div>Departure plan {departurePlan.completed}/{departurePlan.total}</div>
+        <div>{budgetStatus.label}</div>
+        {nextDeadline ? (
+          <div>
+            {nextDeadline.isOverdue
+              ? `Deadline overdue: ${nextDeadline.task.label}`
+              : nextDeadline.isToday
+                ? `Deadline today: ${nextDeadline.task.label}`
+                : `Next deadline: ${nextDeadline.task.label}`}
+          </div>
+        ) : null}
+        {blockers[0] ? <div>Blocker: {blockers[0]}</div> : null}
+      </div>
+    </div>
+  );
+}
+
+function matchesTripFilter(trip: TripPlan, filter: TripListFilter) {
+  const countdown = getTripCountdownDays(trip);
+  const readiness = getTripReadinessSummary(trip);
+
+  switch (filter) {
+    case "draft":
+      return trip.status !== "finalized";
+    case "waiting":
+      return trip.status === "finalized" && (trip.decisionStatus ?? "waiting_on_partner") === "waiting_on_partner";
+    case "approved":
+      return trip.decisionStatus === "approved";
+    case "booked":
+      return trip.decisionStatus === "booked";
+    case "departing_soon":
+      return trip.decisionStatus === "booked" && countdown !== null && countdown >= 0 && countdown <= 7;
+    case "ready":
+      return (trip.decisionStatus === "approved" || trip.decisionStatus === "booked") && readiness.score >= 85;
+    case "at_risk":
+      return (trip.decisionStatus === "approved" || trip.decisionStatus === "booked") && readiness.score < 60;
+    case "all":
+    default:
+      return true;
+  }
+}
+
+function matchesTripQuery(trip: TripPlan, query: string) {
+  const normalized = query.trim().toLowerCase();
+  if (!normalized) return true;
+
+  return [
+    trip.title,
+    trip.name,
+    trip.destinationName,
+    trip.destination,
+    trip.summary,
+    trip.homeBaseCity,
+    trip.decisionStatus,
+  ]
+    .filter(Boolean)
+    .some((value) => `${value}`.toLowerCase().includes(normalized));
+}
+
+function sortTrips(trips: TripPlan[], mode: TripSortMode) {
+  return [...trips].sort((a, b) => {
+    if (mode === "name") {
+      return getTripTitle(a).localeCompare(getTripTitle(b));
+    }
+
+    if (mode === "countdown") {
+      const aCountdown = getTripCountdownDays(a);
+      const bCountdown = getTripCountdownDays(b);
+      const aValue = aCountdown === null ? 999 : aCountdown;
+      const bValue = bCountdown === null ? 999 : bCountdown;
+      if (aValue !== bValue) return aValue - bValue;
+    }
+
+    if (mode === "readiness") {
+      const readinessDelta =
+        getTripReadinessSummary(b).score - getTripReadinessSummary(a).score;
+      if (readinessDelta !== 0) return readinessDelta;
+    }
+
+    return `${b.createdAt ?? ""}`.localeCompare(`${a.createdAt ?? ""}`);
+  });
+}
+
 function SectionHeader({
   eyebrow,
   title,
@@ -82,10 +228,26 @@ function SavedTripCard({
   trip,
   tone,
   action,
+  meta,
+  isEditingName = false,
+  renameValue = "",
+  renameBusy = false,
+  onRenameValueChange,
+  onStartRename,
+  onCancelRename,
+  onSubmitRename,
 }: {
   trip: TripPlan;
   tone: "slate" | "violet";
   action?: React.ReactNode;
+  meta?: React.ReactNode;
+  isEditingName?: boolean;
+  renameValue?: string;
+  renameBusy?: boolean;
+  onRenameValueChange?: (value: string) => void;
+  onStartRename?: () => void;
+  onCancelRename?: () => void;
+  onSubmitRename?: () => void;
 }) {
   const imageUrl = trip.imageUrl?.trim() || getFallbackImageUrl(getTripTitle(trip));
   const badgeClass =
@@ -135,8 +297,52 @@ function SavedTripCard({
             >
               See details
             </Link>
+            {!isEditingName ? (
+              <button
+                type="button"
+                onClick={onStartRename}
+                className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+              >
+                Rename
+              </button>
+            ) : null}
             {action}
           </div>
+
+          {meta ? <div className="mt-3">{meta}</div> : null}
+
+          {isEditingName ? (
+            <div className="mt-3 rounded-[1rem] border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/70">
+              <label className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
+                Trip name
+              </label>
+              <input
+                type="text"
+                value={renameValue}
+                onChange={(event) => onRenameValueChange?.(event.target.value)}
+                placeholder="Weekend in Canmore"
+                className="mt-2 h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-violet-500/20"
+              />
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={onSubmitRename}
+                  disabled={renameBusy}
+                  className="inline-flex h-10 items-center justify-center rounded-xl bg-slate-950 px-4 text-sm font-medium text-white transition hover:bg-slate-800 disabled:opacity-60 dark:bg-violet-500 dark:text-slate-950 dark:hover:bg-violet-400"
+                >
+                  {renameBusy ? "Saving..." : "Save name"}
+                </button>
+                <button
+                  type="button"
+                  onClick={onCancelRename}
+                  disabled={renameBusy}
+                  className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-100 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : null}
         </div>
       </div>
     </article>
@@ -156,6 +362,60 @@ export default function AccountPanel({
   const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(false);
   const [removingTripId, setRemovingTripId] = useState<string | null>(null);
+  const [editingTripId, setEditingTripId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+  const [renamingTripId, setRenamingTripId] = useState<string | null>(null);
+  const [activeCategory, setActiveCategory] = useState<DrawerCategory>("saved");
+  const [tripFilter] = useState<TripListFilter>("all");
+  const [tripQuery, setTripQuery] = useState("");
+  const [tripSort] = useState<TripSortMode>("recent");
+  const filteredAccountTrips = useMemo(
+    () =>
+      sortTrips(
+        accountTrips.filter(
+          (trip) => matchesTripFilter(trip, tripFilter) && matchesTripQuery(trip, tripQuery)
+        ),
+        tripSort
+      ),
+    [accountTrips, tripFilter, tripQuery, tripSort]
+  );
+  const filteredLocalTrips = useMemo(
+    () =>
+      sortTrips(
+        localTrips.filter(
+          (trip) => matchesTripFilter(trip, tripFilter) && matchesTripQuery(trip, tripQuery)
+        ),
+        tripSort
+      ),
+    [localTrips, tripFilter, tripQuery, tripSort]
+  );
+  const combinedVisibleTrips = useMemo(() => {
+    const seen = new Set<string>();
+    return [...filteredAccountTrips, ...filteredLocalTrips].filter((trip) => {
+      if (seen.has(trip.id)) return false;
+      seen.add(trip.id);
+      return true;
+    });
+  }, [filteredAccountTrips, filteredLocalTrips]);
+  const savedTrips = useMemo(
+    () => combinedVisibleTrips.filter((trip) => trip.status !== "finalized"),
+    [combinedVisibleTrips]
+  );
+  const sharedTrips = useMemo(
+    () => combinedVisibleTrips.filter((trip) => trip.status === "finalized"),
+    [combinedVisibleTrips]
+  );
+
+  useEffect(() => {
+    if (activeCategory === "saved" && savedTrips.length === 0 && sharedTrips.length > 0) {
+      setActiveCategory("shared");
+      return;
+    }
+
+    if (activeCategory === "shared" && sharedTrips.length === 0 && savedTrips.length > 0) {
+      setActiveCategory("saved");
+    }
+  }, [activeCategory, savedTrips.length, sharedTrips.length]);
 
   async function buildAuthHeaders() {
     const token = await getBrowserSupabaseAccessToken();
@@ -235,7 +495,6 @@ export default function AccountPanel({
     } = supabaseBrowserAuth.auth.onAuthStateChange(() => refreshAccount());
 
     const handleTripStoreUpdate = () => refreshAccount();
-
     if (typeof window !== "undefined") {
       window.addEventListener(TRIP_STORE_UPDATED_EVENT, handleTripStoreUpdate);
       window.addEventListener("storage", handleTripStoreUpdate);
@@ -355,29 +614,134 @@ export default function AccountPanel({
       setRemovingTripId(tripId);
       setStatus("");
 
-      const response = await fetch("/api/account/trips", {
-        method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-          ...(await buildAuthHeaders()),
-        },
-        body: JSON.stringify({ tripId }),
-      });
+      const existsInAccount = accountTrips.some((trip) => trip.id === tripId);
+      const existsLocally = localTrips.some((trip) => trip.id === tripId);
 
-      const data = await response.json().catch(() => null);
+      if (existsInAccount) {
+        const response = await fetch("/api/account/trips", {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+            ...(await buildAuthHeaders()),
+          },
+          body: JSON.stringify({ tripId }),
+        });
 
-      if (!response.ok || !data?.success) {
-        setStatus(data?.error ?? "Failed to remove trip.");
-        return;
+        const data = await response.json().catch(() => null);
+
+        if (!response.ok || !data?.success) {
+          setStatus(data?.error ?? "Failed to remove trip.");
+          return;
+        }
+      }
+
+      if (existsLocally) {
+        removeLocalTripPlan(tripId);
       }
 
       setAccountTrips((prev) => prev.filter((trip) => trip.id !== tripId));
+      setLocalTrips((prev) => prev.filter((trip) => trip.id !== tripId));
       setStatus("Trip removed from your account.");
     } catch (error) {
       console.error("Account trip removal failed:", error);
       setStatus("Failed to remove trip.");
     } finally {
       setRemovingTripId(null);
+    }
+  }
+
+  async function handleRemoveAllSavedTrips() {
+    if (!savedTrips.length) return;
+
+    const confirmed = window.confirm(
+      "Remove all saved trips? This will delete every non-finalized trip in this drawer."
+    );
+
+    if (!confirmed) return;
+
+    try {
+      setRemovingTripId("all-saved");
+      setStatus("");
+
+      const savedTripIds = savedTrips.map((trip) => trip.id);
+      const accountSavedTripIds = savedTrips
+        .filter((trip) => accountTrips.some((accountTrip) => accountTrip.id === trip.id))
+        .map((trip) => trip.id);
+
+      for (const tripId of accountSavedTripIds) {
+        const response = await fetch("/api/account/trips", {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+            ...(await buildAuthHeaders()),
+          },
+          body: JSON.stringify({ tripId }),
+        });
+
+        const data = await response.json().catch(() => null);
+
+        if (!response.ok || !data?.success) {
+          throw new Error(data?.error ?? "Failed to remove saved trips.");
+        }
+      }
+
+      removeLocalTripPlans(savedTripIds);
+      setAccountTrips((prev) => prev.filter((trip) => !savedTripIds.includes(trip.id)));
+      setLocalTrips((prev) => prev.filter((trip) => !savedTripIds.includes(trip.id)));
+      setStatus("All saved trips removed.");
+    } catch (error) {
+      console.error("Bulk saved trip removal failed:", error);
+      setStatus("Failed to remove all saved trips.");
+    } finally {
+      setRemovingTripId(null);
+    }
+  }
+
+  function startRenameTrip(trip: TripPlan) {
+    setEditingTripId(trip.id);
+    setRenameValue(getTripTitle(trip));
+    setStatus("");
+  }
+
+  function cancelRenameTrip() {
+    setEditingTripId(null);
+    setRenameValue("");
+  }
+
+  async function handleRenameTrip(trip: TripPlan) {
+    const nextTitle = renameValue.trim();
+
+    if (!nextTitle) {
+      setStatus("Trip name cannot be empty.");
+      return;
+    }
+
+    if (nextTitle === getTripTitle(trip)) {
+      cancelRenameTrip();
+      return;
+    }
+
+    try {
+      setRenamingTripId(trip.id);
+      setStatus("");
+
+      const nextTrip: TripPlan = {
+        ...trip,
+        title: nextTitle,
+      };
+
+      await saveTripPlan(nextTrip);
+
+      setLocalTrips((prev) => prev.map((item) => (item.id === trip.id ? nextTrip : item)));
+      setAccountTrips((prev) => prev.map((item) => (item.id === trip.id ? nextTrip : item)));
+      setStatus("Trip name updated.");
+      cancelRenameTrip();
+      await loadAccount();
+    } catch (error) {
+      console.error("Trip rename failed:", error);
+      setStatus("Failed to rename trip.");
+    } finally {
+      setRenamingTripId(null);
     }
   }
 
@@ -486,24 +850,121 @@ export default function AccountPanel({
             )}
           </section>
 
-          {user ? (
-            <section>
-              <SectionHeader
-                eyebrow="Synced"
-                title={`${accountTrips.length} account save${accountTrips.length === 1 ? "" : "s"}`}
-                copy="These are the trips currently saved to your account and should be your primary saved list."
+          <section>
+            <div>
+              <input
+                type="text"
+                value={tripQuery}
+                onChange={(event) => setTripQuery(event.target.value)}
+                placeholder="Search trips, destinations, or status"
+                className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:ring-violet-500/20"
               />
-              {accountTrips.length > 0 ? (
+            </div>
+            <div className="mt-3 flex gap-2">
+              <button
+                type="button"
+                onClick={() => setActiveCategory("saved")}
+                className={`inline-flex h-10 items-center justify-center rounded-xl px-4 text-sm font-medium transition ${
+                  activeCategory === "saved"
+                    ? "bg-slate-950 text-white dark:bg-violet-500 dark:text-slate-950"
+                    : "border border-slate-300 bg-white text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                }`}
+              >
+                Saved trips ({savedTrips.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveCategory("shared")}
+                className={`inline-flex h-10 items-center justify-center rounded-xl px-4 text-sm font-medium transition ${
+                  activeCategory === "shared"
+                    ? "bg-slate-950 text-white dark:bg-violet-500 dark:text-slate-950"
+                    : "border border-slate-300 bg-white text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                }`}
+              >
+                Shared trips ({sharedTrips.length})
+              </button>
+            </div>
+          </section>
+
+          {activeCategory === "saved" ? (
+            <section>
+              <div className="flex items-start justify-between gap-3">
+                <SectionHeader
+                  eyebrow="Saved trips"
+                  title={`${savedTrips.length} saved trip${savedTrips.length === 1 ? "" : "s"}`}
+                  copy="Trips you are still building or keeping in planning."
+                />
+                {savedTrips.length > 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => void handleRemoveAllSavedTrips()}
+                    disabled={removingTripId === "all-saved"}
+                    className="inline-flex h-10 shrink-0 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-100 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                  >
+                    {removingTripId === "all-saved" ? "Removing..." : "Remove all"}
+                  </button>
+                ) : null}
+              </div>
+              {savedTrips.length > 0 ? (
                 <div className="mt-4 space-y-3">
-                  {accountTrips.map((trip) => (
+                  {savedTrips.map((trip) => (
                     <SavedTripCard
-                      key={`account-${trip.id}`}
+                      key={`saved-${trip.id}`}
                       trip={trip}
-                      tone="violet"
+                      tone="slate"
+                      meta={<SavedTripMeta trip={trip} />}
+                      isEditingName={editingTripId === trip.id}
+                      renameValue={renameValue}
+                      renameBusy={renamingTripId === trip.id}
+                      onRenameValueChange={setRenameValue}
+                      onStartRename={() => startRenameTrip(trip)}
+                      onCancelRename={cancelRenameTrip}
+                      onSubmitRename={() => void handleRenameTrip(trip)}
                       action={
                         <button
                           type="button"
-                          onClick={() => handleRemoveTrip(trip.id)}
+                          onClick={() => void handleRemoveTrip(trip.id)}
+                          disabled={removingTripId === trip.id || removingTripId === "all-saved"}
+                          className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-100 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                        >
+                          {removingTripId === trip.id ? "Removing..." : "Remove"}
+                        </button>
+                      }
+                    />
+                  ))}
+                </div>
+              ) : (
+                <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
+                  No saved trips right now.
+                </p>
+              )}
+            </section>
+          ) : (
+            <section>
+              <SectionHeader
+                eyebrow="Shared trips"
+                title={`${sharedTrips.length} shared trip${sharedTrips.length === 1 ? "" : "s"}`}
+                copy="Trips that have been finalized and are ready to send around, review, or book from."
+              />
+              {sharedTrips.length > 0 ? (
+                <div className="mt-4 space-y-3">
+                  {sharedTrips.map((trip) => (
+                    <SavedTripCard
+                      key={`shared-${trip.id}`}
+                      trip={trip}
+                      tone="violet"
+                      meta={<SavedTripMeta trip={trip} />}
+                      isEditingName={editingTripId === trip.id}
+                      renameValue={renameValue}
+                      renameBusy={renamingTripId === trip.id}
+                      onRenameValueChange={setRenameValue}
+                      onStartRename={() => startRenameTrip(trip)}
+                      onCancelRename={cancelRenameTrip}
+                      onSubmitRename={() => void handleRenameTrip(trip)}
+                      action={
+                        <button
+                          type="button"
+                          onClick={() => void handleRemoveTrip(trip.id)}
                           disabled={removingTripId === trip.id}
                           className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-100 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
                         >
@@ -515,34 +976,11 @@ export default function AccountPanel({
                 </div>
               ) : (
                 <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
-                  No account-saved trips yet.
+                  No shared trips right now.
                 </p>
               )}
             </section>
-          ) : null}
-
-          <section>
-            <SectionHeader
-              eyebrow={user ? "Device backup" : "On this device"}
-              title={`${localTrips.length} local save${localTrips.length === 1 ? "" : "s"}`}
-              copy={
-                user
-                  ? "These are the trips stored in this browser on this device. They stay secondary to your synced account saves."
-                  : "Hover a saved trip to expand it, preview the destination photo, and jump into the full trip page."
-              }
-            />
-            {localTrips.length > 0 ? (
-              <div className="mt-4 space-y-3">
-                {localTrips.map((trip) => (
-                  <SavedTripCard key={`local-${trip.id}`} trip={trip} tone="slate" />
-                ))}
-              </div>
-            ) : (
-              <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
-                No locally saved trips yet.
-              </p>
-            )}
-          </section>
+          )}
 
           {status ? (
             <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">

@@ -14,6 +14,7 @@ export type ViewerIdentity = {
   userId?: string;
   email?: string;
   displayName: string;
+  ready: boolean;
 };
 
 function getVisitorId() {
@@ -39,6 +40,7 @@ function displayNameFromEmail(email?: string) {
 export function useViewerIdentity() {
   const [visitorId] = useState(() => getVisitorId());
   const [accountUser, setAccountUser] = useState<AccountUser | null>(null);
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -58,6 +60,10 @@ export function useViewerIdentity() {
         }
       } catch (error) {
         console.error("Failed to resolve viewer identity:", error);
+      } finally {
+        if (!cancelled) {
+          setReady(true);
+        }
       }
     }
 
@@ -74,8 +80,9 @@ export function useViewerIdentity() {
       userId: accountUser?.id,
       email: accountUser?.email,
       displayName: displayNameFromEmail(accountUser?.email),
+      ready,
     }),
-    [accountUser?.email, accountUser?.id, visitorId]
+    [accountUser?.email, accountUser?.id, ready, visitorId]
   );
 
   return identity;

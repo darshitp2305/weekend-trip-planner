@@ -2,6 +2,12 @@
 
 import { preferredHotelBookingUrl } from "../lib/expediaLinks";
 import { TripPlan, TripSelectionState } from "../lib/types";
+import {
+  tripFreshnessLabel,
+  tripProviderStatusText,
+  tripSourceLabel,
+  tripTrustNote,
+} from "../lib/trustSignals";
 
 type Props = {
   trip: TripPlan;
@@ -25,6 +31,31 @@ function stopKey(dayIndex: number, stopIndex: number) {
   return `day-${dayIndex}-stop-${stopIndex}`;
 }
 
+function normalized(value?: string) {
+  return (value ?? "").trim().toLowerCase();
+}
+
+function timeWindowLabel(time?: string) {
+  switch (normalized(time)) {
+    case "morning":
+      return "8:00-10:00 AM";
+    case "late morning":
+      return "10:30 AM-12:30 PM";
+    case "afternoon":
+      return "1:00-4:00 PM";
+    case "late afternoon":
+      return "4:00-6:00 PM";
+    case "evening":
+      return "6:00-8:30 PM";
+    case "night":
+      return "After 8:00 PM";
+    case "anytime":
+      return "Flexible timing";
+    default:
+      return undefined;
+  }
+}
+
 function decisionLabel(status?: TripPlan["decisionStatus"]) {
   switch (status) {
     case "approved":
@@ -43,65 +74,15 @@ function decisionLabel(status?: TripPlan["decisionStatus"]) {
 function decisionGuidance(status?: TripPlan["decisionStatus"]) {
   switch (status) {
     case "approved":
-      return "The group is aligned. This page should now push booking and logistics.";
+      return "The group is aligned. This page reflects the locked trip details everyone should review from the same version.";
     case "booked":
-      return "The trip is booked. Use this page as the shared itinerary and logistics reference.";
+      return "The trip is booked. Use this page as the shared itinerary reference.";
     case "needs_changes":
       return "The plan needs another pass. Use comments and go back to planner mode to revise it.";
     case "waiting_on_partner":
     default:
-      return "The trip is still waiting on partner feedback. Share it, react to it, and move it toward approval.";
+      return "The trip is still waiting on partner feedback. Review it, react to it, and help move it toward approval.";
   }
-}
-
-function workflowStepIndex(trip: TripPlan) {
-  switch (trip.decisionStatus) {
-    case "booked":
-      return 4;
-    case "approved":
-      return 3;
-    case "needs_changes":
-    case "waiting_on_partner":
-      return 2;
-    default:
-      return trip.status === "finalized" ? 2 : 1;
-  }
-}
-
-function checklistItems(trip: TripPlan) {
-  const checklist = trip.bookingChecklist ?? {
-    reservedStay: { done: false },
-    exportedCalendar: { done: false },
-    confirmedTravelers: { done: false },
-    sharedItinerary: { done: false },
-  };
-
-  return [
-    {
-      key: "reservedStay",
-      label: "Stay reserved",
-      done: checklist.reservedStay.done,
-      updatedBy: checklist.reservedStay.updatedBy,
-    },
-    {
-      key: "exportedCalendar",
-      label: "Calendar exported",
-      done: checklist.exportedCalendar.done,
-      updatedBy: checklist.exportedCalendar.updatedBy,
-    },
-    {
-      key: "confirmedTravelers",
-      label: "Travelers confirmed",
-      done: checklist.confirmedTravelers.done,
-      updatedBy: checklist.confirmedTravelers.updatedBy,
-    },
-    {
-      key: "sharedItinerary",
-      label: "Itinerary shared",
-      done: checklist.sharedItinerary.done,
-      updatedBy: checklist.sharedItinerary.updatedBy,
-    },
-  ] as const;
 }
 
 export default function SharedTripSnapshot({
@@ -124,9 +105,6 @@ export default function SharedTripSnapshot({
     tripEndDate: trip.tripEndDate,
     travelerCount: trip.travelerCount,
   });
-  const currentStep = workflowStepIndex(trip);
-  const opsChecklist = checklistItems(trip);
-  const completedOpsCount = opsChecklist.filter((item) => item.done).length;
 
   return (
     <section className="space-y-5">
@@ -174,7 +152,19 @@ export default function SharedTripSnapshot({
           </div>
         </div>
 
-        <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+          <div className="rounded-[1rem] border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/70">
+            <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
+              Data source
+            </div>
+            <div className="mt-1 text-base font-semibold text-slate-950 dark:text-slate-100">
+              {tripSourceLabel(trip)}
+            </div>
+            <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+              {tripFreshnessLabel(trip)}
+            </p>
+          </div>
+
           <div className="rounded-[1rem] border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/70">
             <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
               Stay
@@ -215,66 +205,20 @@ export default function SharedTripSnapshot({
           </div>
         </div>
 
-        <div className="mt-5 rounded-[1rem] border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/70">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
-            Progress
+        <div className="mt-5 rounded-[1rem] border border-amber-200 bg-amber-50 p-4 dark:border-amber-500/30 dark:bg-amber-500/10">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-amber-700 dark:text-amber-300">
+            Trust note
           </div>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {["Plan", "Share", "Approve", "Book"].map((label, index) => {
-              const active = currentStep >= index + 1;
-
-              return (
-                <div
-                  key={label}
-                  className={
-                    active
-                      ? "min-w-[88px] flex-1 rounded-xl border border-violet-200 bg-white px-3 py-2 text-center text-xs font-semibold text-violet-700 dark:border-violet-500/30 dark:bg-slate-900 dark:text-violet-300"
-                      : "min-w-[88px] flex-1 rounded-xl border border-slate-200 bg-white/70 px-3 py-2 text-center text-xs font-semibold text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400"
-                  }
-                >
-                  {label}
-                </div>
-              );
-            })}
-          </div>
+          <p className="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-200">
+            {tripTrustNote(trip)}
+          </p>
+          {tripProviderStatusText(trip) ? (
+            <p className="mt-2 text-xs font-medium uppercase tracking-[0.14em] text-amber-700 dark:text-amber-300">
+              {tripProviderStatusText(trip)}
+            </p>
+          ) : null}
         </div>
 
-        {(trip.decisionStatus === "approved" || trip.decisionStatus === "booked") ? (
-          <div className="mt-5 rounded-[1rem] border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-500/30 dark:bg-emerald-500/10">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-700 dark:text-emerald-300">
-                  Trip ops
-                </div>
-                <div className="mt-1 text-base font-semibold text-slate-950 dark:text-slate-100">
-                  {completedOpsCount}/{opsChecklist.length} logistics done
-                </div>
-              </div>
-              <div className="text-sm text-slate-600 dark:text-slate-300">
-                {trip.decisionStatus === "booked"
-                  ? "Use this as the group status board."
-                  : "This trip is approved and moving into execution."}
-              </div>
-            </div>
-
-            <div className="mt-4 grid gap-2 md:grid-cols-2">
-              {opsChecklist.map((item) => (
-                    <div
-                      key={item.key}
-                      className={
-                    item.done
-                      ? "rounded-xl border border-emerald-200 bg-white px-3.5 py-3 text-sm font-semibold text-emerald-700 dark:border-emerald-500/30 dark:bg-slate-900 dark:text-emerald-300"
-                      : "rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-sm font-semibold text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
-                  }
-                    >
-                      {item.done ? "Done: " : "Open: "}
-                      {item.label}
-                      {item.done && item.updatedBy ? ` - ${item.updatedBy}` : ""}
-                    </div>
-                  ))}
-            </div>
-          </div>
-        ) : null}
       </section>
 
       <section className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
@@ -344,6 +288,11 @@ export default function SharedTripSnapshot({
                       <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
                         {stop.time ?? stop.kind ?? "Stop"}
                       </div>
+                      {timeWindowLabel(stop.time) ? (
+                        <div className="mt-1 text-[12px] font-medium leading-5 text-slate-500 dark:text-slate-400">
+                          {timeWindowLabel(stop.time)}
+                        </div>
+                      ) : null}
                       <div className="mt-1 text-sm font-semibold text-slate-950 dark:text-slate-100">
                         {title}
                       </div>

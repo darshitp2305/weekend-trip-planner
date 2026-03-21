@@ -185,6 +185,16 @@ export interface TripInput {
 }
 
 export type ConfidenceLevel = "high" | "medium" | "low";
+export type ProviderOutcome =
+  | "live_success"
+  | "live_unavailable"
+  | "fallback_used";
+
+export interface ProviderStatusSummary {
+  places?: ProviderOutcome;
+  hotels?: ProviderOutcome;
+  tripCopy?: ProviderOutcome;
+}
 
 export interface LiveDataSummary {
   restaurantCount: number;
@@ -216,6 +226,8 @@ export interface RankedDestination extends Destination {
   aiBudgetNote?: string;
   aiBestFit?: string;
   routeSummary?: RouteSummary;
+  sourceCheckedAt?: string;
+  providerStatus?: ProviderStatusSummary;
 }
 
 export interface ItineraryStop {
@@ -280,6 +292,66 @@ export interface TripBookingChecklist {
   sharedItinerary: TripChecklistItemState;
 }
 
+export type TravelerCoordinationStatus =
+  | "pending"
+  | "confirmed"
+  | "needs_response";
+
+export interface TravelerCoordinationEntry {
+  id: string;
+  name: string;
+  status: TravelerCoordinationStatus;
+  note?: string;
+  updatedAt?: string;
+  updatedBy?: string;
+  visitorId?: string;
+  userId?: string;
+}
+
+export interface TripDepartureTask {
+  id: string;
+  label: string;
+  detail: string;
+  done: boolean;
+  dueAt?: string;
+  updatedAt?: string;
+  updatedBy?: string;
+  visitorId?: string;
+  userId?: string;
+}
+
+export type TripOperationsNoteKind = "logistics" | "warning" | "update";
+
+export interface TripOperationsNote {
+  id: string;
+  message: string;
+  author?: string;
+  kind?: TripOperationsNoteKind;
+  createdAt: string;
+  visitorId?: string;
+  userId?: string;
+}
+
+export interface TripDeparturePlan {
+  meetupTime?: string;
+  meetupLocation?: string;
+  transportNote?: string;
+  packingNote?: string;
+  updatedAt?: string;
+  updatedBy?: string;
+  visitorId?: string;
+  userId?: string;
+}
+
+export interface TripPaymentStatus {
+  settled: boolean;
+  note?: string;
+  updatedAt?: string;
+  updatedBy?: string;
+  visitorId?: string;
+  userId?: string;
+}
+
 export type TripDataSource =
   | "live-google-places"
   | "static-fallback"
@@ -310,6 +382,8 @@ export interface TripPlan {
   routeSummary?: RouteSummary;
   dataSource: TripDataSource;
   createdAt: string;
+  sourceCheckedAt?: string;
+  providerStatus?: ProviderStatusSummary;
   travelerCount?: number;
   budgetPerTraveler?: number;
   totalBudget?: number;
@@ -326,6 +400,11 @@ export interface TripPlan {
   reactions?: TripReactionEntry[];
   comments?: TripCommentEntry[];
   bookingChecklist?: TripBookingChecklist;
+  travelerRoster?: TravelerCoordinationEntry[];
+  departureTasks?: TripDepartureTask[];
+  operationsNotes?: TripOperationsNote[];
+  departurePlan?: TripDeparturePlan;
+  paymentStatus?: TripPaymentStatus;
   ownerUserId?: string;
   ownerEmail?: string;
 

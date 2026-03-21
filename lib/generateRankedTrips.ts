@@ -1,4 +1,5 @@
 import { enrichRankedTrip } from "./enrichTrip";
+import { reportProviderEvent } from "./providerTelemetry";
 import { rankDestinations } from "./rankDestinations";
 import { RankedDestination, TripInput } from "./types";
 
@@ -974,7 +975,14 @@ export async function generateRankedTrips(
         const enriched = await enrichRankedTrip(trip, input);
         return enriched.trip;
       } catch (error) {
-        console.error(`Failed to enrich ${trip.name}:`, error);
+        reportProviderEvent({
+          provider: "trip_enrichment",
+          operation: "enrich_ranked_trip",
+          outcome: "live_unavailable",
+          destination: `${trip.name}, ${trip.province}`,
+          detail: "Trip enrichment failed after fallback handling. Using ranked trip data.",
+          error,
+        });
         return trip;
       }
     })

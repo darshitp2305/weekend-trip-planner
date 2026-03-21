@@ -1,5 +1,3 @@
-const API_KEY = process.env.GOOGLE_MAPS_API_KEY;
-
 const TEXT_SEARCH_URL = "https://places.googleapis.com/v1/places:searchText";
 const REQUEST_TIMEOUT_MS = 12000;
 const CACHE_TTL_MS = 1000 * 60 * 30;
@@ -16,13 +14,21 @@ type TextSearchRequest = {
   maxResultCount?: number;
 };
 
+function getGoogleMapsApiKey() {
+  const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+
+  if (!apiKey) {
+    throw new Error("Missing GOOGLE_MAPS_API_KEY in .env.local");
+  }
+
+  return apiKey;
+}
+
 async function placesTextSearch<T>(
   body: TextSearchRequest,
   fieldMask: string
 ): Promise<T> {
-  if (!API_KEY) {
-    throw new Error("Missing GOOGLE_MAPS_API_KEY in .env.local");
-  }
+  const apiKey = getGoogleMapsApiKey();
 
   const cacheKey = JSON.stringify({ body, fieldMask });
   const cached = textSearchCache.get(cacheKey);
@@ -39,7 +45,7 @@ async function placesTextSearch<T>(
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-Goog-Api-Key": API_KEY,
+        "X-Goog-Api-Key": apiKey,
         "X-Goog-FieldMask": fieldMask,
       },
       body: JSON.stringify(body),

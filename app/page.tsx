@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import AccountPanel from "../components/AccountPanel";
 import TripCard from "../components/TripCard";
 import TripForm from "../components/TripForm";
+import { trackProductEvent } from "../lib/productAnalytics";
 import { RankedDestination, TripInput } from "../lib/types";
 
 type RankTripsResponse = {
@@ -430,6 +431,17 @@ export default function HomePage() {
         const aiTrips = extractResults(data);
 
         if (aiTrips && aiTrips.length > 0) {
+          trackProductEvent("trip_generated", {
+            metadata: {
+              resultCount: aiTrips.length,
+              rankedCount: rankedTrips.length,
+              usedLiveData,
+              source: data?.source ?? "fallback-template",
+              destinationNames: aiTrips.map((trip) => trip.name),
+              preferredDestination: input.preferredDestination ?? null,
+            },
+          });
+
           setDisplayResults(aiTrips);
 
           const aiMessage =
@@ -455,6 +467,17 @@ export default function HomePage() {
             aiStatusMessage: aiMessage,
           });
         } else {
+          trackProductEvent("trip_generated", {
+            metadata: {
+              resultCount: rankedTrips.length,
+              rankedCount: rankedTrips.length,
+              usedLiveData,
+              source: "fallback-template",
+              destinationNames: rankedTrips.map((trip) => trip.name),
+              preferredDestination: input.preferredDestination ?? null,
+            },
+          });
+
           console.error("/api/generate-trip returned no usable results:", data);
           setDisplayResults(rankedTrips);
           const fallbackMessage =
@@ -471,6 +494,17 @@ export default function HomePage() {
           });
         }
       } catch (error) {
+        trackProductEvent("trip_generated", {
+          metadata: {
+            resultCount: rankedTrips.length,
+            rankedCount: rankedTrips.length,
+            usedLiveData,
+            source: "fallback-template",
+            destinationNames: rankedTrips.map((trip) => trip.name),
+            preferredDestination: input.preferredDestination ?? null,
+          },
+        });
+
         console.error("AI generation failed, using ranked results:", error);
         setDisplayResults(rankedTrips);
         const fallbackMessage =

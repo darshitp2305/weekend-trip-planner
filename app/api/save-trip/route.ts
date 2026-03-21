@@ -56,6 +56,7 @@ export async function POST(request: Request) {
       id: plan.id,
       shareUrl: `/trip/${plan.id}`,
       accountSaved: Boolean(authUser?.userId),
+      trip: sharedTripRecord.trip_data,
     });
   } catch (error) {
     console.error("save-trip route error:", error);

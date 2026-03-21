@@ -12,6 +12,14 @@ import { buildTripPlan } from "../lib/buildTripPlan";
 import { formatDisplayTag, formatDisplayText } from "../lib/displayText";
 import { deriveTripEndDate } from "../lib/tripDates";
 import { saveTripPlan } from "../lib/tripStore";
+import { trackProductEvent } from "../lib/productAnalytics";
+import {
+  tripFreshnessLabel,
+  tripProviderStatusText,
+  tripSourceLabel,
+  tripSourceTone,
+  tripTrustNote,
+} from "../lib/trustSignals";
 
 const LAST_INPUT_STORAGE_KEY = "weekend-trip-last-input";
 
@@ -56,9 +64,7 @@ function confidenceLabel(confidence?: RankedDestination["confidence"]) {
 }
 
 function sourceLabel(trip: RankedDestination) {
-  if (trip.liveDataSummary?.usedPlacesData) return "Live Places";
-  if (trip.liveDataSummary?.usedFallbackData) return "Fallback data";
-  return "Static ranking";
+  return tripSourceLabel(trip);
 }
 
 function shortCopyText(trip: RankedDestination, input?: TripInput) {
@@ -362,6 +368,20 @@ export default function TripCard({
         throw new Error("Trip save failed.");
       }
 
+      trackProductEvent("trip_built", {
+        tripId: plan.id,
+        destinationName: plan.destinationName,
+        status: plan.status,
+        decisionStatus: plan.decisionStatus,
+        dataSource: plan.dataSource,
+        ownerUserId: plan.ownerUserId,
+        metadata: {
+          accountSaved: saveResult.accountSaved,
+          travelerCount: plan.travelerCount,
+          totalBudget: plan.totalBudget,
+        },
+      });
+
       onSave?.(trip.name);
       router.push(`/trip/${plan.id}`);
     } catch (error) {
@@ -405,7 +425,7 @@ export default function TripCard({
 
         <div className="mt-3 flex flex-wrap gap-2">
           <Badge>{trip.isStaycation ? "Staycation" : `${trip.province} getaway`}</Badge>
-          <Badge>{sourceLabel(trip)}</Badge>
+          <Badge tone={tripSourceTone(trip)}>{sourceLabel(trip)}</Badge>
         </div>
 
         <p className="mt-4 text-sm leading-6 text-slate-600 dark:text-slate-300">
@@ -423,6 +443,23 @@ export default function TripCard({
             Why this ranked
           </div>
           <p className="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-200">{topWhyRanked}</p>
+        </div>
+
+        <div className="mt-4 rounded-2xl border border-violet-200 bg-violet-50 p-4 dark:border-violet-500/30 dark:bg-violet-500/10">
+          <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-violet-700 dark:text-violet-300">
+            Planning trust
+          </div>
+          <p className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
+            {tripFreshnessLabel(trip)}
+          </p>
+          <p className="mt-1 text-sm leading-6 text-slate-700 dark:text-slate-200">
+            {tripTrustNote(trip)}
+          </p>
+          {tripProviderStatusText(trip) ? (
+            <p className="mt-2 text-xs font-medium uppercase tracking-[0.14em] text-violet-700 dark:text-violet-300">
+              {tripProviderStatusText(trip)}
+            </p>
+          ) : null}
         </div>
 
         {tags.length > 0 ? (

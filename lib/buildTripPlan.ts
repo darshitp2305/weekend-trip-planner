@@ -1829,6 +1829,8 @@ export function buildTripPlan(
 
     dataSource,
     createdAt: new Date().toISOString(),
+    sourceCheckedAt: trip.sourceCheckedAt,
+    providerStatus: trip.providerStatus,
     travelerCount: safeInput.travelerCount,
     budgetPerTraveler: safeInput.budgetPerTraveler,
     totalBudget: safeInput.budget,

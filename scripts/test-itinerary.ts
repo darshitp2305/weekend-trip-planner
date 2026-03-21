@@ -1,7 +1,10 @@
+import { loadEnvConfig } from "@next/env";
 import { buildTripPlan } from "../lib/buildTripPlan";
 import { rankDestinations } from "../lib/rankDestinations";
 import { deriveTripEndDate } from "../lib/tripDates";
 import { TripInput, TripPlan, TripStyle } from "../lib/types";
+
+loadEnvConfig(process.cwd());
 
 type TestCase = {
   id: string;

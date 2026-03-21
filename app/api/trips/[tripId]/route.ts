@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getAuthenticatedUserFromRequest } from "../../../../lib/authSession";
 import { supabaseAdmin } from "../../../../lib/supabaseAdmin";
 
 type RouteContext = {
@@ -7,7 +8,7 @@ type RouteContext = {
   }>;
 };
 
-export async function GET(_: Request, context: RouteContext) {
+export async function GET(request: Request, context: RouteContext) {
   try {
     const { tripId } = await context.params;
 
@@ -18,11 +19,32 @@ export async function GET(_: Request, context: RouteContext) {
       );
     }
 
-    const { data, error } = await supabaseAdmin
-      .from("shared_trips")
-      .select("trip_data")
-      .eq("id", tripId)
-      .maybeSingle();
+    const authUser = await getAuthenticatedUserFromRequest(request);
+    const idsToTry = authUser?.userId
+      ? [`user:${authUser.userId}:${tripId}`, tripId]
+      : [tripId];
+
+    let data: { trip_data?: unknown } | null = null;
+    let error: unknown = null;
+
+    for (const candidateId of idsToTry) {
+      const result = await supabaseAdmin
+        .from("shared_trips")
+        .select("trip_data")
+        .eq("id", candidateId)
+        .maybeSingle();
+
+      if (result.error) {
+        error = result.error;
+        continue;
+      }
+
+      if (result.data?.trip_data) {
+        data = result.data;
+        error = null;
+        break;
+      }
+    }
 
     if (error) {
       console.error("Supabase get-trip error:", error);

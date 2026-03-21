@@ -1,18 +1,11 @@
 import { NextResponse } from "next/server";
+import { generateTripCopyWithOpenAI } from "../../../lib/openAiTripCopy";
 import { isStartCity } from "../../../lib/startCities";
 import { deriveTripEndDate, isIsoDate } from "../../../lib/tripDates";
 import { rankDestinations } from "../../../lib/rankDestinations";
 import { RankedDestination, TripInput } from "../../../lib/types";
 
 type GenerateTripSource = "live-openai" | "fallback-template";
-
-type OpenAITripPayload = {
-  name: string;
-  aiSummary: string;
-  aiBestFit: string;
-  aiBudgetNote: string;
-  aiItinerary: string[];
-};
 
 type TripInputCandidate = Partial<TripInput> & {
   startCity?: unknown;
@@ -40,18 +33,6 @@ type GenerateTripBody = {
   rankings?: RankedDestination[];
 };
 
-type ResponsesApiOutput = {
-  output_text?: string;
-  output?: Array<{
-    content?: Array<{
-      text?: string;
-    }>;
-  }>;
-};
-
-type ParsedTripsPayload = {
-  trips?: unknown[];
-};
 
 function isTripInput(value: unknown): value is TripInput {
   const candidate = value as TripInputCandidate;
@@ -137,75 +118,6 @@ function extractRankedTripsFromBody(
   if (Array.isArray(body?.destinations)) return body.destinations;
   if (Array.isArray(body?.rankings)) return body.rankings;
   return null;
-}
-
-function safeString(value: unknown, fallback = ""): string {
-  return typeof value === "string" && value.trim().length > 0
-    ? value.trim()
-    : fallback;
-}
-
-function safeStringArray(value: unknown): string[] {
-  if (!Array.isArray(value)) return [];
-  return value
-    .filter((item): item is string => typeof item === "string")
-    .map((item) => item.trim())
-    .filter(Boolean);
-}
-
-function parseJsonFromText(text: string): unknown {
-  const trimmed = text.trim();
-  if (!trimmed) return null;
-
-  try {
-    return JSON.parse(trimmed);
-  } catch {
-    // Try fenced code block
-  }
-
-  const fencedMatch =
-    trimmed.match(/```json\s*([\s\S]*?)```/i) ||
-    trimmed.match(/```([\s\S]*?)```/);
-  if (fencedMatch?.[1]) {
-    try {
-      return JSON.parse(fencedMatch[1].trim());
-    } catch {
-      return null;
-    }
-  }
-
-  const firstBrace = trimmed.indexOf("{");
-  const lastBrace = trimmed.lastIndexOf("}");
-  if (firstBrace >= 0 && lastBrace > firstBrace) {
-    try {
-      return JSON.parse(trimmed.slice(firstBrace, lastBrace + 1));
-    } catch {
-      return null;
-    }
-  }
-
-  return null;
-}
-
-function getResponseText(data: ResponsesApiOutput): string {
-  if (typeof data?.output_text === "string" && data.output_text.trim()) {
-    return data.output_text;
-  }
-
-  const parts: string[] = [];
-
-  if (Array.isArray(data?.output)) {
-    for (const item of data.output) {
-      if (!Array.isArray(item?.content)) continue;
-      for (const contentItem of item.content) {
-        if (typeof contentItem?.text === "string") {
-          parts.push(contentItem.text);
-        }
-      }
-    }
-  }
-
-  return parts.join("\n").trim();
 }
 
 function getBudgetTone(trip: RankedDestination, input: TripInput): string {
@@ -301,150 +213,6 @@ function buildFallbackAiContent(
   };
 }
 
-function mergeAiFields(
-  rankedTrips: RankedDestination[],
-  aiTrips: OpenAITripPayload[]
-): RankedDestination[] {
-  const aiMap = new Map(
-    aiTrips.map((trip) => [trip.name.trim().toLowerCase(), trip])
-  );
-
-  return rankedTrips.map((trip) => {
-    const match = aiMap.get(trip.name.trim().toLowerCase());
-    if (!match) return trip;
-
-    return {
-      ...trip,
-      aiSummary: safeString(match.aiSummary, trip.aiSummary ?? ""),
-      aiBestFit: safeString(match.aiBestFit, trip.aiBestFit ?? ""),
-      aiBudgetNote: safeString(match.aiBudgetNote, trip.aiBudgetNote ?? ""),
-      aiItinerary: safeStringArray(match.aiItinerary),
-    };
-  });
-}
-
-async function generateWithOpenAI(
-  input: TripInput,
-  rankedTrips: RankedDestination[]
-): Promise<RankedDestination[] | null> {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) return null;
-
-  const model = process.env.OPENAI_MODEL || "gpt-4o-mini";
-
-  const compactTrips = rankedTrips.slice(0, 3).map((trip) => ({
-    name: trip.name,
-    province: trip.province,
-    summary: trip.summary,
-    driveHoursFromStart: trip.driveHoursFromStart,
-    estimatedCost: Math.round(trip.estimatedCost),
-    styleMatchStrength: trip.styleMatchStrength,
-    rankingReasons: trip.rankingReasons ?? [],
-    tags: trip.rawVibes ?? [],
-    topActivities: topActivityNames(trip).slice(0, 4),
-    foodSpots: Array.isArray(trip.foodSpots)
-      ? trip.foodSpots
-          .map((item) => item?.name)
-          .filter((name): name is string => typeof name === "string")
-          .slice(0, 4)
-      : [],
-    veganFriendly: trip.veganFriendly,
-  }));
-
-  const systemPrompt = [
-    "You are writing destination-specific weekend trip copy for a trip planning app.",
-    "Return ONLY valid JSON.",
-    "Do not use markdown fences.",
-    "Do not repeat the same wording across all trips.",
-    "Make each destination feel distinct.",
-    "Use concrete local differences from the provided trip data.",
-    "Keep each field concise and natural.",
-    "aiItinerary must be an array of short strings.",
-  ].join(" ");
-
-  const userPrompt = JSON.stringify(
-    {
-      task: "Generate concise trip copy for the ranked trips.",
-      required_output_shape: {
-        trips: [
-          {
-            name: "string",
-            aiSummary: "string",
-            aiBestFit: "string",
-            aiBudgetNote: "string",
-            aiItinerary: ["string", "string"],
-          },
-        ],
-      },
-      input,
-      trips: compactTrips,
-    },
-    null,
-    2
-  );
-
-  const response = await fetch("https://api.openai.com/v1/responses", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model,
-      input: [
-        {
-          role: "system",
-          content: [{ type: "input_text", text: systemPrompt }],
-        },
-        {
-          role: "user",
-          content: [{ type: "input_text", text: userPrompt }],
-        },
-      ],
-      max_output_tokens: 1800,
-    }),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error("OpenAI responses call failed:", response.status, errorText);
-    return null;
-  }
-
-  const data = (await response.json()) as ResponsesApiOutput;
-  const text = getResponseText(data);
-  const parsed = parseJsonFromText(text) as ParsedTripsPayload | null;
-
-  const trips = Array.isArray(parsed?.trips) ? parsed.trips : null;
-  if (!trips || trips.length === 0) {
-    console.error("OpenAI returned no usable trips payload:", parsed ?? text);
-    return null;
-  }
-
-  const aiTrips: OpenAITripPayload[] = trips
-    .map((trip: unknown): OpenAITripPayload => {
-      const item = trip as Record<string, unknown>;
-
-      return {
-        name: safeString(item.name),
-        aiSummary: safeString(item.aiSummary),
-        aiBestFit: safeString(item.aiBestFit),
-        aiBudgetNote: safeString(item.aiBudgetNote),
-        aiItinerary: safeStringArray(item.aiItinerary),
-      };
-    })
-    .filter(
-      (trip: OpenAITripPayload) => Boolean(trip.name && trip.aiSummary)
-    );
-
-  if (aiTrips.length === 0) {
-    console.error("OpenAI payload parsed but fields were unusable:", parsed);
-    return null;
-  }
-
-  return mergeAiFields(rankedTrips, aiTrips);
-}
-
 export async function POST(req: Request) {
   try {
     const body = (await req.json()) as GenerateTripBody;
@@ -462,17 +230,29 @@ export async function POST(req: Request) {
       rankedTrips = rankDestinations(input);
     }
 
-    const openAiTrips = await generateWithOpenAI(input, rankedTrips);
-    if (openAiTrips) {
+    const openAiResult = await generateTripCopyWithOpenAI(input, rankedTrips);
+    if (openAiResult.trips) {
       return NextResponse.json({
         success: true,
         source: "live-openai" satisfies GenerateTripSource,
-        results: openAiTrips,
+        results: openAiResult.trips.map((trip) => ({
+          ...trip,
+          providerStatus: {
+            ...trip.providerStatus,
+            tripCopy: openAiResult.status,
+          },
+        })),
       });
     }
 
     const fallbackTrips = rankedTrips.map((trip) =>
-      buildFallbackAiContent(trip, input)
+      ({
+        ...buildFallbackAiContent(trip, input),
+        providerStatus: {
+          ...trip.providerStatus,
+          tripCopy: openAiResult.status,
+        },
+      })
     );
 
     return NextResponse.json({

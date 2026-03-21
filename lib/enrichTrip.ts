@@ -5,19 +5,15 @@ import {
   TripDataSource,
   TripInput,
 } from "./types";
-import { GooglePlace } from "./googlePlaces";
-import {
-  searchActivities,
-  searchCafes,
-  searchHotels,
-  searchRestaurants,
-} from "./googlePlaces";
+import { type GooglePlace } from "./googlePlaces";
 import {
   mapGooglePlaceToActivity,
   mapGooglePlaceToFoodSpot,
   mapGooglePlaceToHotel,
 } from "./placeMappers";
-import { searchHotelsWithSerpApi } from "./serpApiHotels";
+import { fetchPlacesProviderData } from "./placesProvider";
+import { reportProviderEvent } from "./providerTelemetry";
+import { fetchSerpApiHotelData } from "./serpApiHotelProvider";
 
 const ENRICH_CACHE_TTL_MS = 1000 * 60 * 20;
 
@@ -316,6 +312,17 @@ function buildLiveSummary(
   };
 }
 
+function deriveProviderOutcome(options: {
+  hadResults: boolean;
+  attempted: boolean;
+  usedFallback: boolean;
+}) {
+  if (options.hadResults) return "live_success" as const;
+  if (options.attempted) return "live_unavailable" as const;
+  if (options.usedFallback) return "fallback_used" as const;
+  return "fallback_used" as const;
+}
+
 export async function enrichRankedTrip(
   trip: RankedDestination,
   input: TripInput
@@ -327,61 +334,50 @@ export async function enrichRankedTrip(
   }
 
   const destinationQuery = `${trip.name}, ${trip.province}`;
+  const sourceCheckedAt = new Date().toISOString();
 
   try {
-    const hotelSearchPromise =
-      input.tripStartDate && input.tripEndDate
-        ? searchHotelsWithSerpApi({
-            destination: destinationQuery,
-            tripStartDate: input.tripStartDate,
-            tripEndDate: input.tripEndDate,
-            adults: input.travelerCount,
-          }).catch(async (error) => {
-            console.error("SerpApi hotel search failed, falling back to Places:", error);
-            return null;
-          })
-        : Promise.resolve(null);
-
-    const [restaurantsRes, cafesRes, activitiesRes, hotelsRes, serpHotels] =
+    const [placesData, serpHotels] =
       await Promise.all([
-        searchRestaurants(destinationQuery, {
+        fetchPlacesProviderData({
+          destination: destinationQuery,
+          style: input.style,
           veganFriendly: input.veganFriendly,
-        }),
-        searchCafes(destinationQuery, {
-          veganFriendly: input.veganFriendly,
-        }),
-        searchActivities(destinationQuery, input.style),
-        searchHotels(destinationQuery, {
           tripStartDate: input.tripStartDate,
           tripEndDate: input.tripEndDate,
         }),
-        hotelSearchPromise,
+        fetchSerpApiHotelData({
+          destination: destinationQuery,
+          tripStartDate: input.tripStartDate,
+          tripEndDate: input.tripEndDate,
+          adults: input.travelerCount,
+        }),
       ]);
 
     const liveRestaurants = dedupeByName(
-      rankPlaces(restaurantsRes.places ?? [], trip, "food", input)
+      rankPlaces(placesData.restaurants, trip, "food", input)
         .map(mapGooglePlaceToFoodSpot)
         .filter(hasName)
     );
 
     const liveCafes = dedupeByName(
-      rankPlaces(cafesRes.places ?? [], trip, "food", input)
+      rankPlaces(placesData.cafes, trip, "food", input)
         .map(mapGooglePlaceToFoodSpot)
         .filter(hasName)
     );
 
     const liveActivities = dedupeByName(
-      rankPlaces(activitiesRes.places ?? [], trip, "activity", input)
+      rankPlaces(placesData.activities, trip, "activity", input)
         .map(mapGooglePlaceToActivity)
         .filter(hasName)
     );
 
     const serpApiHotels = dedupeByName(
-      (serpHotels ?? []).filter(hasName)
+      serpHotels.filter(hasName)
     );
 
     const placesHotels = dedupeByName(
-      rankPlaces(hotelsRes.places ?? [], trip, "hotel", input)
+      rankPlaces(placesData.hotels, trip, "hotel", input)
         .map(mapGooglePlaceToHotel)
         .filter(hasName)
     );
@@ -414,6 +410,25 @@ export async function enrichRankedTrip(
       balancedFoodSpots.length > 0 ||
       liveActivities.length > 0 ||
       liveHotels.length > 0;
+    const providerStatus = {
+      places: deriveProviderOutcome({
+        hadResults:
+          balancedFoodSpots.length > 0 ||
+          liveActivities.length > 0 ||
+          placesHotels.length > 0,
+        attempted: true,
+        usedFallback:
+          balancedFoodSpots.length === 0 &&
+          liveActivities.length === 0 &&
+          placesHotels.length === 0,
+      }),
+      hotels: deriveProviderOutcome({
+        hadResults: serpApiHotels.length > 0,
+        attempted: Boolean(input.tripStartDate && input.tripEndDate),
+        usedFallback: liveHotels.length === 0 || serpApiHotels.length === 0,
+      }),
+      tripCopy: trip.providerStatus?.tripCopy,
+    };
 
     const source: TripDataSource = hasLiveResults
       ? "live-google-places"
@@ -448,6 +463,8 @@ export async function enrichRankedTrip(
       topActivities: mergedActivities,
       hotelOptions: mergedHotels as HotelOption[],
       liveDataSummary,
+      sourceCheckedAt,
+      providerStatus,
       rankingReasons: rankingReasons.slice(0, 4),
     };
 
@@ -462,10 +479,14 @@ export async function enrichRankedTrip(
 
     return result;
   } catch (error) {
-    console.error(
-      "Google Places enrichment failed. Falling back to static trip data.",
-      error
-    );
+    reportProviderEvent({
+      provider: "trip_enrichment",
+      operation: "enrich_ranked_trip",
+      outcome: "live_unavailable",
+      destination: destinationQuery,
+      detail: "Places enrichment failed. Using static trip fallback data.",
+      error,
+    });
 
     const fallbackRankingReasons: RankingReason[] = [
       {
@@ -484,6 +505,15 @@ export async function enrichRankedTrip(
           trip.hotelOptions,
           false
         ),
+        sourceCheckedAt,
+        providerStatus: {
+          places: "live_unavailable",
+          hotels:
+            input.tripStartDate && input.tripEndDate
+              ? "live_unavailable"
+              : "fallback_used",
+          tripCopy: trip.providerStatus?.tripCopy,
+        },
         rankingReasons: fallbackRankingReasons.slice(0, 4),
       },
       source: "static-fallback",

@@ -1,9 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import {
+  clearPendingTripSyncRecord,
+  getPendingTripSyncRecord,
   getTripPlanById,
   saveTripPlan,
   upsertLocalTripPlan,
@@ -14,10 +16,16 @@ import FinalizeTripPanel from "../../../components/FinalizeTripPanel";
 import SharedTripSnapshot from "../../../components/SharedTripSnapshot";
 import TripFeedbackPanel from "../../../components/TripFeedbackPanel";
 import TripActions from "../../../components/TripActions";
+import TripOperationsPanel from "../../../components/TripOperationsPanel";
 import InteractiveItinerary from "../../../components/InteractiveItinerary";
 import { formatDateRange } from "../../../lib/tripDates";
 import { isStartCity } from "../../../lib/startCities";
 import { estimateFoodCostForGroup } from "../../../lib/foodPricing";
+import {
+  baseTripAnalytics,
+  trackProductEvent,
+} from "../../../lib/productAnalytics";
+import { useViewerIdentity } from "../../../lib/viewerIdentity";
 import {
   Activity,
   FoodSpot,
@@ -200,10 +208,25 @@ export default function TripPage() {
   const params = useParams<{ tripId: string }>();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const viewer = useViewerIdentity();
+  const trackedShareOpenRef = useRef<string | null>(null);
   const [trip, setTrip] = useState<TripPlan | null>(null);
   const [loading, setLoading] = useState(true);
   const [finalizeStatus, setFinalizeStatus] = useState("");
   const [finalizing, setFinalizing] = useState(false);
+  const [syncConflict, setSyncConflict] = useState<{
+    pendingTrip: TripPlan;
+    remoteTrip: TripPlan;
+    savedAt?: string;
+  } | null>(null);
+  const [syncState, setSyncState] = useState<{
+    phase: "idle" | "saving" | "saved" | "local_only" | "error";
+    message: string;
+    lastSavedAt?: string;
+  }>({
+    phase: "idle",
+    message: "Waiting for edits.",
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -216,6 +239,27 @@ export default function TripPage() {
 
       if (!cancelled) {
         setTrip(found);
+        if (found) {
+          const pendingRecord = getPendingTripSyncRecord(found.id);
+          if (
+            pendingRecord &&
+            JSON.stringify(pendingRecord.plan) !== JSON.stringify(found)
+          ) {
+            setSyncConflict({
+              pendingTrip: pendingRecord.plan,
+              remoteTrip: found,
+              savedAt: pendingRecord.savedAt,
+            });
+            setSyncState({
+              phase: "local_only",
+              message:
+                "Unsynced local edits differ from the latest synced trip.",
+              lastSavedAt: pendingRecord.savedAt,
+            });
+          } else if (pendingRecord) {
+            clearPendingTripSyncRecord(found.id);
+          }
+        }
         setLoading(false);
       }
     }
@@ -678,7 +722,37 @@ export default function TripPage() {
   }, [trip]);
 
   const requestedShareView = searchParams.get("view") === "share";
-  const isShareView = requestedShareView && trip?.status === "finalized";
+  const isOwner = useMemo(() => {
+    if (!trip) return false;
+    if (!trip.ownerUserId && !trip.ownerEmail) return true;
+    if (!viewer.ready) return false;
+
+    return Boolean(
+      (viewer.userId && trip.ownerUserId && viewer.userId === trip.ownerUserId) ||
+      (viewer.email && trip.ownerEmail && viewer.email === trip.ownerEmail)
+    );
+  }, [trip, viewer.email, viewer.ready, viewer.userId]);
+  const isShareView =
+    trip?.status === "finalized" &&
+    (requestedShareView || (viewer.ready && !isOwner));
+
+  useEffect(() => {
+    if (!trip || !isShareView || !viewer.ready) return;
+
+    const fingerprint = `${trip.id}:${isOwner ? "owner" : "viewer"}`;
+    if (trackedShareOpenRef.current === fingerprint) {
+      return;
+    }
+
+    trackedShareOpenRef.current = fingerprint;
+    trackProductEvent("trip_share_opened", {
+      ...baseTripAnalytics(trip),
+      metadata: {
+        source: requestedShareView ? "share_query_param" : "auto_share_mode",
+        isOwner,
+      },
+    });
+  }, [isOwner, isShareView, requestedShareView, trip, viewer.ready]);
 
   useEffect(() => {
     if (!persistedTrip?.id) return;
@@ -691,6 +765,68 @@ export default function TripPage() {
       window.clearTimeout(timeout);
     };
   }, [persistedTrip]);
+
+  const hasOwnerEditsPending = useMemo(() => {
+    if (!persistedTrip || !trip) return false;
+    if (!isOwner || !viewer.ready) return false;
+
+    return JSON.stringify(persistedTrip) !== JSON.stringify(trip);
+  }, [isOwner, persistedTrip, trip, viewer.ready]);
+
+  useEffect(() => {
+    if (!persistedTrip || !trip || !isOwner || !viewer.ready || !hasOwnerEditsPending) {
+      return;
+    }
+
+    setSyncState((current) => ({
+      phase: current.phase === "saving" ? "saving" : "idle",
+      message:
+        current.phase === "saving"
+          ? "Saving your latest trip edits..."
+          : "Unsaved owner edits detected.",
+      lastSavedAt: current.lastSavedAt,
+    }));
+
+    const timeout = window.setTimeout(async () => {
+      setSyncState((current) => ({
+        ...current,
+        phase: "saving",
+        message: "Saving your latest trip edits...",
+      }));
+
+      try {
+        const result = await saveTripPlan(persistedTrip);
+        const savedAt = new Date().toISOString();
+        const nextTrip = result.trip ?? persistedTrip;
+
+        setTrip(nextTrip);
+        setSelectionState({
+          tripId: nextTrip.id,
+          selection: nextTrip.savedSelectionState ?? emptySelectionState(),
+        });
+        clearPendingTripSyncRecord(nextTrip.id);
+        setSyncConflict(null);
+        setSyncState({
+          phase: result.accountSaved ? "saved" : "local_only",
+          message: result.accountSaved
+            ? "All trip edits are synced to your account."
+            : "Trip edits are saved locally, but account sync is unavailable.",
+          lastSavedAt: savedAt,
+        });
+      } catch (error) {
+        console.error("Trip autosave failed:", error);
+        setSyncState((current) => ({
+          phase: "error",
+          message: "Autosave failed. Your latest edits are still kept locally.",
+          lastSavedAt: current.lastSavedAt,
+        }));
+      }
+    }, 1200);
+
+    return () => {
+      window.clearTimeout(timeout);
+    };
+  }, [hasOwnerEditsPending, isOwner, persistedTrip, trip, viewer.ready]);
 
   const handleSelectionChange = useCallback(
     (nextSelection: TripSelectionState) => {
@@ -735,16 +871,31 @@ export default function TripPage() {
         return;
       }
 
-      setTrip(finalizedTrip);
+      setTrip(result.trip ?? finalizedTrip);
       setSelectionState({
-        tripId: finalizedTrip.id,
-        selection: finalizedTrip.savedSelectionState ?? emptySelectionState(),
+        tripId: (result.trip ?? finalizedTrip).id,
+        selection: (result.trip ?? finalizedTrip).savedSelectionState ?? emptySelectionState(),
+      });
+      setSyncState({
+        phase: result.accountSaved ? "saved" : "local_only",
+        message: result.accountSaved
+          ? "Finalized trip synced to your account."
+          : "Finalized trip saved locally.",
+        lastSavedAt: new Date().toISOString(),
       });
       setFinalizeStatus(
         result.accountSaved
           ? "Finalized trip saved to your account."
           : "Finalized trip saved locally."
       );
+      trackProductEvent("trip_finalized", {
+        ...baseTripAnalytics(result.trip ?? finalizedTrip),
+        metadata: {
+          accountSaved: result.accountSaved,
+          selectionHotel: finalizedTrip.savedSelectionState?.hotelName,
+          travelerCount: finalizedTrip.travelerCount,
+        },
+      });
     } catch (error) {
       console.error("Failed to finalize trip:", error);
       setFinalizeStatus("Finalized trip save failed.");
@@ -759,7 +910,48 @@ export default function TripPage() {
       tripId: nextTrip.id,
       selection: nextTrip.savedSelectionState ?? emptySelectionState(),
     });
+    clearPendingTripSyncRecord(nextTrip.id);
+    setSyncConflict(null);
+    setSyncState({
+      phase: nextTrip.ownerUserId ? "saved" : "local_only",
+      message: nextTrip.ownerUserId
+        ? "Trip changes synced."
+        : "Trip changes saved locally.",
+      lastSavedAt: new Date().toISOString(),
+    });
   }, []);
+
+  const handleUseLocalDraft = useCallback(() => {
+    if (!syncConflict) return;
+
+    setTrip(syncConflict.pendingTrip);
+    setSelectionState({
+      tripId: syncConflict.pendingTrip.id,
+      selection: syncConflict.pendingTrip.savedSelectionState ?? emptySelectionState(),
+    });
+    setSyncState({
+      phase: "local_only",
+      message: "Using your unsynced local draft. Retry save when ready.",
+      lastSavedAt: syncConflict.savedAt,
+    });
+  }, [syncConflict]);
+
+  const handleUseRemoteVersion = useCallback(() => {
+    if (!syncConflict) return;
+
+    clearPendingTripSyncRecord(syncConflict.remoteTrip.id);
+    setTrip(syncConflict.remoteTrip);
+    setSelectionState({
+      tripId: syncConflict.remoteTrip.id,
+      selection: syncConflict.remoteTrip.savedSelectionState ?? emptySelectionState(),
+    });
+    setSyncConflict(null);
+    setSyncState({
+      phase: "saved",
+      message: "Using the latest synced trip version.",
+      lastSavedAt: new Date().toISOString(),
+    });
+  }, [syncConflict]);
 
   if (loading) {
     return (
@@ -790,33 +982,48 @@ export default function TripPage() {
     );
   }
 
+  const showDraftBuilderMode = trip.status !== "finalized";
+  const showOperationsPanel =
+    trip.decisionStatus === "approved" ||
+    trip.decisionStatus === "booked";
+
   return (
     <main className="min-h-screen bg-[#f6f8fb] px-4 py-6 text-slate-900 dark:bg-slate-950 dark:text-slate-100 sm:px-6">
       <div className={`mx-auto space-y-5 ${isShareView ? "max-w-6xl" : "max-w-[1400px]"}`}>
-        <TripHeader trip={persistedTrip ?? trip} />
+        <TripHeader trip={persistedTrip ?? trip} shareMode={isShareView} />
+
+        {isOwner && syncConflict ? (
+          <section className="rounded-[1.5rem] border border-amber-200 bg-amber-50 p-5 shadow-sm dark:border-amber-500/30 dark:bg-amber-500/10">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-amber-700 dark:text-amber-300">
+              Sync conflict
+            </div>
+            <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">
+              Local draft and synced trip diverged
+            </h2>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-700 dark:text-slate-200">
+              You have unsynced local edits that differ from the latest synced trip. Choose which version to keep editing.
+            </p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={handleUseLocalDraft}
+                className="inline-flex h-11 items-center justify-center rounded-2xl bg-slate-950 px-5 text-sm font-semibold text-white transition hover:bg-slate-800 dark:bg-amber-300 dark:text-slate-950 dark:hover:bg-amber-200"
+              >
+                Keep local draft
+              </button>
+              <button
+                type="button"
+                onClick={handleUseRemoteVersion}
+                className="inline-flex h-11 items-center justify-center rounded-2xl border border-slate-300 bg-white px-5 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+              >
+                Use synced version
+              </button>
+            </div>
+          </section>
+        ) : null}
 
         {isShareView ? (
           <div className="space-y-5">
-            <section className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-violet-600 dark:text-violet-300">
-                Share mode
-              </div>
-              <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">
-                Partner-friendly trip view
-              </h2>
-              <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600 dark:text-slate-300">
-                This version strips out itinerary editing controls and keeps the finalized plan focused on the decision: where you are staying, what the trip costs, and how the weekend flows.
-              </p>
-            </section>
-
-            <section className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-              <TripActions
-                trip={persistedTrip ?? trip}
-                shareMode={true}
-                onTripUpdated={handleTripUpdated}
-              />
-            </section>
-
             <SharedTripSnapshot
               trip={persistedTrip ?? trip}
               selection={activeSelectionState}
@@ -827,9 +1034,15 @@ export default function TripPage() {
               travelerCount={travelerCount}
             />
 
+            <section className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+              <BudgetBreakdown breakdown={selectedBudget ?? trip.budgetBreakdown} />
+            </section>
+
             <TripFeedbackPanel
               trip={persistedTrip ?? trip}
               onTripUpdated={handleTripUpdated}
+              isOwner={isOwner}
+              shareMode={true}
             />
 
             <TripStopMap
@@ -837,10 +1050,6 @@ export default function TripPage() {
               routePaths={tripMapData.routePaths}
               missingLocationCount={tripMapData.missingLocationCount}
             />
-
-            <section className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-              <BudgetBreakdown breakdown={selectedBudget ?? trip.budgetBreakdown} />
-            </section>
           </div>
         ) : (
         <div className="grid gap-5 xl:grid-cols-[320px_minmax(0,1fr)] xl:items-start">
@@ -851,7 +1060,7 @@ export default function TripPage() {
                   Planner rail
                 </div>
                 <h2 className="mt-1 text-xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">
-                  Budget and actions
+                  {showDraftBuilderMode ? "Budget and save" : "Budget and actions"}
                 </h2>
               </div>
 
@@ -924,6 +1133,8 @@ export default function TripPage() {
                 <TripActions
                   trip={persistedTrip ?? trip}
                   onTripUpdated={handleTripUpdated}
+                  isOwner={isOwner}
+                  syncState={syncState}
                 />
               </div>
             </div>
@@ -931,90 +1142,88 @@ export default function TripPage() {
 
           {itineraryDays.length > 0 ? (
             <div className="space-y-5">
-              <FinalizeTripPanel
-                trip={persistedTrip ?? trip}
-                selection={activeSelectionState}
-                estimatedTotalCost={estimatedTotalCost}
-                budgetDelta={budgetDelta}
-                routeSummary={routeSummaryLabel}
-                onFinalize={handleFinalizeTrip}
-                finalizing={finalizing}
-                statusMessage={finalizeStatus}
-              />
+              {!showDraftBuilderMode ? (
+                <FinalizeTripPanel
+                  trip={persistedTrip ?? trip}
+                  selection={activeSelectionState}
+                  estimatedTotalCost={estimatedTotalCost}
+                  budgetDelta={budgetDelta}
+                  routeSummary={routeSummaryLabel}
+                  onFinalize={handleFinalizeTrip}
+                  finalizing={finalizing}
+                  statusMessage={finalizeStatus}
+                />
+              ) : null}
 
-              <section className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-                <div className="flex flex-col gap-1">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-violet-600 dark:text-violet-300">
-                    Trip at a glance
-                  </div>
-                  <h2 className="text-xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">
-                    Ready-to-go snapshot
-                  </h2>
-                  <p className="max-w-3xl text-sm leading-5 text-slate-600 dark:text-slate-300">
-                    Scan the weekend shape first, then fine-tune stops below. Food and budget numbers are shown as estimates, not live checkout prices.
-                  </p>
-                </div>
-
-                <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                  <div className="rounded-[1rem] border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/70">
-                    <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
-                      Trip shape
+              {!showDraftBuilderMode ? (
+                <section className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                  <div className="flex flex-col gap-1">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-violet-600 dark:text-violet-300">
+                      Trip at a glance
                     </div>
-                    <div className="mt-1 text-base font-semibold text-slate-950 dark:text-slate-100">
-                      {deriveTripLengthDays(trip)} day{deriveTripLengthDays(trip) === 1 ? "" : "s"}
-                    </div>
-                    <p className="mt-1 text-sm leading-5 text-slate-600 dark:text-slate-300">
-                      {itineraryOverview.editableStops} editable stops, {itineraryOverview.foodStops} food pick{itineraryOverview.foodStops === 1 ? "" : "s"}, {itineraryOverview.activityStops} activity pick{itineraryOverview.activityStops === 1 ? "" : "s"}.
+                    <h2 className="text-xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">
+                      Ready-to-go snapshot
+                    </h2>
+                    <p className="max-w-3xl text-sm leading-5 text-slate-600 dark:text-slate-300">
+                      Scan the weekend shape first, then fine-tune stops below. Food and budget numbers are shown as estimates, not live checkout prices.
                     </p>
                   </div>
 
-                  <div className="rounded-[1rem] border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/70">
-                    <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
-                      Route reality
+                  <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                    <div className="rounded-[1rem] border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/70">
+                      <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
+                        Trip shape
+                      </div>
+                      <div className="mt-1 text-base font-semibold text-slate-950 dark:text-slate-100">
+                        {deriveTripLengthDays(trip)} day{deriveTripLengthDays(trip) === 1 ? "" : "s"}
+                      </div>
+                      <p className="mt-1 text-sm leading-5 text-slate-600 dark:text-slate-300">
+                        {itineraryOverview.editableStops} editable stops, {itineraryOverview.foodStops} food pick{itineraryOverview.foodStops === 1 ? "" : "s"}, {itineraryOverview.activityStops} activity pick{itineraryOverview.activityStops === 1 ? "" : "s"}.
+                      </p>
                     </div>
-                    <div className="mt-1 text-base font-semibold text-slate-950 dark:text-slate-100">
-                      {formatDurationSeconds(trip.routeSummary?.durationSeconds) ?? trip.driveTimeText}
-                    </div>
-                    <p className="mt-1 text-sm leading-5 text-slate-600 dark:text-slate-300">
-                      {formatDistanceMeters(trip.routeSummary?.distanceMeters)
-                        ? `${formatDistanceMeters(trip.routeSummary?.distanceMeters)} from ${getStartCityLabel(trip)} to ${getDestinationLabel(trip)}.`
-                        : `${getStartCityLabel(trip)} to ${getDestinationLabel(trip)}.`}
-                    </p>
-                  </div>
 
-                  <div className="rounded-[1rem] border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/70">
-                    <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
-                      Stay plan
+                    <div className="rounded-[1rem] border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/70">
+                      <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
+                        Route reality
+                      </div>
+                      <div className="mt-1 text-base font-semibold text-slate-950 dark:text-slate-100">
+                        {formatDurationSeconds(trip.routeSummary?.durationSeconds) ?? trip.driveTimeText}
+                      </div>
+                      <p className="mt-1 text-sm leading-5 text-slate-600 dark:text-slate-300">
+                        {formatDistanceMeters(trip.routeSummary?.distanceMeters)
+                          ? `${formatDistanceMeters(trip.routeSummary?.distanceMeters)} from ${getStartCityLabel(trip)} to ${getDestinationLabel(trip)}.`
+                          : `${getStartCityLabel(trip)} to ${getDestinationLabel(trip)}.`}
+                      </p>
                     </div>
-                    <div className="mt-1 text-base font-semibold text-slate-950 dark:text-slate-100">
-                      {selectedHotel?.name ?? trip.homeBaseCity ?? trip.destinationName}
-                    </div>
-                    <p className="mt-1 text-sm leading-5 text-slate-600 dark:text-slate-300">
-                      {selectedHotel?.shortDescription ??
-                        "Your current hotel choice acts as the anchor for route and nearby-stop suggestions."}
-                    </p>
-                  </div>
 
-                  <div className="rounded-[1rem] border border-violet-200 bg-violet-50 p-4 dark:border-violet-500/30 dark:bg-violet-500/10">
-                    <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-violet-700 dark:text-violet-300">
-                      Budget fit
+                    <div className="rounded-[1rem] border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/70">
+                      <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
+                        Stay plan
+                      </div>
+                      <div className="mt-1 text-base font-semibold text-slate-950 dark:text-slate-100">
+                        {selectedHotel?.name ?? trip.homeBaseCity ?? trip.destinationName}
+                      </div>
+                      <p className="mt-1 text-sm leading-5 text-slate-600 dark:text-slate-300">
+                        {selectedHotel?.shortDescription ??
+                          "Your current hotel choice acts as the anchor for route and nearby-stop suggestions."}
+                      </p>
                     </div>
-                    <div className="mt-1 text-base font-semibold text-slate-950 dark:text-slate-100">
-                      {budgetStatus?.label ?? "Estimated spend"}
-                    </div>
-                    <p className="mt-1 text-sm leading-5 text-slate-700 dark:text-slate-200">
-                      {budgetStatus?.detail ??
-                        `${formatMoney(estimatedTotalCost)} total estimated spend for ${travelerCount} traveler${travelerCount === 1 ? "" : "s"}.`}
-                    </p>
-                  </div>
-                </div>
-              </section>
 
-              <TripStopMap
-                pins={tripMapData.pins}
-                routePaths={tripMapData.routePaths}
-                missingLocationCount={tripMapData.missingLocationCount}
-              />
+                    <div className="rounded-[1rem] border border-violet-200 bg-violet-50 p-4 dark:border-violet-500/30 dark:bg-violet-500/10">
+                      <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-violet-700 dark:text-violet-300">
+                        Budget fit
+                      </div>
+                      <div className="mt-1 text-base font-semibold text-slate-950 dark:text-slate-100">
+                        {budgetStatus?.label ?? "Estimated spend"}
+                      </div>
+                      <p className="mt-1 text-sm leading-5 text-slate-700 dark:text-slate-200">
+                        {budgetStatus?.detail ??
+                          `${formatMoney(estimatedTotalCost)} total estimated spend for ${travelerCount} traveler${travelerCount === 1 ? "" : "s"}.`}
+                      </p>
+                    </div>
+                  </div>
+                </section>
+              ) : null}
 
               <InteractiveItinerary
                 key={`${trip.id}:${JSON.stringify(trip.savedSelectionState ?? emptySelectionState())}`}
@@ -1040,6 +1249,33 @@ export default function TripPage() {
                 }
                 onSelectionChange={handleSelectionChange}
               />
+
+              <TripStopMap
+                pins={tripMapData.pins}
+                routePaths={tripMapData.routePaths}
+                missingLocationCount={tripMapData.missingLocationCount}
+              />
+
+              {showDraftBuilderMode ? (
+                <FinalizeTripPanel
+                  trip={persistedTrip ?? trip}
+                  selection={activeSelectionState}
+                  estimatedTotalCost={estimatedTotalCost}
+                  budgetDelta={budgetDelta}
+                  routeSummary={routeSummaryLabel}
+                  onFinalize={handleFinalizeTrip}
+                  finalizing={finalizing}
+                  statusMessage={finalizeStatus}
+                />
+              ) : null}
+
+              {showOperationsPanel ? (
+                <TripOperationsPanel
+                  trip={persistedTrip ?? trip}
+                  onTripUpdated={handleTripUpdated}
+                  isOwner={isOwner}
+                />
+              ) : null}
             </div>
           ) : (
             <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">

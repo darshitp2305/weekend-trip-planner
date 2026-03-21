@@ -1,3 +1,4 @@
+import { loadEnvConfig } from "@next/env";
 import { POST as enrichTripPost } from "../app/api/enrich-trip/route";
 import { POST as generateTripPost } from "../app/api/generate-trip/route";
 import { POST as osmRoutePost } from "../app/api/osm-route/route";
@@ -7,6 +8,8 @@ import { buildTripPlan } from "../lib/buildTripPlan";
 import { rankDestinations } from "../lib/rankDestinations";
 import { deriveTripEndDate } from "../lib/tripDates";
 import { TripInput, TripPlan, TripStyle } from "../lib/types";
+
+loadEnvConfig(process.cwd());
 
 type TestResult = {
   id: string;

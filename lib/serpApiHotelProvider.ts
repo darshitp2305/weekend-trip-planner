@@ -1,0 +1,35 @@
+import {
+  searchHotelsWithSerpApi,
+  type LiveHotelRate,
+} from "./serpApiHotels";
+import { reportProviderEvent } from "./providerTelemetry";
+
+export async function fetchSerpApiHotelData(options: {
+  destination: string;
+  tripStartDate?: string;
+  tripEndDate?: string;
+  adults: number;
+}): Promise<LiveHotelRate[]> {
+  if (!options.tripStartDate || !options.tripEndDate) {
+    return [];
+  }
+
+  try {
+    return await searchHotelsWithSerpApi({
+      destination: options.destination,
+      tripStartDate: options.tripStartDate,
+      tripEndDate: options.tripEndDate,
+      adults: options.adults,
+    });
+  } catch (error) {
+    reportProviderEvent({
+      provider: "serpapi",
+      operation: "hotel_search",
+      outcome: "live_unavailable",
+      destination: options.destination,
+      detail: "Hotel rate lookup failed. Falling back to Places-derived hotel data.",
+      error,
+    });
+    return [];
+  }
+}

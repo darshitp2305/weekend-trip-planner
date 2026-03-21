@@ -1,5 +1,7 @@
 "use client";
 
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { TripPlan, TripSelectionState } from "../lib/types";
 
 type Props = {
@@ -81,12 +83,37 @@ export default function FinalizeTripPanel({
   finalizing,
   statusMessage,
 }: Props) {
+  const router = useRouter();
+  const [copied, setCopied] = useState(false);
+  const isDraft = trip.status !== "finalized";
   const finalizedAtLabel = formatFinalizedAt(trip.finalizedAt);
   const selectedHotel = selectedHotelLabel(trip, selection);
   const selectedStopCount = countSelectedStops(selection);
   const tripWindow = [formatDate(trip.tripStartDate), formatDate(trip.tripEndDate)]
     .filter(Boolean)
     .join(" - ");
+  const shareUrl =
+    typeof window === "undefined"
+      ? ""
+      : (() => {
+          const url = new URL(window.location.href);
+          url.searchParams.set("view", "share");
+          return url.toString();
+        })();
+
+  async function handleCopyShareLink() {
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1600);
+    } catch {
+      setCopied(false);
+    }
+  }
+
+  function handleOpenShareView() {
+    router.push(`/trip/${trip.id}?view=share`);
+  }
 
   return (
     <section className="rounded-[1.5rem] border border-emerald-200 bg-[linear-gradient(135deg,#f0fdf4,#ecfeff)] p-5 shadow-sm dark:border-emerald-500/30 dark:bg-[linear-gradient(135deg,rgba(6,78,59,0.36),rgba(15,23,42,0.92))]">
@@ -98,9 +125,15 @@ export default function FinalizeTripPanel({
           <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">
             {trip.status === "finalized" ? "Trip finalized" : "Ready to lock this plan?"}
           </h2>
-          <p className="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-200">
-            {readinessLabel(budgetDelta)} Finalizing saves the current hotel, stop choices, budget snapshot, and trip details as the version you share and book from.
-          </p>
+          {trip.status === "finalized" ? (
+            <p className="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-200">
+              This trip is now locked as the version you send to friends. Share the link below, have them approve or request changes, then move to booking once the group signs off.
+            </p>
+          ) : (
+            <p className="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-200">
+              {readinessLabel(budgetDelta)} Finalizing saves the current hotel, stop choices, budget snapshot, and trip details as the version you share and book from.
+            </p>
+          )}
           {trip.status === "finalized" && finalizedAtLabel ? (
             <p className="mt-2 text-sm font-medium text-emerald-700 dark:text-emerald-300">
               Current finalized version saved on {finalizedAtLabel}.
@@ -122,7 +155,7 @@ export default function FinalizeTripPanel({
         </button>
       </div>
 
-      <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+      <div className={`mt-5 grid gap-3 ${isDraft ? "md:grid-cols-3" : "md:grid-cols-2 xl:grid-cols-4"}`}>
         <div className="rounded-[1rem] border border-white/70 bg-white/75 p-4 dark:border-slate-700 dark:bg-slate-900/70">
           <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
             Stay locked in
@@ -141,14 +174,16 @@ export default function FinalizeTripPanel({
           </div>
         </div>
 
-        <div className="rounded-[1rem] border border-white/70 bg-white/75 p-4 dark:border-slate-700 dark:bg-slate-900/70">
-          <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
-            Edited stops
+        {isDraft ? null : (
+          <div className="rounded-[1rem] border border-white/70 bg-white/75 p-4 dark:border-slate-700 dark:bg-slate-900/70">
+            <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
+              Edited stops
+            </div>
+            <div className="mt-1 text-base font-semibold text-slate-950 dark:text-slate-100">
+              {selectedStopCount}
+            </div>
           </div>
-          <div className="mt-1 text-base font-semibold text-slate-950 dark:text-slate-100">
-            {selectedStopCount}
-          </div>
-        </div>
+        )}
 
         <div className="rounded-[1rem] border border-white/70 bg-white/75 p-4 dark:border-slate-700 dark:bg-slate-900/70">
           <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
@@ -160,7 +195,7 @@ export default function FinalizeTripPanel({
         </div>
       </div>
 
-      <div className="mt-4 grid gap-3 lg:grid-cols-3">
+      <div className={`mt-4 grid gap-3 ${isDraft ? "lg:grid-cols-2" : "lg:grid-cols-3"}`}>
         <div className="rounded-[1rem] border border-white/70 bg-white/75 p-4 dark:border-slate-700 dark:bg-slate-900/70">
           <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
             Budget fit
@@ -184,15 +219,88 @@ export default function FinalizeTripPanel({
           </p>
         </div>
 
-        <div className="rounded-[1rem] border border-white/70 bg-white/75 p-4 dark:border-slate-700 dark:bg-slate-900/70">
-          <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
-            Share and book
+        {isDraft ? (
+          <div className="rounded-[1rem] border border-white/70 bg-white/75 p-4 dark:border-slate-700 dark:bg-slate-900/70">
+            <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
+              What happens next
+            </div>
+            <p className="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-200">
+              Finalize once the stay, budget, and day flow feel right. The decision and logistics layers stay quieter until then.
+            </p>
           </div>
-          <p className="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-200">
-            Use the action rail right after finalizing to copy the share link, export the calendar, and open the lodging booking page from the locked plan.
-          </p>
-        </div>
+        ) : (
+          <div className="rounded-[1rem] border border-white/70 bg-white/75 p-4 dark:border-slate-700 dark:bg-slate-900/70">
+            <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
+              Approval flow
+            </div>
+            <p className="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-200">
+              1. Copy the share link. 2. Send it to friends. 3. Have them react, comment, and approve the plan. 4. Book once the trip is approved.
+            </p>
+          </div>
+        )}
       </div>
+
+      {trip.status === "finalized" ? (
+        <div className="mt-4 rounded-[1.1rem] border border-emerald-200 bg-white/80 p-4 dark:border-emerald-500/30 dark:bg-slate-900/75">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div className="max-w-2xl">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-700 dark:text-emerald-300">
+                Next step
+              </div>
+              <h3 className="mt-1 text-lg font-semibold text-slate-950 dark:text-slate-100">
+                Share this trip and get sign-off
+              </h3>
+              <p className="mt-1 text-sm leading-6 text-slate-700 dark:text-slate-200">
+                Friends should open the share view, react to the plan, leave comments if needed, and mark it approved before anyone books.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => void handleCopyShareLink()}
+                className="inline-flex h-11 items-center justify-center rounded-2xl bg-slate-950 px-5 text-sm font-semibold text-white transition hover:bg-slate-800 dark:bg-emerald-400 dark:text-slate-950 dark:hover:bg-emerald-300"
+              >
+                {copied ? "Share link copied" : "Copy share link"}
+              </button>
+              <button
+                type="button"
+                onClick={handleOpenShareView}
+                className="inline-flex h-11 items-center justify-center rounded-2xl border border-slate-300 bg-white px-5 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+              >
+                Open share view
+              </button>
+            </div>
+          </div>
+
+          <div className="mt-4 grid gap-3 md:grid-cols-3">
+            <div className="rounded-[1rem] border border-slate-200 bg-slate-50 p-3.5 dark:border-slate-700 dark:bg-slate-800/70">
+              <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
+                Step 1
+              </div>
+              <p className="mt-1 text-sm font-medium text-slate-950 dark:text-slate-100">
+                Send the share link to your group.
+              </p>
+            </div>
+            <div className="rounded-[1rem] border border-slate-200 bg-slate-50 p-3.5 dark:border-slate-700 dark:bg-slate-800/70">
+              <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
+                Step 2
+              </div>
+              <p className="mt-1 text-sm font-medium text-slate-950 dark:text-slate-100">
+                They react, comment, and approve or request changes.
+              </p>
+            </div>
+            <div className="rounded-[1rem] border border-slate-200 bg-slate-50 p-3.5 dark:border-slate-700 dark:bg-slate-800/70">
+              <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
+                Step 3
+              </div>
+              <p className="mt-1 text-sm font-medium text-slate-950 dark:text-slate-100">
+                Once approved, move the group into booking.
+              </p>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {statusMessage ? (
         <p className="mt-4 text-sm font-medium text-slate-700 dark:text-slate-200">
