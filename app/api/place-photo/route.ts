@@ -1,11 +1,19 @@
 import { NextResponse } from "next/server";
+import { enforceRateLimit, jsonNoStore } from "../../../lib/apiSecurity";
 
 const API_KEY = process.env.GOOGLE_MAPS_API_KEY;
 
 export async function GET(request: Request) {
+  const rateLimitViolation = enforceRateLimit(request, {
+    key: "place-photo",
+    limit: 120,
+    windowMs: 60_000,
+  });
+  if (rateLimitViolation) return rateLimitViolation;
+
   try {
     if (!API_KEY) {
-      return NextResponse.json(
+      return jsonNoStore(
         { success: false, error: "Missing GOOGLE_MAPS_API_KEY." },
         { status: 500 }
       );
@@ -14,8 +22,11 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const ref = searchParams.get("ref")?.trim();
 
-    if (!ref) {
-      return NextResponse.json(
+    if (
+      !ref ||
+      !/^places\/[^/]+\/photos\/[^/?#]+$/i.test(ref)
+    ) {
+      return jsonNoStore(
         { success: false, error: "Missing photo reference." },
         { status: 400 }
       );
@@ -62,11 +73,12 @@ export async function GET(request: Request) {
       headers: {
         "Content-Type": contentType,
         "Cache-Control": "public, max-age=86400, s-maxage=86400",
+        "Cross-Origin-Resource-Policy": "same-origin",
       },
     });
   } catch (error) {
     console.error("place-photo route error:", error);
-    return NextResponse.json(
+    return jsonNoStore(
       { success: false, error: "Failed to load place photo." },
       { status: 500 }
     );

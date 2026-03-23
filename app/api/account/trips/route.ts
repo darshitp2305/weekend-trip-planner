@@ -1,13 +1,25 @@
-import { NextResponse } from "next/server";
+import {
+  enforceRateLimit,
+  enforceSameOrigin,
+  jsonNoStore,
+  rejectOversizedJsonRequest,
+} from "../../../../lib/apiSecurity";
 import { getAuthenticatedUserFromRequest } from "../../../../lib/authSession";
 import { supabaseAdmin } from "../../../../lib/supabaseAdmin";
 
 export async function GET(request: Request) {
+  const rateLimitViolation = enforceRateLimit(request, {
+    key: "account-trips-get",
+    limit: 60,
+    windowMs: 60_000,
+  });
+  if (rateLimitViolation) return rateLimitViolation;
+
   try {
     const authUser = await getAuthenticatedUserFromRequest(request);
 
     if (!authUser?.userId) {
-      return NextResponse.json(
+      return jsonNoStore(
         { success: false, error: "Not authenticated." },
         { status: 401 }
       );
@@ -23,19 +35,19 @@ export async function GET(request: Request) {
 
     if (error) {
       console.error("account trips route error:", error);
-      return NextResponse.json(
+      return jsonNoStore(
         { success: false, error: "Failed to load account trips." },
         { status: 500 }
       );
     }
 
-    return NextResponse.json({
+    return jsonNoStore({
       success: true,
       trips: (data ?? []).map((row) => row.trip_data),
     });
   } catch (error) {
     console.error("account trips route fatal error:", error);
-    return NextResponse.json(
+    return jsonNoStore(
       { success: false, error: "Unexpected server error." },
       { status: 500 }
     );
@@ -43,11 +55,24 @@ export async function GET(request: Request) {
 }
 
 export async function DELETE(request: Request) {
+  const sameOriginViolation = enforceSameOrigin(request);
+  if (sameOriginViolation) return sameOriginViolation;
+
+  const rateLimitViolation = enforceRateLimit(request, {
+    key: "account-trips-delete",
+    limit: 20,
+    windowMs: 60_000,
+  });
+  if (rateLimitViolation) return rateLimitViolation;
+
+  const oversizedRequest = rejectOversizedJsonRequest(request, 8_000);
+  if (oversizedRequest) return oversizedRequest;
+
   try {
     const authUser = await getAuthenticatedUserFromRequest(request);
 
     if (!authUser?.userId) {
-      return NextResponse.json(
+      return jsonNoStore(
         { success: false, error: "Not authenticated." },
         { status: 401 }
       );
@@ -58,7 +83,7 @@ export async function DELETE(request: Request) {
       typeof body?.tripId === "string" ? body.tripId.trim() : "";
 
     if (!tripId) {
-      return NextResponse.json(
+      return jsonNoStore(
         { success: false, error: "Missing trip id." },
         { status: 400 }
       );
@@ -73,19 +98,19 @@ export async function DELETE(request: Request) {
 
     if (error) {
       console.error("account trips delete route error:", error);
-      return NextResponse.json(
+      return jsonNoStore(
         { success: false, error: "Failed to remove account trip." },
         { status: 500 }
       );
     }
 
-    return NextResponse.json({
+    return jsonNoStore({
       success: true,
       tripId,
     });
   } catch (error) {
     console.error("account trips delete route fatal error:", error);
-    return NextResponse.json(
+    return jsonNoStore(
       { success: false, error: "Unexpected server error." },
       { status: 500 }
     );

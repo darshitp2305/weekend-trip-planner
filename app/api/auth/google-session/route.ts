@@ -1,8 +1,28 @@
 import { NextResponse } from "next/server";
+import {
+  enforceRateLimit,
+  enforceSameOrigin,
+  isSafeInternalRedirect,
+  jsonNoStore,
+  rejectOversizedJsonRequest,
+} from "../../../../lib/apiSecurity";
 import { setUserSessionCookieOnResponse } from "../../../../lib/authSession";
 import { supabaseAuth } from "../../../../lib/supabaseAuth";
 
 export async function POST(request: Request) {
+  const sameOriginViolation = enforceSameOrigin(request);
+  if (sameOriginViolation) return sameOriginViolation;
+
+  const rateLimitViolation = enforceRateLimit(request, {
+    key: "auth-google-session",
+    limit: 10,
+    windowMs: 60_000,
+  });
+  if (rateLimitViolation) return rateLimitViolation;
+
+  const oversizedRequest = rejectOversizedJsonRequest(request, 24_000);
+  if (oversizedRequest) return oversizedRequest;
+
   try {
     const contentType = request.headers.get("content-type") ?? "";
 
@@ -29,7 +49,7 @@ export async function POST(request: Request) {
     const accessToken =
       typeof body?.accessToken === "string" ? body.accessToken : "";
     const redirectTo =
-      typeof body?.redirectTo === "string" && body.redirectTo.startsWith("/")
+      typeof body?.redirectTo === "string" && isSafeInternalRedirect(body.redirectTo)
         ? body.redirectTo
         : "/?authSuccess=google";
 
@@ -40,7 +60,7 @@ export async function POST(request: Request) {
         );
       }
 
-      return NextResponse.json(
+      return jsonNoStore(
         { success: false, error: "Missing access token." },
         { status: 400 }
       );
@@ -57,7 +77,7 @@ export async function POST(request: Request) {
         );
       }
 
-      return NextResponse.json(
+      return jsonNoStore(
         { success: false, error: "Google session verification failed." },
         { status: 401 }
       );
@@ -74,10 +94,11 @@ export async function POST(request: Request) {
         });
 
     setUserSessionCookieOnResponse(response, data.user.id, data.user.email);
+    response.headers.set("Cache-Control", "no-store");
     return response;
   } catch (error) {
     console.error("google session route fatal error:", error);
-    return NextResponse.json(
+    return jsonNoStore(
       { success: false, error: "Unexpected server error." },
       { status: 500 }
     );

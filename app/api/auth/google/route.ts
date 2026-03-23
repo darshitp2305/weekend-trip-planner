@@ -1,7 +1,15 @@
 import { NextResponse } from "next/server";
+import { enforceRateLimit } from "../../../../lib/apiSecurity";
 import { supabaseAuth } from "../../../../lib/supabaseAuth";
 
 export async function GET(request: Request) {
+  const rateLimitViolation = enforceRateLimit(request, {
+    key: "auth-google-start",
+    limit: 20,
+    windowMs: 60_000,
+  });
+  if (rateLimitViolation) return rateLimitViolation;
+
   try {
     const url = new URL(request.url);
     const origin = url.origin;

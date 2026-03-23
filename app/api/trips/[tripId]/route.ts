@@ -1,6 +1,12 @@
-import { NextResponse } from "next/server";
 import { getAuthenticatedUserFromRequest } from "../../../../lib/authSession";
+import {
+  enforceRateLimit,
+  isValidPublicTripId,
+  jsonNoStore,
+} from "../../../../lib/apiSecurity";
 import { supabaseAdmin } from "../../../../lib/supabaseAdmin";
+import { sanitizeTripForResponse } from "../../../../lib/tripSecurity";
+import { TripPlan } from "../../../../lib/types";
 
 type RouteContext = {
   params: Promise<{
@@ -9,12 +15,21 @@ type RouteContext = {
 };
 
 export async function GET(request: Request, context: RouteContext) {
+  const rateLimitViolation = enforceRateLimit(request, {
+    key: "get-trip",
+    limit: 120,
+    windowMs: 60_000,
+  });
+  if (rateLimitViolation) {
+    return rateLimitViolation;
+  }
+
   try {
     const { tripId } = await context.params;
 
-    if (!tripId) {
-      return NextResponse.json(
-        { success: false, error: "Missing trip id." },
+    if (!tripId || !isValidPublicTripId(tripId)) {
+      return jsonNoStore(
+        { success: false, error: "Missing or invalid trip id." },
         { status: 400 }
       );
     }
@@ -24,8 +39,8 @@ export async function GET(request: Request, context: RouteContext) {
       ? [`user:${authUser.userId}:${tripId}`, tripId]
       : [tripId];
 
-    let data: { trip_data?: unknown } | null = null;
-    let error: unknown = null;
+    let foundTrip: TripPlan | null = null;
+    let routeError: unknown = null;
 
     for (const candidateId of idsToTry) {
       const result = await supabaseAdmin
@@ -35,39 +50,48 @@ export async function GET(request: Request, context: RouteContext) {
         .maybeSingle();
 
       if (result.error) {
-        error = result.error;
+        routeError = result.error;
         continue;
       }
 
-      if (result.data?.trip_data) {
-        data = result.data;
-        error = null;
+      if (result.data?.trip_data && typeof result.data.trip_data === "object") {
+        foundTrip = result.data.trip_data as TripPlan;
+        routeError = null;
         break;
       }
     }
 
-    if (error) {
-      console.error("Supabase get-trip error:", error);
-      return NextResponse.json(
+    if (routeError) {
+      console.error("Supabase get-trip error:", routeError);
+      return jsonNoStore(
         { success: false, error: "Failed to load trip." },
         { status: 500 }
       );
     }
 
-    if (!data?.trip_data) {
-      return NextResponse.json(
+    if (!foundTrip) {
+      return jsonNoStore(
         { success: false, error: "Trip not found." },
         { status: 404 }
       );
     }
 
-    return NextResponse.json({
+    const isOwner = Boolean(
+      authUser?.userId &&
+        foundTrip.ownerUserId &&
+        authUser.userId === foundTrip.ownerUserId
+    );
+
+    return jsonNoStore({
       success: true,
-      trip: data.trip_data,
+      trip: sanitizeTripForResponse(foundTrip, {
+        includeEditToken: isOwner,
+        includeOwnerFields: isOwner,
+      }),
     });
   } catch (error) {
     console.error("get-trip route error:", error);
-    return NextResponse.json(
+    return jsonNoStore(
       { success: false, error: "Unexpected server error." },
       { status: 500 }
     );

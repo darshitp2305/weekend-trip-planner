@@ -1,14 +1,32 @@
-import { NextResponse } from "next/server";
+import {
+  enforceRateLimit,
+  enforceSameOrigin,
+  jsonNoStore,
+  rejectOversizedJsonRequest,
+} from "../../../lib/apiSecurity";
 import { getAuthenticatedUserFromRequest } from "../../../lib/authSession";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 
 export async function POST(request: Request) {
+  const sameOriginViolation = enforceSameOrigin(request);
+  if (sameOriginViolation) return sameOriginViolation;
+
+  const rateLimitViolation = enforceRateLimit(request, {
+    key: "analytics-post",
+    limit: 80,
+    windowMs: 60_000,
+  });
+  if (rateLimitViolation) return rateLimitViolation;
+
+  const oversizedRequest = rejectOversizedJsonRequest(request, 32_000);
+  if (oversizedRequest) return oversizedRequest;
+
   try {
     const body = await request.json();
     const authUser = await getAuthenticatedUserFromRequest(request);
 
     if (!body || typeof body.name !== "string") {
-      return NextResponse.json(
+      return jsonNoStore(
         { success: false, error: "Missing analytics event name." },
         { status: 400 }
       );
@@ -48,10 +66,10 @@ export async function POST(request: Request) {
       }
     }
 
-    return NextResponse.json({ success: true });
+    return jsonNoStore({ success: true });
   } catch (error) {
     console.error("analytics route error:", error);
-    return NextResponse.json(
+    return jsonNoStore(
       { success: false, error: "Unexpected server error." },
       { status: 500 }
     );

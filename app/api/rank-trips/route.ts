@@ -1,4 +1,9 @@
-import { NextResponse } from "next/server";
+import {
+  enforceRateLimit,
+  enforceSameOrigin,
+  jsonNoStore,
+  rejectOversizedJsonRequest,
+} from "../../../lib/apiSecurity";
 import { isStartCity } from "../../../lib/startCities";
 import { deriveTripEndDate, isIsoDate } from "../../../lib/tripDates";
 import { generateRankedTrips } from "../../../lib/generateRankedTrips";
@@ -108,6 +113,19 @@ function normalizeExcludedDestinationNames(value: unknown): string[] {
 }
 
 export async function POST(req: Request) {
+  const sameOriginViolation = enforceSameOrigin(req);
+  if (sameOriginViolation) return sameOriginViolation;
+
+  const rateLimitViolation = enforceRateLimit(req, {
+    key: "rank-trips",
+    limit: 30,
+    windowMs: 60_000,
+  });
+  if (rateLimitViolation) return rateLimitViolation;
+
+  const oversizedRequest = rejectOversizedJsonRequest(req, 128_000);
+  if (oversizedRequest) return oversizedRequest;
+
   try {
     const body = await req.json();
     const input = normalizeInput(body?.input ?? body);
@@ -116,7 +134,7 @@ export async function POST(req: Request) {
     );
 
     if (!input) {
-      return NextResponse.json(
+      return jsonNoStore(
         { error: "Invalid TripInput payload." },
         { status: 400 }
       );
@@ -128,7 +146,7 @@ export async function POST(req: Request) {
       excludedDestinationNames,
     });
 
-    return NextResponse.json({
+    return jsonNoStore({
       success: true,
       initialCandidates: pipeline.initialCandidates,
       results: pipeline.finalTrips,
@@ -141,7 +159,7 @@ export async function POST(req: Request) {
   } catch (error) {
     console.error("rank-trips route failed:", error);
 
-    return NextResponse.json(
+    return jsonNoStore(
       { error: "Failed to rank trips." },
       { status: 500 }
     );

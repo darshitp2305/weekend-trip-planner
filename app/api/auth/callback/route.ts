@@ -1,8 +1,16 @@
 import { NextResponse } from "next/server";
+import { enforceRateLimit } from "../../../../lib/apiSecurity";
 import { setUserSessionCookieOnResponse } from "../../../../lib/authSession";
 import { supabaseAuth } from "../../../../lib/supabaseAuth";
 
 export async function GET(request: Request) {
+  const rateLimitViolation = enforceRateLimit(request, {
+    key: "auth-google-callback",
+    limit: 30,
+    windowMs: 60_000,
+  });
+  if (rateLimitViolation) return rateLimitViolation;
+
   try {
     const url = new URL(request.url);
     const code = url.searchParams.get("code");

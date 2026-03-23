@@ -1,4 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
+import {
+  enforceRateLimit,
+  enforceSameOrigin,
+  jsonNoStore,
+  rejectOversizedJsonRequest,
+} from "../../../lib/apiSecurity";
 
 type Coordinate = {
   lat: number;
@@ -40,7 +46,14 @@ function asCoordinate(input: LocationInput): Coordinate | null {
   const lon =
     isFiniteNumber(input.lon) ? input.lon : isFiniteNumber(input.longitude) ? input.longitude : null;
 
-  if (!isFiniteNumber(lat) || !isFiniteNumber(lon)) {
+  if (
+    !isFiniteNumber(lat) ||
+    !isFiniteNumber(lon) ||
+    lat < -90 ||
+    lat > 90 ||
+    lon < -180 ||
+    lon > 180
+  ) {
     return null;
   }
 
@@ -53,11 +66,13 @@ function asCoordinate(input: LocationInput): Coordinate | null {
 
 function asQuery(input: LocationInput): string | null {
   if (typeof input === "string" && input.trim()) {
-    return input.trim();
+    const cleaned = input.trim();
+    return cleaned.length <= 160 ? cleaned : null;
   }
 
   if (input && typeof input === "object" && typeof input.label === "string" && input.label.trim()) {
-    return input.label.trim();
+    const cleaned = input.label.trim();
+    return cleaned.length <= 160 ? cleaned : null;
   }
 
   return null;
@@ -107,11 +122,24 @@ async function geocodeWithNominatim(input: LocationInput): Promise<Coordinate | 
 }
 
 export async function POST(req: NextRequest) {
+  const sameOriginViolation = enforceSameOrigin(req);
+  if (sameOriginViolation) return sameOriginViolation;
+
+  const rateLimitViolation = enforceRateLimit(req, {
+    key: "osm-route",
+    limit: 40,
+    windowMs: 60_000,
+  });
+  if (rateLimitViolation) return rateLimitViolation;
+
+  const oversizedRequest = rejectOversizedJsonRequest(req, 16_000);
+  if (oversizedRequest) return oversizedRequest;
+
   try {
     const body = (await req.json()) as Body;
 
     if (!body?.origin || !body?.destination) {
-      return NextResponse.json(
+      return jsonNoStore(
         {
           success: false,
           error: "Missing origin or destination in request body.",
@@ -126,7 +154,7 @@ export async function POST(req: NextRequest) {
     ]);
 
     if (!origin || !destination) {
-      return NextResponse.json(
+      return jsonNoStore(
         {
           success: false,
           error: "Could not geocode origin or destination.",
@@ -148,7 +176,7 @@ export async function POST(req: NextRequest) {
 
     if (!routeResponse.ok) {
       const text = await routeResponse.text();
-      return NextResponse.json(
+      return jsonNoStore(
         {
           success: false,
           error: "Routing request failed.",
@@ -162,7 +190,7 @@ export async function POST(req: NextRequest) {
     const route = Array.isArray(routeData?.routes) ? routeData.routes[0] : null;
 
     if (!route) {
-      return NextResponse.json(
+      return jsonNoStore(
         {
           success: false,
           error: "No route found.",
@@ -171,7 +199,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    return NextResponse.json({
+    return jsonNoStore({
       success: true,
       route: {
         distanceMeters: Math.round(route.distance ?? 0),
@@ -184,7 +212,7 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     console.error("osm-route route failed:", error);
 
-    return NextResponse.json(
+    return jsonNoStore(
       {
         success: false,
         error: "Failed to build route.",

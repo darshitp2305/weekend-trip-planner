@@ -362,6 +362,7 @@ export type TripDataSource =
 
 export interface TripPlan {
   id: string;
+  editToken?: string;
   destinationName: string;
   startCity?: StartCity;
   region?: string;

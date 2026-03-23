@@ -252,8 +252,19 @@ export async function getTripPlanById(id: string): Promise<TripPlan | null> {
 
     if (response.ok && data?.success && data?.trip) {
       const trip = data.trip as TripPlan;
-      upsertLocalTripPlan(trip);
-      return trip;
+      const existingLocalTrip = readLocalPlans().find((plan) => plan.id === id);
+      const mergedTrip =
+        existingLocalTrip?.editToken && !trip.editToken
+          ? {
+              ...trip,
+              editToken: existingLocalTrip.editToken,
+              ownerUserId: trip.ownerUserId ?? existingLocalTrip.ownerUserId,
+              ownerEmail: trip.ownerEmail ?? existingLocalTrip.ownerEmail,
+            }
+          : trip;
+
+      upsertLocalTripPlan(mergedTrip);
+      return mergedTrip;
     }
   } catch (error) {
     console.error("Failed to load shared trip:", error);

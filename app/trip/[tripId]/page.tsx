@@ -725,7 +725,9 @@ export default function TripPage() {
   const requestedShareView = searchParams.get("view") === "share";
   const isOwner = useMemo(() => {
     if (!trip) return false;
-    if (!trip.ownerUserId && !trip.ownerEmail) return true;
+    if (!trip.ownerUserId && !trip.ownerEmail) {
+      return Boolean(trip.editToken);
+    }
     if (!viewer.ready) return false;
 
     return Boolean(

@@ -1,4 +1,9 @@
-import { NextResponse } from "next/server";
+import {
+  enforceRateLimit,
+  enforceSameOrigin,
+  jsonNoStore,
+  rejectOversizedJsonRequest,
+} from "../../../lib/apiSecurity";
 import { generateTripCopyWithOpenAI } from "../../../lib/openAiTripCopy";
 import { isStartCity } from "../../../lib/startCities";
 import { deriveTripEndDate, isIsoDate } from "../../../lib/tripDates";
@@ -223,12 +228,25 @@ function buildFallbackAiContent(
 }
 
 export async function POST(req: Request) {
+  const sameOriginViolation = enforceSameOrigin(req);
+  if (sameOriginViolation) return sameOriginViolation;
+
+  const rateLimitViolation = enforceRateLimit(req, {
+    key: "generate-trip",
+    limit: 20,
+    windowMs: 60_000,
+  });
+  if (rateLimitViolation) return rateLimitViolation;
+
+  const oversizedRequest = rejectOversizedJsonRequest(req, 256_000);
+  if (oversizedRequest) return oversizedRequest;
+
   try {
     const body = (await req.json()) as GenerateTripBody;
     const input = extractInputFromBody(body);
 
     if (!input) {
-      return NextResponse.json(
+      return jsonNoStore(
         { error: "Invalid request body. Could not extract a valid TripInput." },
         { status: 400 }
       );
@@ -241,7 +259,7 @@ export async function POST(req: Request) {
 
     const openAiResult = await generateTripCopyWithOpenAI(input, rankedTrips);
     if (openAiResult.trips) {
-      return NextResponse.json({
+      return jsonNoStore({
         success: true,
         source: "live-openai" satisfies GenerateTripSource,
         results: openAiResult.trips.map((trip) => ({
@@ -264,7 +282,7 @@ export async function POST(req: Request) {
       })
     );
 
-    return NextResponse.json({
+    return jsonNoStore({
       success: true,
       source: "fallback-template" satisfies GenerateTripSource,
       results: fallbackTrips,
@@ -272,7 +290,7 @@ export async function POST(req: Request) {
   } catch (error) {
     console.error("Generate trip route failed:", error);
 
-    return NextResponse.json(
+    return jsonNoStore(
       { error: "Failed to generate trip content." },
       { status: 500 }
     );

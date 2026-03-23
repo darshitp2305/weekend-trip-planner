@@ -1,11 +1,18 @@
-import { NextResponse } from "next/server";
+import { enforceRateLimit, jsonNoStore } from "../../../../lib/apiSecurity";
 import { getAuthenticatedUserFromRequest } from "../../../../lib/authSession";
 
 export async function GET(request: Request) {
+  const rateLimitViolation = enforceRateLimit(request, {
+    key: "auth-me",
+    limit: 120,
+    windowMs: 60_000,
+  });
+  if (rateLimitViolation) return rateLimitViolation;
+
   try {
     const user = await getAuthenticatedUserFromRequest(request);
 
-    return NextResponse.json({
+    return jsonNoStore({
       success: true,
       user: user
         ? {
@@ -16,7 +23,7 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     console.error("auth me route error:", error);
-    return NextResponse.json(
+    return jsonNoStore(
       { success: false, error: "Unexpected server error." },
       { status: 500 }
     );

@@ -7,6 +7,7 @@ import {
   TripPlan,
 } from "./types";
 import { deriveTripEndDate } from "./tripDates";
+import { ensureTripEditToken } from "./tripSecurity";
 
 const defaultInput: TripInput = {
   startCity: "Edmonton",
@@ -1803,7 +1804,7 @@ export function buildTripPlan(
   const driveHoursFromStart = trip.isStaycation ? 0 : trip.driveHoursFromStart;
   const driveTimeText = trip.isStaycation ? "0 hours" : makeDriveText(trip);
 
-  return {
+  return ensureTripEditToken({
     id: crypto.randomUUID(),
 
     destinationName: trip.name,
@@ -1867,5 +1868,5 @@ export function buildTripPlan(
     source: dataSource,
     isStaycation: trip.isStaycation,
     homeBaseCity: trip.homeBaseCity,
-  } as TripPlan;
+  } as TripPlan);
 }
