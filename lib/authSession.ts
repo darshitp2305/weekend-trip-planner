@@ -97,6 +97,16 @@ export function setUserSessionCookieOnResponse(
   return payload;
 }
 
+export function clearUserSessionCookieOnResponse(response: NextResponse) {
+  response.cookies.set(AUTH_COOKIE_NAME, "", {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    expires: new Date(0),
+  });
+}
+
 export async function clearUserSessionCookie() {
   const cookieStore = await cookies();
   cookieStore.set(AUTH_COOKIE_NAME, "", {

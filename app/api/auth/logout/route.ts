@@ -3,7 +3,7 @@ import {
   enforceSameOrigin,
   jsonNoStore,
 } from "../../../../lib/apiSecurity";
-import { clearUserSessionCookie } from "../../../../lib/authSession";
+import { clearUserSessionCookieOnResponse } from "../../../../lib/authSession";
 
 export async function POST(request: Request) {
   const sameOriginViolation = enforceSameOrigin(request);
@@ -17,8 +17,9 @@ export async function POST(request: Request) {
   if (rateLimitViolation) return rateLimitViolation;
 
   try {
-    await clearUserSessionCookie();
-    return jsonNoStore({ success: true });
+    const response = jsonNoStore({ success: true });
+    clearUserSessionCookieOnResponse(response);
+    return response;
   } catch (error) {
     console.error("logout route error:", error);
     return jsonNoStore(

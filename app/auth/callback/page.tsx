@@ -1,98 +1,28 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { supabaseBrowserAuth } from "../../../lib/supabaseBrowserAuth";
+import { Suspense, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 
 function CallbackContent() {
-  const router = useRouter();
   const searchParams = useSearchParams();
-  const [message, setMessage] = useState("Completing Google sign-in...");
 
   useEffect(() => {
-    let cancelled = false;
+    const queryString = searchParams.toString();
 
-    async function completeGoogleAuth() {
-      try {
-        const code = searchParams.get("code");
-
-        if (!code) {
-          router.replace("/?authError=missing_auth_code");
-          return;
-        }
-
-        setMessage("Verifying Google sign-in...");
-
-        const { data, error } =
-          await supabaseBrowserAuth.auth.exchangeCodeForSession(code);
-
-        if (
-          error ||
-          !data.session?.access_token ||
-          !data.session?.refresh_token
-        ) {
-          console.error("google callback client exchange failed:", error);
-          router.replace("/?authError=google_callback_failed");
-          return;
-        }
-
-        await supabaseBrowserAuth.auth.setSession({
-          access_token: data.session.access_token,
-          refresh_token: data.session.refresh_token,
-        });
-
-        const persisted = await supabaseBrowserAuth.auth.getSession();
-
-        if (!persisted.data.session?.access_token) {
-          console.error("google callback session did not persist in browser");
-          router.replace("/?authError=google_session_not_persisted");
-          return;
-        }
-
-        setMessage("Creating your Trippify session...");
-
-        const response = await fetch("/api/auth/google-session", {
-          method: "POST",
-          credentials: "include",
-          cache: "no-store",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            accessToken: data.session.access_token,
-          }),
-        });
-
-        const payload = await response.json().catch(() => null);
-
-        if (!response.ok || !payload?.success) {
-          console.error("google session handoff failed:", payload);
-          router.replace("/?authError=google_session_failed");
-          return;
-        }
-
-        if (!cancelled) {
-          window.location.replace("/?authSuccess=google");
-        }
-      } catch (error) {
-        console.error("google callback completion fatal error:", error);
-        router.replace("/?authError=google_callback_failed");
-      }
+    if (!queryString) {
+      window.location.replace("/?authError=missing_auth_code");
+      return;
     }
 
-    completeGoogleAuth();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [router, searchParams]);
+    window.location.replace(`/api/auth/callback?${queryString}`);
+  }, [searchParams]);
 
   return (
     <div className="mx-auto max-w-xl rounded-[2rem] border border-slate-200 bg-white p-8 shadow-sm">
       <h1 className="text-2xl font-semibold text-slate-950">
         Finalizing sign-in
       </h1>
-      <p className="mt-3 text-slate-600">{message}</p>
+      <p className="mt-3 text-slate-600">Verifying Google sign-in...</p>
     </div>
   );
 }

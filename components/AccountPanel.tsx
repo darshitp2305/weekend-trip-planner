@@ -558,32 +558,7 @@ export default function AccountPanel({
     try {
       setLoading(true);
       setStatus("");
-
-      const redirectTo = `${window.location.origin}/auth/callback`;
-      const { data, error } = await supabaseBrowserAuth.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo,
-          queryParams: {
-            access_type: "offline",
-            prompt: "consent",
-          },
-        },
-      });
-
-      if (error) {
-        setStatus(error.message || "Google sign-in failed.");
-        setLoading(false);
-        return;
-      }
-
-      if (data?.url) {
-        window.location.href = data.url;
-        return;
-      }
-
-      setStatus("Google sign-in failed.");
-      setLoading(false);
+      window.location.assign("/api/auth/google");
     } catch (error) {
       console.error("Google auth failed:", error);
       setStatus("Google sign-in failed.");

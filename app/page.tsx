@@ -212,6 +212,15 @@ export default function HomePage() {
   useEffect(() => {
     if (typeof window === "undefined") return;
 
+    const currentUrl = new URL(window.location.href);
+    if (
+      currentUrl.searchParams.get("code") &&
+      window.location.pathname !== "/auth/callback"
+    ) {
+      window.location.replace(`/api/auth/callback${currentUrl.search}`);
+      return;
+    }
+
     try {
       const raw = sessionStorage.getItem(PAGE_STATE_STORAGE_KEY);
       if (!raw) return;

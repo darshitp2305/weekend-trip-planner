@@ -1,7 +1,10 @@
 import { createClient } from "@supabase/supabase-js";
 
 const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseAuthKey = process.env.SUPABASE_PUBLISHABLE_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY;
+const supabaseAuthKey =
+  process.env.SUPABASE_PUBLISHABLE_KEY ??
+  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
+  process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!supabaseUrl) {
   throw new Error("Missing SUPABASE_URL in environment.");
@@ -9,7 +12,7 @@ if (!supabaseUrl) {
 
 if (!supabaseAuthKey) {
   throw new Error(
-    "Missing SUPABASE_PUBLISHABLE_KEY or SUPABASE_SERVICE_ROLE_KEY in environment."
+    "Missing SUPABASE_PUBLISHABLE_KEY, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY, or SUPABASE_SERVICE_ROLE_KEY in environment."
   );
 }
 

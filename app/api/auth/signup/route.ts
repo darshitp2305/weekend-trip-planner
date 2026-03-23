@@ -4,7 +4,7 @@ import {
   jsonNoStore,
   rejectOversizedJsonRequest,
 } from "../../../../lib/apiSecurity";
-import { createUserSessionCookie } from "../../../../lib/authSession";
+import { setUserSessionCookieOnResponse } from "../../../../lib/authSession";
 import { supabaseAuth } from "../../../../lib/supabaseAuth";
 
 export async function POST(request: Request) {
@@ -55,13 +55,12 @@ export async function POST(request: Request) {
         success: true,
         user: user?.id && user.email ? { id: user.id, email: user.email } : null,
         needsEmailConfirmation: true,
-        message: "Check your email to confirm the account, then log in.",
+        message:
+          "Your account was created, but email confirmation is still required before password login works.",
       });
     }
 
-    await createUserSessionCookie(sessionUser.id, sessionUser.email);
-
-    return jsonNoStore({
+    const response = jsonNoStore({
       success: true,
       user: {
         id: sessionUser.id,
@@ -69,6 +68,8 @@ export async function POST(request: Request) {
       },
       needsEmailConfirmation: false,
     });
+    setUserSessionCookieOnResponse(response, sessionUser.id, sessionUser.email);
+    return response;
   } catch (error) {
     console.error("signup route error:", error);
     return jsonNoStore(

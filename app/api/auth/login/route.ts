@@ -4,7 +4,7 @@ import {
   jsonNoStore,
   rejectOversizedJsonRequest,
 } from "../../../../lib/apiSecurity";
-import { createUserSessionCookie } from "../../../../lib/authSession";
+import { setUserSessionCookieOnResponse } from "../../../../lib/authSession";
 import { supabaseAuth } from "../../../../lib/supabaseAuth";
 
 export async function POST(request: Request) {
@@ -42,20 +42,26 @@ export async function POST(request: Request) {
 
     if (error || !data.user?.id || !data.user.email) {
       return jsonNoStore(
-        { success: false, error: "Invalid email or password." },
+        {
+          success: false,
+          error:
+            error?.message === "Email not confirmed"
+              ? "Email not confirmed. Either confirm the signup email or disable email confirmation in Supabase."
+              : error?.message ?? "Invalid email or password.",
+        },
         { status: 401 }
       );
     }
 
-    await createUserSessionCookie(data.user.id, data.user.email);
-
-    return jsonNoStore({
+    const response = jsonNoStore({
       success: true,
       user: {
         id: data.user.id,
         email: data.user.email,
       },
     });
+    setUserSessionCookieOnResponse(response, data.user.id, data.user.email);
+    return response;
   } catch (error) {
     console.error("login route error:", error);
     return jsonNoStore(
