@@ -1,0 +1,53 @@
+<svg width="256" height="256" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="pinOuter" x1="58" y1="34" x2="196" y2="208" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#C9A9FF"/>
+      <stop offset="0.45" stop-color="#8B5CF6"/>
+      <stop offset="1" stop-color="#5B21B6"/>
+    </linearGradient>
+    <linearGradient id="pinInner" x1="78" y1="54" x2="178" y2="164" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#EFE7FF"/>
+      <stop offset="1" stop-color="#B794F4"/>
+    </linearGradient>
+    <linearGradient id="sky" x1="91" y1="76" x2="168" y2="152" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#D9F7FF"/>
+      <stop offset="1" stop-color="#89CFFB"/>
+    </linearGradient>
+    <linearGradient id="mountainBack" x1="102" y1="102" x2="156" y2="159" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#D7C3FF"/>
+      <stop offset="1" stop-color="#7C3AED"/>
+    </linearGradient>
+    <linearGradient id="mountainFront" x1="92" y1="96" x2="150" y2="166" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#B58CFF"/>
+      <stop offset="1" stop-color="#5B21B6"/>
+    </linearGradient>
+    <linearGradient id="tree" x1="115" y1="129" x2="151" y2="175" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#4ADE80"/>
+      <stop offset="1" stop-color="#166534"/>
+    </linearGradient>
+    <linearGradient id="sun" x1="156" y1="88" x2="187" y2="119" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FDE68A"/>
+      <stop offset="1" stop-color="#FACC15"/>
+    </linearGradient>
+  </defs>
+
+  <path d="M128 20C82.712 20 46 56.712 46 102C46 139.04 71.706 171.078 108.531 208.028C114.005 213.52 120.621 220.061 128 227.2C135.379 220.061 141.995 213.52 147.469 208.028C184.294 171.078 210 139.04 210 102C210 56.712 173.288 20 128 20Z" fill="url(#pinOuter)"/>
+  <path d="M128 32C89.34 32 58 63.34 58 102C58 133.928 80.654 162.393 116.309 198.296C120.145 202.158 124.082 206.076 128 209.859C131.918 206.076 135.855 202.158 139.691 198.296C175.346 162.393 198 133.928 198 102C198 63.34 166.66 32 128 32Z" fill="url(#pinInner)"/>
+  <circle cx="128" cy="102" r="54" fill="url(#sky)"/>
+  <circle cx="164" cy="89" r="18" fill="url(#sun)"/>
+  <circle cx="164" cy="89" r="8" fill="#FFF59D" opacity="0.85"/>
+  <path d="M177.5 61.5L180.5 50" stroke="#FBBF24" stroke-width="5" stroke-linecap="round"/>
+  <path d="M193 71.5L201.5 63.5" stroke="#FBBF24" stroke-width="5" stroke-linecap="round"/>
+  <path d="M200 89L212 89" stroke="#FBBF24" stroke-width="5" stroke-linecap="round"/>
+  <path d="M83 83C87 72 96 68 103 78C109 67 117 66 121 76" stroke="white" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" opacity="0.95"/>
+  <path d="M95 137L120 95L144 137H95Z" fill="url(#mountainFront)"/>
+  <path d="M119 95L131 113L126 118L116 110L119 95Z" fill="white" opacity="0.92"/>
+  <path d="M123 132L149 104L178 137H123Z" fill="url(#mountainBack)"/>
+  <path d="M149 104L164 118L159 123L145 114L149 104Z" fill="white" opacity="0.9"/>
+  <path d="M76 136L109 102L120 114L136 96L182 137V156H76V136Z" stroke="#4C1D95" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M128 153C128 147 132 142 137 138C142 142 146 147 146 153V166H128V153Z" fill="url(#tree)"/>
+  <path d="M118 164H156V172H118V164Z" fill="#0F5132"/>
+  <path d="M103 152C103 147 107 143 111 139C116 143 120 147 120 152V166H103V152Z" fill="url(#tree)"/>
+  <path d="M146 152C146 147 150 143 155 139C159 143 163 147 163 152V166H146V152Z" fill="url(#tree)"/>
+  <ellipse cx="128" cy="224" rx="44" ry="12" fill="#6D28D9" opacity="0.24"/>
+</svg>

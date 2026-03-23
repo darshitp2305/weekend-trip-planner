@@ -6,6 +6,11 @@ export const metadata: Metadata = {
   title: "Trippify | Weekend trip planning",
   description:
     "Trippify helps you find ranked weekend trips based on budget, drive time, and travel style.",
+  icons: {
+    icon: "/trippify-icon.svg",
+    shortcut: "/trippify-icon.svg",
+    apple: "/trippify-icon.svg",
+  },
 };
 
 export default function RootLayout({
