@@ -16,6 +16,7 @@ export type PlacesProviderResult = {
 export async function fetchPlacesProviderData(options: {
   destination: string;
   style: string;
+  activityFocus?: "skiing" | "hiking" | "camping";
   veganFriendly: boolean;
   tripStartDate?: string;
   tripEndDate?: string;
@@ -28,7 +29,7 @@ export async function fetchPlacesProviderData(options: {
       searchCafes(options.destination, {
         veganFriendly: options.veganFriendly,
       }),
-      searchActivities(options.destination, options.style),
+      searchActivities(options.destination, options.style, options.activityFocus),
       searchHotels(options.destination, {
         tripStartDate: options.tripStartDate,
         tripEndDate: options.tripEndDate,

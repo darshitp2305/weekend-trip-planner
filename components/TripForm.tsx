@@ -14,7 +14,7 @@ import {
   formatDateRange,
   getTodayIsoDate,
 } from "../lib/tripDates";
-import { RankedDestination, TripInput, TripStyle } from "../lib/types";
+import { ActivityFocus, RankedDestination, TripInput, TripStyle } from "../lib/types";
 
 type Props = {
   onGenerate?: (input: TripInput) => Promise<void> | void;
@@ -31,6 +31,7 @@ type FormState = {
   budgetPerTraveler: string;
   travelerCount: string;
   style: TripStyle;
+  activityFocus: ActivityFocus | "";
   veganFriendly: boolean;
   includeStaycations: boolean;
   strictBudget: boolean;
@@ -46,6 +47,7 @@ const DEFAULT_FORM: FormState = {
   budgetPerTraveler: "300",
   travelerCount: "2",
   style: "adventure",
+  activityFocus: "",
   veganFriendly: false,
   includeStaycations: false,
   strictBudget: false,
@@ -80,6 +82,7 @@ function buildFormState(
     budgetPerTraveler: String(initialInput?.budgetPerTraveler ?? 300),
     travelerCount: String(initialInput?.travelerCount ?? 2),
     style: initialInput?.style ?? "adventure",
+    activityFocus: initialInput?.activityFocus ?? "",
     veganFriendly: Boolean(initialInput?.veganFriendly),
     includeStaycations: Boolean(initialInput?.includeStaycations),
     strictBudget: Boolean(initialInput?.strictBudget),
@@ -96,6 +99,16 @@ const TRIP_STYLES: TripStyle[] = [
   "solo reset",
   "adventure",
   "hidden gems",
+];
+
+const ACTIVITY_FOCUS_TABS: Array<{
+  value: ActivityFocus;
+  label: string;
+  detail: string;
+}> = [
+  { value: "skiing", label: "Skiing", detail: "Favor ski hills, winter fun, and mountain snow access." },
+  { value: "hiking", label: "Hiking", detail: "Favor trailheads, canyon walks, lakes, and viewpoints." },
+  { value: "camping", label: "Camping", detail: "Favor campgrounds, park access, and outdoor-base destinations." },
 ];
 
 const DESTINATION_OPTIONS = Array.from(
@@ -210,6 +223,33 @@ function ToggleRow({
         <div className="absolute left-1 top-1 h-4 w-4 rounded-full bg-white transition peer-checked:translate-x-5" />
       </div>
     </label>
+  );
+}
+
+function FocusTab({
+  active,
+  label,
+  detail,
+  onClick,
+}: {
+  active: boolean;
+  label: string;
+  detail: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded-[1.25rem] border px-4 py-3 text-left transition ${
+        active
+          ? "border-violet-300 bg-violet-50 shadow-sm dark:border-violet-500/40 dark:bg-violet-500/10"
+          : "border-slate-200 bg-white hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:hover:bg-slate-900"
+      }`}
+    >
+      <div className="text-sm font-semibold text-slate-950 dark:text-slate-100">{label}</div>
+      <div className="mt-1 text-xs leading-5 text-slate-600 dark:text-slate-300">{detail}</div>
+    </button>
   );
 }
 
@@ -486,6 +526,7 @@ export default function TripForm({
       tripLengthDays,
       season,
       style: form.style,
+      activityFocus: form.activityFocus || undefined,
       veganFriendly: form.veganFriendly,
       includeStaycations: form.includeStaycations,
       strictBudget: form.strictBudget,
@@ -767,6 +808,45 @@ export default function TripForm({
                 </option>
               ))}
             </select>
+          </div>
+        </div>
+
+        <div className="rounded-[1.5rem] border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900/80">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h3 className="text-lg font-semibold text-slate-950 dark:text-slate-100">
+                Activity focus
+              </h3>
+              <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">
+                Add a specific activity angle if you want recommendations shaped around what people actually want to do.
+              </p>
+            </div>
+            {form.activityFocus ? (
+              <button
+                type="button"
+                onClick={() => updateField("activityFocus", "")}
+                className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:bg-slate-900"
+              >
+                Clear
+              </button>
+            ) : null}
+          </div>
+
+          <div className="mt-4 grid gap-3 md:grid-cols-3">
+            {ACTIVITY_FOCUS_TABS.map((tab) => (
+              <FocusTab
+                key={tab.value}
+                active={form.activityFocus === tab.value}
+                label={tab.label}
+                detail={tab.detail}
+                onClick={() =>
+                  updateField(
+                    "activityFocus",
+                    form.activityFocus === tab.value ? "" : tab.value
+                  )
+                }
+              />
+            ))}
           </div>
         </div>
 

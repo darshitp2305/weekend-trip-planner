@@ -132,6 +132,41 @@ function shouldRejectPlace(place: GooglePlace, kind: "food" | "activity" | "hote
     }
   }
 
+  if (kind === "activity") {
+    const obviousHotelTerms = [
+      "hotel",
+      "resort hotel",
+      "inn",
+      "lodge",
+      "suites",
+      "lodging",
+      "spa resort",
+    ];
+    const activityOverrideTerms = [
+      "ski",
+      "gondola",
+      "trail",
+      "hike",
+      "park",
+      "lake",
+      "museum",
+      "viewpoint",
+      "canyon",
+      "waterfall",
+      "hot spring",
+      "historic",
+      "landmark",
+      "tour",
+    ];
+
+    if (
+      obviousHotelTerms.some((term) => text.includes(term)) &&
+      !activityOverrideTerms.some((term) => text.includes(term))
+    ) {
+      return true;
+    }
+  }
+
   return false;
 }
 
@@ -342,6 +377,7 @@ export async function enrichRankedTrip(
         fetchPlacesProviderData({
           destination: destinationQuery,
           style: input.style,
+          activityFocus: input.activityFocus,
           veganFriendly: input.veganFriendly,
           tripStartDate: input.tripStartDate,
           tripEndDate: input.tripEndDate,

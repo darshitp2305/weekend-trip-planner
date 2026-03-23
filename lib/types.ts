@@ -8,6 +8,8 @@ export type TripStyle =
   | "adventure"
   | "hidden gems";
 
+export type ActivityFocus = "skiing" | "hiking" | "camping";
+
 export interface StyleScores {
   chill: number;
   outdoors: number;
@@ -176,6 +178,7 @@ export interface TripInput {
   tripLengthDays: number;
   season: string;
   style: TripStyle;
+  activityFocus?: ActivityFocus;
   veganFriendly: boolean;
   includeStaycations: boolean;
   strictBudget: boolean;

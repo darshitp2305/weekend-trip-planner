@@ -12,6 +12,10 @@ type RankTripsResponse = {
   results?: RankedDestination[];
   initialCandidates?: RankedDestination[];
   usedLiveData?: boolean;
+  noMatchDiagnostics?: {
+    headline?: string;
+    reasons?: string[];
+  } | null;
 };
 
 type GenerateTripResponse = {
@@ -349,10 +353,16 @@ export default function HomePage() {
         setRankedResults([]);
         setDisplayResults([]);
         setShownDestinationNames([]);
-        const noMatchMessage =
-          input.preferredDestination
-            ? `Trippify could not find a destination match for "${input.preferredDestination}".`
+        const diagnosticHeadline =
+          typeof rankData?.noMatchDiagnostics?.headline === "string"
+            ? rankData.noMatchDiagnostics.headline.trim()
             : "";
+        const diagnosticReasons = Array.isArray(rankData?.noMatchDiagnostics?.reasons)
+          ? rankData.noMatchDiagnostics.reasons
+              .filter((reason): reason is string => typeof reason === "string" && reason.trim().length > 0)
+              .map((reason) => reason.trim())
+          : [];
+        const noMatchMessage = [diagnosticHeadline, ...diagnosticReasons].filter(Boolean).join(" ");
         setAiStatusMessage(noMatchMessage);
         persistPageState({
           rankedResults: [],

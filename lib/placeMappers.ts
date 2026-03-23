@@ -20,6 +20,9 @@ function getLongitude(place: GooglePlace): number | undefined {
 
 function inferActivityCost(primaryType?: string): number {
   if (!primaryType) return 0;
+  if (primaryType.includes("ski")) return 95;
+  if (primaryType.includes("gondola")) return 70;
+  if (primaryType.includes("hot_spring")) return 25;
   if (primaryType.includes("museum")) return 25;
   if (primaryType.includes("amusement")) return 40;
   if (primaryType.includes("spa")) return 35;

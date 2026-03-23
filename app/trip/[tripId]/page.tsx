@@ -18,6 +18,7 @@ import TripFeedbackPanel from "../../../components/TripFeedbackPanel";
 import TripActions from "../../../components/TripActions";
 import TripOperationsPanel from "../../../components/TripOperationsPanel";
 import InteractiveItinerary from "../../../components/InteractiveItinerary";
+import ExpediaStayWidget from "../../../components/ExpediaStayWidget";
 import { formatDateRange } from "../../../lib/tripDates";
 import { isStartCity } from "../../../lib/startCities";
 import { estimateFoodCostForGroup } from "../../../lib/foodPricing";
@@ -1223,6 +1224,15 @@ export default function TripPage() {
                     </div>
                   </div>
                 </section>
+              ) : null}
+
+              {showDraftBuilderMode ? (
+                <ExpediaStayWidget
+                  destinationLabel={getDestinationLabel(trip)}
+                  selectedHotelName={selectedHotel?.name}
+                  tripStartDate={trip.tripStartDate}
+                  tripEndDate={trip.tripEndDate}
+                />
               ) : null}
 
               <InteractiveItinerary

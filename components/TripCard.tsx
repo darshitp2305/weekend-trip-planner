@@ -172,6 +172,7 @@ function normalizeTripInput(input?: Partial<TripInput> | null): TripInput | unde
     startCity: input.startCity === "Calgary" ? "Calgary" : "Edmonton",
     season: input.season ?? "Summer",
     style: input.style ?? "foodie",
+    activityFocus: input.activityFocus,
     veganFriendly: Boolean(input.veganFriendly),
     includeStaycations: Boolean(input.includeStaycations),
     strictBudget: Boolean(input.strictBudget),
@@ -225,6 +226,57 @@ function Badge({
     >
       {children}
     </span>
+  );
+}
+
+function CampfireBadge() {
+  return (
+    <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
+      <svg
+        aria-hidden="true"
+        viewBox="0 0 16 16"
+        className="h-3.5 w-3.5"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <path d="M5.3 14 8 8.9 10.7 14H5.3Z" fill="currentColor" opacity="0.9" />
+        <path
+          d="M7.2 8.4c-.7-.6-1.1-1.4-1.1-2.2 0-1.2.7-2.2 1.9-3 .2.8.7 1.3 1.1 1.8.4.4.8.9.8 1.6 0 .8-.5 1.5-1.3 1.8-.2-.7-.7-1.3-1.4-2Z"
+          fill="currentColor"
+        />
+        <path
+          d="M4.2 13.9 2.6 11.7M11.8 13.9l1.6-2.2"
+          stroke="currentColor"
+          strokeWidth="1.2"
+          strokeLinecap="round"
+        />
+      </svg>
+      Camping
+    </span>
+  );
+}
+
+function isCampingDestination(trip: RankedDestination) {
+  const text = [
+    trip.name,
+    trip.homeBaseCity,
+    trip.summary,
+    ...(trip.rawVibes ?? []),
+    ...(trip.topActivities ?? []).map((activity) => activity.name),
+    ...(trip.topActivities ?? []).map((activity) => activity.type),
+    ...(trip.hotelOptions ?? []).map((hotel) => hotel.name),
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  return (
+    text.includes("campground") ||
+    text.includes("camping") ||
+    text.includes("campsite") ||
+    text.includes("provincial park") ||
+    text.includes("national park") ||
+    text.includes("rv park")
   );
 }
 
@@ -301,6 +353,7 @@ export default function TripCard({
   const anchorActivities = trip.topActivities.slice(0, 3);
   const itineraryPreviewDays =
     (normalizedPropInput?.tripLengthDays ?? itineraryPreviewItems.length) || 2;
+  const showCampingBadge = isCampingDestination(trip);
 
   async function handleSaveTrip() {
     try {
@@ -426,6 +479,7 @@ export default function TripCard({
         <div className="mt-3 flex flex-wrap gap-2">
           <Badge>{trip.isStaycation ? "Staycation" : `${trip.province} getaway`}</Badge>
           <Badge tone={tripSourceTone(trip)}>{sourceLabel(trip)}</Badge>
+          {showCampingBadge ? <CampfireBadge /> : null}
         </div>
 
         <p className="mt-4 text-sm leading-6 text-slate-600 dark:text-slate-300">

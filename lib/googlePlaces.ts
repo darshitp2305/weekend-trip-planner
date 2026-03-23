@@ -148,10 +148,23 @@ export async function searchCafes(destination: string, options?: FoodSearchOptio
   );
 }
 
-export async function searchActivities(destination: string, style: string) {
+export async function searchActivities(
+  destination: string,
+  style: string,
+  activityFocus?: "skiing" | "hiking" | "camping"
+) {
   const normalizedStyle = style.trim().toLowerCase();
+  const activityFocusQuery =
+    activityFocus === "skiing"
+      ? "ski hills, ski resorts, nordic skiing, winter lookouts"
+      : activityFocus === "hiking"
+        ? "hiking trails, trailheads, lakes, canyons, scenic lookouts"
+        : activityFocus === "camping"
+          ? "campgrounds, campsites, provincial parks, outdoor bases"
+          : null;
   const styleQuery =
-    normalizedStyle === "foodie"
+    activityFocusQuery ??
+    (normalizedStyle === "foodie"
       ? "food tours, markets, cooking classes, scenic walks"
       : normalizedStyle === "adventure"
         ? "hikes, lakes, viewpoints, outdoor adventure"
@@ -163,7 +176,7 @@ export async function searchActivities(destination: string, style: string) {
               ? "quiet cafes, scenic spots, spas, easy walks"
               : normalizedStyle === "hidden gems"
                 ? "local landmarks, heritage sites, lookouts, lesser-known attractions"
-                : `${style} attractions`;
+                : `${style} attractions`);
 
   return placesTextSearch<{ places?: GooglePlace[] }>(
     {

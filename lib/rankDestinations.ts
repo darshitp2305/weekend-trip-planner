@@ -1,5 +1,6 @@
 import rawDestinations from "../data/destinations.json";
 import {
+  ActivityFocus,
   ConfidenceLevel,
   RankedDestination,
   RankingReason,
@@ -12,6 +13,13 @@ import { mapRawDestination } from "./mapDestination";
 type ReasonCandidate = RankingReason & {
   priority: number;
   weight: number;
+};
+
+type MappedDestination = ReturnType<typeof mapRawDestination>;
+
+export type NoMatchDiagnostics = {
+  headline: string;
+  reasons: string[];
 };
 
 function getStyleMatchStrength(
@@ -221,6 +229,55 @@ function getRequestedStyleScore(
   return destination.styleScores[style];
 }
 
+function getActivityFocusSignal(
+  destination: MappedDestination,
+  activityFocus?: ActivityFocus
+): number {
+  if (!activityFocus) return 0;
+
+  const text = getJoinedSignals(destination);
+
+  if (activityFocus === "skiing") {
+    return countMatches(text, [
+      "ski",
+      "skiing",
+      "snowboard",
+      "snowboarding",
+      "winter fun",
+      "winter_fun",
+      "nordic",
+      "mountain",
+    ]);
+  }
+
+  if (activityFocus === "hiking") {
+    return countMatches(text, [
+      "hike",
+      "hiking",
+      "trail",
+      "trailhead",
+      "canyon",
+      "viewpoint",
+      "lake",
+      "waterfall",
+      "park",
+      "summit",
+    ]);
+  }
+
+  return countMatches(text, [
+    "camp",
+    "camping",
+    "campground",
+    "campsite",
+    "provincial park",
+    "national park",
+    "rv park",
+    "lake",
+    "park",
+  ]);
+}
+
 function getGetawaySignal(destination: ReturnType<typeof mapRawDestination>): number {
   if (destination.isStaycation) return 0;
 
@@ -260,7 +317,7 @@ function tinyDeterministicTieBreaker(name: string): number {
 }
 
 function passesHardFilters(
-  destination: ReturnType<typeof mapRawDestination>,
+  destination: MappedDestination,
   input: TripInput,
   estimatedCost: number
 ): { passed: boolean; reason?: string } {
@@ -288,8 +345,184 @@ function passesHardFilters(
   return { passed: true };
 }
 
+function estimateDestinationCost(
+  destination: MappedDestination,
+  input: TripInput
+): number {
+  const travelerCount = Math.max(1, input.travelerCount);
+  const nights = Math.max(1, input.tripLengthDays - 1);
+  const nightlyHotel = destination.isStaycation
+    ? 0
+    : destination.hotelOptions?.[0]?.pricePerNight ?? 150;
+
+  const foodPerDayPerTraveler =
+    input.style === "foodie"
+      ? 65
+      : input.style === "chill" || input.style === "solo reset"
+        ? 45
+        : 50;
+
+  const activitiesSeedPerTraveler = (destination.topActivities ?? [])
+    .slice(0, 2)
+    .reduce((sum, activity) => sum + (activity.costEstimate ?? 25), 0);
+
+  const gasSeed =
+    destination.driveHoursFromStart <= 0.5
+      ? 0
+      : Math.round(destination.driveHoursFromStart * 18);
+
+  const seededDestination = {
+    ...destination,
+    estimatedCost:
+      nightlyHotel * nights +
+      foodPerDayPerTraveler * input.tripLengthDays * travelerCount +
+      activitiesSeedPerTraveler * travelerCount +
+      gasSeed,
+  };
+
+  const budgetBreakdown = estimateBudgetBreakdown(seededDestination, input);
+  return budgetBreakdown.totalExpected ?? budgetBreakdown.total;
+}
+
+function joinReasons(parts: string[]): string {
+  if (parts.length === 0) return "";
+  if (parts.length === 1) return parts[0];
+  if (parts.length === 2) return `${parts[0]} and ${parts[1]}`;
+  return `${parts.slice(0, -1).join(", ")}, and ${parts.at(-1)}`;
+}
+
+function explainPreferredDestinationNoMatch(
+  matchedDestinations: MappedDestination[],
+  input: TripInput
+): NoMatchDiagnostics {
+  const reasons = new Set<string>();
+
+  for (const destination of matchedDestinations) {
+    const estimatedCost = estimateDestinationCost(destination, input);
+
+    if (destination.driveHoursFromStart > input.maxDriveHours) {
+      reasons.add(
+        `${destination.name} is about ${destination.driveHoursFromStart} hours away, above your ${input.maxDriveHours}-hour drive limit`
+      );
+    }
+
+    if (!input.includeStaycations && destination.isStaycation) {
+      reasons.add(`${destination.name} is treated as a staycation and staycations are turned off`);
+    }
+
+    if (destination.avoidSeasons.includes(input.season)) {
+      reasons.add(`${destination.name} is marked as a poor fit for ${input.season}`);
+    }
+
+    if (input.strictBudget && estimatedCost > input.budget) {
+      reasons.add(
+        `${destination.name} is estimated around ${formatMoney(estimatedCost)}, above your strict ${formatMoney(input.budget)} budget`
+      );
+    }
+  }
+
+  const preferredDestination = input.preferredDestination?.trim() ?? "that destination";
+
+  if (reasons.size === 0) {
+    return {
+      headline: `Trippify found ${preferredDestination}, but it does not fit the current trip constraints.`,
+      reasons: [
+        `Try increasing drive time, loosening budget rules, changing dates, or turning staycations on.`,
+      ],
+    };
+  }
+
+  return {
+    headline: `Trippify found ${preferredDestination}, but it could not build it with the current trip constraints.`,
+    reasons: Array.from(reasons),
+  };
+}
+
+export function getNoMatchDiagnostics(
+  input: TripInput,
+  options?: { excludedDestinationNames?: string[] }
+): NoMatchDiagnostics {
+  const excludedDestinationNames = new Set(
+    (options?.excludedDestinationNames ?? [])
+      .map((name) => name.trim().toLowerCase())
+      .filter(Boolean)
+  );
+
+  const allDestinations = (rawDestinations as RawDestination[])
+    .map((raw) => mapRawDestination(raw, input))
+    .filter(
+      (destination) =>
+        !excludedDestinationNames.has(destination.name.trim().toLowerCase())
+    );
+
+  if (input.preferredDestination?.trim()) {
+    const matchedDestinations = allDestinations.filter((destination) =>
+      destinationMatchesPreference(destination, input.preferredDestination)
+    );
+
+    if (matchedDestinations.length === 0) {
+      return {
+        headline: `Trippify could not find "${input.preferredDestination.trim()}" in the current destination list.`,
+        reasons: [
+          "Try a nearby city name, a broader destination name, or leave the destination field blank to see ranked matches.",
+        ],
+      };
+    }
+
+    return explainPreferredDestinationNoMatch(matchedDestinations, input);
+  }
+
+  const allWithCosts = allDestinations.map((destination) => ({
+    destination,
+    estimatedCost: estimateDestinationCost(destination, input),
+  }));
+
+  const withinDrive = allWithCosts.filter(
+    ({ destination }) => destination.driveHoursFromStart <= input.maxDriveHours
+  );
+  const withinBudget = allWithCosts.filter(
+    ({ estimatedCost }) => !input.strictBudget || estimatedCost <= input.budget
+  );
+  const inSeason = allWithCosts.filter(
+    ({ destination }) => !destination.avoidSeasons.includes(input.season)
+  );
+  const allowedStaycations = allWithCosts.filter(
+    ({ destination }) => input.includeStaycations || !destination.isStaycation
+  );
+
+  const blockers: string[] = [];
+
+  if (withinDrive.length === 0) {
+    blockers.push(`no destinations are within your ${input.maxDriveHours}-hour drive limit`);
+  }
+
+  if (input.strictBudget && withinBudget.length === 0) {
+    blockers.push(`none of the destinations fit your strict ${formatMoney(input.budget)} budget`);
+  }
+
+  if (inSeason.length === 0) {
+    blockers.push(`the current destinations are marked as poor fits for ${input.season}`);
+  }
+
+  if (!input.includeStaycations && allowedStaycations.length === 0) {
+    blockers.push("the remaining options are staycations, but staycations are turned off");
+  }
+
+  if (blockers.length === 0) {
+    return {
+      headline: "Trippify could not find a destination match for the current filters.",
+      reasons: ["Try increasing drive time, relaxing strict budget, changing dates, or broadening the trip style."],
+    };
+  }
+
+  return {
+    headline: "Trippify could not find a destination match for the current filters.",
+    reasons: [`The strongest blocker is that ${joinReasons(blockers)}.`],
+  };
+}
+
 function calculateStyleScore(
-  destination: ReturnType<typeof mapRawDestination>,
+  destination: MappedDestination,
   input: TripInput
 ): { score: number; matchReasons: string[]; warnings: string[] } {
   const matchReasons: string[] = [];
@@ -317,7 +550,7 @@ function calculateStyleScore(
 }
 
 function calculateStyleResolutionScore(
-  destination: ReturnType<typeof mapRawDestination>,
+  destination: MappedDestination,
   input: TripInput
 ): {
   score: number;
@@ -389,8 +622,56 @@ function calculateStyleResolutionScore(
   return { score: round2(score), rankingReasons, resolutionSignal: rawSignal };
 }
 
+function calculateActivityFocusScore(
+  destination: MappedDestination,
+  input: TripInput
+): {
+  score: number;
+  rankingReasons: RankingReason[];
+} {
+  if (!input.activityFocus) {
+    return { score: 0, rankingReasons: [] };
+  }
+
+  const signal = getActivityFocusSignal(destination, input.activityFocus);
+
+  if (signal >= 4) {
+    return {
+      score: 16,
+      rankingReasons: [
+        {
+          label: `Especially strong ${input.activityFocus} fit`,
+          impact: "positive",
+        },
+      ],
+    };
+  }
+
+  if (signal >= 2) {
+    return {
+      score: 8,
+      rankingReasons: [
+        {
+          label: `Good ${input.activityFocus} signal`,
+          impact: "positive",
+        },
+      ],
+    };
+  }
+
+  return {
+    score: -8,
+    rankingReasons: [
+      {
+        label: `${input.activityFocus[0].toUpperCase()}${input.activityFocus.slice(1)} options look thinner here`,
+        impact: "negative",
+      },
+    ],
+  };
+}
+
 function calculateSeasonScore(
-  destination: ReturnType<typeof mapRawDestination>,
+  destination: MappedDestination,
   input: TripInput
 ): { score: number; matchReasons: string[] } {
   const matchReasons: string[] = [];
@@ -404,7 +685,7 @@ function calculateSeasonScore(
 }
 
 function calculateDriveScore(
-  destination: ReturnType<typeof mapRawDestination>,
+  destination: MappedDestination,
   input: TripInput
 ): {
   score: number;
@@ -485,7 +766,7 @@ function calculateBudgetScore(
 }
 
 function calculateVeganScore(
-  destination: ReturnType<typeof mapRawDestination>,
+  destination: MappedDestination,
   input: TripInput
 ): {
   score: number;
@@ -531,7 +812,7 @@ function calculateVeganScore(
 }
 
 function calculateStaycationAdjustment(
-  destination: ReturnType<typeof mapRawDestination>,
+  destination: MappedDestination,
   input: TripInput
 ): { score: number; warnings: string[]; extraReason?: RankingReason } {
   const warnings: string[] = [];
@@ -607,7 +888,7 @@ function calculateStaycationAdjustment(
 }
 
 function calculateGetawayValueScore(
-  destination: ReturnType<typeof mapRawDestination>,
+  destination: MappedDestination,
   input: TripInput
 ): {
   score: number;
@@ -638,7 +919,7 @@ function calculateGetawayValueScore(
 }
 
 function calculateShortTripPenalty(
-  destination: ReturnType<typeof mapRawDestination>,
+  destination: MappedDestination,
   input: TripInput
 ): { score: number; warnings: string[] } {
   const warnings: string[] = [];
@@ -1120,39 +1401,12 @@ export function rankDestinations(
 
   const ranked = destinationList
     .map((destination) => {
-      const travelerCount = Math.max(1, input.travelerCount);
-      const nights = Math.max(1, input.tripLengthDays - 1);
-      const nightlyHotel = destination.isStaycation
-        ? 0
-        : destination.hotelOptions?.[0]?.pricePerNight ?? 150;
-
-      const foodPerDayPerTraveler =
-        input.style === "foodie"
-          ? 65
-          : input.style === "chill" || input.style === "solo reset"
-            ? 45
-            : 50;
-
-      const activitiesSeedPerTraveler = (destination.topActivities ?? [])
-        .slice(0, 2)
-        .reduce((sum, activity) => sum + (activity.costEstimate ?? 25), 0);
-
-      const gasSeed =
-        destination.driveHoursFromStart <= 0.5
-          ? 0
-          : Math.round(destination.driveHoursFromStart * 18);
-
-      const seededDestination = {
-        ...destination,
-        estimatedCost:
-          nightlyHotel * nights +
-          foodPerDayPerTraveler * input.tripLengthDays * travelerCount +
-          activitiesSeedPerTraveler * travelerCount +
-          gasSeed,
-      };
-
+      const seededEstimatedCost = estimateDestinationCost(destination, input);
       const budgetBreakdown = estimateBudgetBreakdown(
-        seededDestination,
+        {
+          ...destination,
+          estimatedCost: seededEstimatedCost,
+        },
         input
       );
       const estimatedCost = budgetBreakdown.totalExpected ?? budgetBreakdown.total;
@@ -1164,6 +1418,7 @@ export function rankDestinations(
 
       const stylePart = calculateStyleScore(destination, input);
       const styleResolutionPart = calculateStyleResolutionScore(destination, input);
+      const activityFocusPart = calculateActivityFocusScore(destination, input);
       const seasonPart = calculateSeasonScore(destination, input);
       const drivePart = calculateDriveScore(destination, input);
       const budgetPart = calculateBudgetScore(estimatedCost, input);
@@ -1196,6 +1451,7 @@ export function rankDestinations(
 
       const extraReasonItems: RankingReason[] = [
         ...styleResolutionPart.rankingReasons,
+        ...activityFocusPart.rankingReasons,
         ...veganPart.rankingReasons,
         ...(staycationPart.extraReason ? [staycationPart.extraReason] : []),
         ...getawayValuePart.rankingReasons,
@@ -1210,6 +1466,7 @@ export function rankDestinations(
       const score =
         stylePart.score +
         styleResolutionPart.score +
+        activityFocusPart.score +
         seasonPart.score +
         drivePart.score +
         budgetPart.score +

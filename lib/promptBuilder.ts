@@ -15,6 +15,7 @@ User preferences:
 - Trip length: ${input.tripLengthDays} days
 - Season: ${input.season}
 - Trip style: ${input.style}
+- Activity focus: ${input.activityFocus ?? "None"}
 - Vegan-friendly only: ${input.veganFriendly ? "Yes" : "No"}
 - Include staycations: ${input.includeStaycations ? "Yes" : "No"}
 - Strict budget: ${input.strictBudget ? "Yes" : "No"}

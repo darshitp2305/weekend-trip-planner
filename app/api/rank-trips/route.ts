@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { isStartCity } from "../../../lib/startCities";
 import { deriveTripEndDate, isIsoDate } from "../../../lib/tripDates";
 import { generateRankedTrips } from "../../../lib/generateRankedTrips";
-import { TripInput } from "../../../lib/types";
+import { getNoMatchDiagnostics } from "../../../lib/rankDestinations";
+import { ActivityFocus, TripInput } from "../../../lib/types";
 
 type TripInputCandidate = Partial<TripInput> & {
   startCity?: unknown;
@@ -14,6 +15,7 @@ type TripInputCandidate = Partial<TripInput> & {
   tripLengthDays?: unknown;
   season?: unknown;
   style?: unknown;
+  activityFocus?: unknown;
   veganFriendly?: unknown;
   includeStaycations?: unknown;
   strictBudget?: unknown;
@@ -21,6 +23,10 @@ type TripInputCandidate = Partial<TripInput> & {
   tripStartDate?: unknown;
   tripEndDate?: unknown;
 };
+
+function isActivityFocus(value: unknown): value is ActivityFocus {
+  return value === "skiing" || value === "hiking" || value === "camping";
+}
 
 function isTripInput(value: unknown): value is TripInput {
   const candidate = value as TripInputCandidate;
@@ -37,6 +43,7 @@ function isTripInput(value: unknown): value is TripInput {
     typeof candidate.tripLengthDays === "number" &&
     typeof candidate.season === "string" &&
     typeof candidate.style === "string" &&
+    (candidate.activityFocus === undefined || isActivityFocus(candidate.activityFocus)) &&
     typeof candidate.veganFriendly === "boolean" &&
     typeof candidate.includeStaycations === "boolean" &&
     typeof candidate.strictBudget === "boolean" &&
@@ -71,6 +78,9 @@ function normalizeInput(raw: unknown): TripInput | null {
     tripLengthDays,
     season: candidateInput.season,
     style: candidateInput.style,
+    activityFocus: isActivityFocus(candidateInput.activityFocus)
+      ? candidateInput.activityFocus
+      : undefined,
     veganFriendly: Boolean(candidateInput.veganFriendly),
     includeStaycations: Boolean(candidateInput.includeStaycations),
     strictBudget: Boolean(candidateInput.strictBudget),
@@ -123,6 +133,10 @@ export async function POST(req: Request) {
       initialCandidates: pipeline.initialCandidates,
       results: pipeline.finalTrips,
       usedLiveData: pipeline.usedLiveData,
+      noMatchDiagnostics:
+        pipeline.finalTrips.length === 0
+          ? getNoMatchDiagnostics(input, { excludedDestinationNames })
+          : null,
     });
   } catch (error) {
     console.error("rank-trips route failed:", error);

@@ -232,6 +232,57 @@ function OptionPill({
   );
 }
 
+function CampfireBadge() {
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
+      <svg
+        aria-hidden="true"
+        viewBox="0 0 16 16"
+        className="h-3.5 w-3.5"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <path
+          d="M5.3 14 8 8.9 10.7 14H5.3Z"
+          fill="currentColor"
+          opacity="0.9"
+        />
+        <path
+          d="M7.2 8.4c-.7-.6-1.1-1.4-1.1-2.2 0-1.2.7-2.2 1.9-3 .2.8.7 1.3 1.1 1.8.4.4.8.9.8 1.6 0 .8-.5 1.5-1.3 1.8-.2-.7-.7-1.3-1.4-2Z"
+          fill="currentColor"
+        />
+        <path
+          d="M4.2 13.9 2.6 11.7M11.8 13.9l1.6-2.2"
+          stroke="currentColor"
+          strokeWidth="1.2"
+          strokeLinecap="round"
+        />
+      </svg>
+      Camping
+    </span>
+  );
+}
+
+function isCampingOnlyLikeOption(option: {
+  name: string;
+  subtitle?: string;
+  category?: string;
+}) {
+  const text = [option.name, option.subtitle, option.category]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  return (
+    text.includes("campground") ||
+    text.includes("camping") ||
+    text.includes("campsite") ||
+    text.includes("provincial park") ||
+    text.includes("national park") ||
+    text.includes("rv park")
+  );
+}
+
 function SelectorCard({
   option,
   selected,
@@ -249,6 +300,7 @@ function SelectorCard({
 }) {
   const previewImageUrl =
     buildPhotoUrl(option.photoRef) ?? option.photoUrl ?? option.fallbackPhotoUrl;
+  const showCampingBadge = isCampingOnlyLikeOption(option);
 
   return (
     <div
@@ -271,6 +323,7 @@ function SelectorCard({
         </div>
 
         <div className="flex flex-wrap justify-end gap-1.5">
+          {showCampingBadge ? <CampfireBadge /> : null}
           {recommended ? <OptionPill tone="violet">Recommended</OptionPill> : null}
           {selectedElsewhereLabel ? (
             <OptionPill tone="slate">{selectedElsewhereLabel}</OptionPill>
@@ -388,6 +441,11 @@ function CompactSelectionCard({
 }) {
   const previewImageUrl =
     buildPhotoUrl(photoRef) ?? photoUrl ?? fallbackPhotoUrl;
+  const showCampingBadge = isCampingOnlyLikeOption({
+    name: title,
+    subtitle,
+    category: pills?.[0],
+  });
 
   return (
     <div className="group rounded-[1rem] border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/70">
@@ -414,6 +472,12 @@ function CompactSelectionCard({
           {editing ? "Hide options" : "Change"}
         </button>
       </div>
+
+      {showCampingBadge ? (
+        <div className="mt-2">
+          <CampfireBadge />
+        </div>
+      ) : null}
 
       {pills && pills.length > 0 ? (
         <div className="mt-2 flex flex-wrap gap-1.5">
@@ -1257,7 +1321,14 @@ export default function InteractiveItinerary({
                                     ? [`Rating ${selectedActivity.rating}`]
                                     : []),
                                   ...(guessActivityCost(selectedActivity, travelerCount) > 0
-                                    ? [`$${guessActivityCost(selectedActivity, travelerCount)}`]
+                                    ? [
+                                        `Est. group spend ${formatMoney(
+                                          guessActivityCost(
+                                            selectedActivity,
+                                            travelerCount
+                                          )
+                                        )}`,
+                                      ]
                                     : ["Free"]),
                                 ]}
                                 primaryUrl={
@@ -1289,6 +1360,10 @@ export default function InteractiveItinerary({
                                       subtitle: activity.shortDescription,
                                       rating: activity.rating,
                                       estimatedCost,
+                                      estimatedCostLabel:
+                                        estimatedCost > 0
+                                          ? `Est. group spend ${formatMoney(estimatedCost)}`
+                                          : "Free",
                                       category: activity.type,
                                       primaryUrl:
                                         activity.websiteUrl || activity.bookingLink,

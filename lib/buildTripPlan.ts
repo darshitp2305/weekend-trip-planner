@@ -302,6 +302,14 @@ function getTripPacing(trip: RankedDestination): TripPacing {
   return "fatiguing";
 }
 
+function activityGroupCost(
+  activity: ActivitySpot | undefined,
+  input: TripInput
+) {
+  const base = activity?.costEstimate ?? activity?.estimatedCost ?? 0;
+  return base * Math.max(1, input.travelerCount);
+}
+
 function setPreviousDayFoods(
   ctx: BuildContext,
   items: Array<FoodSpot | undefined>
@@ -1234,7 +1242,7 @@ function buildStaycationDayOne(
         title: activity.name,
         description: styleActivityDescription(input, activity.name, "anchor"),
         websiteUrl: activity.bookingLink ?? activity.websiteUrl,
-        estimatedCost: activity.costEstimate ?? activity.estimatedCost ?? 0,
+        estimatedCost: activityGroupCost(activity, input),
         kind: "activity" as const,
       },
       dinner && {
@@ -1326,7 +1334,7 @@ function buildStaycationFinalDay(
         title: activity.name,
         description: styleActivityDescription(input, activity.name, "light"),
         websiteUrl: activity.bookingLink ?? activity.websiteUrl,
-        estimatedCost: activity.costEstimate ?? activity.estimatedCost ?? 0,
+        estimatedCost: activityGroupCost(activity, input),
         kind: "activity" as const,
       },
       input.style === "foodie" &&
@@ -1423,8 +1431,7 @@ function buildGetawayDayOne(
         title: arrivalActivity.name,
         description: `Add ${arrivalActivity.name} as a short arrival-day stop before dinner.`,
         websiteUrl: arrivalActivity.bookingLink ?? arrivalActivity.websiteUrl,
-        estimatedCost:
-          arrivalActivity.costEstimate ?? arrivalActivity.estimatedCost ?? 0,
+        estimatedCost: activityGroupCost(arrivalActivity, input),
         kind: "activity" as const,
       },
       dinner && {
@@ -1510,8 +1517,7 @@ function buildGetawayFinalDay(
         title: finalActivity.name,
         description: styleActivityDescription(input, finalActivity.name, "light"),
         websiteUrl: finalActivity.bookingLink ?? finalActivity.websiteUrl,
-        estimatedCost:
-          finalActivity.costEstimate ?? finalActivity.estimatedCost ?? 0,
+        estimatedCost: activityGroupCost(finalActivity, input),
         kind: "activity" as const,
       },
       input.style === "foodie" &&
@@ -1664,7 +1670,7 @@ function buildMiddleDay(
         title: mainActivity.name,
         description: styleActivityDescription(input, mainActivity.name, "anchor"),
         websiteUrl: mainActivity.bookingLink ?? mainActivity.websiteUrl,
-        estimatedCost: mainActivity.costEstimate ?? mainActivity.estimatedCost ?? 0,
+        estimatedCost: activityGroupCost(mainActivity, input),
         kind: "activity" as const,
       },
       secondaryActivity && {
@@ -1673,10 +1679,7 @@ function buildMiddleDay(
         description: styleActivityDescription(input, secondaryActivity.name, "secondary"),
         websiteUrl:
           secondaryActivity.bookingLink ?? secondaryActivity.websiteUrl,
-        estimatedCost:
-          secondaryActivity.costEstimate ??
-          secondaryActivity.estimatedCost ??
-          0,
+        estimatedCost: activityGroupCost(secondaryActivity, input),
         kind: "activity" as const,
       },
       dinner && {

@@ -10,6 +10,40 @@ type PendingTripSyncRecord = {
   savedAt: string;
 };
 
+function sortPlansNewestFirst(plans: TripPlan[]) {
+  return [...plans].sort((a, b) =>
+    `${b.createdAt ?? ""}`.localeCompare(`${a.createdAt ?? ""}`)
+  );
+}
+
+function sanitizeTripPlanForLocalStorage(plan: TripPlan): TripPlan {
+  return {
+    ...plan,
+    routeSummary: plan.routeSummary
+      ? {
+          ...plan.routeSummary,
+          geometry: undefined,
+        }
+      : undefined,
+  };
+}
+
+function sanitizePlansForLocalStorage(plans: TripPlan[]) {
+  return sortPlansNewestFirst(plans).map(sanitizeTripPlanForLocalStorage);
+}
+
+function sanitizePendingSyncMap(records: Record<string, PendingTripSyncRecord>) {
+  return Object.fromEntries(
+    Object.entries(records).map(([id, record]) => [
+      id,
+      {
+        ...record,
+        plan: sanitizeTripPlanForLocalStorage(record.plan),
+      },
+    ])
+  );
+}
+
 async function getAuthenticatedHeaders() {
   const accessToken =
     typeof window !== "undefined" ? await getBrowserSupabaseAccessToken() : null;
@@ -36,10 +70,34 @@ function readLocalPlans(): TripPlan[] {
 function writeLocalPlans(plans: TripPlan[]) {
   if (typeof window === "undefined") return;
 
+  const sanitizedPlans = sanitizePlansForLocalStorage(plans);
+
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(plans));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(sanitizedPlans));
     window.dispatchEvent(new CustomEvent(TRIP_STORE_UPDATED_EVENT));
   } catch (error) {
+    if (error instanceof DOMException && error.name === "QuotaExceededError") {
+      const evictedPlans = [...sanitizedPlans];
+
+      while (evictedPlans.length > 1) {
+        evictedPlans.pop();
+
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(evictedPlans));
+          window.dispatchEvent(new CustomEvent(TRIP_STORE_UPDATED_EVENT));
+          console.warn(
+            "Local trip storage quota exceeded. Older local trips were removed to free space."
+          );
+          return;
+        } catch (retryError) {
+          if (!(retryError instanceof DOMException) || retryError.name !== "QuotaExceededError") {
+            console.error("Failed to recover local trip storage:", retryError);
+            return;
+          }
+        }
+      }
+    }
+
     console.error("Failed to write local trip plans:", error);
   }
 }
@@ -59,8 +117,10 @@ function readPendingTripSyncMap(): Record<string, PendingTripSyncRecord> {
 function writePendingTripSyncMap(records: Record<string, PendingTripSyncRecord>) {
   if (typeof window === "undefined") return;
 
+  const sanitizedRecords = sanitizePendingSyncMap(records);
+
   try {
-    localStorage.setItem(PENDING_SYNC_STORAGE_KEY, JSON.stringify(records));
+    localStorage.setItem(PENDING_SYNC_STORAGE_KEY, JSON.stringify(sanitizedRecords));
     window.dispatchEvent(new CustomEvent(TRIP_STORE_UPDATED_EVENT));
   } catch (error) {
     console.error("Failed to write pending trip sync state:", error);
@@ -100,7 +160,7 @@ function removePendingTripSyncRecords(ids: string[]) {
 function upsertPendingTripSyncRecord(plan: TripPlan) {
   const records = readPendingTripSyncMap();
   records[plan.id] = {
-    plan,
+    plan: sanitizeTripPlanForLocalStorage(plan),
     savedAt: new Date().toISOString(),
   };
   writePendingTripSyncMap(records);
@@ -109,7 +169,7 @@ function upsertPendingTripSyncRecord(plan: TripPlan) {
 export function upsertLocalTripPlan(plan: TripPlan) {
   const plans = readLocalPlans();
   const next = plans.filter((p) => p.id !== plan.id);
-  next.push(plan);
+  next.push(sanitizeTripPlanForLocalStorage(plan));
   writeLocalPlans(next);
 }
 

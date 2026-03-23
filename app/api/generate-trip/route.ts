@@ -3,7 +3,7 @@ import { generateTripCopyWithOpenAI } from "../../../lib/openAiTripCopy";
 import { isStartCity } from "../../../lib/startCities";
 import { deriveTripEndDate, isIsoDate } from "../../../lib/tripDates";
 import { rankDestinations } from "../../../lib/rankDestinations";
-import { RankedDestination, TripInput } from "../../../lib/types";
+import { ActivityFocus, RankedDestination, TripInput } from "../../../lib/types";
 
 type GenerateTripSource = "live-openai" | "fallback-template";
 
@@ -17,6 +17,7 @@ type TripInputCandidate = Partial<TripInput> & {
   tripLengthDays?: unknown;
   season?: unknown;
   style?: unknown;
+  activityFocus?: unknown;
   veganFriendly?: unknown;
   includeStaycations?: unknown;
   strictBudget?: unknown;
@@ -24,6 +25,10 @@ type TripInputCandidate = Partial<TripInput> & {
   tripStartDate?: unknown;
   tripEndDate?: unknown;
 };
+
+function isActivityFocus(value: unknown): value is ActivityFocus {
+  return value === "skiing" || value === "hiking" || value === "camping";
+}
 
 type GenerateTripBody = {
   input?: unknown;
@@ -49,6 +54,7 @@ function isTripInput(value: unknown): value is TripInput {
     typeof candidate.tripLengthDays === "number" &&
     typeof candidate.season === "string" &&
     typeof candidate.style === "string" &&
+    (candidate.activityFocus === undefined || isActivityFocus(candidate.activityFocus)) &&
     typeof candidate.veganFriendly === "boolean" &&
     typeof candidate.includeStaycations === "boolean" &&
     typeof candidate.strictBudget === "boolean" &&
@@ -83,6 +89,9 @@ function normalizeInput(raw: unknown): TripInput | null {
     tripLengthDays,
     season: candidateInput.season,
     style: candidateInput.style,
+    activityFocus: isActivityFocus(candidateInput.activityFocus)
+      ? candidateInput.activityFocus
+      : undefined,
     veganFriendly: Boolean(candidateInput.veganFriendly),
     includeStaycations: Boolean(candidateInput.includeStaycations),
     strictBudget: Boolean(candidateInput.strictBudget),
