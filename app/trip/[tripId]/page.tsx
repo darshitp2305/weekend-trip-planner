@@ -211,6 +211,8 @@ export default function TripPage() {
   const searchParams = useSearchParams();
   const viewer = useViewerIdentity();
   const trackedShareOpenRef = useRef<string | null>(null);
+  const finalizedPanelRef = useRef<HTMLDivElement | null>(null);
+  const shouldScrollToFinalizedPanelRef = useRef(false);
   const [trip, setTrip] = useState<TripPlan | null>(null);
   const [loading, setLoading] = useState(true);
   const [finalizeStatus, setFinalizeStatus] = useState("");
@@ -856,6 +858,7 @@ export default function TripPage() {
 
   const handleFinalizeTrip = useCallback(async () => {
     if (!persistedTrip) return;
+    const wasDraft = persistedTrip.status !== "finalized";
 
     try {
       setFinalizing(true);
@@ -872,6 +875,10 @@ export default function TripPage() {
       if (!result.success) {
         setFinalizeStatus("Finalized trip save failed.");
         return;
+      }
+
+      if (wasDraft) {
+        shouldScrollToFinalizedPanelRef.current = true;
       }
 
       setTrip(result.trip ?? finalizedTrip);
@@ -955,6 +962,25 @@ export default function TripPage() {
       lastSavedAt: new Date().toISOString(),
     });
   }, [syncConflict]);
+
+  useEffect(() => {
+    if (
+      !shouldScrollToFinalizedPanelRef.current ||
+      trip?.status !== "finalized" ||
+      !finalizedPanelRef.current
+    ) {
+      return;
+    }
+
+    shouldScrollToFinalizedPanelRef.current = false;
+
+    window.requestAnimationFrame(() => {
+      finalizedPanelRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    });
+  }, [trip?.status]);
 
   if (loading) {
     return (
@@ -1146,16 +1172,18 @@ export default function TripPage() {
           {itineraryDays.length > 0 ? (
             <div className="space-y-5">
               {!showDraftBuilderMode ? (
-                <FinalizeTripPanel
-                  trip={persistedTrip ?? trip}
-                  selection={activeSelectionState}
-                  estimatedTotalCost={estimatedTotalCost}
-                  budgetDelta={budgetDelta}
-                  routeSummary={routeSummaryLabel}
-                  onFinalize={handleFinalizeTrip}
-                  finalizing={finalizing}
-                  statusMessage={finalizeStatus}
-                />
+                <div ref={finalizedPanelRef}>
+                  <FinalizeTripPanel
+                    trip={persistedTrip ?? trip}
+                    selection={activeSelectionState}
+                    estimatedTotalCost={estimatedTotalCost}
+                    budgetDelta={budgetDelta}
+                    routeSummary={routeSummaryLabel}
+                    onFinalize={handleFinalizeTrip}
+                    finalizing={finalizing}
+                    statusMessage={finalizeStatus}
+                  />
+                </div>
               ) : null}
 
               {!showDraftBuilderMode ? (

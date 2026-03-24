@@ -179,6 +179,10 @@ export default function HomePage() {
   const [shownDestinationNames, setShownDestinationNames] = useState<string[]>([]);
   const [lastInput, setLastInput] = useState<TripInput | null>(null);
   const [aiStatusMessage, setAiStatusMessage] = useState("");
+  const [destinationConstraintModal, setDestinationConstraintModal] = useState<{
+    title: string;
+    reasons: string[];
+  } | null>(null);
   const [waitingForTripText, setWaitingForTripText] = useState(false);
   const [restored, setRestored] = useState(false);
   const [savedTripsOpen, setSavedTripsOpen] = useState(false);
@@ -285,6 +289,7 @@ export default function HomePage() {
     setWaitingForTripText(true);
     setLastInput(input);
     setAiStatusMessage("");
+    setDestinationConstraintModal(null);
 
     const excludedDestinationNames = dedupeDestinationNames(
       options?.excludedDestinationNames ?? []
@@ -372,13 +377,29 @@ export default function HomePage() {
               .map((reason) => reason.trim())
           : [];
         const noMatchMessage = [diagnosticHeadline, ...diagnosticReasons].filter(Boolean).join(" ");
-        setAiStatusMessage(noMatchMessage);
+        if (input.preferredDestination) {
+          const destinationLabel = input.preferredDestination.trim();
+          setDestinationConstraintModal({
+            title: destinationLabel
+              ? `${destinationLabel} does not fit this trip`
+              : "This destination does not fit this trip",
+            reasons:
+              diagnosticReasons.length > 0
+                ? diagnosticReasons.slice(0, 2)
+                : diagnosticHeadline
+                  ? [diagnosticHeadline]
+                  : ["It does not fit the current trip limits."],
+          });
+          setAiStatusMessage("");
+        } else {
+          setAiStatusMessage(noMatchMessage);
+        }
         persistPageState({
           rankedResults: [],
           displayResults: [],
           shownDestinationNames: [],
           lastInput: input,
-          aiStatusMessage: noMatchMessage,
+          aiStatusMessage: input.preferredDestination ? "" : noMatchMessage,
         });
         return;
       }
@@ -581,6 +602,44 @@ export default function HomePage() {
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(251,146,60,0.10),transparent_24%),radial-gradient(circle_at_top_right,rgba(96,165,250,0.10),transparent_24%),radial-gradient(circle_at_bottom_right,rgba(139,92,246,0.08),transparent_22%)] dark:bg-[radial-gradient(circle_at_top_left,rgba(249,115,22,0.16),transparent_24%),radial-gradient(circle_at_top_right,rgba(59,130,246,0.18),transparent_24%),radial-gradient(circle_at_bottom_right,rgba(34,197,94,0.12),transparent_22%)]" />
 
       <AccountPanel open={savedTripsOpen} onClose={() => setSavedTripsOpen(false)} />
+
+      {destinationConstraintModal ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+          <button
+            type="button"
+            aria-label="Close destination constraint dialog"
+            onClick={() => setDestinationConstraintModal(null)}
+            className="absolute inset-0 bg-slate-950/45 backdrop-blur-[2px]"
+          />
+          <div className="relative z-10 w-full max-w-lg rounded-[2rem] border border-violet-200 bg-white p-6 shadow-2xl dark:border-violet-500/30 dark:bg-slate-900">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-violet-600 dark:text-violet-300">
+              Destination blocked
+            </div>
+            <h2 className="mt-3 text-2xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">
+              {destinationConstraintModal.title}
+            </h2>
+            <div className="mt-4 space-y-2">
+              {destinationConstraintModal.reasons.map((reason) => (
+                <div
+                  key={reason}
+                  className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                >
+                  {reason}
+                </div>
+              ))}
+            </div>
+            <div className="mt-5 flex flex-wrap justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setDestinationConstraintModal(null)}
+                className="inline-flex h-11 items-center justify-center rounded-2xl border border-slate-300 bg-white px-5 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       <div className="relative mx-auto max-w-7xl px-6 py-8 sm:px-8 lg:px-10">
         <section className="mb-8">
