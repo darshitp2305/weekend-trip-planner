@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useEffectEvent, useMemo, useState } from "react";
 import {
   getBrowserSupabaseAccessToken,
+  syncBrowserSessionToServer,
   supabaseBrowserAuth,
 } from "../lib/supabaseBrowserAuth";
 import { formatDisplayText } from "../lib/displayText";
@@ -442,6 +443,8 @@ export default function AccountPanel({
     let authHeaders: Record<string, string> | undefined;
 
     if (token) {
+      await syncBrowserSessionToServer(token);
+
       const { data, error } = await supabaseBrowserAuth.auth.getUser(token);
 
       if (!error && data.user?.id && data.user.email) {
@@ -558,7 +561,32 @@ export default function AccountPanel({
     try {
       setLoading(true);
       setStatus("");
-      window.location.assign("/api/auth/google");
+
+      const redirectTo = `${window.location.origin}/auth/callback`;
+      const { data, error } = await supabaseBrowserAuth.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo,
+          queryParams: {
+            access_type: "offline",
+            prompt: "consent",
+          },
+        },
+      });
+
+      if (error) {
+        setStatus(error.message || "Google sign-in failed.");
+        setLoading(false);
+        return;
+      }
+
+      if (data?.url) {
+        window.location.href = data.url;
+        return;
+      }
+
+      setStatus("Google sign-in failed.");
+      setLoading(false);
     } catch (error) {
       console.error("Google auth failed:", error);
       setStatus("Google sign-in failed.");

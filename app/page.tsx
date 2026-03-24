@@ -217,7 +217,7 @@ export default function HomePage() {
       currentUrl.searchParams.get("code") &&
       window.location.pathname !== "/auth/callback"
     ) {
-      window.location.replace(`/api/auth/callback${currentUrl.search}`);
+      window.location.replace(`/auth/callback${currentUrl.search}`);
       return;
     }
 

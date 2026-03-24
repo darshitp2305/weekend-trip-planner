@@ -39,3 +39,33 @@ export async function getBrowserSupabaseAccessToken() {
 
   return data.session?.access_token ?? null;
 }
+
+export async function syncBrowserSessionToServer(accessToken?: string | null) {
+  const token = accessToken ?? (await getBrowserSupabaseAccessToken());
+  if (!token) return false;
+
+  try {
+    const response = await fetch("/api/auth/google-session", {
+      method: "POST",
+      credentials: "include",
+      cache: "no-store",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        accessToken: token,
+      }),
+    });
+
+    if (!response.ok) {
+      const payload = await response.json().catch(() => null);
+      console.error("Failed to sync browser session to server:", payload);
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error("Failed to sync browser session to server:", error);
+    return false;
+  }
+}
