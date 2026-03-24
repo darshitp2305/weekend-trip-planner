@@ -1015,10 +1015,31 @@ export default function TripPage() {
   const showOperationsPanel =
     trip.decisionStatus === "approved" ||
     trip.decisionStatus === "booked";
+  const handleBackButtonClick = () => {
+    if (window.history.length > 1) {
+      router.back();
+      return;
+    }
+
+    router.push("/");
+  };
 
   return (
     <main className="min-h-screen bg-[#f6f8fb] px-4 py-6 text-slate-900 dark:bg-slate-950 dark:text-slate-100 sm:px-6">
       <div className={`mx-auto space-y-5 ${isShareView ? "max-w-6xl" : "max-w-[1400px]"}`}>
+        {!isShareView ? (
+          <div>
+            <button
+              type="button"
+              onClick={handleBackButtonClick}
+              className="inline-flex h-11 items-center gap-2 rounded-2xl border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+            >
+              <span aria-hidden="true">←</span>
+              <span>Back</span>
+            </button>
+          </div>
+        ) : null}
+
         <TripHeader trip={persistedTrip ?? trip} shareMode={isShareView} />
 
         {isOwner && syncConflict ? (
