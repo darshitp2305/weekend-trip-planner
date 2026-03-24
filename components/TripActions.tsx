@@ -29,7 +29,7 @@ import {
   TRIP_FOLLOW_UP_UPDATED_EVENT,
   TripFollowUpRecord,
 } from "../lib/tripFollowUpState";
-import { saveTripPlan } from "../lib/tripStore";
+import { saveTripPlan, type SaveTripPlanResult } from "../lib/tripStore";
 import {
   buildTripReminderMessage,
   daysSinceIso,
@@ -48,7 +48,7 @@ import { TripPlan } from "../lib/types";
 type Props = {
   trip: TripPlan;
   shareMode?: boolean;
-  onTripUpdated?: (trip: TripPlan) => void;
+  onTripUpdated?: (trip: TripPlan, result: SaveTripPlanResult) => void;
   isOwner?: boolean;
   syncState?: {
     phase: "idle" | "saving" | "saved" | "local_only" | "error";
@@ -267,13 +267,8 @@ export default function TripActions({
         },
       });
 
-      onTripUpdated?.(trip);
-
-      setSaveStatus(
-        result.accountSaved
-          ? "Saved to your account."
-          : "Saved locally. Log in on the home page to save to an account."
-      );
+      onTripUpdated?.(result.trip ?? trip, result);
+      setSaveStatus(saveStatusLabel(result));
     } catch (error) {
       console.error("Trip action save failed:", error);
       setSaveStatus("Save failed.");
@@ -430,6 +425,18 @@ export default function TripActions({
     daysSinceIso(trip.decisionUpdatedAt ?? trip.finalizedAt ?? trip.createdAt) ?? 0;
   const suggestedSnoozeDays = followUpAction?.suggestedSnoozeDays ?? 2;
 
+  function saveStatusLabel(result: SaveTripPlanResult) {
+    if (result.accountSaved) {
+      return "Saved to your account.";
+    }
+
+    if (result.remoteSaved) {
+      return "Saved to the shared trip.";
+    }
+
+    return "Saved locally. Remote sync is still pending.";
+  }
+
   async function handleSnoozeFollowUp() {
     const nextRecord = snoozeTripFollowUp(trip.id, suggestedSnoozeDays);
     setFollowUpRecord(nextRecord);
@@ -505,8 +512,12 @@ export default function TripActions({
         return;
       }
 
-      onTripUpdated?.(nextTrip);
-      setSaveStatus("Checklist updated.");
+      onTripUpdated?.(result.trip ?? nextTrip, result);
+      setSaveStatus(
+        result.remoteSaved
+          ? "Checklist updated."
+          : "Checklist updated locally. Remote sync pending."
+      );
     } catch (error) {
       console.error("Trip checklist update failed:", error);
       setSaveStatus("Checklist update failed.");
@@ -543,15 +554,19 @@ export default function TripActions({
         return;
       }
 
-      onTripUpdated?.(nextTrip);
+      onTripUpdated?.(result.trip ?? nextTrip, result);
       trackProductEvent("trip_booked", {
-        ...baseTripAnalytics(nextTrip),
+        ...baseTripAnalytics(result.trip ?? nextTrip),
         metadata: {
           source: "trip_actions",
           bookingUrl: href,
         },
       });
-      setSaveStatus("Booking flow opened and trip marked booked.");
+      setSaveStatus(
+        result.remoteSaved
+          ? "Booking flow opened and trip marked booked."
+          : "Booking flow opened. Trip changes are only saved locally for now."
+      );
       window.open(href, "_blank", "noopener,noreferrer");
     } catch (error) {
       console.error("Booking flow launch failed:", error);

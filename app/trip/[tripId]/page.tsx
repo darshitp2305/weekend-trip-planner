@@ -8,6 +8,7 @@ import {
   getPendingTripSyncRecord,
   getTripPlanById,
   saveTripPlan,
+  SaveTripPlanResult,
   upsertLocalTripPlan,
 } from "../../../lib/tripStore";
 import TripHeader from "../../../components/TripHeader";
@@ -22,6 +23,7 @@ import ExpediaStayWidget from "../../../components/ExpediaStayWidget";
 import { formatDateRange } from "../../../lib/tripDates";
 import { isStartCity } from "../../../lib/startCities";
 import { estimateFoodCostForGroup } from "../../../lib/foodPricing";
+import { sortHotelOptions } from "../../../lib/hotelAvailability";
 import {
   baseTripAnalytics,
   trackProductEvent,
@@ -96,6 +98,34 @@ function emptySelectionState(): TripSelectionState {
     hotelName: undefined,
     foods: {},
     activities: {},
+  };
+}
+
+type TripSyncSaveMessages = {
+  syncedToAccount: string;
+  syncedRemotely: string;
+  localOnly: string;
+};
+
+function buildSyncStateFromSaveResult(
+  result: Pick<SaveTripPlanResult, "remoteSaved" | "accountSaved">,
+  lastSavedAt: string,
+  messages: TripSyncSaveMessages
+) {
+  if (!result.remoteSaved) {
+    return {
+      phase: "local_only" as const,
+      message: messages.localOnly,
+      lastSavedAt,
+    };
+  }
+
+  return {
+    phase: "saved" as const,
+    message: result.accountSaved
+      ? messages.syncedToAccount
+      : messages.syncedRemotely,
+    lastSavedAt,
   };
 }
 
@@ -349,13 +379,18 @@ export default function TripPage() {
     return Number.isFinite(value) && value > 0 ? value : 1;
   }, [trip]);
 
+  const hotelOptions = useMemo(
+    () => sortHotelOptions(trip?.hotelOptions ?? []),
+    [trip?.hotelOptions]
+  );
+
   const selectedHotel = useMemo(() => {
     if (!trip) return undefined;
 
-    return (trip.hotelOptions ?? []).find(
+    return hotelOptions.find(
       (hotel: HotelOption) => hotel.name === activeSelectionState.hotelName
-    ) ?? trip.hotelOptions?.[0];
-  }, [activeSelectionState.hotelName, trip]);
+    ) ?? hotelOptions[0];
+  }, [activeSelectionState.hotelName, hotelOptions, trip]);
 
   const selectedBudget = useMemo(() => {
     if (!trip) return null;
@@ -364,7 +399,7 @@ export default function TripPage() {
     const nights = Math.max(1, tripLengthDays - 1);
     const gas = Number(trip?.budgetBreakdown?.gas ?? 0);
 
-    const selectedHotel = (trip.hotelOptions ?? []).find(
+    const selectedHotel = hotelOptions.find(
       (hotel: HotelOption) => hotel.name === activeSelectionState.hotelName
     );
 
@@ -414,7 +449,7 @@ export default function TripPage() {
       totalLow: Math.round(totalExpected * 0.9),
       totalHigh: Math.round(totalExpected * 1.15),
     };
-  }, [activeSelectionState, travelerCount, trip]);
+  }, [activeSelectionState, hotelOptions, travelerCount, trip]);
 
   const targetTotalBudget = useMemo(() => {
     const fromSavedField = Number(trip?.totalBudget);
@@ -519,7 +554,7 @@ export default function TripPage() {
       return { pins: [], routePaths: [], missingLocationCount: 0 };
     }
 
-    const hotels = trip.hotelOptions ?? [];
+    const hotels = hotelOptions;
     const foodSpots = trip.foodSpots ?? [];
     const activities = trip.topActivities ?? [];
     const pins: Array<{
@@ -693,7 +728,7 @@ export default function TripPage() {
     });
 
     return { pins, routePaths, missingLocationCount };
-  }, [activeSelectionState, itineraryDays, trip]);
+  }, [activeSelectionState, hotelOptions, itineraryDays, trip]);
 
   const persistedTrip = useMemo(() => {
     if (!trip) return null;
@@ -809,15 +844,17 @@ export default function TripPage() {
           tripId: nextTrip.id,
           selection: nextTrip.savedSelectionState ?? emptySelectionState(),
         });
-        clearPendingTripSyncRecord(nextTrip.id);
+        if (result.remoteSaved) {
+          clearPendingTripSyncRecord(nextTrip.id);
+        }
         setSyncConflict(null);
-        setSyncState({
-          phase: result.accountSaved ? "saved" : "local_only",
-          message: result.accountSaved
-            ? "All trip edits are synced to your account."
-            : "Trip edits are saved locally, but account sync is unavailable.",
-          lastSavedAt: savedAt,
-        });
+        setSyncState(
+          buildSyncStateFromSaveResult(result, savedAt, {
+            syncedToAccount: "All trip edits are synced to your account.",
+            syncedRemotely: "Trip edits are synced to the shared trip.",
+            localOnly: "Trip edits are saved locally, but remote sync is still pending.",
+          })
+        );
       } catch (error) {
         console.error("Trip autosave failed:", error);
         setSyncState((current) => ({
@@ -886,17 +923,19 @@ export default function TripPage() {
         tripId: (result.trip ?? finalizedTrip).id,
         selection: (result.trip ?? finalizedTrip).savedSelectionState ?? emptySelectionState(),
       });
-      setSyncState({
-        phase: result.accountSaved ? "saved" : "local_only",
-        message: result.accountSaved
-          ? "Finalized trip synced to your account."
-          : "Finalized trip saved locally.",
-        lastSavedAt: new Date().toISOString(),
-      });
+      setSyncState(
+        buildSyncStateFromSaveResult(result, new Date().toISOString(), {
+          syncedToAccount: "Finalized trip synced to your account.",
+          syncedRemotely: "Finalized trip synced to the shared trip.",
+          localOnly: "Finalized trip saved locally while remote sync is pending.",
+        })
+      );
       setFinalizeStatus(
         result.accountSaved
           ? "Finalized trip saved to your account."
-          : "Finalized trip saved locally."
+          : result.remoteSaved
+            ? "Finalized trip saved to the shared trip."
+            : "Finalized trip saved locally."
       );
       trackProductEvent("trip_finalized", {
         ...baseTripAnalytics(result.trip ?? finalizedTrip),
@@ -914,22 +953,35 @@ export default function TripPage() {
     }
   }, [persistedTrip]);
 
-  const handleTripUpdated = useCallback((nextTrip: TripPlan) => {
-    setTrip(nextTrip);
-    setSelectionState({
-      tripId: nextTrip.id,
-      selection: nextTrip.savedSelectionState ?? emptySelectionState(),
-    });
-    clearPendingTripSyncRecord(nextTrip.id);
-    setSyncConflict(null);
-    setSyncState({
-      phase: nextTrip.ownerUserId ? "saved" : "local_only",
-      message: nextTrip.ownerUserId
-        ? "Trip changes synced."
-        : "Trip changes saved locally.",
-      lastSavedAt: new Date().toISOString(),
-    });
-  }, []);
+  const handleTripUpdated = useCallback(
+    (
+      nextTrip: TripPlan,
+      saveResult?: Pick<SaveTripPlanResult, "remoteSaved" | "accountSaved">
+    ) => {
+      const effectiveResult = saveResult ?? {
+        remoteSaved: Boolean(nextTrip.ownerUserId || nextTrip.editToken),
+        accountSaved: Boolean(nextTrip.ownerUserId),
+      };
+
+      setTrip(nextTrip);
+      setSelectionState({
+        tripId: nextTrip.id,
+        selection: nextTrip.savedSelectionState ?? emptySelectionState(),
+      });
+      if (effectiveResult.remoteSaved) {
+        clearPendingTripSyncRecord(nextTrip.id);
+      }
+      setSyncConflict(null);
+      setSyncState(
+        buildSyncStateFromSaveResult(effectiveResult, new Date().toISOString(), {
+          syncedToAccount: "Trip changes synced.",
+          syncedRemotely: "Trip changes synced to the shared trip.",
+          localOnly: "Trip changes are saved locally while remote sync is pending.",
+        })
+      );
+    },
+    []
+  );
 
   const handleUseLocalDraft = useCallback(() => {
     if (!syncConflict) return;
@@ -1280,7 +1332,7 @@ export default function TripPage() {
               {showDraftBuilderMode ? (
                 <ExpediaStayWidget
                   destinationLabel={getDestinationLabel(trip)}
-                  selectedHotelName={selectedHotel?.name}
+                  selectedHotel={selectedHotel}
                   tripStartDate={trip.tripStartDate}
                   tripEndDate={trip.tripEndDate}
                 />
@@ -1289,7 +1341,7 @@ export default function TripPage() {
               <InteractiveItinerary
                 key={`${trip.id}:${JSON.stringify(trip.savedSelectionState ?? emptySelectionState())}`}
                 days={itineraryDays}
-                hotels={trip.hotelOptions ?? []}
+                hotels={hotelOptions}
                 foodSpots={trip.foodSpots ?? []}
                 activities={trip.topActivities ?? []}
                 travelerCount={travelerCount}

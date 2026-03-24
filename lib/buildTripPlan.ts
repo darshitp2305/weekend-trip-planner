@@ -6,6 +6,7 @@ import {
   TripInput,
   TripPlan,
 } from "./types";
+import { sortHotelOptions } from "./hotelAvailability";
 import { deriveTripEndDate } from "./tripDates";
 import { ensureTripEditToken } from "./tripSecurity";
 
@@ -1770,11 +1771,13 @@ export function buildTripPlan(
   const baseCoordinate = buildBaseCoordinate(trip);
   const foodDistanceCapKm = maxLegDistanceKm(safeInput);
   const activityDistanceCapKm = foodDistanceCapKm * 1.4;
-  const filteredHotels = withDistanceCap(
-    trip.hotelOptions ?? [],
-    toCoordinate(trip) ?? baseCoordinate,
-    activityDistanceCapKm,
-    2
+  const filteredHotels = sortHotelOptions(
+    withDistanceCap(
+      trip.hotelOptions ?? [],
+      toCoordinate(trip) ?? baseCoordinate,
+      activityDistanceCapKm,
+      2
+    )
   );
   const filteredFoodSpots = withDistanceCap(
     trip.foodSpots ?? [],

@@ -1,3 +1,5 @@
+import { HotelOption } from "./types";
+
 const SERPAPI_BASE_URL = "https://serpapi.com/search.json";
 
 type SearchHotelsOptions = {
@@ -57,19 +59,6 @@ type SerpApiHotelsResponse = {
   hotel_results?: SerpApiHotelResult[];
 };
 
-export type LiveHotelRate = {
-  name: string;
-  bookingLink: string;
-  rating?: number;
-  shortDescription?: string;
-  pricePerNight?: number;
-  totalStayPrice?: number;
-  pricingSource: "SerpApi Google Hotels";
-  photoUrl?: string;
-  latitude?: number;
-  longitude?: number;
-};
-
 function numericRateFromPrice(price?: SerpApiPrice): number | undefined {
   if (!price) return undefined;
 
@@ -106,7 +95,7 @@ function pickBestPrice(result: SerpApiHotelResult): {
 
 export async function searchHotelsWithSerpApi(
   options: SearchHotelsOptions
-): Promise<LiveHotelRate[]> {
+): Promise<HotelOption[]> {
   const apiKey = process.env.SERPAPI_API_KEY;
   if (!apiKey) {
     throw new Error("Missing SERPAPI_API_KEY in .env.local");
@@ -150,13 +139,20 @@ export async function searchHotelsWithSerpApi(
         shortDescription: result.description,
         pricePerNight: nightly,
         totalStayPrice: total,
-        pricingSource: "SerpApi Google Hotels" as const,
+        pricingSource: "Live Google Hotels rate" as const,
+        availabilityStatus: "available" as const,
+        availabilitySource: "Google Hotels via SerpApi",
         photoUrl:
           result.images?.[0]?.original_image || result.images?.[0]?.thumbnail,
         latitude: result.gps_coordinates?.latitude,
         longitude: result.gps_coordinates?.longitude,
       };
     })
-    .filter((hotel) => Boolean(hotel.name))
+    .filter(
+      (hotel) =>
+        Boolean(hotel.name) &&
+        (typeof hotel.pricePerNight === "number" ||
+          typeof hotel.totalStayPrice === "number")
+    )
     .slice(0, 8);
 }

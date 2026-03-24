@@ -15,6 +15,11 @@ import {
   foodPricingSourceLabel,
 } from "../lib/foodPricing";
 import { preferredHotelBookingUrl } from "../lib/expediaLinks";
+import {
+  hotelAvailabilityLabel,
+  hotelAvailabilityPriorityFor,
+  hotelAvailabilityTone,
+} from "../lib/hotelAvailability";
 
 type Props = {
   days: ItineraryDayData[];
@@ -53,6 +58,8 @@ type StopOption = {
   fallbackPhotoUrl?: string;
   latitude?: number;
   longitude?: number;
+  availabilityLabel?: string;
+  availabilityTone?: "slate" | "green" | "violet" | "amber" | "rose";
 };
 
 type StopCoordinate = {
@@ -214,11 +221,15 @@ function OptionPill({
   tone = "slate",
 }: {
   children: React.ReactNode;
-  tone?: "slate" | "green" | "violet";
+  tone?: "slate" | "green" | "violet" | "amber" | "rose";
 }) {
   const className =
     tone === "green"
       ? "border border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200"
+      : tone === "amber"
+        ? "border border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200"
+      : tone === "rose"
+        ? "border border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-200"
       : tone === "violet"
         ? "border border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-violet-200"
         : "border border-slate-200 bg-slate-100 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200";
@@ -327,6 +338,11 @@ function SelectorCard({
           {recommended ? <OptionPill tone="violet">Recommended</OptionPill> : null}
           {selectedElsewhereLabel ? (
             <OptionPill tone="slate">{selectedElsewhereLabel}</OptionPill>
+          ) : null}
+          {option.availabilityLabel ? (
+            <OptionPill tone={option.availabilityTone ?? "amber"}>
+              {option.availabilityLabel}
+            </OptionPill>
           ) : null}
           {option.rating !== undefined ? (
             <OptionPill tone="green">Rating {option.rating}</OptionPill>
@@ -600,10 +616,27 @@ export default function InteractiveItinerary({
   function rankedHotelOptions(stopTitle?: string) {
     return [...hotels]
       .sort((a, b) => {
+        const availabilityDiff =
+          hotelAvailabilityPriorityFor(b.availabilityStatus) -
+          hotelAvailabilityPriorityFor(a.availabilityStatus);
+        if (availabilityDiff !== 0) return availabilityDiff;
+
         const scoreDiff =
           optionSortScore(a.name, stopTitle?.replace(/^Check in at\s+/i, "")) -
           optionSortScore(b.name, stopTitle?.replace(/^Check in at\s+/i, ""));
         if (scoreDiff !== 0) return -scoreDiff;
+
+        const pricedDiff =
+          Number(
+            typeof b.pricePerNight === "number" ||
+              typeof b.totalStayPrice === "number"
+          ) -
+          Number(
+            typeof a.pricePerNight === "number" ||
+              typeof a.totalStayPrice === "number"
+          );
+        if (pricedDiff !== 0) return pricedDiff;
+
         return (b.rating ?? 0) - (a.rating ?? 0);
       })
       .slice(0, 4);
@@ -1049,6 +1082,10 @@ export default function InteractiveItinerary({
                                   ) ?? selectedHotel.shortDescription
                                 }
                                 pills={[
+                                  hotelAvailabilityLabel(
+                                    selectedHotel,
+                                    Boolean(tripStartDate && tripEndDate)
+                                  ),
                                   ...(typeof selectedHotel.rating === "number"
                                     ? [`Rating ${selectedHotel.rating}`]
                                     : []),
@@ -1102,6 +1139,13 @@ export default function InteractiveItinerary({
                                     fallbackPhotoUrl: destinationImageUrl,
                                     latitude: hotel.latitude,
                                     longitude: hotel.longitude,
+                                    availabilityLabel: hotelAvailabilityLabel(
+                                      hotel,
+                                      Boolean(tripStartDate && tripEndDate)
+                                    ),
+                                    availabilityTone: hotelAvailabilityTone(
+                                      hotel.availabilityStatus
+                                    ),
                                   }}
                                   selected={selection.hotelName === hotel.name}
                                   recommended={optionIndex === 0}

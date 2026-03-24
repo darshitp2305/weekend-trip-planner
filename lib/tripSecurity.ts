@@ -1,4 +1,9 @@
-import type { TripPlan } from "./types";
+import type {
+  TravelerCoordinationEntry,
+  TripCommentEntry,
+  TripPlan,
+  TripReactionEntry,
+} from "./types";
 
 function randomHex(byteLength: number) {
   const bytes = new Uint8Array(byteLength);
@@ -52,4 +57,85 @@ export function sanitizeTripForResponse(
   }
 
   return sanitized;
+}
+
+function mergeUniqueEntries<T>(
+  existing: T[] | undefined,
+  incoming: T[] | undefined,
+  getKey: (entry: T) => string
+) {
+  if (!incoming) {
+    return existing;
+  }
+
+  const merged = [...(existing ?? [])];
+  const indexByKey = new Map<string, number>();
+
+  for (const [index, entry] of merged.entries()) {
+    const key = getKey(entry);
+    if (key) {
+      indexByKey.set(key, index);
+    }
+  }
+
+  for (const entry of incoming) {
+    const key = getKey(entry);
+    if (!key) {
+      merged.push(entry);
+      continue;
+    }
+
+    const existingIndex = indexByKey.get(key);
+    if (typeof existingIndex === "number") {
+      merged[existingIndex] = entry;
+      continue;
+    }
+
+    indexByKey.set(key, merged.length);
+    merged.push(entry);
+  }
+
+  return merged;
+}
+
+function reactionEntryKey(entry: TripReactionEntry) {
+  return entry.visitorId || entry.userId || entry.id;
+}
+
+function commentEntryKey(entry: TripCommentEntry) {
+  return entry.id;
+}
+
+function travelerEntryKey(entry: TravelerCoordinationEntry) {
+  return entry.userId || entry.visitorId || entry.id;
+}
+
+export function mergeCollaborativeTripFields(
+  existingPlan: TripPlan,
+  incomingPlan: TripPlan
+): TripPlan {
+  return {
+    ...existingPlan,
+    decisionStatus:
+      incomingPlan.decisionStatus ?? existingPlan.decisionStatus,
+    decisionUpdatedAt:
+      incomingPlan.decisionUpdatedAt ?? existingPlan.decisionUpdatedAt,
+    decisionUpdatedBy:
+      incomingPlan.decisionUpdatedBy ?? existingPlan.decisionUpdatedBy,
+    reactions: mergeUniqueEntries(
+      existingPlan.reactions,
+      incomingPlan.reactions,
+      reactionEntryKey
+    ),
+    comments: mergeUniqueEntries(
+      existingPlan.comments,
+      incomingPlan.comments,
+      commentEntryKey
+    ),
+    travelerRoster: mergeUniqueEntries(
+      existingPlan.travelerRoster,
+      incomingPlan.travelerRoster,
+      travelerEntryKey
+    ),
+  };
 }

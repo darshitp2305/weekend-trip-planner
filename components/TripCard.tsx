@@ -10,6 +10,7 @@ import {
 } from "../lib/types";
 import { buildTripPlan } from "../lib/buildTripPlan";
 import { formatDisplayTag, formatDisplayText } from "../lib/displayText";
+import { isStartCity } from "../lib/startCities";
 import { deriveTripEndDate } from "../lib/tripDates";
 import { saveTripPlan } from "../lib/tripStore";
 import { trackProductEvent } from "../lib/productAnalytics";
@@ -169,7 +170,7 @@ function normalizeTripInput(input?: Partial<TripInput> | null): TripInput | unde
     typeof input.tripStartDate === "string" ? input.tripStartDate : undefined;
 
   return {
-    startCity: input.startCity === "Calgary" ? "Calgary" : "Edmonton",
+    startCity: isStartCity(input.startCity) ? input.startCity : "Edmonton",
     season: input.season ?? "Summer",
     style: input.style ?? "foodie",
     activityFocus: input.activityFocus,

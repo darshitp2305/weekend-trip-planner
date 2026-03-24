@@ -13,7 +13,7 @@ import {
   getTripNextDeadline,
   getTripReadinessSummary,
 } from "../lib/tripOperations";
-import { saveTripPlan } from "../lib/tripStore";
+import { saveTripPlan, type SaveTripPlanResult } from "../lib/tripStore";
 import { useViewerIdentity } from "../lib/viewerIdentity";
 import {
   TravelerCoordinationEntry,
@@ -24,7 +24,7 @@ import {
 
 type Props = {
   trip: TripPlan;
-  onTripUpdated: (trip: TripPlan) => void;
+  onTripUpdated: (trip: TripPlan, result: SaveTripPlanResult) => void;
   isOwner?: boolean;
   shareMode?: boolean;
 };
@@ -104,8 +104,9 @@ export default function TripOperationsPanel({
   async function persistTrip(nextTrip: TripPlan) {
     const result = await saveTripPlan(nextTrip);
     if (!result.success) throw new Error("Trip operations save failed.");
-    onTripUpdated(result.trip ?? nextTrip);
-    return result.trip ?? nextTrip;
+    const savedTrip = result.trip ?? nextTrip;
+    onTripUpdated(savedTrip, result);
+    return savedTrip;
   }
 
   function updatedTraveler(traveler: TravelerCoordinationEntry, nextStatus: TravelerCoordinationStatus) {

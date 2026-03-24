@@ -10,6 +10,7 @@ import { getAuthenticatedUserFromRequest } from "../../../lib/authSession";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 import {
   ensureTripEditToken,
+  mergeCollaborativeTripFields,
   sanitizeTripForPersistence,
   sanitizeTripForResponse,
 } from "../../../lib/tripSecurity";
@@ -92,47 +93,51 @@ export async function POST(request: Request) {
       rawPlan.editToken,
       existingPlan?.editToken
     );
-
-    if (existingPlan) {
-      if (existingPlan.ownerUserId && !isAuthenticatedOwner) {
-        return jsonNoStore(
-          { success: false, error: "You do not have permission to edit this trip." },
-          { status: 403 }
-        );
-      }
-
-      if (existingPlan.editToken && !editTokenMatches && !isAuthenticatedOwner) {
-        return jsonNoStore(
-          { success: false, error: "You do not have permission to edit this trip." },
-          { status: 403 }
-        );
-      }
-
-      if (
+    const canClaimAnonymousTrip = Boolean(
+      existingPlan &&
         !existingPlan.ownerUserId &&
         !existingPlan.editToken &&
-        !authUser?.userId
-      ) {
+        authUser?.userId
+    );
+    const hasFullEditAccess = Boolean(
+      !existingPlan ||
+        isAuthenticatedOwner ||
+        editTokenMatches ||
+        canClaimAnonymousTrip
+    );
+    const canPersistCollaborativeShareUpdate = Boolean(
+      existingPlan?.status === "finalized" && !hasFullEditAccess
+    );
+
+    if (existingPlan) {
+      if (!hasFullEditAccess && !canPersistCollaborativeShareUpdate) {
         return jsonNoStore(
           {
             success: false,
-            error:
-              "This older shared trip can no longer be edited anonymously. Sign in and resave it to claim ownership.",
+            error: existingPlan.ownerUserId || existingPlan.editToken
+              ? "You do not have permission to edit this trip."
+              : "This older shared trip can no longer be edited anonymously. Sign in and resave it to claim ownership.",
           },
           { status: 403 }
         );
       }
     }
 
-    const planWithToken = ensureTripEditToken({
-      ...rawPlan,
-      editToken: existingPlan?.editToken ?? rawPlan.editToken,
-    } as TripPlan);
+    const planWithAccess = hasFullEditAccess
+      ? ensureTripEditToken({
+          ...rawPlan,
+          editToken: existingPlan?.editToken ?? rawPlan.editToken,
+        } as TripPlan)
+      : mergeCollaborativeTripFields(existingPlan as TripPlan, rawPlan);
 
     const sharedTripPlan = sanitizeTripForPersistence({
-      ...planWithToken,
-      ownerUserId: authUser?.userId ?? existingPlan?.ownerUserId,
-      ownerEmail: authUser?.email ?? existingPlan?.ownerEmail,
+      ...planWithAccess,
+      ownerUserId: hasFullEditAccess
+        ? authUser?.userId ?? existingPlan?.ownerUserId
+        : existingPlan?.ownerUserId,
+      ownerEmail: hasFullEditAccess
+        ? authUser?.email ?? existingPlan?.ownerEmail
+        : existingPlan?.ownerEmail,
     });
 
     const sharedTripRecord = {
@@ -142,7 +147,9 @@ export async function POST(request: Request) {
 
     const records = [sharedTripRecord];
 
-    if (authUser?.userId) {
+    const shouldCreateAccountRecord = Boolean(authUser?.userId && hasFullEditAccess);
+
+    if (shouldCreateAccountRecord && authUser?.userId) {
       records.push({
         id: `user:${authUser.userId}:${sharedTripPlan.id}`,
         trip_data: {
@@ -166,15 +173,17 @@ export async function POST(request: Request) {
     }
 
     const responseTrip = sanitizeTripForResponse(sharedTripPlan, {
-      includeEditToken: true,
-      includeOwnerFields: Boolean(authUser?.userId),
+      includeEditToken: hasFullEditAccess,
+      includeOwnerFields: Boolean(
+        authUser?.userId && sharedTripPlan.ownerUserId === authUser.userId
+      ),
     });
 
     return jsonNoStore({
       success: true,
       id: sharedTripPlan.id,
       shareUrl: `/trip/${sharedTripPlan.id}`,
-      accountSaved: Boolean(authUser?.userId),
+      accountSaved: shouldCreateAccountRecord,
       trip: responseTrip,
     });
   } catch (error) {

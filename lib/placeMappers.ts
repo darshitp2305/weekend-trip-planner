@@ -88,13 +88,16 @@ export function mapGooglePlaceToActivity(place: GooglePlace): Activity {
 }
 
 export function mapGooglePlaceToHotel(place: GooglePlace): HotelOption {
-  // Hotels rely on SerpApi or existing trip pricing for actual rate data. The
-  // Places mapping is mainly for identity, links, rating, and imagery.
+  // Hotels rely on inventory-aware providers or existing trip pricing for
+  // actual rate data. The Places mapping is mainly for identity, links,
+  // rating, and imagery.
   return {
     name: place.displayName?.text ?? "Unnamed hotel",
     pricePerNight: undefined,
     totalStayPrice: undefined,
     pricingSource: undefined,
+    availabilityStatus: "unverified",
+    availabilitySource: "Google Places",
     bookingLink: place.googleMapsUri || place.websiteUri || "",
     websiteUrl: place.websiteUri || "",
     mapsUrl: place.googleMapsUri || "",

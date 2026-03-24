@@ -56,6 +56,10 @@ export interface HotelOption {
   pricePerNight?: number;
   totalStayPrice?: number;
   pricingSource?: string;
+  availabilityStatus?: "available" | "sold_out" | "unverified";
+  availabilitySource?: string;
+  hotelId?: string;
+  destinationId?: string;
   bookingLink: string;
   shortDescription?: string;
   rating?: number;

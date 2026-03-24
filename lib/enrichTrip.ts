@@ -11,9 +11,10 @@ import {
   mapGooglePlaceToFoodSpot,
   mapGooglePlaceToHotel,
 } from "./placeMappers";
+import { sortHotelOptions } from "./hotelAvailability";
+import { fetchHotelsDotComHotelData } from "./hotelsDotComHotelProvider";
 import { fetchPlacesProviderData } from "./placesProvider";
 import { reportProviderEvent } from "./providerTelemetry";
-import { fetchSerpApiHotelData } from "./serpApiHotelProvider";
 
 const ENRICH_CACHE_TTL_MS = 1000 * 60 * 20;
 
@@ -274,6 +275,8 @@ function mergeHotelSources<
     bookingLink?: string;
     shortDescription?: string;
     rating?: number;
+    availabilityStatus?: HotelOption["availabilityStatus"];
+    availabilitySource?: string;
   },
   TFallback extends {
     name?: string;
@@ -284,10 +287,13 @@ function mergeHotelSources<
     bookingLink?: string;
     shortDescription?: string;
     rating?: number;
+    availabilityStatus?: HotelOption["availabilityStatus"];
+    availabilitySource?: string;
   },
 >(primary: TPrimary[], fallback: TFallback[]) {
-  // Google Places is better for identity and photos; SerpApi is better for
-  // hotel commerce fields. Merge by normalized name so each source fills gaps.
+  // Google Places is better for identity and photos; inventory providers are
+  // better for hotel commerce fields. Merge by normalized name so each source
+  // fills gaps.
   const fallbackByName = new Map(
     fallback.map((item) => [normalizeName(item.name), item] as const)
   );
@@ -307,6 +313,8 @@ function mergeHotelSources<
       bookingLink: item.bookingLink ?? match.bookingLink,
       shortDescription: item.shortDescription ?? match.shortDescription,
       rating: item.rating ?? match.rating,
+      availabilityStatus: item.availabilityStatus ?? match.availabilityStatus,
+      availabilitySource: item.availabilitySource ?? match.availabilitySource,
     };
   });
 }
@@ -372,7 +380,7 @@ export async function enrichRankedTrip(
   const sourceCheckedAt = new Date().toISOString();
 
   try {
-    const [placesData, serpHotels] =
+    const [placesData, hotelsDotComHotels] =
       await Promise.all([
         fetchPlacesProviderData({
           destination: destinationQuery,
@@ -382,7 +390,7 @@ export async function enrichRankedTrip(
           tripStartDate: input.tripStartDate,
           tripEndDate: input.tripEndDate,
         }),
-        fetchSerpApiHotelData({
+        fetchHotelsDotComHotelData({
           destination: destinationQuery,
           tripStartDate: input.tripStartDate,
           tripEndDate: input.tripEndDate,
@@ -408,8 +416,8 @@ export async function enrichRankedTrip(
         .filter(hasName)
     );
 
-    const serpApiHotels = dedupeByName(
-      serpHotels.filter(hasName)
+    const hotelsDotComInventory = dedupeByName(
+      hotelsDotComHotels.filter(hasName)
     );
 
     const placesHotels = dedupeByName(
@@ -418,10 +426,13 @@ export async function enrichRankedTrip(
         .filter(hasName)
     );
 
+    const inventoryHotels = sortHotelOptions(
+      dedupeByName([...hotelsDotComInventory])
+    );
     const liveHotels =
-      serpApiHotels.length > 0
-        ? mergeHotelSources(serpApiHotels, placesHotels)
-        : placesHotels;
+      inventoryHotels.length > 0
+        ? sortHotelOptions(mergeHotelSources(inventoryHotels, placesHotels))
+        : sortHotelOptions(placesHotels);
 
     const balancedFoodSpots = dedupeByName(
       interleaveArrays(liveRestaurants, liveCafes)
@@ -440,7 +451,7 @@ export async function enrichRankedTrip(
     const mergedHotels =
       liveHotels.length > 0
         ? liveHotels.slice(0, 6)
-        : trip.hotelOptions;
+        : sortHotelOptions(trip.hotelOptions ?? []);
 
     const hasLiveResults =
       balancedFoodSpots.length > 0 ||
@@ -459,9 +470,9 @@ export async function enrichRankedTrip(
           placesHotels.length === 0,
       }),
       hotels: deriveProviderOutcome({
-        hadResults: serpApiHotels.length > 0,
+        hadResults: inventoryHotels.length > 0,
         attempted: Boolean(input.tripStartDate && input.tripEndDate),
-        usedFallback: liveHotels.length === 0 || serpApiHotels.length === 0,
+        usedFallback: liveHotels.length === 0 || inventoryHotels.length === 0,
       }),
       tripCopy: trip.providerStatus?.tripCopy,
     };
@@ -480,6 +491,18 @@ export async function enrichRankedTrip(
     const rankingReasons: RankingReason[] = Array.isArray(trip.rankingReasons)
       ? [...trip.rankingReasons]
       : [];
+
+    if (inventoryHotels.length > 0) {
+      rankingReasons.unshift({
+        label: "Hotels checked against live booking inventory",
+        impact: "positive",
+      });
+    } else if (input.tripStartDate && input.tripEndDate) {
+      rankingReasons.unshift({
+        label: "Hotel availability could not be confirmed live",
+        impact: "neutral",
+      });
+    }
 
     if (hasLiveResults) {
       rankingReasons.unshift({
@@ -535,10 +558,11 @@ export async function enrichRankedTrip(
     const result: { trip: RankedDestination; source: TripDataSource } = {
       trip: {
         ...trip,
+        hotelOptions: sortHotelOptions(trip.hotelOptions ?? []),
         liveDataSummary: buildLiveSummary(
           trip.foodSpots,
           trip.topActivities,
-          trip.hotelOptions,
+          sortHotelOptions(trip.hotelOptions ?? []),
           false
         ),
         sourceCheckedAt,

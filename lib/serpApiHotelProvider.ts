@@ -1,15 +1,15 @@
 import {
   searchHotelsWithSerpApi,
-  type LiveHotelRate,
 } from "./serpApiHotels";
 import { reportProviderEvent } from "./providerTelemetry";
+import { HotelOption } from "./types";
 
 export async function fetchSerpApiHotelData(options: {
   destination: string;
   tripStartDate?: string;
   tripEndDate?: string;
   adults: number;
-}): Promise<LiveHotelRate[]> {
+}): Promise<HotelOption[]> {
   if (!options.tripStartDate || !options.tripEndDate) {
     return [];
   }

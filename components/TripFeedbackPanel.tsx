@@ -14,7 +14,7 @@ import {
   TRIP_FOLLOW_UP_UPDATED_EVENT,
   TripFollowUpRecord,
 } from "../lib/tripFollowUpState";
-import { saveTripPlan } from "../lib/tripStore";
+import { saveTripPlan, type SaveTripPlanResult } from "../lib/tripStore";
 import {
   buildTripReminderMessage,
   getTripFollowUpAction,
@@ -33,7 +33,7 @@ import {
 
 type Props = {
   trip: TripPlan;
-  onTripUpdated: (trip: TripPlan) => void;
+  onTripUpdated: (trip: TripPlan, result: SaveTripPlanResult) => void;
   isOwner?: boolean;
   shareMode?: boolean;
 };
@@ -211,7 +211,8 @@ export default function TripFeedbackPanel({
       throw new Error("Trip feedback save failed.");
     }
 
-    onTripUpdated(nextTrip);
+    onTripUpdated(result.trip ?? nextTrip, result);
+    return result;
   }
 
   async function handleReaction(nextReaction: TripFeedbackReaction) {
@@ -233,12 +234,16 @@ export default function TripFeedbackPanel({
         },
       ];
 
-      await persistTrip({
+      const result = await persistTrip({
         ...trip,
         reactions: nextReactions,
       });
 
-      setStatus("Reaction saved.");
+      setStatus(
+        result.remoteSaved
+          ? "Reaction saved."
+          : "Reaction saved locally. Remote sync pending."
+      );
     } catch (error) {
       console.error("Failed to save trip reaction:", error);
       setStatus("Reaction save failed.");
@@ -267,13 +272,17 @@ export default function TripFeedbackPanel({
         },
       ];
 
-      await persistTrip({
+      const result = await persistTrip({
         ...trip,
         comments: nextComments,
       });
 
       setMessage("");
-      setStatus("Comment added.");
+      setStatus(
+        result.remoteSaved
+          ? "Comment added."
+          : "Comment added locally. Remote sync pending."
+      );
     } catch (error) {
       console.error("Failed to save trip comment:", error);
       setStatus("Comment save failed.");
@@ -286,7 +295,7 @@ export default function TripFeedbackPanel({
     try {
       setStatus("");
 
-      await persistTrip({
+      const result = await persistTrip({
         ...trip,
         decisionStatus: nextStatus,
         decisionUpdatedAt: new Date().toISOString(),
@@ -306,7 +315,11 @@ export default function TripFeedbackPanel({
         });
       }
 
-      setStatus(`Decision updated to ${decisionLabel(nextStatus)}.`);
+      setStatus(
+        result.remoteSaved
+          ? `Decision updated to ${decisionLabel(nextStatus)}.`
+          : `Decision updated locally to ${decisionLabel(nextStatus)}. Remote sync pending.`
+      );
     } catch (error) {
       console.error("Failed to save trip decision:", error);
       setStatus("Decision update failed.");
@@ -341,7 +354,7 @@ export default function TripFeedbackPanel({
         },
       };
 
-      await persistTrip(nextTrip);
+      const result = await persistTrip(nextTrip);
       trackProductEvent("trip_booked", {
         ...baseTripAnalytics(nextTrip),
         metadata: {
@@ -349,7 +362,11 @@ export default function TripFeedbackPanel({
           bookingUrl,
         },
       });
-      setStatus("Booking flow opened and trip marked booked.");
+      setStatus(
+        result.remoteSaved
+          ? "Booking flow opened and trip marked booked."
+          : "Booking flow opened. Trip changes are only saved locally for now."
+      );
       window.open(bookingUrl, "_blank", "noopener,noreferrer");
     } catch (error) {
       console.error("Failed to start booking flow:", error);

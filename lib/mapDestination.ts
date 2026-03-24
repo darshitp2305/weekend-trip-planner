@@ -185,6 +185,9 @@ export function mapRawDestination(
             typeof hotel.price_per_night === "number"
               ? hotel.price_per_night
               : estimateHotelPrice(raw.cost_level),
+          pricingSource: "Trip estimate",
+          availabilityStatus: "unverified" as const,
+          availabilitySource: "Static destination data",
           bookingLink: hotel.booking_link ?? "",
           shortDescription: hotel.description ?? "",
         }))
@@ -192,6 +195,9 @@ export function mapRawDestination(
           {
             name: raw.home_base_city,
             pricePerNight: estimateHotelPrice(raw.cost_level),
+            pricingSource: "Trip estimate",
+            availabilityStatus: "unverified" as const,
+            availabilitySource: "Static destination data",
             bookingLink: "",
             shortDescription: "Practical base option for this destination.",
           },

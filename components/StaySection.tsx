@@ -1,4 +1,8 @@
 import { formatDateRange } from "../lib/tripDates";
+import {
+  hotelAvailabilityLabel,
+  hotelAvailabilityTone,
+} from "../lib/hotelAvailability";
 
 type Stay = {
   id?: string;
@@ -12,6 +16,8 @@ type Stay = {
   pricePerNight?: number;
   totalStayPrice?: number;
   pricingSource?: string;
+  availabilityStatus?: "available" | "sold_out" | "unverified";
+  availabilitySource?: string;
 };
 
 type Props = {
@@ -24,6 +30,14 @@ function fallbackStayDescription(
   stay: Stay,
   dateRange?: string
 ) {
+  if (stay.availabilityStatus === "sold_out") {
+    return dateRange
+      ? `This property appears sold out for ${dateRange}. Use the search link for alternatives nearby.`
+      : "This property appears sold out right now.";
+  }
+  if (stay.availabilityStatus === "unverified" && dateRange) {
+    return `Useful base option for ${dateRange}, but live availability could not be confirmed from the current hotel source.`;
+  }
   if (stay.pricePerNight !== undefined) {
     const totalText =
       stay.totalStayPrice !== undefined ? `, about $${stay.totalStayPrice} total` : "";
@@ -40,11 +54,13 @@ function InfoPill({
   tone = "slate",
 }: {
   children: React.ReactNode;
-  tone?: "slate" | "green" | "amber";
+  tone?: "slate" | "green" | "amber" | "rose";
 }) {
   const className =
     tone === "green"
       ? "border border-emerald-200 bg-emerald-50 text-emerald-700"
+      : tone === "rose"
+        ? "border border-rose-200 bg-rose-50 text-rose-700"
       : tone === "amber"
         ? "border border-amber-200 bg-amber-50 text-amber-700"
         : "border border-slate-200 bg-slate-100 text-slate-700";
@@ -86,6 +102,17 @@ export default function StaySection({
           stays.map((stay, index) => {
             const primaryLink = stay.bookingLink ?? stay.websiteUrl;
             const hasNightlyPrice = stay.pricePerNight !== undefined;
+            const hasDates = Boolean(dateRange);
+            const availabilityLabel = hotelAvailabilityLabel(stay, hasDates);
+            const availabilityTone = hotelAvailabilityTone(stay.availabilityStatus);
+            const primaryActionLabel =
+              stay.availabilityStatus === "sold_out"
+                ? "Search alternatives"
+                : stay.availabilityStatus === "available" && hasDates
+                  ? "Check live rate"
+                  : hasDates
+                    ? "Search stay"
+                    : "Check stay";
 
             return (
               <article
@@ -107,6 +134,7 @@ export default function StaySection({
                 </p>
 
                 <div className="mt-4 flex flex-wrap gap-2">
+                  <InfoPill tone={availabilityTone}>{availabilityLabel}</InfoPill>
                   {hasNightlyPrice ? (
                     <>
                       <InfoPill>Nightly est. ${stay.pricePerNight}</InfoPill>
@@ -132,7 +160,7 @@ export default function StaySection({
                       rel="noreferrer"
                       className="inline-flex h-10 items-center justify-center rounded-xl bg-slate-950 px-4 text-sm font-medium text-white transition hover:bg-slate-800"
                     >
-                      {dateRange ? "Check rates" : "Check stay"}
+                      {primaryActionLabel}
                     </a>
                   ) : null}
 

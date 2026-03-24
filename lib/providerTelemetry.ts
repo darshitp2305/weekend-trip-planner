@@ -3,6 +3,7 @@ import { ProviderOutcome } from "./types";
 type ProviderName =
   | "openai"
   | "google_places"
+  | "hotels_dot_com"
   | "serpapi"
   | "trip_enrichment";
 

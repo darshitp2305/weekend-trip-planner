@@ -8,6 +8,7 @@ import {
 } from "../lib/apiSecurity";
 import {
   ensureTripEditToken,
+  mergeCollaborativeTripFields,
   sanitizeTripForPersistence,
   sanitizeTripForResponse,
 } from "../lib/tripSecurity";
@@ -80,6 +81,113 @@ function testTripSanitizers() {
   assert.equal(privateResponse.ownerEmail, plan.ownerEmail);
 }
 
+function testCollaborativeTripMerge() {
+  const existing = {
+    ...sampleTrip(),
+    status: "finalized" as const,
+    decisionStatus: "waiting_on_partner" as const,
+    decisionUpdatedAt: "2026-03-22T10:00:00.000Z",
+    decisionUpdatedBy: "Owner",
+    reactions: [
+      {
+        id: "reaction-1",
+        visitorId: "visitor-a",
+        author: "Alex",
+        reaction: "love" as const,
+        createdAt: "2026-03-22T10:00:00.000Z",
+      },
+    ],
+    comments: [
+      {
+        id: "comment-1",
+        visitorId: "visitor-a",
+        author: "Alex",
+        message: "Looks good.",
+        createdAt: "2026-03-22T10:01:00.000Z",
+      },
+    ],
+    travelerRoster: [
+      {
+        id: "traveler-1",
+        name: "Alex",
+        status: "confirmed" as const,
+      },
+    ],
+  };
+
+  const incoming = {
+    ...existing,
+    destinationName: "Hacked destination",
+    summary: "Malicious overwrite attempt",
+    decisionStatus: "approved" as const,
+    decisionUpdatedAt: "2026-03-22T12:00:00.000Z",
+    decisionUpdatedBy: "Jamie",
+    reactions: [
+      {
+        id: "reaction-2",
+        visitorId: "visitor-a",
+        author: "Alex",
+        reaction: "pass" as const,
+        createdAt: "2026-03-22T12:00:00.000Z",
+      },
+      {
+        id: "reaction-3",
+        visitorId: "visitor-b",
+        author: "Jamie",
+        reaction: "maybe" as const,
+        createdAt: "2026-03-22T12:01:00.000Z",
+      },
+    ],
+    comments: [
+      {
+        id: "comment-2",
+        visitorId: "visitor-b",
+        author: "Jamie",
+        message: "Can we leave earlier?",
+        createdAt: "2026-03-22T12:02:00.000Z",
+      },
+    ],
+    travelerRoster: [
+      {
+        id: "traveler-2",
+        name: "Jamie",
+        status: "needs_response" as const,
+      },
+    ],
+  };
+
+  const merged = mergeCollaborativeTripFields(existing, incoming);
+
+  assert.equal(merged.destinationName, existing.destinationName);
+  assert.equal(merged.summary, existing.summary);
+  assert.equal(merged.ownerUserId, existing.ownerUserId);
+  assert.equal(merged.decisionStatus, "approved");
+  assert.equal(merged.decisionUpdatedBy, "Jamie");
+  assert.equal(merged.reactions?.length, 2);
+  assert.equal(
+    merged.reactions?.find((entry) => entry.visitorId === "visitor-a")?.reaction,
+    "pass"
+  );
+  assert.equal(merged.comments?.length, 2);
+  assert.equal(
+    merged.comments?.some((entry) => entry.id === "comment-1"),
+    true
+  );
+  assert.equal(
+    merged.comments?.some((entry) => entry.id === "comment-2"),
+    true
+  );
+  assert.equal(merged.travelerRoster?.length, 2);
+  assert.equal(
+    merged.travelerRoster?.some((entry) => entry.id === "traveler-1"),
+    true
+  );
+  assert.equal(
+    merged.travelerRoster?.some((entry) => entry.id === "traveler-2"),
+    true
+  );
+}
+
 function testRouteGuards() {
   const crossSiteRequest = new Request("https://app.example.com/api/save-trip", {
     method: "POST",
@@ -134,6 +242,7 @@ function testIdAndRedirectValidation() {
 
 function main() {
   testTripSanitizers();
+  testCollaborativeTripMerge();
   testRouteGuards();
   testIdAndRedirectValidation();
   console.log("Security helper tests passed.");

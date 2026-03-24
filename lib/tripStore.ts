@@ -10,6 +10,15 @@ type PendingTripSyncRecord = {
   savedAt: string;
 };
 
+export type SaveTripPlanResult = {
+  success: boolean;
+  id: string;
+  shareUrl: string;
+  remoteSaved: boolean;
+  accountSaved: boolean;
+  trip: TripPlan;
+};
+
 function sortPlansNewestFirst(plans: TripPlan[]) {
   return [...plans].sort((a, b) =>
     `${b.createdAt ?? ""}`.localeCompare(`${a.createdAt ?? ""}`)
@@ -186,7 +195,7 @@ export function removeLocalTripPlans(ids: string[]) {
   removePendingTripSyncRecords(ids);
 }
 
-export async function saveTripPlan(plan: TripPlan) {
+export async function saveTripPlan(plan: TripPlan): Promise<SaveTripPlanResult> {
   upsertLocalTripPlan(plan);
 
   try {

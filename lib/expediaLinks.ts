@@ -2,7 +2,8 @@ import { isIsoDate } from "./tripDates";
 import { HotelOption } from "./types";
 
 type ExpediaStayLinkOptions = {
-  hotel?: Pick<HotelOption, "name" | "websiteUrl" | "bookingLink" | "mapsUrl">;
+  hotel?: Pick<HotelOption, "name"> &
+    Partial<Pick<HotelOption, "websiteUrl" | "bookingLink" | "mapsUrl">>;
   destination?: string;
   tripStartDate?: string;
   tripEndDate?: string;
@@ -44,6 +45,29 @@ function cleanUrl(value?: string) {
   }
 }
 
+export function directHotelPropertyUrl(options: ExpediaStayLinkOptions) {
+  const cleanedBooking = cleanUrl(options.hotel?.bookingLink);
+  const cleanedWebsite = cleanUrl(options.hotel?.websiteUrl);
+
+  return cleanedBooking ?? cleanedWebsite;
+}
+
+function isExpediaUrl(value?: string) {
+  if (!value) return false;
+
+  try {
+    const url = new URL(value);
+    return /(^|\.)expedia\.[a-z.]+$/i.test(url.hostname);
+  } catch {
+    return false;
+  }
+}
+
+export function directExpediaPropertyUrl(options: ExpediaStayLinkOptions) {
+  const directUrl = directHotelPropertyUrl(options);
+  return isExpediaUrl(directUrl) ? directUrl : undefined;
+}
+
 export function buildExpediaHotelSearchUrl({
   hotel,
   destination,
@@ -75,13 +99,11 @@ export function buildExpediaHotelSearchUrl({
 }
 
 export function preferredHotelBookingUrl(options: ExpediaStayLinkOptions) {
-  const cleanedWebsite = cleanUrl(options.hotel?.websiteUrl);
-  const cleanedBooking = cleanUrl(options.hotel?.bookingLink);
+  const directHotelUrl = directHotelPropertyUrl(options);
   const cleanedMaps = cleanUrl(options.hotel?.mapsUrl);
 
   return (
-    cleanedWebsite ??
-    cleanedBooking ??
+    directHotelUrl ??
     buildExpediaHotelSearchUrl(options) ??
     cleanedMaps
   );
