@@ -616,15 +616,15 @@ export default function InteractiveItinerary({
   function rankedHotelOptions(stopTitle?: string) {
     return [...hotels]
       .sort((a, b) => {
-        const availabilityDiff =
-          hotelAvailabilityPriorityFor(b.availabilityStatus) -
-          hotelAvailabilityPriorityFor(a.availabilityStatus);
-        if (availabilityDiff !== 0) return availabilityDiff;
-
         const scoreDiff =
           optionSortScore(a.name, stopTitle?.replace(/^Check in at\s+/i, "")) -
           optionSortScore(b.name, stopTitle?.replace(/^Check in at\s+/i, ""));
         if (scoreDiff !== 0) return -scoreDiff;
+
+        const availabilityDiff =
+          hotelAvailabilityPriorityFor(b.availabilityStatus) -
+          hotelAvailabilityPriorityFor(a.availabilityStatus);
+        if (availabilityDiff !== 0) return availabilityDiff;
 
         const pricedDiff =
           Number(
@@ -873,10 +873,13 @@ export default function InteractiveItinerary({
   return (
     <section className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
       <div className="flex flex-col gap-1">
-        <h2 className="text-xl font-semibold text-slate-950 dark:text-slate-100">Itinerary</h2>
+        <h2 className="text-xl font-semibold text-slate-950 dark:text-slate-100">
+          Edit the itinerary
+        </h2>
         <p className="max-w-3xl text-sm leading-5 text-slate-600 dark:text-slate-300">
-          Build the trip from the itinerary itself. Each stop starts on the
-          recommended pick, and your budget follows the selections.
+          Start from the recommended plan, then open any stay, food stop, or
+          activity to change a day or fit something else into the trip. Your
+          budget follows the selections.
         </p>
       </div>
 
@@ -1005,7 +1008,7 @@ export default function InteractiveItinerary({
                       {daySpendEstimate > 0 ? formatMoney(daySpendEstimate) : "Mostly free"}
                     </div>
                     <p className="mt-1 text-[12px] leading-5 text-slate-600 dark:text-slate-300">
-                      Food and activity selections only. Hotel stays remain in the trip budget rail.
+                      Food and activity selections only. Stay costs remain in the trip budget rail.
                     </p>
                   </div>
 
@@ -1023,7 +1026,7 @@ export default function InteractiveItinerary({
                           : "Follow selected stop order"}
                     </div>
                     <p className="mt-1 text-[12px] leading-5 text-slate-600 dark:text-slate-300">
-                      Built from the current hotel and stop choices.
+                      Built from the current stay and stop choices.
                     </p>
                   </div>
                 </div>
@@ -1103,7 +1106,7 @@ export default function InteractiveItinerary({
                                   tripEndDate,
                                   travelerCount,
                                 })}
-                                primaryLabel="Hotel site"
+                                primaryLabel="Stay site"
                                 mapsUrl={selectedHotel.mapsUrl}
                                 photoRef={selectedHotel.photoRef}
                                 photoUrl={selectedHotel.photoUrl}
@@ -1132,7 +1135,7 @@ export default function InteractiveItinerary({
                                         tripEndDate,
                                         travelerCount,
                                       }),
-                                      primaryLabel: "Hotel site",
+                                      primaryLabel: "Stay site",
                                     mapsUrl: hotel.mapsUrl,
                                     photoRef: hotel.photoRef,
                                     photoUrl: hotel.photoUrl,

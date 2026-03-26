@@ -9,6 +9,7 @@ import {
 import { sortHotelOptions } from "./hotelAvailability";
 import { deriveTripEndDate } from "./tripDates";
 import { ensureTripEditToken } from "./tripSecurity";
+import { refineTripStayRecommendation } from "./tripSpecificity";
 
 const defaultInput: TripInput = {
   startCity: "Edmonton",
@@ -55,6 +56,10 @@ function normalizeInput(input?: Partial<TripInput>): TripInput {
     budgetPerTraveler,
     travelerCount,
     tripLengthDays,
+    tripPrompt:
+      typeof input?.tripPrompt === "string"
+        ? input.tripPrompt.trim() || undefined
+        : undefined,
     tripStartDate,
     tripEndDate: deriveTripEndDate(tripStartDate, tripLengthDays),
   };
@@ -1771,7 +1776,7 @@ export function buildTripPlan(
   const baseCoordinate = buildBaseCoordinate(trip);
   const foodDistanceCapKm = maxLegDistanceKm(safeInput);
   const activityDistanceCapKm = foodDistanceCapKm * 1.4;
-  const filteredHotels = sortHotelOptions(
+  const candidateHotels = sortHotelOptions(
     withDistanceCap(
       trip.hotelOptions ?? [],
       toCoordinate(trip) ?? baseCoordinate,
@@ -1779,23 +1784,43 @@ export function buildTripPlan(
       2
     )
   );
+  const candidateActivities = withDistanceCap(
+    trip.topActivities ?? [],
+    toCoordinate(candidateHotels[0]) ?? baseCoordinate,
+    activityDistanceCapKm,
+    4
+  );
+  const initialRecommendation = refineTripStayRecommendation({
+    trip,
+    input: safeInput,
+    hotelOptions: candidateHotels,
+    activities: candidateActivities,
+  });
+  const stayAnchorCoordinate =
+    toCoordinate(initialRecommendation.hotelOptions[0]) ?? baseCoordinate;
   const filteredFoodSpots = withDistanceCap(
     trip.foodSpots ?? [],
-    toCoordinate(filteredHotels[0]) ?? baseCoordinate,
+    stayAnchorCoordinate,
     foodDistanceCapKm,
     3
   );
   const filteredActivities = withDistanceCap(
-    trip.topActivities ?? [],
-    toCoordinate(filteredHotels[0]) ?? baseCoordinate,
+    initialRecommendation.activities,
+    stayAnchorCoordinate,
     activityDistanceCapKm,
     3
   );
+  const finalRecommendation = refineTripStayRecommendation({
+    trip,
+    input: safeInput,
+    hotelOptions: initialRecommendation.hotelOptions,
+    activities: filteredActivities,
+  });
   const filteredTrip: RankedDestination = {
     ...trip,
-    hotelOptions: filteredHotels,
+    hotelOptions: finalRecommendation.hotelOptions,
     foodSpots: filteredFoodSpots,
-    topActivities: filteredActivities,
+    topActivities: finalRecommendation.activities,
   };
   const itineraryDays = buildItineraryDays(filteredTrip, safeInput);
   const budgetBreakdown = buildBudgetBreakdown(
@@ -1825,9 +1850,9 @@ export function buildTripPlan(
     tags: trip.rawVibes ?? [],
 
     budgetBreakdown,
-    hotelOptions: filteredHotels,
+    hotelOptions: filteredTrip.hotelOptions,
     foodSpots: filteredFoodSpots,
-    topActivities: filteredActivities,
+    topActivities: filteredTrip.topActivities,
     itineraryDays,
 
     aiSummary: trip.aiSummary ?? "",
@@ -1844,6 +1869,7 @@ export function buildTripPlan(
     tripLengthDays: safeInput.tripLengthDays,
     tripStartDate: safeInput.tripStartDate,
     tripEndDate: safeInput.tripEndDate,
+    tripPrompt: safeInput.tripPrompt,
     maxDriveMinutesBetweenStops: safeInput.maxDriveMinutesBetweenStops,
     status: "draft",
     decisionStatus: "waiting_on_partner",
@@ -1863,7 +1889,7 @@ export function buildTripPlan(
     },
 
     name: trip.name,
-    title: trip.name,
+    title: finalRecommendation.recommendedStayName ?? trip.name,
     destination: trip.name,
     province: trip.province,
     driveHoursFromStart,

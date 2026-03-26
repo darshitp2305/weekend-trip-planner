@@ -1,25 +1,24 @@
 "use client";
 
 import Image from "next/image";
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  RankedDestination,
-  TripDataSource,
-  TripInput,
-} from "../lib/types";
+import { RankedDestination, TripDataSource, TripInput } from "../lib/types";
 import { buildTripPlan } from "../lib/buildTripPlan";
 import { formatDisplayTag, formatDisplayText } from "../lib/displayText";
 import { isStartCity } from "../lib/startCities";
 import { deriveTripEndDate } from "../lib/tripDates";
 import { saveTripPlan } from "../lib/tripStore";
+import {
+  getRecommendationContextLabel,
+  getRecommendedTripTitle,
+} from "../lib/tripSpecificity";
 import { trackProductEvent } from "../lib/productAnalytics";
 import {
   tripFreshnessLabel,
   tripProviderStatusText,
   tripSourceLabel,
   tripSourceTone,
-  tripTrustNote,
 } from "../lib/trustSignals";
 
 const LAST_INPUT_STORAGE_KEY = "weekend-trip-last-input";
@@ -38,97 +37,37 @@ type EnrichTripResponse = {
   source?: TripDataSource;
 };
 
-function strengthLabel(strength: RankedDestination["styleMatchStrength"]) {
-  switch (strength) {
-    case "strong":
-      return "Strong style match";
-    case "medium":
-      return "Good style match";
-    case "weak":
-      return "Light style match";
-    default:
-      return "Weak style match";
-  }
-}
-
 function confidenceLabel(confidence?: RankedDestination["confidence"]) {
   switch (confidence) {
     case "high":
-      return "Strong match";
+      return "High conviction";
     case "medium":
-      return "Good match";
+      return "Good conviction";
     case "low":
-      return "Experimental";
+      return "Lower conviction";
     default:
-      return "Unrated";
+      return "Trip plan";
   }
 }
 
-function sourceLabel(trip: RankedDestination) {
-  return tripSourceLabel(trip);
-}
-
-function shortCopyText(trip: RankedDestination, input?: TripInput) {
-  const displayCost =
-    trip.budgetBreakdown?.totalExpected ??
-    trip.budgetBreakdown?.total ??
-    trip.estimatedCost;
-
-  const travelerCount = Math.max(1, input?.travelerCount ?? 1);
-  const perTraveler = Math.round(displayCost / travelerCount);
-
-  return `${trip.name} — ${trip.summary} Estimated total cost: $${displayCost}. Approx. per traveler: $${perTraveler}. Drive: ${trip.driveHoursFromStart}h. Confidence: ${confidenceLabel(trip.confidence)}.`;
-}
-
-function fullCopyText(trip: RankedDestination, input?: TripInput) {
-  const itinerary = trip.aiItinerary?.length
-    ? trip.aiItinerary.map((line) => `- ${line}`).join("\n")
-    : "No itinerary available.";
-
-  const reasons = trip.rankingReasons?.length
-    ? trip.rankingReasons.map((line) => `- ${line.label}`).join("\n")
-    : trip.matchReasons?.length
-      ? trip.matchReasons.map((line) => `- ${line}`).join("\n")
-      : "No match reasons available.";
-
-  const displayCost =
-    trip.budgetBreakdown?.totalExpected ??
-    trip.budgetBreakdown?.total ??
-    trip.estimatedCost;
-
-  const travelerCount = Math.max(1, input?.travelerCount ?? 1);
-  const perTraveler = Math.round(displayCost / travelerCount);
-
-  return [
-    `${trip.name}`,
-    ``,
-    `Summary: ${trip.summary}`,
-    `Estimated total cost: $${displayCost}`,
-    `Estimated per traveler: $${perTraveler}`,
-    `Travelers: ${travelerCount}`,
-    `Drive time: ${trip.driveHoursFromStart}h`,
-    `Style fit: ${trip.styleMatchStrength}`,
-    `Confidence: ${confidenceLabel(trip.confidence)}`,
-    ``,
-    `Why it ranked:`,
-    reasons,
-    ``,
-    `AI summary:`,
-    trip.aiSummary ?? "None",
-    ``,
-    `AI best fit:`,
-    trip.aiBestFit ?? "None",
-    ``,
-    `AI itinerary:`,
-    itinerary,
-  ].join("\n");
+function strengthLabel(strength: RankedDestination["styleMatchStrength"]) {
+  switch (strength) {
+    case "strong":
+      return "Strong fit";
+    case "medium":
+      return "Good fit";
+    case "weak":
+      return "Partial fit";
+    default:
+      return "Loose fit";
+  }
 }
 
 function cleanItineraryLine(line: string) {
   return line.replace(/^day\s*\d+\s*:\s*/i, "").trim();
 }
 
-function getItineraryPreviewItems(trip: RankedDestination, input?: TripInput) {
+function getItineraryPreviewItems(trip: RankedDestination) {
   if (trip.aiItinerary?.length) {
     return trip.aiItinerary.slice(0, 3).map((line, index) => ({
       label: `Day ${index + 1}`,
@@ -136,30 +75,15 @@ function getItineraryPreviewItems(trip: RankedDestination, input?: TripInput) {
     }));
   }
 
-  const activityPreview = trip.topActivities
-    .slice(0, 3)
-    .map((activity, index) => ({
-      label: `Stop ${index + 1}`,
-      text: activity.name,
-    }));
-
-  if (activityPreview.length > 0) {
-    return activityPreview;
-  }
-
-  if (input?.startCity) {
-    return [
-      {
-        label: "Trip flow",
-        text: `Drive out from ${input.startCity}, keep one anchor stop in ${trip.name}, then head back with buffer.`,
-      },
-    ];
-  }
-
-  return [];
+  return trip.topActivities.slice(0, 3).map((activity, index) => ({
+    label: `Stop ${index + 1}`,
+    text: activity.name,
+  }));
 }
 
-function normalizeTripInput(input?: Partial<TripInput> | null): TripInput | undefined {
+function normalizeTripInput(
+  input?: Partial<TripInput> | null
+): TripInput | undefined {
   if (!input) return undefined;
 
   const travelerCount = Number(input.travelerCount ?? 2);
@@ -172,7 +96,11 @@ function normalizeTripInput(input?: Partial<TripInput> | null): TripInput | unde
   return {
     startCity: isStartCity(input.startCity) ? input.startCity : "Edmonton",
     season: input.season ?? "Summer",
-    style: input.style ?? "foodie",
+    style: input.style ?? "adventure",
+    tripPrompt:
+      typeof input.tripPrompt === "string"
+        ? input.tripPrompt.trim() || undefined
+        : undefined,
     activityFocus: input.activityFocus,
     veganFriendly: Boolean(input.veganFriendly),
     includeStaycations: Boolean(input.includeStaycations),
@@ -211,116 +139,47 @@ function Badge({
   children,
   tone = "slate",
 }: {
-  children: React.ReactNode;
-  tone?: "slate" | "green" | "violet";
+  children: ReactNode;
+  tone?: "slate" | "green" | "emerald";
 }) {
   const toneClass =
     tone === "green"
       ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200"
-      : tone === "violet"
-        ? "border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-violet-200"
+      : tone === "emerald"
+        ? "border-lime-200 bg-lime-50 text-lime-700 dark:border-lime-500/30 dark:bg-lime-500/10 dark:text-lime-200"
         : "border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200";
 
   return (
     <span
-      className={`inline-flex items-center whitespace-nowrap rounded-full border px-2.5 py-1 text-xs font-medium ${toneClass}`}
+      className={`inline-flex items-center whitespace-nowrap rounded-full border px-3 py-1 text-xs font-medium ${toneClass}`}
     >
       {children}
     </span>
   );
 }
 
-function CampfireBadge() {
-  return (
-    <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
-      <svg
-        aria-hidden="true"
-        viewBox="0 0 16 16"
-        className="h-3.5 w-3.5"
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
-      >
-        <path d="M5.3 14 8 8.9 10.7 14H5.3Z" fill="currentColor" opacity="0.9" />
-        <path
-          d="M7.2 8.4c-.7-.6-1.1-1.4-1.1-2.2 0-1.2.7-2.2 1.9-3 .2.8.7 1.3 1.1 1.8.4.4.8.9.8 1.6 0 .8-.5 1.5-1.3 1.8-.2-.7-.7-1.3-1.4-2Z"
-          fill="currentColor"
-        />
-        <path
-          d="M4.2 13.9 2.6 11.7M11.8 13.9l1.6-2.2"
-          stroke="currentColor"
-          strokeWidth="1.2"
-          strokeLinecap="round"
-        />
-      </svg>
-      Camping
-    </span>
-  );
-}
-
-function isCampingDestination(trip: RankedDestination) {
-  const text = [
-    trip.name,
-    trip.homeBaseCity,
-    trip.summary,
-    ...(trip.rawVibes ?? []),
-    ...(trip.topActivities ?? []).map((activity) => activity.name),
-    ...(trip.topActivities ?? []).map((activity) => activity.type),
-    ...(trip.hotelOptions ?? []).map((hotel) => hotel.name),
-  ]
-    .filter(Boolean)
-    .join(" ")
-    .toLowerCase();
-
-  return (
-    text.includes("campground") ||
-    text.includes("camping") ||
-    text.includes("campsite") ||
-    text.includes("provincial park") ||
-    text.includes("national park") ||
-    text.includes("rv park")
-  );
-}
-
 function Stat({
   label,
   value,
+  detail,
 }: {
   label: string;
   value: string;
+  detail?: string;
 }) {
   return (
-    <div className="rounded-2xl bg-slate-50 p-3 dark:bg-slate-800/80">
-      <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+    <div className="rounded-[1.2rem] border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/70">
+      <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
         {label}
       </div>
-      <div className="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">{value}</div>
-    </div>
-  );
-}
-
-function Section({
-  title,
-  open,
-  onToggle,
-  children,
-}: {
-  title: string;
-  open: boolean;
-  onToggle: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="rounded-2xl border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800/80">
-      <button
-        type="button"
-        onClick={onToggle}
-        className="flex w-full items-center justify-between px-4 py-3 text-left"
-      >
-        <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">{title}</span>
-        <span className="text-sm text-slate-500 dark:text-slate-400">{open ? "Hide" : "Show"}</span>
-      </button>
-
-      {open ? <div className="border-t border-slate-200 px-4 py-4 dark:border-slate-700">{children}</div> : null}
+      <div className="mt-1 text-lg font-semibold text-slate-950 dark:text-slate-100">
+        {value}
+      </div>
+      {detail ? (
+        <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">
+          {detail}
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -334,27 +193,40 @@ export default function TripCard({
 }: Props) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
-  const [openSection, setOpenSection] = useState<string | null>(null);
 
-  const tags = Array.isArray(trip.rawVibes) ? trip.rawVibes.slice(0, 4) : [];
-  const topWhyRanked =
-    trip.rankingReasons?.[0]?.label ??
-    trip.matchReasons?.[0] ??
-    "No summary available";
-
+  const normalizedInput = normalizeTripInput(input);
   const displayCost =
     trip.budgetBreakdown?.totalExpected ??
     trip.budgetBreakdown?.total ??
     trip.estimatedCost;
-
-  const normalizedPropInput = normalizeTripInput(input);
-  const travelerCount = Math.max(1, normalizedPropInput?.travelerCount ?? 1);
+  const travelerCount = Math.max(1, normalizedInput?.travelerCount ?? 1);
   const perTravelerDisplay = Math.round(displayCost / travelerCount);
-  const itineraryPreviewItems = getItineraryPreviewItems(trip, normalizedPropInput);
-  const anchorActivities = trip.topActivities.slice(0, 3);
-  const itineraryPreviewDays =
-    (normalizedPropInput?.tripLengthDays ?? itineraryPreviewItems.length) || 2;
-  const showCampingBadge = isCampingDestination(trip);
+  const itineraryPreviewItems = getItineraryPreviewItems(trip);
+  const tripPrompt = normalizedInput?.tripPrompt;
+  const topWhyRanked =
+    trip.rankingReasons?.[0]?.label ??
+    trip.matchReasons?.[0] ??
+    "This was the strongest overall fit for the trip brief.";
+  const trustNote = tripProviderStatusText(trip);
+  const tags = Array.isArray(trip.rawVibes) ? trip.rawVibes.slice(0, 4) : [];
+  const displayTitle = getRecommendedTripTitle(
+    {
+      name: trip.name,
+      destinationName: trip.name,
+      province: trip.province,
+      hotelOptions: trip.hotelOptions,
+      topActivities: trip.topActivities,
+    },
+    normalizedInput
+  );
+  const titleContext = getRecommendationContextLabel(
+    {
+      name: trip.name,
+      destinationName: trip.name,
+      province: trip.province,
+    },
+    displayTitle
+  );
 
   async function handleSaveTrip() {
     try {
@@ -449,80 +321,149 @@ export default function TripCard({
   return (
     <article className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
       {trip.imageUrl ? (
-        <div className="aspect-[16/10] w-full overflow-hidden bg-slate-100 dark:bg-slate-800">
+        <div className="aspect-[16/8.5] w-full overflow-hidden bg-slate-100 dark:bg-slate-800">
           <Image
             src={trip.imageUrl}
-            alt={trip.name}
+            alt={displayTitle}
             width={1600}
-            height={1000}
+            height={900}
             unoptimized
             className="h-full w-full object-cover"
           />
         </div>
       ) : null}
 
-      <div className="p-5">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <h3 className="text-2xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">
-              {trip.name}
+      <div className="space-y-6 p-6 sm:p-7">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="max-w-3xl">
+            <div className="flex flex-wrap gap-2">
+              <Badge tone="green">{confidenceLabel(trip.confidence)}</Badge>
+              <Badge>{trip.isStaycation ? "Staycation" : `${trip.province} getaway`}</Badge>
+              <Badge tone={tripSourceTone(trip) === "green" ? "green" : "slate"}>
+                {tripSourceLabel(trip)}
+              </Badge>
+            </div>
+
+            <h3 className="mt-4 text-3xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">
+              {displayTitle}
             </h3>
-            <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
-              {trip.homeBaseCity} • {trip.driveHoursFromStart}h drive
+            {titleContext ? (
+              <p className="mt-2 text-sm font-medium uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
+                {titleContext}
+              </p>
+            ) : null}
+            <p className="mt-2 text-base leading-7 text-slate-600 dark:text-slate-300">
+              {formatDisplayText(trip.aiSummary ?? trip.summary)}
+            </p>
+            {tripPrompt ? (
+              <p className="mt-3 text-sm leading-6 text-slate-500 dark:text-slate-400">
+                Built for your brief: &quot;{tripPrompt}&quot;
+              </p>
+            ) : null}
+          </div>
+
+          <div className="rounded-[1.4rem] border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-100 lg:max-w-sm">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.16em]">
+              Why This Is The Call
+            </div>
+            <p className="mt-2 font-semibold text-slate-950 dark:text-slate-100">
+              {trip.aiBestFit ?? topWhyRanked}
             </p>
           </div>
-
-          <Badge tone={trip.confidence === "high" ? "green" : "violet"}>
-            {confidenceLabel(trip.confidence)}
-          </Badge>
         </div>
 
-        <div className="mt-3 flex flex-wrap gap-2">
-          <Badge>{trip.isStaycation ? "Staycation" : `${trip.province} getaway`}</Badge>
-          <Badge tone={tripSourceTone(trip)}>{sourceLabel(trip)}</Badge>
-          {showCampingBadge ? <CampfireBadge /> : null}
+        <div className="grid gap-3 md:grid-cols-3">
+          <Stat
+            label="Estimated total"
+            value={`$${Math.round(displayCost)}`}
+            detail={`${travelerCount} traveler${travelerCount === 1 ? "" : "s"}`}
+          />
+          <Stat
+            label="Per traveler"
+            value={`$${perTravelerDisplay}`}
+            detail={trip.aiBudgetNote ?? "Budget will update when you swap stops."}
+          />
+          <Stat
+            label="Drive and fit"
+            value={`${trip.driveHoursFromStart}h`}
+            detail={strengthLabel(trip.styleMatchStrength)}
+          />
         </div>
 
-        <p className="mt-4 text-sm leading-6 text-slate-600 dark:text-slate-300">
-          {formatDisplayText(trip.summary)}
-        </p>
+        <div className="grid gap-5 lg:grid-cols-[0.95fr_1.05fr]">
+          <section className="rounded-[1.4rem] border border-slate-200 bg-slate-50 p-5 dark:border-slate-700 dark:bg-slate-800/70">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+              Trip shape
+            </div>
+            <div className="mt-3 space-y-3">
+              {itineraryPreviewItems.length > 0 ? (
+                itineraryPreviewItems.map((item) => (
+                  <div
+                    key={`${item.label}-${item.text}`}
+                    className="rounded-[1rem] border border-white bg-white p-4 dark:border-slate-700 dark:bg-slate-900"
+                  >
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+                      {item.label}
+                    </div>
+                    <p className="mt-1 text-sm leading-6 text-slate-700 dark:text-slate-200">
+                      {item.text}
+                    </p>
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm leading-6 text-slate-600 dark:text-slate-300">
+                  Open the trip builder to see the stop-by-stop itinerary.
+                </p>
+              )}
+            </div>
+          </section>
 
-        <div className="mt-5 grid grid-cols-3 gap-3">
-          <Stat label="Budget total" value={`$${Math.round(displayCost)}`} />
-          <Stat label="Per traveler" value={`$${perTravelerDisplay}`} />
-          <Stat label="Style fit" value={strengthLabel(trip.styleMatchStrength)} />
-        </div>
+          <section className="rounded-[1.4rem] border border-slate-200 bg-slate-50 p-5 dark:border-slate-700 dark:bg-slate-800/70">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+              Decision notes
+            </div>
 
-        <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/80">
-          <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
-            Why this ranked
-          </div>
-          <p className="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-200">{topWhyRanked}</p>
-        </div>
+            <div className="mt-3 rounded-[1rem] border border-white bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
+              <div className="text-sm font-semibold text-slate-950 dark:text-slate-100">
+                Lead reason
+              </div>
+              <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">
+                {topWhyRanked}
+              </p>
+            </div>
 
-        <div className="mt-4 rounded-2xl border border-violet-200 bg-violet-50 p-4 dark:border-violet-500/30 dark:bg-violet-500/10">
-          <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-violet-700 dark:text-violet-300">
-            Planning trust
-          </div>
-          <p className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
-            {tripFreshnessLabel(trip)}
-          </p>
-          <p className="mt-1 text-sm leading-6 text-slate-700 dark:text-slate-200">
-            {tripTrustNote(trip)}
-          </p>
-          {tripProviderStatusText(trip) ? (
-            <p className="mt-2 text-xs font-medium uppercase tracking-[0.14em] text-violet-700 dark:text-violet-300">
-              {tripProviderStatusText(trip)}
-            </p>
-          ) : null}
+            <div className="mt-3 rounded-[1rem] border border-white bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
+              <div className="text-sm font-semibold text-slate-950 dark:text-slate-100">
+                Builder promise
+              </div>
+              <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">
+                Open the builder to change a specific day, swap the stay, or fit
+                a different activity into the trip without rebuilding from scratch.
+              </p>
+            </div>
+
+            <div className="mt-3 rounded-[1rem] border border-white bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
+              <div className="text-sm font-semibold text-slate-950 dark:text-slate-100">
+                Planning trust
+              </div>
+              <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">
+                {tripFreshnessLabel(trip)}
+              </p>
+              {trustNote ? (
+                <p className="mt-2 text-xs font-medium uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
+                  {trustNote}
+                </p>
+              ) : null}
+            </div>
+          </section>
         </div>
 
         {tags.length > 0 ? (
-          <div className="mt-4 flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2">
             {tags.map((tag) => (
               <span
                 key={tag}
-                className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300"
+                className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
               >
                 {formatDisplayTag(tag)}
               </span>
@@ -530,224 +471,29 @@ export default function TripCard({
           </div>
         ) : null}
 
-        <div className="mt-5 flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => navigator.clipboard.writeText(shortCopyText(trip, normalizedPropInput))}
-            className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
-          >
-            Copy short
-          </button>
-
-          <button
-            type="button"
-            onClick={() => navigator.clipboard.writeText(fullCopyText(trip, normalizedPropInput))}
-            className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
-          >
-            Copy full
-          </button>
-
+        <div className="flex flex-wrap gap-3">
           {isSaved ? (
             <button
               type="button"
               onClick={() => onRemoveSaved?.(trip.name)}
-              className="rounded-xl border border-rose-200 px-3 py-2 text-sm font-medium text-rose-700 hover:bg-rose-50 dark:border-rose-500/30 dark:text-rose-200 dark:hover:bg-rose-500/10"
+              className="inline-flex h-12 items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 px-5 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-200 dark:hover:bg-rose-500/20"
             >
-              Remove saved
+              Remove saved trip
             </button>
           ) : (
             <button
               type="button"
               onClick={handleSaveTrip}
               disabled={saving}
-              className="rounded-xl bg-slate-950 px-3 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-60 dark:bg-violet-500 dark:text-slate-950 dark:hover:bg-violet-400"
+              className="inline-flex h-12 items-center justify-center rounded-2xl bg-slate-950 px-6 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60 dark:bg-emerald-400 dark:text-slate-950 dark:hover:bg-emerald-300"
             >
-              {saving ? "Building..." : "Build trip"}
+              {saving ? "Opening builder..." : "Build this trip"}
             </button>
           )}
-        </div>
 
-        <div className="mt-5 space-y-3">
-          <Section
-            title="Why it matched"
-            open={openSection === "matched"}
-            onToggle={() =>
-              setOpenSection(openSection === "matched" ? null : "matched")
-            }
-          >
-            {trip.rankingReasons?.length ? (
-              <div>
-                <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">Ranking summary</div>
-                <ul className="mt-2 space-y-2 text-sm text-slate-700 dark:text-slate-200">
-                  {trip.rankingReasons.map((reason, index) => (
-                    <li key={`${reason.label}-${index}`}>• {reason.label}</li>
-                  ))}
-                </ul>
-              </div>
-            ) : null}
-
-            <div className="mt-4">
-              <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">Match reasons</div>
-              {trip.matchReasons?.length ? (
-                <ul className="mt-2 space-y-2 text-sm text-slate-700 dark:text-slate-200">
-                  {trip.matchReasons.map((reason, index) => (
-                    <li key={`${reason}-${index}`}>• {reason}</li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">No match reasons available.</p>
-              )}
-            </div>
-
-            {trip.aiBestFit ? (
-              <div className="mt-4">
-                <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">Best fit</div>
-                <p className="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-200">{trip.aiBestFit}</p>
-              </div>
-            ) : null}
-
-            {trip.warnings?.length ? (
-              <div className="mt-4">
-                <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">Warnings</div>
-                <ul className="mt-2 space-y-2 text-sm text-amber-700 dark:text-amber-300">
-                  {trip.warnings.map((warning, index) => (
-                    <li key={`${warning}-${index}`}>• {warning}</li>
-                  ))}
-                </ul>
-              </div>
-            ) : null}
-          </Section>
-
-          <Section
-            title="Budget"
-            open={openSection === "budget"}
-            onToggle={() =>
-              setOpenSection(openSection === "budget" ? null : "budget")
-            }
-          >
-            {trip.budgetBreakdown ? (
-              <div className="grid grid-cols-2 gap-3 text-sm text-slate-700 dark:text-slate-200">
-                <div className="rounded-xl bg-white p-3 dark:bg-slate-900">Hotel: ${trip.budgetBreakdown.hotel}</div>
-                <div className="rounded-xl bg-white p-3 dark:bg-slate-900">Food: ${trip.budgetBreakdown.food}</div>
-                <div className="rounded-xl bg-white p-3 dark:bg-slate-900">Gas: ${trip.budgetBreakdown.gas}</div>
-                <div className="rounded-xl bg-white p-3 dark:bg-slate-900">
-                  Activities: ${trip.budgetBreakdown.activities}
-                </div>
-                <div className="rounded-xl bg-white p-3 dark:bg-slate-900">
-                  Per traveler: ${perTravelerDisplay}
-                </div>
-                <div className="rounded-xl bg-white p-3 dark:bg-slate-900">
-                  Travelers: {travelerCount}
-                </div>
-                <div className="col-span-2 rounded-xl bg-slate-100 p-3 font-semibold text-slate-900 dark:bg-slate-800 dark:text-slate-100">
-                  Total: $
-                  {trip.budgetBreakdown.totalExpected ?? trip.budgetBreakdown.total}
-                </div>
-              </div>
-            ) : (
-              <p className="text-sm text-slate-600 dark:text-slate-300">No budget breakdown available.</p>
-            )}
-
-            {trip.aiBudgetNote ? (
-              <p className="mt-4 text-sm leading-6 text-slate-700 dark:text-slate-200">{trip.aiBudgetNote}</p>
-            ) : null}
-          </Section>
-
-          <Section
-            title="Itinerary"
-            open={openSection === "itinerary"}
-            onToggle={() =>
-              setOpenSection(openSection === "itinerary" ? null : "itinerary")
-            }
-          >
-            <p className="text-sm leading-6 text-slate-600 dark:text-slate-300">
-              Quick skim before you build the full editable itinerary.
-            </p>
-
-            <div className="mt-4 grid grid-cols-3 gap-3 text-sm text-slate-700 dark:text-slate-200">
-              <div className="rounded-xl bg-white p-3 dark:bg-slate-900">
-                <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
-                  Trip length
-                </div>
-                <div className="mt-1 font-semibold text-slate-900 dark:text-slate-100">
-                  {itineraryPreviewDays} day
-                  {itineraryPreviewDays === 1 ? "" : "s"}
-                </div>
-              </div>
-              <div className="rounded-xl bg-white p-3 dark:bg-slate-900">
-                <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
-                  Drive plan
-                </div>
-                <div className="mt-1 font-semibold text-slate-900 dark:text-slate-100">
-                  {trip.driveHoursFromStart}h each way
-                </div>
-              </div>
-              <div className="rounded-xl bg-white p-3 dark:bg-slate-900">
-                <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
-                  Tempo
-                </div>
-                <div className="mt-1 font-semibold text-slate-900 dark:text-slate-100">
-                  {trip.styleMatchStrength === "strong" ? "Purposeful" : "Flexible"}
-                </div>
-              </div>
-            </div>
-
-            {anchorActivities.length ? (
-              <div className="mt-4">
-                <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">Anchor stops</div>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {anchorActivities.map((activity) => (
-                    <span
-                      key={activity.name}
-                      className="rounded-full bg-white px-3 py-1 text-xs font-medium text-slate-700 dark:bg-slate-900 dark:text-slate-200"
-                    >
-                      {activity.name}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            ) : null}
-
-            <div className="mt-4">
-              <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">Trip flow</div>
-              {itineraryPreviewItems.length ? (
-                <div className="mt-2 space-y-3">
-                  {itineraryPreviewItems.map((item) => (
-                    <div
-                      key={`${item.label}-${item.text}`}
-                      className="rounded-xl bg-white p-3 dark:bg-slate-900"
-                    >
-                      <div className="text-[11px] font-medium uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
-                        {item.label}
-                      </div>
-                      <p className="mt-1 text-sm leading-6 text-slate-700 dark:text-slate-200">
-                        {item.text}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-                  Build trip to generate the detailed stop-by-stop itinerary.
-                </p>
-              )}
-            </div>
-
-            {false ? (
-            <div className="mt-4">
-              <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">Suggested itinerary</div>
-              {trip.aiItinerary?.length ? (
-                <ul className="mt-2 space-y-2 text-sm text-slate-700 dark:text-slate-200">
-                  {trip.aiItinerary?.map((line, index) => (
-                    <li key={`${line}-${index}`}>• {line}</li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">No AI itinerary available yet.</p>
-              )}
-            </div>
-            ) : null}
-          </Section>
+          <div className="inline-flex min-h-12 items-center rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
+            Day-level edits happen after you open the builder.
+          </div>
         </div>
       </div>
     </article>

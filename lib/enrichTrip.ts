@@ -61,22 +61,125 @@ function normalizeText(value?: string) {
   return (value ?? "").trim().toLowerCase();
 }
 
-function destinationTokens(trip: RankedDestination) {
+function normalizeLocationText(value?: string) {
+  return normalizeText(value)
+    .replace(/\(.*?\)/g, " ")
+    .replace(/[^\p{L}\p{N}\s]/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+const GENERIC_LOCATION_TERMS = new Set([
+  "alberta",
+  "canada",
+  "area",
+  "region",
+  "national",
+  "provincial",
+  "park",
+  "county",
+  "district",
+  "town",
+  "city",
+  "staycation",
+]);
+
+type DestinationLocationContext = {
+  primaryPhrases: string[];
+  secondaryPhrases: string[];
+  primaryWords: string[];
+  secondaryWords: string[];
+};
+
+function wordsFromLocationText(value?: string) {
+  return normalizeLocationText(value)
+    .split(/\s+/)
+    .filter(
+      (token) => token.length >= 4 && !GENERIC_LOCATION_TERMS.has(token)
+    );
+}
+
+function uniqueStrings(values: Array<string | undefined>) {
   return Array.from(
-    new Set(
-      [
-        trip.name,
-        trip.province,
-        trip.homeBaseCity,
-        ...(trip.rawVibes ?? []),
-      ]
+    new Set(values.map((value) => value?.trim()).filter(Boolean))
+  ) as string[];
+}
+
+function destinationLocationContext(
+  trip: RankedDestination
+): DestinationLocationContext {
+  const primaryPhrases = uniqueStrings([normalizeLocationText(trip.name)]);
+  const secondaryPhrases = uniqueStrings([
+    normalizeLocationText(trip.homeBaseCity),
+  ]);
+
+  return {
+    primaryPhrases,
+    secondaryPhrases,
+    primaryWords: Array.from(
+      new Set(primaryPhrases.flatMap((phrase) => wordsFromLocationText(phrase)))
+    ),
+    secondaryWords: Array.from(
+      new Set(secondaryPhrases.flatMap((phrase) => wordsFromLocationText(phrase)))
+    ),
+  };
+}
+
+function locationMatchSignal(
+  value: string,
+  context: DestinationLocationContext
+) {
+  const normalized = normalizeLocationText(value);
+  const words = new Set(normalized.split(/\s+/).filter(Boolean));
+  const primaryPhraseMatches = context.primaryPhrases.filter(
+    (phrase) => phrase && normalized.includes(phrase)
+  ).length;
+  const secondaryPhraseMatches = context.secondaryPhrases.filter(
+    (phrase) => phrase && normalized.includes(phrase)
+  ).length;
+  const primaryWordMatches = context.primaryWords.filter((word) =>
+    words.has(word)
+  ).length;
+  const secondaryWordMatches = context.secondaryWords.filter((word) =>
+    words.has(word)
+  ).length;
+
+  return {
+    primaryPhraseMatches,
+    secondaryPhraseMatches,
+    primaryWordMatches,
+    secondaryWordMatches,
+  };
+}
+
+function hasStrongLocationMatch(
+  value: string,
+  context: DestinationLocationContext
+) {
+  const signal = locationMatchSignal(value, context);
+
+  return (
+    signal.primaryPhraseMatches > 0 ||
+    signal.secondaryPhraseMatches > 0 ||
+    signal.primaryWordMatches > 0 ||
+    signal.secondaryWordMatches >= 2
+  );
+}
+
+function destinationTokens(trip: RankedDestination) {
+  const context = destinationLocationContext(trip);
+  return Array.from(
+    new Set([
+      ...context.primaryWords,
+      ...context.secondaryWords,
+      ...((trip.rawVibes ?? [])
         .flatMap((value) =>
           normalizeText(value)
             .replace(/[^\p{L}\p{N}\s]/gu, " ")
             .split(/\s+/)
         )
-        .filter((token) => token.length >= 4)
-    )
+        .filter((token) => token.length >= 4)),
+    ])
   );
 }
 
@@ -90,7 +193,11 @@ function placeSearchText(place: GooglePlace) {
   );
 }
 
-function shouldRejectPlace(place: GooglePlace, kind: "food" | "activity" | "hotel") {
+function shouldRejectPlace(
+  place: GooglePlace,
+  trip: RankedDestination,
+  kind: "food" | "activity" | "hotel"
+) {
   const text = placeSearchText(place);
 
   // Broad text searches bring back plenty of operational or utility locations
@@ -168,6 +275,10 @@ function shouldRejectPlace(place: GooglePlace, kind: "food" | "activity" | "hote
     }
   }
 
+  if (!hasStrongLocationMatch(text, destinationLocationContext(trip))) {
+    return true;
+  }
+
   return false;
 }
 
@@ -179,12 +290,21 @@ function placeRelevanceScore(
 ) {
   const text = placeSearchText(place);
   const tokens = destinationTokens(trip);
+  const locationSignal = locationMatchSignal(
+    text,
+    destinationLocationContext(trip)
+  );
   let score = 0;
+
+  score += locationSignal.primaryPhraseMatches * 30;
+  score += locationSignal.secondaryPhraseMatches * 22;
+  score += locationSignal.primaryWordMatches * 12;
+  score += locationSignal.secondaryWordMatches * 8;
 
   // Reward places that clearly belong to the destination instead of generic
   // regional results returned from broad travel queries.
   for (const token of tokens) {
-    if (text.includes(token)) {
+    if (normalizeLocationText(text).split(/\s+/).includes(token)) {
       score += 8;
     }
   }
@@ -244,12 +364,19 @@ function rankPlaces(
   // Filter first, then sort by trip-specific relevance so downstream mapping
   // sees the best provider candidates in a stable order.
   return [...places]
-    .filter((place) => !shouldRejectPlace(place, kind))
+    .filter((place) => !shouldRejectPlace(place, trip, kind))
     .sort(
       (a, b) =>
         placeRelevanceScore(b, trip, kind, input) -
         placeRelevanceScore(a, trip, kind, input)
     );
+}
+
+function hotelSearchText(hotel: {
+  name?: string;
+  shortDescription?: string;
+}) {
+  return normalizeLocationText([hotel.name, hotel.shortDescription].join(" "));
 }
 
 function createEnrichCacheKey(trip: RankedDestination, input: TripInput) {
@@ -380,6 +507,7 @@ export async function enrichRankedTrip(
   const sourceCheckedAt = new Date().toISOString();
 
   try {
+    const locationContext = destinationLocationContext(trip);
     const [placesData, hotelsDotComHotels] =
       await Promise.all([
         fetchPlacesProviderData({
@@ -417,7 +545,11 @@ export async function enrichRankedTrip(
     );
 
     const hotelsDotComInventory = dedupeByName(
-      hotelsDotComHotels.filter(hasName)
+      hotelsDotComHotels
+        .filter(hasName)
+        .filter((hotel) =>
+          hasStrongLocationMatch(hotelSearchText(hotel), locationContext)
+        )
     );
 
     const placesHotels = dedupeByName(

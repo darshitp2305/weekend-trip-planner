@@ -3,9 +3,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   buildExpediaHotelSearchUrl,
+  directHotelPropertyUrl,
   directExpediaPropertyUrl,
 } from "../lib/expediaLinks";
 import { formatDateRange, isIsoDate } from "../lib/tripDates";
+import { isCampingStayLikeHotel } from "../lib/tripSpecificity";
 import { HotelOption } from "../lib/types";
 
 declare global {
@@ -76,10 +78,15 @@ export default function ExpediaStayWidget({
     checkInDate || undefined,
     checkOutDate || undefined
   );
+  const directStayUrl = useMemo(
+    () => directHotelPropertyUrl({ hotel: selectedHotel }),
+    [selectedHotel]
+  );
   const directExpediaUrl = useMemo(
     () => directExpediaPropertyUrl({ hotel: selectedHotel }),
     [selectedHotel]
   );
+  const isCampingStay = isCampingStayLikeHotel(selectedHotel);
   const searchUrl = useMemo(
     () => {
       const trimmedQuery = searchQuery.trim();
@@ -97,14 +104,23 @@ export default function ExpediaStayWidget({
   const isExactSelectedHotelSearch =
     Boolean(selectedHotelName?.trim()) &&
     searchQuery.trim().toLowerCase() === selectedHotelName!.trim().toLowerCase();
-  const actionUrl =
-    directExpediaUrl && isExactSelectedHotelSearch ? directExpediaUrl : searchUrl;
-  const actionLabel =
-    directExpediaUrl && isExactSelectedHotelSearch
+  const actionUrl = isCampingStay
+    ? directStayUrl ?? selectedHotel?.mapsUrl ?? searchUrl
+    : directExpediaUrl && isExactSelectedHotelSearch
+      ? directExpediaUrl
+      : searchUrl;
+  const actionLabel = isCampingStay
+    ? directStayUrl
+      ? "Open stay site"
+      : selectedHotel?.mapsUrl
+        ? "Open map"
+        : "Search stay"
+    : directExpediaUrl && isExactSelectedHotelSearch
       ? "Open selected hotel"
       : "Search Expedia";
-  const actionHint =
-    directExpediaUrl && isExactSelectedHotelSearch
+  const actionHint = isCampingStay
+    ? "Campgrounds rarely book cleanly through Expedia. Start with the selected stay site or map, then confirm campsite availability directly."
+    : directExpediaUrl && isExactSelectedHotelSearch
       ? "A direct property link is available for this stay, so the button opens that hotel directly."
       : "Adjust the hotel name or dates if needed, then jump straight into Expedia search results using the selected stay plus destination.";
 
@@ -188,11 +204,86 @@ export default function ExpediaStayWidget({
     window.open(actionUrl, "_blank", "noopener,noreferrer");
   }
 
+  if (isCampingStay) {
+    return (
+      <section className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div className="flex flex-col gap-1">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-violet-600 dark:text-violet-300">
+            Stay booking
+          </div>
+          <h2 className="text-xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">
+            Check your campsite or campground directly
+          </h2>
+          <p className="max-w-3xl text-sm leading-6 text-slate-600 dark:text-slate-300">
+            Camping stays are better booked from the selected stay site or map than
+            through a hotel aggregator.
+          </p>
+        </div>
+
+        <div className="mt-4 flex flex-wrap gap-2">
+          <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
+            Stay: {selectedHotelName ?? recommendedSearch}
+          </span>
+          {checkInDate ? (
+            <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
+              Check-in: {checkInDate}
+            </span>
+          ) : null}
+          {checkOutDate ? (
+            <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200">
+              Check-out: {checkOutDate}
+            </span>
+          ) : null}
+        </div>
+
+        <div className="mt-4 rounded-[1.25rem] border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-950/40">
+          <div className="rounded-[1rem] border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-900">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
+              Selected stay
+            </div>
+            <h3 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">
+              Start with your current basecamp
+            </h3>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600 dark:text-slate-300">
+              {actionHint}
+            </p>
+
+            <div className="mt-5 flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={handleOpenSearch}
+                disabled={!canSearch}
+                className="inline-flex h-12 items-center justify-center rounded-xl bg-slate-950 px-5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-violet-500 dark:text-slate-950 dark:hover:bg-violet-400"
+              >
+                {actionLabel}
+              </button>
+              {selectedHotel?.mapsUrl ? (
+                <a
+                  href={selectedHotel.mapsUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex h-12 items-center justify-center rounded-xl border border-slate-300 bg-white px-5 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:bg-slate-800"
+                >
+                  Open map
+                </a>
+              ) : null}
+            </div>
+          </div>
+        </div>
+
+        <p className="mt-3 text-xs leading-5 text-slate-500 dark:text-slate-400">
+          Use the selected stay source for current availability
+          {dateRange ? ` for ${dateRange}` : ""}.
+        </p>
+      </section>
+    );
+  }
+
   return (
     <section className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
       <div className="flex flex-col gap-1">
         <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-violet-600 dark:text-violet-300">
-          Hotel booking
+          Stay booking
         </div>
         <h2 className="text-xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">
           Search Expedia for your stay
@@ -253,7 +344,7 @@ export default function ExpediaStayWidget({
                 type="date"
                 value={checkInDate}
                 onChange={(event) => setCheckInDate(event.target.value)}
-                className="h-12 rounded-xl border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-violet-500/20"
+                className="date-input-fix h-12 rounded-xl border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-violet-500/20 dark:[&::-webkit-calendar-picker-indicator]:invert"
               />
             </label>
 
@@ -265,7 +356,7 @@ export default function ExpediaStayWidget({
                 type="date"
                 value={checkOutDate}
                 onChange={(event) => setCheckOutDate(event.target.value)}
-                className="h-12 rounded-xl border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-violet-500/20"
+                className="date-input-fix h-12 rounded-xl border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-violet-500/20 dark:[&::-webkit-calendar-picker-indicator]:invert"
               />
             </label>
 

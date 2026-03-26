@@ -23,7 +23,6 @@ import ExpediaStayWidget from "../../../components/ExpediaStayWidget";
 import { formatDateRange } from "../../../lib/tripDates";
 import { isStartCity } from "../../../lib/startCities";
 import { estimateFoodCostForGroup } from "../../../lib/foodPricing";
-import { sortHotelOptions } from "../../../lib/hotelAvailability";
 import {
   baseTripAnalytics,
   trackProductEvent,
@@ -379,10 +378,7 @@ export default function TripPage() {
     return Number.isFinite(value) && value > 0 ? value : 1;
   }, [trip]);
 
-  const hotelOptions = useMemo(
-    () => sortHotelOptions(trip?.hotelOptions ?? []),
-    [trip?.hotelOptions]
-  );
+  const hotelOptions = useMemo(() => trip?.hotelOptions ?? [], [trip?.hotelOptions]);
 
   const selectedHotel = useMemo(() => {
     if (!trip) return undefined;
@@ -1159,10 +1155,10 @@ export default function TripPage() {
             <div className="overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
               <div className="border-b border-slate-200 bg-slate-50/80 px-5 py-4 dark:border-slate-800 dark:bg-slate-900/80">
                 <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-violet-600 dark:text-violet-300">
-                  Planner rail
+                  Trip essentials
                 </div>
                 <h2 className="mt-1 text-xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">
-                  {showDraftBuilderMode ? "Budget and save" : "Budget and actions"}
+                  {showDraftBuilderMode ? "Budget and builder" : "Budget and actions"}
                 </h2>
               </div>
 
@@ -1171,7 +1167,7 @@ export default function TripPage() {
                   <div className="mb-4">
                     <h3 className="text-lg font-semibold text-slate-950 dark:text-slate-100">Budget</h3>
                     <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
-                  Compare your target budget against the estimated trip cost.
+                  This updates as you swap stays, activities, and food stops.
                     </p>
                     {tripDateRange ? (
                       <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
@@ -1309,7 +1305,7 @@ export default function TripPage() {
                       </div>
                       <p className="mt-1 text-sm leading-5 text-slate-600 dark:text-slate-300">
                         {selectedHotel?.shortDescription ??
-                          "Your current hotel choice acts as the anchor for route and nearby-stop suggestions."}
+                          "Your current stay choice acts as the anchor for route and nearby-stop suggestions."}
                       </p>
                     </div>
 
@@ -1328,6 +1324,27 @@ export default function TripPage() {
                   </div>
                 </section>
               ) : null}
+
+              <section className="rounded-[1.5rem] border border-emerald-200 bg-emerald-50 p-5 shadow-sm dark:border-emerald-500/30 dark:bg-emerald-500/10">
+                <div className="flex flex-col gap-1">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-700 dark:text-emerald-300">
+                    Builder mode
+                  </div>
+                  <h2 className="text-xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">
+                    Change a day instead of restarting the trip
+                  </h2>
+                  <p className="max-w-3xl text-sm leading-6 text-slate-700 dark:text-slate-200">
+                    This plan already starts with a recommended shape. Open any
+                    stay, food stop, or activity below if you want to change a
+                    specific day or fit something else into the itinerary.
+                  </p>
+                  {trip.tripPrompt ? (
+                    <p className="text-sm leading-6 text-slate-600 dark:text-slate-300">
+                      Original brief: “{trip.tripPrompt}”
+                    </p>
+                  ) : null}
+                </div>
+              </section>
 
               {showDraftBuilderMode ? (
                 <ExpediaStayWidget

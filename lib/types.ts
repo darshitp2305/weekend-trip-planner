@@ -182,6 +182,7 @@ export interface TripInput {
   tripLengthDays: number;
   season: string;
   style: TripStyle;
+  tripPrompt?: string;
   activityFocus?: ActivityFocus;
   veganFriendly: boolean;
   includeStaycations: boolean;
@@ -398,6 +399,7 @@ export interface TripPlan {
   tripLengthDays?: number;
   tripStartDate?: string;
   tripEndDate?: string;
+  tripPrompt?: string;
   maxDriveMinutesBetweenStops?: number;
   savedSelectionState?: TripSelectionState;
   status?: "draft" | "finalized";

@@ -1,7 +1,17 @@
 import Image from "next/image";
 import { formatDisplayTag, formatDisplayText } from "../lib/displayText";
 import { getTripMomentumSummary, getTripUrgencyLevel } from "../lib/tripMomentum";
-import { LiveDataSummary, TripDataSource, TripPlan } from "../lib/types";
+import {
+  HotelOption,
+  LiveDataSummary,
+  TripDataSource,
+  TripPlan,
+  TripSelectionState,
+} from "../lib/types";
+import {
+  getRecommendationContextLabel,
+  getRecommendedTripTitle,
+} from "../lib/tripSpecificity";
 import {
   tripFreshnessLabel,
   tripProviderStatusText,
@@ -24,6 +34,8 @@ type TripHeaderProps = {
     score?: number;
     source?: TripDataSource;
     rawVibes?: string[];
+    hotelOptions?: Pick<HotelOption, "name" | "shortDescription">[];
+    savedSelectionState?: Pick<TripSelectionState, "hotelName">;
     confidence?: TripPlan["confidence"];
     status?: "draft" | "finalized";
     finalizedAt?: string;
@@ -40,6 +52,8 @@ type TripHeaderProps = {
     };
     liveDataSummary?: LiveDataSummary;
     sourceCheckedAt?: string;
+    destinationName?: string;
+    homeBaseCity?: string;
     providerStatus?: {
       places?: "live_success" | "live_unavailable" | "fallback_used";
       hotels?: "live_success" | "live_unavailable" | "fallback_used";
@@ -173,11 +187,29 @@ function formatDistanceFromMeters(meters?: number) {
 export default function TripHeader({ trip, shareMode = false }: TripHeaderProps) {
   const isDraft = trip.status !== "finalized";
   const isShareReviewState = shareMode;
-  const title = trip.title ?? trip.name ?? trip.destination ?? "Saved trip";
+  const title = getRecommendedTripTitle({
+    title: trip.title,
+    name: trip.name,
+    destination: trip.destination,
+    destinationName: trip.destinationName,
+    province: trip.province,
+    hotelOptions: trip.hotelOptions as HotelOption[] | undefined,
+    savedSelectionState: trip.savedSelectionState,
+  });
+  const titleContext = getRecommendationContextLabel(
+    {
+      destinationName: trip.destinationName,
+      destination: trip.destination,
+      name: trip.name,
+      province: trip.province,
+    },
+    title
+  );
   const vibes = Array.isArray(trip.rawVibes) ? trip.rawVibes.slice(0, 5) : [];
   const momentumTrip: TripPlan = {
     id: trip.name ?? trip.title ?? trip.destination ?? "trip",
-    destinationName: trip.destination ?? trip.name ?? trip.title ?? "Trip",
+    destinationName:
+      trip.destinationName ?? trip.destination ?? trip.name ?? trip.title ?? "Trip",
     summary: trip.summary ?? "",
     driveTimeText: "",
     tags: [],
@@ -192,7 +224,7 @@ export default function TripHeader({ trip, shareMode = false }: TripHeaderProps)
       totalExpected: 0,
       totalHigh: 0,
     },
-    hotelOptions: [],
+    hotelOptions: (trip.hotelOptions as HotelOption[] | undefined) ?? [],
     foodSpots: [],
     topActivities: [],
     itineraryDays: [],
@@ -201,6 +233,13 @@ export default function TripHeader({ trip, shareMode = false }: TripHeaderProps)
     title: trip.title,
     name: trip.name,
     destination: trip.destination,
+    savedSelectionState: trip.savedSelectionState
+      ? {
+          hotelName: trip.savedSelectionState.hotelName,
+          foods: {},
+          activities: {},
+        }
+      : undefined,
     province: trip.province,
     imageUrl: trip.imageUrl,
     confidence: trip.confidence,
@@ -289,6 +328,11 @@ export default function TripHeader({ trip, shareMode = false }: TripHeaderProps)
           <h1 className="text-3xl font-semibold tracking-tight text-slate-950 dark:text-slate-100 sm:text-[2.15rem]">
             {title}
           </h1>
+          {titleContext ? (
+            <p className="mt-2 text-sm font-medium uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
+              {titleContext}
+            </p>
+          ) : null}
 
           {trip.summary ? (
             <p className="mt-2.5 max-w-4xl text-[15px] leading-7 text-slate-600 dark:text-slate-300">

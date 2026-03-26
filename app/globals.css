@@ -28,3 +28,20 @@ body {
   color: var(--foreground);
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
 }
+
+.date-input-fix {
+  color: var(--date-input-foreground);
+  -webkit-text-fill-color: var(--date-input-foreground);
+  caret-color: var(--date-input-foreground);
+}
+
+.date-input-fix::-webkit-date-and-time-value,
+.date-input-fix::-webkit-datetime-edit,
+.date-input-fix::-webkit-datetime-edit-fields-wrapper,
+.date-input-fix::-webkit-datetime-edit-text,
+.date-input-fix::-webkit-datetime-edit-month-field,
+.date-input-fix::-webkit-datetime-edit-day-field,
+.date-input-fix::-webkit-datetime-edit-year-field {
+  color: var(--date-input-foreground);
+  -webkit-text-fill-color: var(--date-input-foreground);
+}

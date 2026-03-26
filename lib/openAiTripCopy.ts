@@ -161,13 +161,14 @@ export async function generateTripCopyWithOpenAI(
 
   const systemPrompt = [
     "You are writing destination-specific weekend trip copy for a trip planning app.",
+    "The product delivers one high-conviction trip the traveler can actually act on.",
     "Return ONLY valid JSON.",
     "Do not use markdown fences.",
     "Do not repeat the same wording across all trips.",
     "Make each destination feel distinct.",
     "Use concrete local differences from the provided trip data.",
     "Keep each field concise and natural.",
-    "aiItinerary must be an array of short strings.",
+    "aiItinerary must be an array of short strings that feel realistic and usable.",
   ].join(" ");
 
   const userPrompt = JSON.stringify(
@@ -185,6 +186,7 @@ export async function generateTripCopyWithOpenAI(
         ],
       },
       input,
+      trip_brief: input.tripPrompt ?? null,
       trips: compactTrips,
     },
     null,

@@ -1,9 +1,7 @@
 "use client";
 
-import Image from "next/image";
-import { CSSProperties, useEffect, useMemo, useRef, useState } from "react";
-import rawDestinations from "../data/destinations.json";
-import { formatDisplayText } from "../lib/displayText";
+import { type ReactNode, useMemo, useState } from "react";
+import { deriveTripIntentFromPrompt } from "../lib/tripIntent";
 import { isStartCity, START_CITY_OPTIONS, type StartCity } from "../lib/startCities";
 import {
   clampTripEndDate,
@@ -14,47 +12,37 @@ import {
   formatDateRange,
   getTodayIsoDate,
 } from "../lib/tripDates";
-import { ActivityFocus, RankedDestination, TripInput, TripStyle } from "../lib/types";
+import { ActivityFocus, TripInput, TripStyle } from "../lib/types";
 
 type Props = {
   onGenerate?: (input: TripInput) => Promise<void> | void;
   onSubmit?: (input: TripInput) => Promise<void> | void;
   loading?: boolean;
-  results?: RankedDestination[];
   initialInput?: Partial<TripInput>;
 };
 
 type FormState = {
   startCity: StartCity;
-  maxDriveHours: string;
-  maxDriveMinutesBetweenStops: string;
-  budgetPerTraveler: string;
   travelerCount: string;
-  style: TripStyle;
-  activityFocus: ActivityFocus | "";
-  veganFriendly: boolean;
-  includeStaycations: boolean;
-  strictBudget: boolean;
-  preferredDestination: string;
+  budgetPerTraveler: string;
+  maxDriveHours: string;
+  tripPrompt: string;
   tripStartDate: string;
   tripEndDate: string;
 };
 
 const DEFAULT_FORM: FormState = {
   startCity: "Edmonton",
-  maxDriveHours: "5",
-  maxDriveMinutesBetweenStops: "45",
-  budgetPerTraveler: "300",
   travelerCount: "2",
-  style: "adventure",
-  activityFocus: "",
-  veganFriendly: false,
-  includeStaycations: false,
-  strictBudget: false,
-  preferredDestination: "",
+  budgetPerTraveler: "",
+  maxDriveHours: "",
+  tripPrompt: "",
   tripStartDate: "",
   tripEndDate: "",
 };
+
+const DATE_INPUT_CLASS =
+  "date-input-fix h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-slate-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-emerald-500/20 dark:[&::-webkit-calendar-picker-indicator]:invert";
 
 function buildFormState(
   initialInput?: Partial<TripInput>,
@@ -74,66 +62,20 @@ function buildFormState(
     ...DEFAULT_FORM,
     startCity: isStartCity(initialInput?.startCity)
       ? initialInput.startCity
-      : "Edmonton",
-    maxDriveHours: String(initialInput?.maxDriveHours ?? 5),
-    maxDriveMinutesBetweenStops: String(
-      initialInput?.maxDriveMinutesBetweenStops ?? 45
-    ),
-    budgetPerTraveler: String(initialInput?.budgetPerTraveler ?? 300),
+      : DEFAULT_FORM.startCity,
     travelerCount: String(initialInput?.travelerCount ?? 2),
-    style: initialInput?.style ?? "adventure",
-    activityFocus: initialInput?.activityFocus ?? "",
-    veganFriendly: Boolean(initialInput?.veganFriendly),
-    includeStaycations: Boolean(initialInput?.includeStaycations),
-    strictBudget: Boolean(initialInput?.strictBudget),
-    preferredDestination: initialInput?.preferredDestination ?? "",
+    budgetPerTraveler:
+      typeof initialInput?.budgetPerTraveler === "number"
+        ? String(initialInput.budgetPerTraveler)
+        : "",
+    maxDriveHours:
+      typeof initialInput?.maxDriveHours === "number"
+        ? String(initialInput.maxDriveHours)
+        : "",
+    tripPrompt: initialInput?.tripPrompt ?? "",
     tripStartDate,
     tripEndDate,
   };
-}
-
-const TRIP_STYLES: TripStyle[] = [
-  "chill",
-  "outdoors",
-  "foodie",
-  "solo reset",
-  "adventure",
-  "hidden gems",
-];
-
-const ACTIVITY_FOCUS_TABS: Array<{
-  value: ActivityFocus;
-  label: string;
-  detail: string;
-}> = [
-  { value: "skiing", label: "Skiing", detail: "Favor ski hills, winter fun, and mountain snow access." },
-  { value: "hiking", label: "Hiking", detail: "Favor trailheads, canyon walks, lakes, and viewpoints." },
-  { value: "camping", label: "Camping", detail: "Favor campgrounds, park access, and outdoor-base destinations." },
-];
-
-const DESTINATION_OPTIONS = Array.from(
-  new Set(
-    (rawDestinations as Array<{ name?: string }>)
-      .map((destination) => destination.name?.trim())
-      .filter((name): name is string => Boolean(name))
-  )
-).sort((a, b) => a.localeCompare(b));
-
-function getFallbackImageUrl(name: string) {
-  const seed = encodeURIComponent(name.trim().toLowerCase());
-  return `https://picsum.photos/seed/${seed}/1200/800`;
-}
-
-function getLeadImage(name: string) {
-  const rawImage = (rawDestinations as Array<{ name?: string; image_url?: string }>)
-    .find((destination) => destination.name?.trim() === name)
-    ?.image_url;
-
-  if (typeof rawImage === "string" && rawImage.trim().length > 0) {
-    return rawImage;
-  }
-
-  return getFallbackImageUrl(name);
 }
 
 function parsePositiveInt(value: string, fallback: number) {
@@ -146,32 +88,8 @@ function parsePositiveInt(value: string, fallback: number) {
   return parsed;
 }
 
-function normalizeNumericString(
-  value: string,
-  options: { min: number; max: number; fallback: number }
-) {
-  const parsed = parsePositiveInt(value, options.fallback);
-  const clamped = Math.min(options.max, Math.max(options.min, parsed));
-  return String(clamped);
-}
-
-function displayStyleLabel(style: TripStyle) {
-  switch (style) {
-    case "solo reset":
-      return "Solo reset";
-    case "foodie":
-      return "Foodie";
-    case "outdoors":
-      return "Outdoors";
-    case "adventure":
-      return "Adventure";
-    case "chill":
-      return "Chill";
-    case "hidden gems":
-      return "Hidden gems";
-    default:
-      return style;
-  }
+function clampNumber(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
 }
 
 function formatCurrency(value: number) {
@@ -182,12 +100,44 @@ function formatCurrency(value: number) {
   }).format(value);
 }
 
+function displayStyleLabel(style: TripStyle) {
+  switch (style) {
+    case "solo reset":
+      return "Solo reset";
+    case "hidden gems":
+      return "Hidden gems";
+    case "foodie":
+      return "Foodie";
+    case "outdoors":
+      return "Outdoors";
+    case "adventure":
+      return "Adventure";
+    case "chill":
+      return "Chill";
+    default:
+      return style;
+  }
+}
+
+function displayActivityFocusLabel(activityFocus?: ActivityFocus) {
+  switch (activityFocus) {
+    case "skiing":
+      return "Skiing";
+    case "hiking":
+      return "Hiking";
+    case "camping":
+      return "Camping";
+    default:
+      return null;
+  }
+}
+
 function FieldLabel({
   htmlFor,
   children,
 }: {
   htmlFor: string;
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   return (
     <label
@@ -199,150 +149,57 @@ function FieldLabel({
   );
 }
 
-function ToggleRow({
-  title,
-  checked,
-  onChange,
-}: {
-  title: string;
-  checked: boolean;
-  onChange: (checked: boolean) => void;
-}) {
+function SignalPill({ children }: { children: ReactNode }) {
   return (
-    <label className="flex cursor-pointer items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800/80 dark:hover:bg-slate-800">
-      <span className="text-sm font-medium text-slate-800 dark:text-slate-100">{title}</span>
-
-      <div className="relative">
-        <input
-          type="checkbox"
-          checked={checked}
-          onChange={(e) => onChange(e.target.checked)}
-          className="peer sr-only"
-        />
-        <div className="h-6 w-11 rounded-full bg-slate-300 transition peer-checked:bg-violet-500 dark:bg-slate-600" />
-        <div className="absolute left-1 top-1 h-4 w-4 rounded-full bg-white transition peer-checked:translate-x-5" />
-      </div>
-    </label>
+    <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
+      {children}
+    </span>
   );
 }
-
-function FocusTab({
-  active,
-  label,
-  detail,
-  onClick,
-}: {
-  active: boolean;
-  label: string;
-  detail: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`rounded-[1.25rem] border px-4 py-3 text-left transition ${
-        active
-          ? "border-violet-300 bg-violet-50 shadow-sm dark:border-violet-500/40 dark:bg-violet-500/10"
-          : "border-slate-200 bg-white hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:hover:bg-slate-900"
-      }`}
-    >
-      <div className="text-sm font-semibold text-slate-950 dark:text-slate-100">{label}</div>
-      <div className="mt-1 text-xs leading-5 text-slate-600 dark:text-slate-300">{detail}</div>
-    </button>
-  );
-}
-
-function findTypedMatch(options: readonly string[], query: string) {
-  const normalizedQuery = query.trim().toLowerCase();
-  if (!normalizedQuery) return null;
-
-  return (
-    options.find((option) => option.toLowerCase().startsWith(normalizedQuery)) ??
-    options.find((option) => option.toLowerCase().includes(normalizedQuery)) ??
-    null
-  );
-}
-
-const DATE_INPUT_CLASS =
-  "h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-violet-500/20 dark:[&::-webkit-calendar-picker-indicator]:invert [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-date-and-time-value]:text-slate-900 dark:[&::-webkit-date-and-time-value]:text-slate-100 [&::-webkit-datetime-edit]:text-slate-900 dark:[&::-webkit-datetime-edit]:text-slate-100 [&::-webkit-datetime-edit-fields-wrapper]:text-slate-900 dark:[&::-webkit-datetime-edit-fields-wrapper]:text-slate-100";
-const DATE_INPUT_STYLE: CSSProperties = {
-  color: "var(--date-input-foreground)",
-  WebkitTextFillColor: "var(--date-input-foreground)",
-  opacity: 1,
-};
 
 export default function TripForm({
   onGenerate,
   onSubmit,
   loading = false,
-  results = [],
   initialInput,
 }: Props) {
   const minTripStartDate = getTodayIsoDate();
   const [form, setForm] = useState<FormState>(() =>
     buildFormState(initialInput, minTripStartDate)
   );
-  const maxTripEndDate =
-    deriveTripEndDate(form.tripStartDate, 7) ?? form.tripStartDate;
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+
+  const derivedIntent = useMemo(
+    () => deriveTripIntentFromPrompt(form.tripPrompt),
+    [form.tripPrompt]
+  );
+
+  const resolvedTravelerCount = clampNumber(
+    parsePositiveInt(form.travelerCount, 2),
+    1,
+    12
+  );
+  const resolvedBudgetPerTraveler = clampNumber(
+    parsePositiveInt(
+      form.budgetPerTraveler,
+      derivedIntent.suggestedBudgetPerTraveler ?? 300
+    ),
+    50,
+    5000
+  );
+  const resolvedMaxDriveHours = clampNumber(
+    parsePositiveInt(form.maxDriveHours, derivedIntent.suggestedMaxDriveHours ?? 5),
+    1,
+    12
+  );
+
+  const totalBudget = resolvedTravelerCount * resolvedBudgetPerTraveler;
   const tripDateRange = formatDateRange(
     form.tripStartDate || undefined,
     form.tripEndDate || undefined
   );
-  const [activeSlide, setActiveSlide] = useState(0);
-  const selectTypeaheadRef = useRef<{
-    query: string;
-    timeoutId: ReturnType<typeof setTimeout> | null;
-  }>({
-    query: "",
-    timeoutId: null,
-  });
-
-  const rotatingSlides = useMemo(
-    () =>
-      (rawDestinations as Array<{
-        id?: string;
-        name?: string;
-        summary?: string;
-        vibes?: string[];
-        region?: string;
-      }>)
-        .filter((destination) => typeof destination.name === "string")
-        .map((destination, index) => {
-          const name = destination.name!.trim();
-          const region = destination.region?.trim() || "Alberta";
-          const vibeText = Array.isArray(destination.vibes)
-            ? formatDisplayText(destination.vibes.slice(0, 3).join(", "))
-            : "";
-
-          return {
-            id: destination.id ?? `${name}-${index}`,
-            title: name,
-            subtitle: vibeText
-              ? `${name} in ${region} is a strong ${vibeText} pick for a short Alberta trip.`
-              : `${name} is a strong Alberta option for a short getaway.`,
-            imageUrl: getLeadImage(name),
-          };
-        }),
-    []
-  );
-
-  const currentSlideIndex =
-    rotatingSlides.length > 0
-      ? Math.min(activeSlide, rotatingSlides.length - 1)
-      : 0;
-
-  useEffect(() => {
-    if (rotatingSlides.length <= 1) {
-      return;
-    }
-
-    const intervalId = window.setInterval(() => {
-      setActiveSlide((current) => (current + 1) % rotatingSlides.length);
-    }, 3500);
-
-    return () => window.clearInterval(intervalId);
-  }, [rotatingSlides]);
+  const maxTripEndDate =
+    deriveTripEndDate(form.tripStartDate, 7) ?? form.tripStartDate;
 
   function updateField<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({
@@ -351,107 +208,11 @@ export default function TripForm({
     }));
   }
 
-  function handleSelectTypeahead(
-    event: React.KeyboardEvent<HTMLSelectElement>,
-    options: readonly string[],
-    onMatch: (value: string) => void
-  ) {
-    if (
-      event.key.length !== 1 ||
-      event.altKey ||
-      event.ctrlKey ||
-      event.metaKey
-    ) {
-      return;
-    }
-
-    const nextQuery = `${selectTypeaheadRef.current.query}${event.key}`;
-    const match = findTypedMatch(options, nextQuery);
-
-    if (!match) {
-      return;
-    }
-
-    event.preventDefault();
-    selectTypeaheadRef.current.query = nextQuery;
-    onMatch(match);
-
-    if (selectTypeaheadRef.current.timeoutId) {
-      clearTimeout(selectTypeaheadRef.current.timeoutId);
-    }
-
-    selectTypeaheadRef.current.timeoutId = setTimeout(() => {
-      selectTypeaheadRef.current.query = "";
-      selectTypeaheadRef.current.timeoutId = null;
-    }, 700);
-  }
-
   function handleNumericChange(
-    key:
-      | "maxDriveHours"
-      | "maxDriveMinutesBetweenStops"
-      | "budgetPerTraveler"
-      | "travelerCount",
+    key: "travelerCount" | "budgetPerTraveler" | "maxDriveHours",
     value: string
   ) {
-    const digitsOnly = value.replace(/[^\d]/g, "");
-    updateField(key, digitsOnly as FormState[typeof key]);
-  }
-
-  function handleNumericBlur(
-    key:
-      | "maxDriveHours"
-      | "maxDriveMinutesBetweenStops"
-      | "budgetPerTraveler"
-      | "travelerCount"
-  ) {
-    if (key === "maxDriveHours") {
-      updateField(
-        key,
-        normalizeNumericString(form[key], {
-          min: 1,
-          max: 12,
-          fallback: 5,
-        }) as FormState[typeof key]
-      );
-      return;
-    }
-
-    if (key === "budgetPerTraveler") {
-      updateField(
-        key,
-        normalizeNumericString(form[key], {
-          min: 50,
-          max: 5000,
-          fallback: 300,
-        }) as FormState[typeof key]
-      );
-      return;
-    }
-
-    if (key === "maxDriveMinutesBetweenStops") {
-      updateField(
-        key,
-        normalizeNumericString(form[key], {
-          min: 10,
-          max: 180,
-          fallback: 45,
-        }) as FormState[typeof key]
-      );
-      return;
-    }
-
-    if (key === "travelerCount") {
-      updateField(
-        key,
-        normalizeNumericString(form[key], {
-          min: 1,
-          max: 12,
-          fallback: 2,
-        }) as FormState[typeof key]
-      );
-      return;
-    }
+    updateField(key, value.replace(/[^\d]/g, "") as FormState[typeof key]);
   }
 
   function handleTripStartDateChange(value: string) {
@@ -460,18 +221,17 @@ export default function TripForm({
     setForm((prev) => {
       const tripLengthDays =
         deriveTripLengthDays(prev.tripStartDate, prev.tripEndDate) ?? 2;
-      const nextTripEndDate =
+      const tripEndDate =
         clampTripEndDate(
           deriveTripEndDate(tripStartDate, tripLengthDays),
           tripStartDate,
           7
-        ) ??
-        tripStartDate;
+        ) ?? tripStartDate;
 
       return {
         ...prev,
         tripStartDate,
-        tripEndDate: nextTripEndDate,
+        tripEndDate,
       };
     });
   }
@@ -484,22 +244,13 @@ export default function TripForm({
     );
   }
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
 
-    if (!form.tripStartDate) {
+    if (!form.tripStartDate || !form.tripPrompt.trim()) {
       return;
     }
 
-    const travelerCount = Math.min(
-      12,
-      Math.max(1, parsePositiveInt(form.travelerCount, 2))
-    );
-
-    const budgetPerTraveler = Math.min(
-      5000,
-      Math.max(50, parsePositiveInt(form.budgetPerTraveler, 300))
-    );
     const tripStartDate = clampTripStartDate(
       form.tripStartDate,
       minTripStartDate
@@ -512,40 +263,23 @@ export default function TripForm({
 
     const cleanedInput: TripInput = {
       startCity: form.startCity,
-      maxDriveHours: Math.min(
-        12,
-        Math.max(1, parsePositiveInt(form.maxDriveHours, 5))
-      ),
-      maxDriveMinutesBetweenStops: Math.min(
-        180,
-        Math.max(10, parsePositiveInt(form.maxDriveMinutesBetweenStops, 45))
-      ),
-      budget: travelerCount * budgetPerTraveler,
-      budgetPerTraveler,
-      travelerCount,
+      maxDriveHours: resolvedMaxDriveHours,
+      maxDriveMinutesBetweenStops: 45,
+      budget: totalBudget,
+      budgetPerTraveler: resolvedBudgetPerTraveler,
+      travelerCount: resolvedTravelerCount,
       tripLengthDays,
       season,
-      style: form.style,
-      activityFocus: form.activityFocus || undefined,
-      veganFriendly: form.veganFriendly,
-      includeStaycations: form.includeStaycations,
-      strictBudget: form.strictBudget,
-      preferredDestination: form.preferredDestination.trim() || undefined,
+      style: derivedIntent.style,
+      tripPrompt: form.tripPrompt.trim(),
+      activityFocus: derivedIntent.activityFocus,
+      veganFriendly: derivedIntent.veganFriendly,
+      includeStaycations: derivedIntent.includeStaycations,
+      strictBudget: derivedIntent.strictBudget,
+      preferredDestination: derivedIntent.preferredDestination,
       tripStartDate,
       tripEndDate,
     };
-
-    setForm((prev) => ({
-      ...prev,
-      maxDriveHours: String(cleanedInput.maxDriveHours),
-      maxDriveMinutesBetweenStops: String(
-        cleanedInput.maxDriveMinutesBetweenStops
-      ),
-      budgetPerTraveler: String(cleanedInput.budgetPerTraveler),
-      travelerCount: String(cleanedInput.travelerCount),
-      tripStartDate,
-      tripEndDate,
-    }));
 
     const submitHandler = onGenerate ?? onSubmit;
 
@@ -557,111 +291,49 @@ export default function TripForm({
     await submitHandler(cleanedInput);
   }
 
-  const liveTravelerCount = Math.min(
-    12,
-    Math.max(1, parsePositiveInt(form.travelerCount, 2))
-  );
-
-  const liveBudgetPerTraveler = Math.min(
-    5000,
-    Math.max(50, parsePositiveInt(form.budgetPerTraveler, 300))
-  );
-
-  const totalBudget = liveTravelerCount * liveBudgetPerTraveler;
-
   return (
     <section className="w-full">
       <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="overflow-hidden rounded-[1.75rem] border border-slate-200 bg-slate-950 shadow-sm dark:border-slate-800">
-          <div className="relative h-72 sm:h-80">
-            {rotatingSlides.map((slide, index) => (
-              <div
-                key={slide.id}
-                className={`absolute inset-0 transition-opacity duration-700 ${
-                  index === currentSlideIndex ? "opacity-100" : "opacity-0"
-                }`}
-              >
-                <Image
-                  src={slide.imageUrl}
-                  alt={slide.title}
-                  fill
-                  unoptimized
-                  className="h-full w-full object-cover"
-                />
-                <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(15,23,42,0.10),rgba(15,23,42,0.72))]" />
-              </div>
-            ))}
-
-            <div className="absolute inset-x-0 bottom-0 p-5 sm:p-6">
-              <div className="max-w-2xl">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/75">
-                  Weekend inspiration
-                </div>
-                <div className="mt-2 text-2xl font-semibold tracking-tight text-white sm:text-3xl">
-                  {rotatingSlides[currentSlideIndex]?.title}
-                </div>
-                <p className="mt-2 max-w-xl text-sm leading-6 text-white/85">
-                  {rotatingSlides[currentSlideIndex]?.subtitle}
-                </p>
-              </div>
-
-              <div className="mt-4 flex gap-2">
-                {rotatingSlides.map((slide, index) => (
-                  <button
-                    key={slide.id}
-                    type="button"
-                    onClick={() => setActiveSlide(index)}
-                    aria-label={`Show ${slide.title}`}
-                    className={`h-2.5 rounded-full transition-all ${
-                      index === currentSlideIndex
-                        ? "w-10 bg-white"
-                        : "w-2.5 bg-white/45 hover:bg-white/70"
-                    }`}
-                  />
-                ))}
-              </div>
-            </div>
+        <div className="overflow-hidden rounded-[2rem] border border-slate-200 bg-[linear-gradient(135deg,#f0fdf4,#ecfeff)] p-6 shadow-sm dark:border-slate-800 dark:bg-[linear-gradient(135deg,rgba(6,78,59,0.35),rgba(15,23,42,0.95))] sm:p-7">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700 dark:text-emerald-300">
+            One trip, not a shortlist
           </div>
+          <h2 className="mt-3 text-3xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">
+            Tell us the dates, group size, and what this trip needs to be.
+          </h2>
+          <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-700 dark:text-slate-200">
+            Trippify will infer the trip style from your brief, pick one Alberta
+            plan with conviction, and then let you reshape the days in the
+            builder.
+          </p>
         </div>
 
-        <div className="grid gap-4 lg:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-3">
           <div>
-            <FieldLabel htmlFor="startCity">Start city</FieldLabel>
-            <select
-              id="startCity"
-              value={form.startCity}
-              onChange={(e) =>
-                updateField("startCity", e.target.value as FormState["startCity"])
-              }
-              onKeyDown={(e) =>
-                handleSelectTypeahead(e, START_CITY_OPTIONS, (value) =>
-                  updateField("startCity", value as FormState["startCity"])
-                )
-              }
-              className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-violet-500/20"
-            >
-              {START_CITY_OPTIONS.map((city) => (
-                <option key={city} value={city}>
-                  {city}
-                </option>
-              ))}
-            </select>
+            <FieldLabel htmlFor="tripStartDate">Start date</FieldLabel>
+            <input
+              id="tripStartDate"
+              type="date"
+              min={minTripStartDate}
+              required
+              value={form.tripStartDate}
+              onChange={(event) => handleTripStartDateChange(event.target.value)}
+              className={DATE_INPUT_CLASS}
+            />
           </div>
 
           <div>
-            <FieldLabel htmlFor="style">Trip style</FieldLabel>
-            <select
-              id="style"
-              value={form.style}
-              onChange={(e) => updateField("style", e.target.value as TripStyle)}
-              className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-violet-500/20"
-            >
-              {TRIP_STYLES.map((style) => (
-                <option key={style} value={style}>
-                  {displayStyleLabel(style)}
-                </option>
-              ))}
-            </select>
+            <FieldLabel htmlFor="tripEndDate">End date</FieldLabel>
+            <input
+              id="tripEndDate"
+              type="date"
+              min={form.tripStartDate}
+              max={maxTripEndDate}
+              required
+              value={form.tripEndDate}
+              onChange={(event) => handleTripEndDateChange(event.target.value)}
+              className={DATE_INPUT_CLASS}
+            />
           </div>
 
           <div>
@@ -672,230 +344,162 @@ export default function TripForm({
               pattern="[0-9]*"
               type="text"
               value={form.travelerCount}
-              onChange={(e) => handleNumericChange("travelerCount", e.target.value)}
-              onBlur={() => handleNumericBlur("travelerCount")}
-              className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-violet-500/20"
-            />
-          </div>
-
-          <div>
-            <FieldLabel htmlFor="maxDriveHours">Drive hours</FieldLabel>
-            <input
-              id="maxDriveHours"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              type="text"
-              value={form.maxDriveHours}
-              onChange={(e) => handleNumericChange("maxDriveHours", e.target.value)}
-              onBlur={() => handleNumericBlur("maxDriveHours")}
-              className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-violet-500/20"
-            />
-          </div>
-
-          <div>
-            <FieldLabel htmlFor="tripStartDate">Trip start date</FieldLabel>
-            <input
-              id="tripStartDate"
-              type="date"
-              min={minTripStartDate}
-              required
-              value={form.tripStartDate}
-              onChange={(e) => handleTripStartDateChange(e.target.value)}
-              className={DATE_INPUT_CLASS}
-              style={DATE_INPUT_STYLE}
-            />
-          </div>
-
-          <div>
-            <FieldLabel htmlFor="tripEndDate">Trip end date</FieldLabel>
-            <input
-              id="tripEndDate"
-              type="date"
-              min={form.tripStartDate}
-              max={maxTripEndDate}
-              required
-              value={form.tripEndDate}
-              onChange={(e) => handleTripEndDateChange(e.target.value)}
-              className={DATE_INPUT_CLASS}
-              style={DATE_INPUT_STYLE}
-            />
-          </div>
-
-          <div>
-            <FieldLabel htmlFor="maxDriveMinutesBetweenStops">
-              Max drive between stops (min)
-            </FieldLabel>
-            <input
-              id="maxDriveMinutesBetweenStops"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              type="text"
-              value={form.maxDriveMinutesBetweenStops}
-              onChange={(e) =>
-                handleNumericChange(
-                  "maxDriveMinutesBetweenStops",
-                  e.target.value
-                )
+              onChange={(event) =>
+                handleNumericChange("travelerCount", event.target.value)
               }
-              onBlur={() => handleNumericBlur("maxDriveMinutesBetweenStops")}
-              className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-violet-500/20"
-            />
-          </div>
-
-          <div>
-            <FieldLabel htmlFor="budgetPerTraveler">
-              Budget per traveller ($)
-            </FieldLabel>
-            <input
-              id="budgetPerTraveler"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              type="text"
-              value={form.budgetPerTraveler}
-              onChange={(e) =>
-                handleNumericChange("budgetPerTraveler", e.target.value)
-              }
-              onBlur={() => handleNumericBlur("budgetPerTraveler")}
-              className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-violet-500/20"
+              className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-slate-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-emerald-500/20"
             />
           </div>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/80">
-          <div className="text-sm font-medium text-slate-800 dark:text-slate-100">
-            Estimated total budget: {formatCurrency(totalBudget)}
+        <div className="rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/90">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <FieldLabel htmlFor="tripPrompt">What do you want from this trip?</FieldLabel>
+              <p className="mb-3 max-w-3xl text-sm leading-6 text-slate-600 dark:text-slate-300">
+                Describe the kind of weekend people would actually say yes to.
+                Mention the vibe, pace, food, scenery, or any destination you
+                already have in mind.
+              </p>
+            </div>
+            <SignalPill>
+              {tripDateRange ?? "Flexible dates"}
+            </SignalPill>
           </div>
-          <div className="mt-1 text-xs text-slate-600 dark:text-slate-300">
-            Based on {liveTravelerCount} traveler
-            {liveTravelerCount === 1 ? "" : "s"} at{" "}
-            {formatCurrency(liveBudgetPerTraveler)} each.
+
+          <textarea
+            id="tripPrompt"
+            required
+            minLength={8}
+            value={form.tripPrompt}
+            onChange={(event) => updateField("tripPrompt", event.target.value)}
+            placeholder="Example: We want a low-effort mountain weekend with good coffee, one scenic hike, and enough payoff that four of us would actually commit to going."
+            className="min-h-[160px] w-full rounded-[1.4rem] border border-slate-200 bg-slate-50 px-4 py-4 text-sm leading-6 text-slate-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-emerald-500/20"
+          />
+
+          <div className="mt-4 flex flex-wrap gap-2">
+            <SignalPill>Style: {displayStyleLabel(derivedIntent.style)}</SignalPill>
+            {displayActivityFocusLabel(derivedIntent.activityFocus) ? (
+              <SignalPill>
+                Activity: {displayActivityFocusLabel(derivedIntent.activityFocus)}
+              </SignalPill>
+            ) : null}
+            {derivedIntent.preferredDestination ? (
+              <SignalPill>
+                Destination signal: {derivedIntent.preferredDestination}
+              </SignalPill>
+            ) : null}
+            <SignalPill>
+              Drive assumption: up to {resolvedMaxDriveHours}h
+            </SignalPill>
+            <SignalPill>
+              Budget assumption: {formatCurrency(resolvedBudgetPerTraveler)} each
+            </SignalPill>
+            {derivedIntent.includeStaycations ? (
+              <SignalPill>Local trips allowed</SignalPill>
+            ) : (
+              <SignalPill>Getaway-first</SignalPill>
+            )}
+            {derivedIntent.veganFriendly ? <SignalPill>Vegan-aware</SignalPill> : null}
           </div>
-          {tripDateRange ? (
-            <div className="mt-1 text-xs text-slate-600 dark:text-slate-300">
-              Trip window: {tripDateRange}
+        </div>
+
+        <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/70">
+          <button
+            type="button"
+            onClick={() => setAdvancedOpen((current) => !current)}
+            className="flex w-full items-center justify-between gap-3 text-left"
+          >
+            <div>
+              <div className="text-sm font-semibold text-slate-950 dark:text-slate-100">
+                Optional planning assumptions
+              </div>
+              <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">
+                Only open this if you want to override the inferred drive or
+                budget assumptions.
+              </p>
+            </div>
+            <span className="inline-flex h-10 items-center justify-center rounded-full border border-slate-300 bg-white px-4 text-xs font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
+              {advancedOpen ? "Hide" : "Edit"}
+            </span>
+          </button>
+
+          {advancedOpen ? (
+            <div className="mt-4 grid gap-4 border-t border-slate-200 pt-4 dark:border-slate-700 md:grid-cols-3">
+              <div>
+                <FieldLabel htmlFor="startCity">Starting city</FieldLabel>
+                <select
+                  id="startCity"
+                  value={form.startCity}
+                  onChange={(event) =>
+                    updateField("startCity", event.target.value as StartCity)
+                  }
+                  className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-slate-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-emerald-500/20"
+                >
+                  {START_CITY_OPTIONS.map((city) => (
+                    <option key={city} value={city}>
+                      {city}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <FieldLabel htmlFor="maxDriveHours">Max drive hours</FieldLabel>
+                <input
+                  id="maxDriveHours"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  type="text"
+                  value={form.maxDriveHours}
+                  onChange={(event) =>
+                    handleNumericChange("maxDriveHours", event.target.value)
+                  }
+                  placeholder={`Auto: ${resolvedMaxDriveHours}`}
+                  className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-slate-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-emerald-500/20"
+                />
+              </div>
+
+              <div>
+                <FieldLabel htmlFor="budgetPerTraveler">Budget per traveler</FieldLabel>
+                <input
+                  id="budgetPerTraveler"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  type="text"
+                  value={form.budgetPerTraveler}
+                  onChange={(event) =>
+                    handleNumericChange("budgetPerTraveler", event.target.value)
+                  }
+                  placeholder={`Auto: ${resolvedBudgetPerTraveler}`}
+                  className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-slate-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-emerald-500/20"
+                />
+              </div>
             </div>
           ) : null}
         </div>
 
-        <div className="rounded-[1.5rem] border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900/80">
-          <div>
-            <h3 className="text-lg font-semibold text-slate-950 dark:text-slate-100">
-              Already know where you want to go?
-            </h3>
-            <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">
-              Enter a destination and Trippify will try to build that trip directly
-              instead of making you choose from recommendations.
-            </p>
-          </div>
-
-          <div className="mt-4">
-            <FieldLabel htmlFor="preferredDestination">Destination</FieldLabel>
-            <select
-              id="preferredDestination"
-              value={form.preferredDestination}
-              onChange={(e) => updateField("preferredDestination", e.target.value)}
-              onKeyDown={(e) =>
-                handleSelectTypeahead(e, DESTINATION_OPTIONS, (value) =>
-                  updateField("preferredDestination", value)
-                )
-              }
-              className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-violet-500/20"
-            >
-              <option value="">Pick from available destinations</option>
-              {DESTINATION_OPTIONS.map((destination) => (
-                <option key={destination} value={destination}>
-                  {destination}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        <div className="rounded-[1.5rem] border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900/80">
-          <div className="flex items-center justify-between gap-3">
+        <div className="rounded-[1.5rem] border border-slate-200 bg-white px-5 py-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/90">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
-              <h3 className="text-lg font-semibold text-slate-950 dark:text-slate-100">
-                Activity focus
-              </h3>
+              <div className="text-sm font-semibold text-slate-950 dark:text-slate-100">
+                Estimated target budget: {formatCurrency(totalBudget)}
+              </div>
               <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">
-                Add a specific activity angle if you want recommendations shaped around what people actually want to do.
+                Based on {resolvedTravelerCount} traveler
+                {resolvedTravelerCount === 1 ? "" : "s"} at{" "}
+                {formatCurrency(resolvedBudgetPerTraveler)} each. You will get
+                one trip recommendation, then you can swap stops day by day in
+                the builder.
               </p>
             </div>
-            {form.activityFocus ? (
-              <button
-                type="button"
-                onClick={() => updateField("activityFocus", "")}
-                className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:bg-slate-900"
-              >
-                Clear
-              </button>
-            ) : null}
-          </div>
-
-          <div className="mt-4 grid gap-3 md:grid-cols-3">
-            {ACTIVITY_FOCUS_TABS.map((tab) => (
-              <FocusTab
-                key={tab.value}
-                active={form.activityFocus === tab.value}
-                label={tab.label}
-                detail={tab.detail}
-                onClick={() =>
-                  updateField(
-                    "activityFocus",
-                    form.activityFocus === tab.value ? "" : tab.value
-                  )
-                }
-              />
-            ))}
-          </div>
-        </div>
-
-        <div className="grid gap-3 lg:grid-cols-3">
-          <ToggleRow
-            title="Vegan-friendly only"
-            checked={form.veganFriendly}
-            onChange={(checked) => updateField("veganFriendly", checked)}
-          />
-          <ToggleRow
-            title="Include staycations"
-            checked={form.includeStaycations}
-            onChange={(checked) => updateField("includeStaycations", checked)}
-          />
-          <ToggleRow
-            title="Strict budget"
-            checked={form.strictBudget}
-            onChange={(checked) => updateField("strictBudget", checked)}
-          />
-        </div>
-
-        <div className="flex flex-col gap-4 border-t border-slate-200 pt-5 dark:border-slate-800 lg:flex-row lg:items-center lg:justify-between">
-          <div className="text-sm text-slate-600 dark:text-slate-300">
-            {form.preferredDestination.trim()
-              ? `Trippify will try to build a trip for ${form.preferredDestination.trim()}.`
-              : results.length > 0
-              ? `${results.length} destination${results.length === 1 ? "" : "s"} matched your filters.`
-              : "Choose your preferences and generate ranked trip ideas."}
-          </div>
-
-          <div className="flex flex-col items-end gap-2">
-            {!form.tripStartDate ? (
-              <div className="text-sm text-amber-700 dark:text-amber-300">
-                Select a trip start date to generate a trip.
-              </div>
-            ) : null}
 
             <button
               type="submit"
-              disabled={loading || !form.tripStartDate}
-              className="inline-flex h-12 items-center justify-center rounded-2xl bg-slate-950 px-6 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-violet-500 dark:text-slate-950 dark:hover:bg-violet-400"
+              disabled={loading || !form.tripStartDate || !form.tripPrompt.trim()}
+              className="inline-flex h-12 items-center justify-center rounded-2xl bg-slate-950 px-6 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-emerald-400 dark:text-slate-950 dark:hover:bg-emerald-300"
             >
-              {loading
-                ? form.preferredDestination.trim()
-                  ? "Building..."
-                  : "Generating..."
-                : form.preferredDestination.trim()
-                  ? "Build my trip"
-                  : "Generate trips"}
+              {loading ? "Building your trip..." : "Build my trip"}
             </button>
           </div>
         </div>

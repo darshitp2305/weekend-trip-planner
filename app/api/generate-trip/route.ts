@@ -22,6 +22,7 @@ type TripInputCandidate = Partial<TripInput> & {
   tripLengthDays?: unknown;
   season?: unknown;
   style?: unknown;
+  tripPrompt?: unknown;
   activityFocus?: unknown;
   veganFriendly?: unknown;
   includeStaycations?: unknown;
@@ -59,6 +60,8 @@ function isTripInput(value: unknown): value is TripInput {
     typeof candidate.tripLengthDays === "number" &&
     typeof candidate.season === "string" &&
     typeof candidate.style === "string" &&
+    (candidate.tripPrompt === undefined ||
+      typeof candidate.tripPrompt === "string") &&
     (candidate.activityFocus === undefined || isActivityFocus(candidate.activityFocus)) &&
     typeof candidate.veganFriendly === "boolean" &&
     typeof candidate.includeStaycations === "boolean" &&
@@ -94,6 +97,10 @@ function normalizeInput(raw: unknown): TripInput | null {
     tripLengthDays,
     season: candidateInput.season,
     style: candidateInput.style,
+    tripPrompt:
+      typeof candidateInput.tripPrompt === "string"
+        ? candidateInput.tripPrompt.trim() || undefined
+        : undefined,
     activityFocus: isActivityFocus(candidateInput.activityFocus)
       ? candidateInput.activityFocus
       : undefined,
