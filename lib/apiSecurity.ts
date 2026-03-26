@@ -57,6 +57,34 @@ export function getClientIp(request: Request) {
   return "unknown";
 }
 
+function isLoopbackHostname(hostname: string) {
+  return (
+    hostname === "localhost" ||
+    hostname === "127.0.0.1" ||
+    hostname === "::1" ||
+    hostname === "[::1]"
+  );
+}
+
+function isAllowedLocalDevOrigin(origin: string, requestOrigin: string) {
+  if (process.env.NODE_ENV === "production") {
+    return false;
+  }
+
+  try {
+    const originUrl = new URL(origin);
+    const requestUrl = new URL(requestOrigin);
+
+    return (
+      originUrl.protocol === requestUrl.protocol &&
+      isLoopbackHostname(originUrl.hostname) &&
+      isLoopbackHostname(requestUrl.hostname)
+    );
+  } catch {
+    return false;
+  }
+}
+
 function privacySafeClientKey(request: Request) {
   const ip = getClientIp(request);
   return createHash("sha256").update(ip).digest("hex").slice(0, 24);
@@ -115,7 +143,11 @@ export function enforceSameOrigin(request: Request) {
   const requestOrigin = new URL(request.url).origin;
   const origin = request.headers.get("origin");
 
-  if (origin && origin !== requestOrigin) {
+  if (
+    origin &&
+    origin !== requestOrigin &&
+    !isAllowedLocalDevOrigin(origin, requestOrigin)
+  ) {
     return jsonNoStore(
       {
         success: false,

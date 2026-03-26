@@ -197,6 +197,8 @@ function testRouteGuards() {
   });
   assert.equal(enforceSameOrigin(crossSiteRequest)?.status, 403);
 
+  const env = process.env as Record<string, string | undefined>;
+  const originalNodeEnv = env.NODE_ENV;
   const sameOriginRequest = new Request("https://app.example.com/api/save-trip", {
     method: "POST",
     headers: {
@@ -206,6 +208,16 @@ function testRouteGuards() {
   });
   assert.equal(enforceSameOrigin(sameOriginRequest), null);
   assert.equal(rejectOversizedJsonRequest(sameOriginRequest, 1024)?.status, 413);
+
+  env.NODE_ENV = "development";
+  const localLoopbackRequest = new Request("http://127.0.0.1:3000/api/rank-trips", {
+    method: "POST",
+    headers: {
+      origin: "http://localhost:3001",
+    },
+  });
+  assert.equal(enforceSameOrigin(localLoopbackRequest), null);
+  env.NODE_ENV = originalNodeEnv;
 
   const rateLimitKey = `security-test-${Date.now()}`;
   const limitedRequest = new Request("https://app.example.com/api/rank-trips");
