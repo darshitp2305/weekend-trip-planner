@@ -1,3 +1,8 @@
+import type {
+  PromptHardConstraints,
+  PromptSoftPreferences,
+} from "./tripIntent";
+
 const TEXT_SEARCH_URL = "https://places.googleapis.com/v1/places:searchText";
 const REQUEST_TIMEOUT_MS = 12000;
 const CACHE_TTL_MS = 1000 * 60 * 30;
@@ -101,6 +106,15 @@ type HotelSearchOptions = {
 
 type FoodSearchOptions = {
   veganFriendly?: boolean;
+  requiresVegetarianOptions?: boolean;
+  mixedDietGroup?: boolean;
+  wantsGoodFood?: boolean;
+};
+
+type ActivitySearchOptions = {
+  activityFocus?: "skiing" | "hiking" | "camping";
+  hardConstraints?: PromptHardConstraints;
+  softPreferences?: PromptSoftPreferences;
 };
 
 const FIELD_MASK = [
@@ -117,13 +131,35 @@ const FIELD_MASK = [
   "places.photos.name",
 ].join(",");
 
+export function buildRestaurantTextQuery(
+  destination: string,
+  options?: FoodSearchOptions
+) {
+  if (options?.requiresVegetarianOptions) {
+    const mixedGroupContext = options.mixedDietGroup
+      ? "vegetarian-friendly restaurants for mixed groups"
+      : options.veganFriendly
+        ? "vegan and vegetarian restaurants"
+        : "vegetarian-friendly restaurants";
+    const qualityContext = options.wantsGoodFood ? " and good dinner spots" : "";
+
+    return `best ${mixedGroupContext}${qualityContext} in ${destination}`;
+  }
+
+  if (options?.wantsGoodFood) {
+    return `best restaurants and dinner spots in ${destination}`;
+  }
+
+  return options?.veganFriendly
+    ? `best vegan and vegetarian restaurants in ${destination}`
+    : `best restaurants in ${destination}`;
+}
+
 export async function searchRestaurants(
   destination: string,
   options?: FoodSearchOptions
 ) {
-  const textQuery = options?.veganFriendly
-    ? `best vegan and vegetarian restaurants in ${destination}`
-    : `best restaurants in ${destination}`;
+  const textQuery = buildRestaurantTextQuery(destination, options);
 
   return placesTextSearch<{ places?: GooglePlace[] }>(
     {
@@ -134,10 +170,25 @@ export async function searchRestaurants(
   );
 }
 
-export async function searchCafes(destination: string, options?: FoodSearchOptions) {
-  const textQuery = options?.veganFriendly
+export function buildCafeTextQuery(
+  destination: string,
+  options?: FoodSearchOptions
+) {
+  if (options?.requiresVegetarianOptions) {
+    const plantForwardContext = options.veganFriendly
+      ? "vegan cafes, plant-based brunch, and vegetarian-friendly coffee shops"
+      : "vegetarian-friendly cafes, brunch spots, and coffee shops";
+
+    return `best ${plantForwardContext} in ${destination}`;
+  }
+
+  return options?.veganFriendly
     ? `best vegan cafes, plant-based brunch, and coffee shops in ${destination}`
     : `best cafes and coffee shops in ${destination}`;
+}
+
+export async function searchCafes(destination: string, options?: FoodSearchOptions) {
+  const textQuery = buildCafeTextQuery(destination, options);
 
   return placesTextSearch<{ places?: GooglePlace[] }>(
     {
@@ -148,17 +199,42 @@ export async function searchCafes(destination: string, options?: FoodSearchOptio
   );
 }
 
-export async function searchActivities(
+export function buildActivityTextQuery(
   destination: string,
   style: string,
-  activityFocus?: "skiing" | "hiking" | "camping"
+  options?: ActivitySearchOptions
 ) {
+  const activityFocus = options?.activityFocus;
+  const hardConstraints = options?.hardConstraints;
+  const softPreferences = options?.softPreferences;
   const normalizedStyle = style.trim().toLowerCase();
+
+  if (activityFocus === "hiking" && hardConstraints?.activityAnchor === "summit_hike") {
+    const distanceContext = hardConstraints.hikeDistanceKmTarget
+      ? ` around ${Math.round(hardConstraints.hikeDistanceKmTarget)} km round trip`
+      : "";
+    const scenicContext = hardConstraints.requiresScenicView
+      ? " with mountain views and scenic lookouts"
+      : "";
+
+    return `best summit hikes, peak trails, and mountain ridge walks${distanceContext}${scenicContext} in ${destination}`;
+  }
+
+  if (activityFocus === "camping" && hardConstraints?.activityAnchor === "campground_base") {
+    const scenicContext = hardConstraints.requiresScenicView
+      ? " with scenic views"
+      : "";
+
+    return `best campgrounds, campsites, and outdoor basecamps${scenicContext} in ${destination}`;
+  }
+
   const activityFocusQuery =
     activityFocus === "skiing"
       ? "ski hills, ski resorts, nordic skiing, winter lookouts"
       : activityFocus === "hiking"
-        ? "hiking trails, trailheads, lakes, canyons, scenic lookouts"
+        ? hardConstraints?.requiresScenicView
+          ? "scenic hiking trails, lookouts, mountain walks, lakes, and canyons"
+          : "hiking trails, lakes, canyons, ridge walks, and scenic lookouts"
         : activityFocus === "camping"
           ? "campgrounds, campsites, provincial parks, outdoor bases"
           : null;
@@ -176,11 +252,25 @@ export async function searchActivities(
               ? "quiet cafes, scenic spots, spas, easy walks"
               : normalizedStyle === "hidden gems"
                 ? "local landmarks, heritage sites, lookouts, lesser-known attractions"
-                : `${style} attractions`);
+              : `${style} attractions`);
+
+  if (softPreferences?.wantsScenery && activityFocus !== "hiking") {
+    return `top ${styleQuery} with scenic views in ${destination}`;
+  }
+
+  return `top ${styleQuery} in ${destination}`;
+}
+
+export async function searchActivities(
+  destination: string,
+  style: string,
+  options?: ActivitySearchOptions
+) {
+  const textQuery = buildActivityTextQuery(destination, style, options);
 
   return placesTextSearch<{ places?: GooglePlace[] }>(
     {
-      textQuery: `top ${styleQuery} in ${destination}`,
+      textQuery,
       maxResultCount: 12,
     },
     FIELD_MASK

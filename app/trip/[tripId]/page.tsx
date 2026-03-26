@@ -23,6 +23,7 @@ import ExpediaStayWidget from "../../../components/ExpediaStayWidget";
 import { formatDateRange } from "../../../lib/tripDates";
 import { isStartCity } from "../../../lib/startCities";
 import { estimateFoodCostForGroup } from "../../../lib/foodPricing";
+import { getPromptConstraintFitSummary } from "../../../lib/tripSpecificity";
 import {
   baseTripAnalytics,
   trackProductEvent,
@@ -350,6 +351,10 @@ export default function TripPage() {
 
   const itineraryDays = useMemo(
     () => (Array.isArray(trip?.itineraryDays) ? trip.itineraryDays : []),
+    [trip]
+  );
+  const constraintFitSummary = useMemo(
+    () => (trip ? getPromptConstraintFitSummary(trip, trip) : undefined),
     [trip]
   );
   const tripDateRange = formatDateRange(trip?.tripStartDate, trip?.tripEndDate);
@@ -1341,6 +1346,11 @@ export default function TripPage() {
                   {trip.tripPrompt ? (
                     <p className="text-sm leading-6 text-slate-600 dark:text-slate-300">
                       Original brief: “{trip.tripPrompt}”
+                    </p>
+                  ) : null}
+                  {constraintFitSummary ? (
+                    <p className="text-sm leading-6 text-slate-600 dark:text-slate-300">
+                      Constraint check: {constraintFitSummary}
                     </p>
                   ) : null}
                 </div>

@@ -1,4 +1,5 @@
 import {
+  ConfidenceLevel,
   LiveDataSummary,
   ProviderOutcome,
   ProviderStatusSummary,
@@ -73,6 +74,19 @@ export function tripSourceTone(item: TrustSourceLike) {
   if (source === "live-google-places") return "green" as const;
   if (source === "static-fallback") return "violet" as const;
   return "slate" as const;
+}
+
+export function tripConfidenceLabel(confidence?: ConfidenceLevel) {
+  switch (confidence) {
+    case "high":
+      return "High conviction";
+    case "medium":
+      return "Good conviction";
+    case "low":
+      return "Lower conviction";
+    default:
+      return "Trip plan";
+  }
 }
 
 export function tripFreshnessLabel(item: TrustSourceLike) {

@@ -1,4 +1,11 @@
-import { Activity, HotelOption, TripInput, TripSelectionState } from "./types";
+import {
+  Activity,
+  HotelOption,
+  ItineraryDayData,
+  TripInput,
+  TripSelectionState,
+} from "./types";
+import { deriveTripIntentFromPrompt } from "./tripIntent";
 
 type RecommendationTripLike = {
   title?: string;
@@ -14,8 +21,28 @@ type RecommendationTripLike = {
   savedSelectionState?: Pick<TripSelectionState, "hotelName">;
 };
 
+type PromptFitTripLike = Pick<RecommendationTripLike, "topActivities"> & {
+  budgetBreakdown?: {
+    total?: number;
+    totalExpected?: number;
+  };
+  estimatedCost?: number;
+  itineraryDays?: Pick<ItineraryDayData, "stops">[];
+};
+
 function normalized(value?: string) {
   return (value ?? "").trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+export function normalizePlaceDisplayName(value?: string) {
+  const trimmed = value?.trim();
+  if (!trimmed) return "";
+
+  return trimmed
+    .replace(/\s*trailhead$/i, "")
+    .replace(/\s{2,}/g, " ")
+    .replace(/[,\-]\s*$/g, "")
+    .trim();
 }
 
 function signalText(parts: Array<string | undefined>) {
@@ -76,6 +103,19 @@ export function isCampingFocused(
     prompt.includes("camp") ||
     prompt.includes("tent") ||
     prompt.includes("campsite")
+  );
+}
+
+function isSummitHikeFocused(
+  input?: Partial<Pick<TripInput, "activityFocus" | "tripPrompt">> | null
+) {
+  if (input?.activityFocus !== "hiking" && !input?.tripPrompt) {
+    return false;
+  }
+
+  return (
+    deriveTripIntentFromPrompt(input?.tripPrompt).hardConstraints.activityAnchor ===
+    "summit_hike"
   );
 }
 
@@ -142,6 +182,27 @@ export function isBroadDestinationActivity(
   return false;
 }
 
+function hikeSpecificityScore(activity: Activity) {
+  const text = signalText([activity.name, activity.type, activity.shortDescription]);
+  let score = 0;
+
+  if (text.includes("summit")) score += 80;
+  if (text.includes("peak")) score += 72;
+  if (text.includes("ridge")) score += 64;
+  if (text.includes("scramble")) score += 56;
+  if (text.includes("alpine")) score += 48;
+  if (text.includes("trail")) score += 30;
+  if (text.includes("hike")) score += 26;
+  if (text.includes("lookout")) score += 18;
+  if (text.includes("viewpoint")) score += 16;
+  if (text.includes("mountain")) score += 16;
+  if (text.includes("trailhead")) score -= 8;
+  if (text.endsWith("national park") || text.endsWith("provincial park")) score -= 30;
+  if (typeof activity.rating === "number") score += activity.rating * 4;
+
+  return score;
+}
+
 function campingStayScore(
   activity: Activity,
   trip: RecommendationTripLike
@@ -173,6 +234,115 @@ function campingStayScore(
   }
 
   return score;
+}
+
+function selectedTripTotal(trip: PromptFitTripLike) {
+  return (
+    trip.budgetBreakdown?.totalExpected ??
+    trip.budgetBreakdown?.total ??
+    trip.estimatedCost
+  );
+}
+
+function formatMoney(value: number) {
+  return `$${Math.round(value)}`;
+}
+
+function hasLighterRecoveryDays(
+  trip: PromptFitTripLike,
+  anchorName?: string
+) {
+  if (!trip.itineraryDays?.length) return false;
+
+  const normalizedAnchor = normalized(anchorName);
+  const recoveryDays = trip.itineraryDays.filter((day) => {
+    const activityTitles = day.stops
+      .filter((stop) => stop.kind === "activity")
+      .map((stop) => normalized(stop.title));
+
+    if (activityTitles.length === 0) {
+      return true;
+    }
+
+    return activityTitles.every((title) => title && title !== normalizedAnchor);
+  });
+
+  return recoveryDays.length >= 1;
+}
+
+export function getPromptConstraintFitSummary(
+  trip: PromptFitTripLike,
+  input?: Partial<TripInput> | null
+) {
+  if (!input?.tripPrompt) return undefined;
+
+  const promptIntent = deriveTripIntentFromPrompt(input.tripPrompt);
+  const parts: string[] = [];
+  const totalBudget =
+    typeof input.budget === "number" && input.budget > 0
+      ? input.budget
+      : typeof input.budgetPerTraveler === "number" &&
+          input.budgetPerTraveler > 0 &&
+          typeof input.travelerCount === "number" &&
+          input.travelerCount > 0
+        ? input.budgetPerTraveler * input.travelerCount
+        : undefined;
+  const tripTotal = selectedTripTotal(trip);
+
+  let summitAnchorName: string | undefined;
+
+  if (promptIntent.hardConstraints.activityAnchor === "summit_hike") {
+    const hikeAnchor = [...(trip.topActivities ?? [])]
+      .sort((a, b) => hikeSpecificityScore(b) - hikeSpecificityScore(a))[0];
+
+    if (hikeAnchor?.name?.trim() && hikeSpecificityScore(hikeAnchor) >= 40) {
+      summitAnchorName = normalizePlaceDisplayName(hikeAnchor.name);
+      parts.push(`Locks onto ${summitAnchorName} as the signature summit-style hike`);
+    } else {
+      parts.push("Closest match is still only an approximate summit-style hike fit");
+    }
+
+    if (promptIntent.softPreferences.wantsRecoveryDays) {
+      parts.push(
+        trip.itineraryDays?.length
+          ? hasLighterRecoveryDays(trip, summitAnchorName)
+            ? "Keeps the other days lighter around the main hike"
+            : "Still needs clearer recovery-day pacing around the main hike"
+          : "Leaves room for lighter recovery time around the main hike"
+      );
+    }
+  }
+
+  if (promptIntent.hardConstraints.requiresVegetarianOptions) {
+    parts.push(
+      promptIntent.hardConstraints.mixedDietGroup
+        ? "Keeps shared meal options workable for a vegetarian plus non-vegetarian group"
+        : "Keeps vegetarian-friendly meals in the plan"
+    );
+  }
+
+  if (typeof tripTotal === "number" && typeof totalBudget === "number") {
+    parts.push(
+      tripTotal <= totalBudget
+        ? `Stays under the ${formatMoney(totalBudget)} total budget`
+        : `Runs above the ${formatMoney(totalBudget)} total budget`
+    );
+  } else if (
+    typeof input.budgetPerTraveler === "number" &&
+    input.budgetPerTraveler > 0
+  ) {
+    parts.push(
+      `Targets roughly ${formatMoney(input.budgetPerTraveler)} per traveler`
+    );
+  }
+
+  if (promptIntent.hardConstraints.hikeDistanceKmTarget) {
+    parts.push(
+      `The ~${promptIntent.hardConstraints.hikeDistanceKmTarget} km round-trip target is still approximate from place signals, not trail-specific distance data`
+    );
+  }
+
+  return parts.length > 0 ? `${parts.join(". ")}.` : undefined;
 }
 
 function buildCampgroundStayOption(
@@ -313,7 +483,19 @@ export function getRecommendedTripTitle(
   }
 
   if (trip.title?.trim()) {
-    return trip.title.trim();
+    return isSummitHikeFocused(input)
+      ? normalizePlaceDisplayName(trip.title)
+      : trip.title.trim();
+  }
+
+  if (isSummitHikeFocused(input)) {
+    const hikeAnchor = [...(trip.topActivities ?? [])]
+      .filter((activity) => !isBroadDestinationActivity(activity, trip))
+      .sort((a, b) => hikeSpecificityScore(b) - hikeSpecificityScore(a))[0];
+
+    if (hikeAnchor?.name?.trim() && hikeSpecificityScore(hikeAnchor) >= 40) {
+      return normalizePlaceDisplayName(hikeAnchor.name);
+    }
   }
 
   if (isCampingFocused(input) || firstHotelLooksCampingSpecific) {

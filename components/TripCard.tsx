@@ -10,11 +10,14 @@ import { isStartCity } from "../lib/startCities";
 import { deriveTripEndDate } from "../lib/tripDates";
 import { saveTripPlan } from "../lib/tripStore";
 import {
+  getPromptConstraintFitSummary,
   getRecommendationContextLabel,
   getRecommendedTripTitle,
+  normalizePlaceDisplayName,
 } from "../lib/tripSpecificity";
 import { trackProductEvent } from "../lib/productAnalytics";
 import {
+  tripConfidenceLabel,
   tripFreshnessLabel,
   tripProviderStatusText,
   tripSourceLabel,
@@ -36,19 +39,6 @@ type EnrichTripResponse = {
   trip?: RankedDestination | null;
   source?: TripDataSource;
 };
-
-function confidenceLabel(confidence?: RankedDestination["confidence"]) {
-  switch (confidence) {
-    case "high":
-      return "High conviction";
-    case "medium":
-      return "Good conviction";
-    case "low":
-      return "Lower conviction";
-    default:
-      return "Trip plan";
-  }
-}
 
 function strengthLabel(strength: RankedDestination["styleMatchStrength"]) {
   switch (strength) {
@@ -77,7 +67,7 @@ function getItineraryPreviewItems(trip: RankedDestination) {
 
   return trip.topActivities.slice(0, 3).map((activity, index) => ({
     label: `Stop ${index + 1}`,
-    text: activity.name,
+    text: normalizePlaceDisplayName(activity.name) || activity.name,
   }));
 }
 
@@ -207,6 +197,8 @@ export default function TripCard({
     trip.rankingReasons?.[0]?.label ??
     trip.matchReasons?.[0] ??
     "This was the strongest overall fit for the trip brief.";
+  const promptConstraintNote = getPromptConstraintFitSummary(trip, normalizedInput);
+  const whyThisIsTheCall = promptConstraintNote ?? trip.aiBestFit ?? topWhyRanked;
   const trustNote = tripProviderStatusText(trip);
   const tags = Array.isArray(trip.rawVibes) ? trip.rawVibes.slice(0, 4) : [];
   const displayTitle = getRecommendedTripTitle(
@@ -337,7 +329,7 @@ export default function TripCard({
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="max-w-3xl">
             <div className="flex flex-wrap gap-2">
-              <Badge tone="green">{confidenceLabel(trip.confidence)}</Badge>
+              <Badge tone="green">{tripConfidenceLabel(trip.confidence)}</Badge>
               <Badge>{trip.isStaycation ? "Staycation" : `${trip.province} getaway`}</Badge>
               <Badge tone={tripSourceTone(trip) === "green" ? "green" : "slate"}>
                 {tripSourceLabel(trip)}
@@ -367,7 +359,7 @@ export default function TripCard({
               Why This Is The Call
             </div>
             <p className="mt-2 font-semibold text-slate-950 dark:text-slate-100">
-              {trip.aiBestFit ?? topWhyRanked}
+              {whyThisIsTheCall}
             </p>
           </div>
         </div>
@@ -431,6 +423,17 @@ export default function TripCard({
                 {topWhyRanked}
               </p>
             </div>
+
+            {promptConstraintNote ? (
+              <div className="mt-3 rounded-[1rem] border border-white bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
+                <div className="text-sm font-semibold text-slate-950 dark:text-slate-100">
+                  Constraint check
+                </div>
+                <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">
+                  {promptConstraintNote}
+                </p>
+              </div>
+            ) : null}
 
             <div className="mt-3 rounded-[1rem] border border-white bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
               <div className="text-sm font-semibold text-slate-950 dark:text-slate-100">

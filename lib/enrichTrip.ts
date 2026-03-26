@@ -15,6 +15,7 @@ import { sortHotelOptions } from "./hotelAvailability";
 import { fetchHotelsDotComHotelData } from "./hotelsDotComHotelProvider";
 import { fetchPlacesProviderData } from "./placesProvider";
 import { reportProviderEvent } from "./providerTelemetry";
+import { deriveTripIntentFromPrompt } from "./tripIntent";
 
 const ENRICH_CACHE_TTL_MS = 1000 * 60 * 20;
 
@@ -193,12 +194,147 @@ function placeSearchText(place: GooglePlace) {
   );
 }
 
+function placeDisplayName(place: GooglePlace) {
+  return (place.displayName?.text ?? "").trim();
+}
+
+function isNumericOnlyPlaceName(value?: string) {
+  const normalized = (value ?? "").trim();
+  return /^\d+[a-z]?$/i.test(normalized);
+}
+
+function countTextMatches(text: string, keywords: string[]) {
+  return keywords.reduce((total, keyword) => {
+    return total + (text.includes(keyword) ? 1 : 0);
+  }, 0);
+}
+
+function promptActivitySignal(text: string, input: TripInput) {
+  const promptIntent = deriveTripIntentFromPrompt(input.tripPrompt);
+  const strongSummitSignal = countTextMatches(text, [
+    "summit",
+    "peak",
+    "ridge",
+    "scramble",
+    "alpine",
+    "mountain",
+  ]);
+  const hikeSignal = countTextMatches(text, [
+    "trail",
+    "hike",
+    "loop",
+    "lookout",
+    "viewpoint",
+    "canyon",
+    "waterfall",
+    "lake",
+    "backcountry",
+  ]);
+  const scenicSignal = countTextMatches(text, [
+    "scenic",
+    "view",
+    "lookout",
+    "viewpoint",
+    "panorama",
+    "panoramic",
+    "mountain",
+    "lake",
+  ]);
+
+  let score = 0;
+
+  if (promptIntent.hardConstraints.activityAnchor === "summit_hike") {
+    if (strongSummitSignal >= 1) {
+      score += 24;
+    } else if (hikeSignal >= 2) {
+      score += 8;
+    } else {
+      score -= 16;
+    }
+
+    if (text.includes("trailhead") && strongSummitSignal === 0) {
+      score -= 6;
+    }
+
+    if (
+      (text.endsWith("national park") || text.endsWith("provincial park")) &&
+      strongSummitSignal === 0
+    ) {
+      score -= 18;
+    }
+  }
+
+  if (promptIntent.hardConstraints.hikeDistanceKmTarget) {
+    if (
+      strongSummitSignal >= 1 ||
+      text.includes("backcountry") ||
+      text.includes("loop")
+    ) {
+      score += 6;
+    } else if (!text.includes("trail") && !text.includes("hike")) {
+      score -= 8;
+    }
+  }
+
+  if (promptIntent.hardConstraints.requiresScenicView) {
+    score += scenicSignal >= 1 ? 12 : -8;
+  }
+
+  return score;
+}
+
+function promptFoodSignal(text: string, input: TripInput) {
+  const promptIntent = deriveTripIntentFromPrompt(input.tripPrompt);
+  let score = 0;
+
+  if (promptIntent.hardConstraints.requiresVegetarianOptions) {
+    if (
+      ["vegetarian", "vegan", "plant", "salad", "falafel", "mediterranean", "indian", "thai", "mexican", "asian", "fusion"].some((term) =>
+        text.includes(term)
+      )
+    ) {
+      score += 18;
+    } else if (
+      ["restaurant", "bistro", "kitchen", "dining", "cafe", "bakery", "brunch"].some((term) =>
+        text.includes(term)
+      )
+    ) {
+      score += 4;
+    } else {
+      score -= 8;
+    }
+
+    if (
+      promptIntent.hardConstraints.mixedDietGroup &&
+      ["restaurant", "bistro", "kitchen", "fusion", "grill", "dining"].some((term) =>
+        text.includes(term)
+      )
+    ) {
+      score += 6;
+    }
+  }
+
+  if (promptIntent.softPreferences.wantsGoodFood) {
+    if (
+      ["restaurant", "bistro", "kitchen", "bakery", "brunch", "chef", "fusion", "trattoria", "cafe"].some((term) =>
+        text.includes(term)
+      )
+    ) {
+      score += 8;
+    }
+  }
+
+  return score;
+}
+
 function shouldRejectPlace(
   place: GooglePlace,
   trip: RankedDestination,
-  kind: "food" | "activity" | "hotel"
+  kind: "food" | "activity" | "hotel",
+  input: TripInput
 ) {
   const text = placeSearchText(place);
+  const displayName = placeDisplayName(place);
 
   // Broad text searches bring back plenty of operational or utility locations
   // that technically match the query but should never shape trip quality.
@@ -216,6 +352,13 @@ function shouldRejectPlace(
   ];
 
   if (bannedTerms.some((term) => text.includes(term))) {
+    return true;
+  }
+
+  if (
+    (kind === "food" || kind === "activity") &&
+    isNumericOnlyPlaceName(displayName)
+  ) {
     return true;
   }
 
@@ -270,6 +413,18 @@ function shouldRejectPlace(
     if (
       obviousHotelTerms.some((term) => text.includes(term)) &&
       !activityOverrideTerms.some((term) => text.includes(term))
+    ) {
+      return true;
+    }
+
+    const promptIntent = deriveTripIntentFromPrompt(input.tripPrompt);
+    if (
+      promptIntent.hardConstraints.activityAnchor === "summit_hike" &&
+      (displayName.toLowerCase().endsWith("national park") ||
+        displayName.toLowerCase().endsWith("provincial park")) &&
+      !["summit", "peak", "ridge", "trail", "hike", "lookout", "viewpoint"].some(
+        (term) => text.includes(term)
+      )
     ) {
       return true;
     }
@@ -328,6 +483,7 @@ function placeRelevanceScore(
         score -= 6;
       }
     }
+    score += promptFoodSignal(text, input);
   }
 
   if (kind === "activity") {
@@ -345,6 +501,8 @@ function placeRelevanceScore(
     if (styleSignals.some((term) => text.includes(term))) {
       score += 12;
     }
+
+    score += promptActivitySignal(text, input);
   }
 
   if (kind === "hotel") {
@@ -364,7 +522,7 @@ function rankPlaces(
   // Filter first, then sort by trip-specific relevance so downstream mapping
   // sees the best provider candidates in a stable order.
   return [...places]
-    .filter((place) => !shouldRejectPlace(place, trip, kind))
+    .filter((place) => !shouldRejectPlace(place, trip, kind, input))
     .sort(
       (a, b) =>
         placeRelevanceScore(b, trip, kind, input) -
@@ -385,6 +543,7 @@ function createEnrichCacheKey(trip: RankedDestination, input: TripInput) {
     province: trip.province,
     startCity: input.startCity,
     style: input.style,
+    tripPrompt: input.tripPrompt,
     veganFriendly: input.veganFriendly,
     tripStartDate: input.tripStartDate,
     tripEndDate: input.tripEndDate,
@@ -493,6 +652,98 @@ function deriveProviderOutcome(options: {
   return "fallback_used" as const;
 }
 
+function evaluateLivePromptFit(
+  activities: Array<{ name?: string; type?: string; shortDescription?: string }>,
+  foods: Array<{ name?: string; category?: string; shortDescription?: string; tags?: string[] }>,
+  input: TripInput
+) {
+  const promptIntent = deriveTripIntentFromPrompt(input.tripPrompt);
+  const warnings: string[] = [];
+  const rankingReasons: RankingReason[] = [];
+  let scoreAdjustment = 0;
+
+  if (promptIntent.hardConstraints.activityAnchor === "summit_hike") {
+    const strongSummitMatches = activities.filter((activity) =>
+      normalizeText(
+        [activity.name, activity.type, activity.shortDescription].join(" ")
+      ).match(/\b(summit|peak|ridge|scramble|alpine|mountain)\b/)
+    ).length;
+    const scenicHikeMatches = activities.filter((activity) => {
+      const text = normalizeText(
+        [activity.name, activity.type, activity.shortDescription].join(" ")
+      );
+
+      return (
+        ["trail", "hike", "loop", "backcountry"].some((term) =>
+          text.includes(term)
+        ) &&
+        ["view", "lookout", "viewpoint", "scenic", "mountain", "lake"].some(
+          (term) => text.includes(term)
+        )
+      );
+    }).length;
+
+    if (strongSummitMatches >= 1) {
+      scoreAdjustment += 12;
+      rankingReasons.push({
+        label: "Live options include a stronger summit-hike anchor",
+        impact: "positive",
+      });
+    } else if (scenicHikeMatches >= 1) {
+      scoreAdjustment += 4;
+      rankingReasons.push({
+        label: "Live options show a more specific scenic hike",
+        impact: "positive",
+      });
+    } else {
+      scoreAdjustment -= 14;
+      warnings.push("Live results did not surface a convincing summit-hike anchor");
+      rankingReasons.push({
+        label: "Live options still miss the summit-hike brief",
+        impact: "negative",
+      });
+    }
+  }
+
+  if (promptIntent.hardConstraints.requiresVegetarianOptions) {
+    const vegetarianFriendlyFoods = foods.filter((food) => {
+      const text = normalizeText(
+        [food.name, food.category, food.shortDescription, ...(food.tags ?? [])].join(" ")
+      );
+
+      return [
+        "vegetarian",
+        "vegan",
+        "plant",
+        "salad",
+        "falafel",
+        "mediterranean",
+        "indian",
+        "thai",
+        "mexican",
+        "fusion",
+      ].some((term) => text.includes(term));
+    }).length;
+
+    if (vegetarianFriendlyFoods >= 1) {
+      scoreAdjustment += 8;
+      rankingReasons.push({
+        label: "Live food picks support the dietary constraint better",
+        impact: "positive",
+      });
+    } else if (foods.length === 0) {
+      scoreAdjustment -= 6;
+      warnings.push("Live food results are too thin to confirm vegetarian support");
+    }
+  }
+
+  return {
+    scoreAdjustment,
+    warnings,
+    rankingReasons,
+  };
+}
+
 export async function enrichRankedTrip(
   trip: RankedDestination,
   input: TripInput
@@ -515,6 +766,7 @@ export async function enrichRankedTrip(
           style: input.style,
           activityFocus: input.activityFocus,
           veganFriendly: input.veganFriendly,
+          tripPrompt: input.tripPrompt,
           tripStartDate: input.tripStartDate,
           tripEndDate: input.tripEndDate,
         }),
@@ -619,10 +871,16 @@ export async function enrichRankedTrip(
       liveHotels as Array<{ rating?: number }>,
       hasLiveResults
     );
+    const promptFit = evaluateLivePromptFit(
+      mergedActivities,
+      mergedFoodSpots,
+      input
+    );
 
     const rankingReasons: RankingReason[] = Array.isArray(trip.rankingReasons)
       ? [...trip.rankingReasons]
       : [];
+    const warnings = Array.isArray(trip.warnings) ? [...trip.warnings] : [];
 
     if (inventoryHotels.length > 0) {
       rankingReasons.unshift({
@@ -648,14 +906,24 @@ export async function enrichRankedTrip(
       });
     }
 
+    if (promptFit.rankingReasons.length > 0) {
+      rankingReasons.unshift(...promptFit.rankingReasons);
+    }
+
+    if (promptFit.warnings.length > 0) {
+      warnings.unshift(...promptFit.warnings);
+    }
+
     const mergedTrip: RankedDestination = {
       ...trip,
+      score: Math.round((trip.score + promptFit.scoreAdjustment) * 100) / 100,
       foodSpots: mergedFoodSpots,
       topActivities: mergedActivities,
       hotelOptions: mergedHotels as HotelOption[],
       liveDataSummary,
       sourceCheckedAt,
       providerStatus,
+      warnings: Array.from(new Set(warnings)),
       rankingReasons: rankingReasons.slice(0, 4),
     };
 

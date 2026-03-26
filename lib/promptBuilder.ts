@@ -1,6 +1,9 @@
 import { RankedDestination, TripInput } from "./types";
+import { deriveTripIntentFromPrompt } from "./tripIntent";
 
 export function buildTripPrompt(input: TripInput, trips: RankedDestination[]) {
+  const promptIntent = deriveTripIntentFromPrompt(input.tripPrompt);
+
   return `
 You are a practical Alberta weekend trip planner.
 
@@ -19,6 +22,8 @@ User preferences:
 - Vegan-friendly only: ${input.veganFriendly ? "Yes" : "No"}
 - Include staycations: ${input.includeStaycations ? "Yes" : "No"}
 - Strict budget: ${input.strictBudget ? "Yes" : "No"}
+- Hard constraints: ${JSON.stringify(promptIntent.hardConstraints)}
+- Soft preferences: ${JSON.stringify(promptIntent.softPreferences)}
 
 For each destination, provide:
 - aiSummary: 1–2 sentence destination summary tailored to the user

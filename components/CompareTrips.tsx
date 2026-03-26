@@ -1,4 +1,5 @@
 import { RankedDestination } from "../lib/types";
+import { tripConfidenceLabel } from "../lib/trustSignals";
 
 function strengthLabel(strength: RankedDestination["styleMatchStrength"]) {
   switch (strength) {
@@ -14,16 +15,7 @@ function strengthLabel(strength: RankedDestination["styleMatchStrength"]) {
 }
 
 function confidenceLabel(confidence?: RankedDestination["confidence"]) {
-  switch (confidence) {
-    case "high":
-      return "Strong match";
-    case "medium":
-      return "Good match";
-    case "low":
-      return "Experimental";
-    default:
-      return "Unrated";
-  }
+  return confidence ? tripConfidenceLabel(confidence) : "Unrated";
 }
 
 function dataSourceLabel(trip: RankedDestination) {

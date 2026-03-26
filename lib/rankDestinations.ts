@@ -9,6 +9,7 @@ import {
 } from "./types";
 import { estimateBudgetBreakdown } from "./budgetEstimator";
 import { mapRawDestination } from "./mapDestination";
+import { deriveTripIntentFromPrompt } from "./tripIntent";
 
 type ReasonCandidate = RankingReason & {
   priority: number;
@@ -306,6 +307,56 @@ function getVeganSignal(destination: ReturnType<typeof mapRawDestination>): numb
   const text = getJoinedSignals(destination);
   const weakPositive = ["cafe", "downtown", "city", "food"];
   return countMatches(text, weakPositive) >= 2 ? 1 : 0;
+}
+
+function getScenicSignal(destination: MappedDestination): number {
+  return countMatches(getJoinedSignals(destination), [
+    "scenic",
+    "view",
+    "viewpoint",
+    "lookout",
+    "lake",
+    "mountain",
+    "canyon",
+    "waterfall",
+    "ridge",
+    "summit",
+  ]);
+}
+
+function getMountainHikeSignal(destination: MappedDestination): number {
+  return countMatches(getJoinedSignals(destination), [
+    "hike",
+    "hiking",
+    "trail",
+    "summit",
+    "peak",
+    "ridge",
+    "scramble",
+    "alpine",
+    "mountain",
+    "viewpoint",
+    "lookout",
+    "canyon",
+    "lake",
+  ]);
+}
+
+function getVegetarianFoodSignal(destination: MappedDestination): number {
+  if (destination.veganFriendly) return 4;
+
+  return countMatches(getJoinedSignals(destination), [
+    "restaurant",
+    "restaurants",
+    "cafe",
+    "cafes",
+    "coffee",
+    "bakery",
+    "food",
+    "foodie",
+    "downtown",
+    "market",
+  ]);
 }
 
 function tinyDeterministicTieBreaker(name: string): number {
@@ -667,6 +718,187 @@ function calculateActivityFocusScore(
         impact: "negative",
       },
     ],
+  };
+}
+
+function calculatePromptConstraintScore(
+  destination: MappedDestination,
+  input: TripInput
+): {
+  score: number;
+  matchReasons: string[];
+  warnings: string[];
+  rankingReasons: RankingReason[];
+  hardConstraintCount: number;
+  hardConstraintMisses: number;
+  promptConstraintStrength: number;
+} {
+  const promptIntent = deriveTripIntentFromPrompt(input.tripPrompt);
+  const matchReasons: string[] = [];
+  const warnings: string[] = [];
+  const rankingReasons: RankingReason[] = [];
+
+  let score = 0;
+  let hardConstraintCount = 0;
+  let hardConstraintMisses = 0;
+  let promptConstraintStrength = 0;
+
+  const mountainHikeSignal = getMountainHikeSignal(destination);
+  const scenicSignal = getScenicSignal(destination);
+  const vegetarianSignal = getVegetarianFoodSignal(destination);
+  const foodieSignal = getFoodieSignal(destination);
+  const getawaySignal = getGetawaySignal(destination);
+
+  if (promptIntent.hardConstraints.activityAnchor === "summit_hike") {
+    hardConstraintCount += 1;
+
+    if (mountainHikeSignal >= 6) {
+      score += 18;
+      promptConstraintStrength += 6;
+      matchReasons.push("Matches the summit-hike brief better");
+      rankingReasons.push({
+        label: "Better fit for a summit-style hike",
+        impact: "positive",
+      });
+    } else if (mountainHikeSignal >= 4) {
+      score += 10;
+      promptConstraintStrength += 4;
+      matchReasons.push("Promising mountain-hike signal");
+      rankingReasons.push({
+        label: "Promising fit for a summit-oriented hike",
+        impact: "positive",
+      });
+    } else if (mountainHikeSignal >= 2) {
+      score -= 4;
+      promptConstraintStrength += 2;
+      warnings.push("Hiking signal exists, but summit specificity is thinner");
+      rankingReasons.push({
+        label: "Hiking exists here, but summit specificity is weaker",
+        impact: "neutral",
+      });
+    } else {
+      score -= 18;
+      hardConstraintMisses += 1;
+      warnings.push("Static data does not show a convincing summit-hike anchor");
+      rankingReasons.push({
+        label: "Misses the summit-hike brief in static data",
+        impact: "negative",
+      });
+    }
+  }
+
+  if (promptIntent.hardConstraints.hikeDistanceKmTarget) {
+    hardConstraintCount += 1;
+
+    if (mountainHikeSignal >= 5) {
+      score += 6;
+      promptConstraintStrength += 3;
+      matchReasons.push("Better shot at a real half-day hike");
+    } else if (mountainHikeSignal >= 3) {
+      score += 1;
+      promptConstraintStrength += 1;
+      warnings.push("Hike distance target still needs live verification");
+    } else {
+      score -= 6;
+      hardConstraintMisses += 1;
+      warnings.push("Static data is thin for the requested hike length");
+    }
+  }
+
+  if (promptIntent.hardConstraints.requiresScenicView) {
+    hardConstraintCount += 1;
+
+    if (scenicSignal >= 4) {
+      score += 10;
+      promptConstraintStrength += 4;
+      matchReasons.push("Strong scenic payoff signal");
+      rankingReasons.push({
+        label: "Stronger scenic payoff signal",
+        impact: "positive",
+      });
+    } else if (scenicSignal >= 2) {
+      score += 4;
+      promptConstraintStrength += 2;
+      warnings.push("Scenic payoff looks possible, but not strongly proven");
+    } else {
+      score -= 10;
+      hardConstraintMisses += 1;
+      warnings.push("Scenic payoff is weaker than requested");
+      rankingReasons.push({
+        label: "Scenic payoff is weaker than requested",
+        impact: "negative",
+      });
+    }
+  }
+
+  if (promptIntent.hardConstraints.requiresVegetarianOptions) {
+    hardConstraintCount += 1;
+
+    if (vegetarianSignal >= 4) {
+      score += 10;
+      promptConstraintStrength += 4;
+      matchReasons.push("Food signal supports vegetarian planning");
+      rankingReasons.push({
+        label: "Food support looks stronger for vegetarian planning",
+        impact: "positive",
+      });
+    } else if (vegetarianSignal >= 2) {
+      score += 3;
+      promptConstraintStrength += 2;
+      warnings.push("Vegetarian support looks possible, but not strongly proven");
+    } else {
+      score -= 10;
+      hardConstraintMisses += 1;
+      warnings.push("Vegetarian-friendly food support is not strongly confirmed");
+      rankingReasons.push({
+        label: "Vegetarian support is not strongly confirmed",
+        impact: "negative",
+      });
+    }
+
+    if (promptIntent.hardConstraints.mixedDietGroup && foodieSignal >= 2) {
+      score += 4;
+      promptConstraintStrength += 1;
+      matchReasons.push("Food options look better for a mixed-diet group");
+    }
+  }
+
+  if (promptIntent.softPreferences.wantsGoodFood) {
+    if (foodieSignal >= 4) {
+      score += 6;
+      rankingReasons.push({
+        label: "Food signal rounds out the trip brief well",
+        impact: "positive",
+      });
+    } else if (foodieSignal >= 2) {
+      score += 2;
+    } else {
+      score -= 3;
+      warnings.push("Food side of the brief looks thinner here");
+    }
+  }
+
+  if (promptIntent.softPreferences.wantsGetawayFeel) {
+    if (!destination.isStaycation && getawaySignal >= 4) {
+      score += 5;
+      rankingReasons.push({
+        label: "Feels more like a real getaway",
+        impact: "positive",
+      });
+    } else if (destination.isStaycation) {
+      score -= 4;
+      warnings.push("This reads more like a home-base option than a true getaway");
+    }
+  }
+
+  return {
+    score: round2(score),
+    matchReasons,
+    warnings,
+    rankingReasons,
+    hardConstraintCount,
+    hardConstraintMisses,
+    promptConstraintStrength,
   };
 }
 
@@ -1099,6 +1331,9 @@ function buildRankingReasons(args: {
   resolutionSignal: number;
   veganSignal: number;
   getawaySignal: number;
+  hardConstraintCount: number;
+  hardConstraintMisses: number;
+  promptConstraintStrength: number;
   extraReasonItems: RankingReason[];
   liveReasonItems: RankingReason[];
 }): RankingReason[] {
@@ -1111,6 +1346,9 @@ function buildRankingReasons(args: {
     resolutionSignal,
     veganSignal,
     getawaySignal,
+    hardConstraintCount,
+    hardConstraintMisses,
+    promptConstraintStrength,
     extraReasonItems,
     liveReasonItems,
   } = args;
@@ -1164,6 +1402,37 @@ function buildRankingReasons(args: {
     candidates.push(
       reasonCandidate("Weak style match", "negative", 1, 60)
     );
+  }
+
+  if (hardConstraintCount > 0) {
+    if (hardConstraintMisses === 0 && promptConstraintStrength >= 8) {
+      candidates.push(
+        reasonCandidate(
+          "Matches the specific trip brief better",
+          "positive",
+          1,
+          99 + promptConstraintStrength
+        )
+      );
+    } else if (hardConstraintMisses === 0) {
+      candidates.push(
+        reasonCandidate(
+          "Tracks the key trip constraints",
+          "positive",
+          1,
+          86 + promptConstraintStrength
+        )
+      );
+    } else {
+      candidates.push(
+        reasonCandidate(
+          "Misses part of the specific trip brief",
+          "negative",
+          1,
+          98 + hardConstraintMisses
+        )
+      );
+    }
   }
 
   if (budgetRatio <= 0.65) {
@@ -1303,6 +1572,9 @@ function calculateConfidence(args: {
   driveRatio: number;
   liveStrength: number;
   warningCount: number;
+  hardConstraintCount: number;
+  hardConstraintMisses: number;
+  promptConstraintStrength: number;
   destination: Partial<RankedDestination>;
   input: TripInput;
 }): ConfidenceLevel {
@@ -1312,6 +1584,9 @@ function calculateConfidence(args: {
     driveRatio,
     liveStrength,
     warningCount,
+    hardConstraintCount,
+    hardConstraintMisses,
+    promptConstraintStrength,
     destination,
     input,
   } = args;
@@ -1329,6 +1604,7 @@ function calculateConfidence(args: {
     styleMatchStrength === "weak" ||
     budgetRatio > 1.08 ||
     driveRatio > 0.98 ||
+    (hardConstraintCount > 0 && hardConstraintMisses >= 2) ||
     warningCount >= 4;
 
   if (clearlyBadFit) {
@@ -1342,6 +1618,13 @@ function calculateConfidence(args: {
     warningCount <= 1;
 
   if (!veganRequired) {
+    if (
+      hardConstraintCount > 0 &&
+      (hardConstraintMisses >= 1 || promptConstraintStrength <= 3)
+    ) {
+      return "medium";
+    }
+
     if (baseStrong && !weakLiveForRelevantStyle) {
       return "high";
     }
@@ -1359,6 +1642,13 @@ function calculateConfidence(args: {
   }
 
   if (veganStrong) {
+    if (
+      hardConstraintCount > 0 &&
+      (hardConstraintMisses >= 1 || promptConstraintStrength <= 3)
+    ) {
+      return "medium";
+    }
+
     if (baseStrong && !weakLiveForRelevantStyle) {
       return "high";
     }
@@ -1419,6 +1709,7 @@ export function rankDestinations(
       const stylePart = calculateStyleScore(destination, input);
       const styleResolutionPart = calculateStyleResolutionScore(destination, input);
       const activityFocusPart = calculateActivityFocusScore(destination, input);
+      const promptConstraintPart = calculatePromptConstraintScore(destination, input);
       const seasonPart = calculateSeasonScore(destination, input);
       const drivePart = calculateDriveScore(destination, input);
       const budgetPart = calculateBudgetScore(estimatedCost, input);
@@ -1434,6 +1725,7 @@ export function rankDestinations(
 
       const matchReasons = dedupeStrings([
         ...stylePart.matchReasons,
+        ...promptConstraintPart.matchReasons,
         ...seasonPart.matchReasons,
         ...drivePart.matchReasons,
         ...budgetPart.matchReasons,
@@ -1442,6 +1734,7 @@ export function rankDestinations(
 
       const warnings = dedupeStrings([
         ...stylePart.warnings,
+        ...promptConstraintPart.warnings,
         ...drivePart.warnings,
         ...budgetPart.warnings,
         ...veganPart.warnings,
@@ -1452,6 +1745,7 @@ export function rankDestinations(
       const extraReasonItems: RankingReason[] = [
         ...styleResolutionPart.rankingReasons,
         ...activityFocusPart.rankingReasons,
+        ...promptConstraintPart.rankingReasons,
         ...veganPart.rankingReasons,
         ...(staycationPart.extraReason ? [staycationPart.extraReason] : []),
         ...getawayValuePart.rankingReasons,
@@ -1467,6 +1761,7 @@ export function rankDestinations(
         stylePart.score +
         styleResolutionPart.score +
         activityFocusPart.score +
+        promptConstraintPart.score +
         seasonPart.score +
         drivePart.score +
         budgetPart.score +
@@ -1486,6 +1781,9 @@ export function rankDestinations(
         resolutionSignal: styleResolutionPart.resolutionSignal,
         veganSignal: veganPart.veganSignal,
         getawaySignal: getawayValuePart.getawaySignal,
+        hardConstraintCount: promptConstraintPart.hardConstraintCount,
+        hardConstraintMisses: promptConstraintPart.hardConstraintMisses,
+        promptConstraintStrength: promptConstraintPart.promptConstraintStrength,
         extraReasonItems,
         liveReasonItems: liveDataPart.rankingReasons,
       });
@@ -1496,6 +1794,9 @@ export function rankDestinations(
         driveRatio,
         liveStrength: liveDataPart.liveStrength,
         warningCount: warnings.length,
+        hardConstraintCount: promptConstraintPart.hardConstraintCount,
+        hardConstraintMisses: promptConstraintPart.hardConstraintMisses,
+        promptConstraintStrength: promptConstraintPart.promptConstraintStrength,
         destination,
         input,
       });

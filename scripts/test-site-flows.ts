@@ -5,9 +5,14 @@ import { POST as osmRoutePost } from "../app/api/osm-route/route";
 import { GET as placePhotoGet } from "../app/api/place-photo/route";
 import { POST as rankTripsPost } from "../app/api/rank-trips/route";
 import { buildTripPlan } from "../lib/buildTripPlan";
+import {
+  buildActivityTextQuery,
+  buildRestaurantTextQuery,
+} from "../lib/googlePlaces";
 import { rankDestinations } from "../lib/rankDestinations";
 import { deriveTripEndDate } from "../lib/tripDates";
-import { TripInput, TripPlan, TripStyle } from "../lib/types";
+import { RankedDestination, TripInput, TripPlan, TripStyle } from "../lib/types";
+import { deriveTripIntentFromPrompt } from "../lib/tripIntent";
 
 loadEnvConfig(process.cwd());
 
@@ -43,6 +48,8 @@ function makeInput(partial: Partial<TripInput> & Pick<TripInput, "style">): Trip
     includeStaycations: partial.includeStaycations ?? true,
     strictBudget: partial.strictBudget ?? false,
     preferredDestination: partial.preferredDestination,
+    activityFocus: partial.activityFocus,
+    tripPrompt: partial.tripPrompt,
     tripStartDate,
     tripEndDate: deriveTripEndDate(tripStartDate, tripLengthDays),
   };
@@ -163,6 +170,227 @@ async function runPlannerTests(): Promise<TestResult[]> {
         : "No destination matched filters",
     };
   });
+}
+
+async function runPromptInterpretationTests(): Promise<TestResult[]> {
+  const prompt =
+    "I want to go on a hike that takes me to the top of a mountain. The hike should be about 15km long for the round trip, and there should be a nice view at the top. I also want to eat good food, and I'm a vegetarian, but my friends are not. Budget of $600 each.";
+  const intent = deriveTripIntentFromPrompt(prompt);
+  const activityQuery = buildActivityTextQuery("Canmore, Alberta", "outdoors", {
+    activityFocus: intent.activityFocus,
+    hardConstraints: intent.hardConstraints,
+    softPreferences: intent.softPreferences,
+  });
+  const restaurantQuery = buildRestaurantTextQuery("Canmore, Alberta", {
+    veganFriendly: intent.veganFriendly,
+    requiresVegetarianOptions: intent.hardConstraints.requiresVegetarianOptions,
+    mixedDietGroup: intent.hardConstraints.mixedDietGroup,
+    wantsGoodFood: intent.softPreferences.wantsGoodFood,
+  });
+  const recoveryPrompt =
+    "I want to go on a hiking trip to the top of a mountain with scenic views. The hike should be 15km long, round-trip. On the other days I just want to relax and eat good food, I'm a vegetarian, but my friends are not. Our budget is $400 per person.";
+  const recoveryIntent = deriveTripIntentFromPrompt(recoveryPrompt);
+  const recoveryInput = makeInput({
+    style: "outdoors",
+    activityFocus: "hiking",
+    tripLengthDays: 3,
+    budgetPerTraveler: 400,
+    budget: 1600,
+    maxDriveHours: 5,
+    tripPrompt: recoveryPrompt,
+  });
+  const recoveryFixture: RankedDestination = {
+    name: "Canmore",
+    province: "Alberta",
+    driveHoursFromStart: 4,
+    bestSeasons: ["Spring", "Summer", "Fall"],
+    avoidSeasons: [],
+    tripStyles: ["outdoors", "adventure", "foodie"],
+    styleScores: {
+      chill: 1,
+      outdoors: 3,
+      foodie: 2,
+      "solo reset": 1,
+      adventure: 3,
+    },
+    budgetLevel: "medium",
+    veganFriendly: true,
+    summary: "Mountain base with a clear summit-hike anchor and strong food options.",
+    homeBaseCity: "Canmore",
+    rawVibes: ["Nature", "Food", "Adventure"],
+    isStaycation: false,
+    latitude: 51.089,
+    longitude: -115.359,
+    imageUrl: "",
+    topActivities: [
+      {
+        name: "Ha Ling Peak Trailhead",
+        type: "Hiking Area",
+        costEstimate: 0,
+        rating: 4.8,
+        shortDescription: "Summit hike with mountain views and a strong scenic payoff.",
+        latitude: 51.06,
+        longitude: -115.39,
+      },
+      {
+        name: "Grassi Lakes Trailhead",
+        type: "Hiking Area",
+        costEstimate: 0,
+        rating: 4.7,
+        shortDescription: "Scenic lakes trail with a gentler pace.",
+        latitude: 51.08,
+        longitude: -115.42,
+      },
+      {
+        name: "Riverside Trail",
+        type: "Hiking Area",
+        costEstimate: 0,
+        rating: 4.6,
+        shortDescription: "Easy river walk for a lighter final morning.",
+        latitude: 51.091,
+        longitude: -115.352,
+      },
+    ],
+    hotelOptions: [
+      {
+        name: "Spring Creek Vacations",
+        bookingLink: "",
+        shortDescription: "Stay close to both downtown meals and trail access.",
+        pricePerNight: 285,
+        totalStayPrice: 570,
+        rating: 4.7,
+        latitude: 51.091,
+        longitude: -115.358,
+      },
+    ],
+    foodSpots: [
+      {
+        name: "Harvest Cafe",
+        tags: ["cafe", "vegetarian", "brunch"],
+        category: "Cafe",
+        estimatedCost: 58,
+        rating: 4.4,
+        latitude: 51.092,
+        longitude: -115.357,
+      },
+      {
+        name: "Wild Orchid Bistro",
+        tags: ["restaurant", "asian", "fusion", "vegetarian"],
+        category: "Restaurant",
+        estimatedCost: 120,
+        rating: 4.5,
+        latitude: 51.089,
+        longitude: -115.35,
+      },
+      {
+        name: "The Local - Eatery & Bar",
+        tags: ["restaurant", "vegetarian", "shared plates"],
+        category: "Restaurant",
+        estimatedCost: 102,
+        rating: 4.5,
+        latitude: 51.088,
+        longitude: -115.353,
+      },
+    ],
+    score: 145,
+    estimatedCost: 1160,
+    budgetBreakdown: {
+      hotel: 570,
+      food: 420,
+      gas: 65,
+      activities: 0,
+      misc: 77,
+      total: 1132,
+      totalExpected: 1132,
+      totalLow: 1019,
+      totalHigh: 1302,
+    },
+    matchReasons: [],
+    warnings: [],
+    styleMatchStrength: "strong",
+    confidence: "high",
+    rankingReasons: [],
+  };
+  const recoveryPlan = buildTripPlan(
+    recoveryFixture,
+    recoveryInput,
+    "static-ranking"
+  );
+  const recoveryActivityCounts = recoveryPlan
+    ? recoveryPlan.itineraryDays.map(
+        (day) => day.stops.filter((stop) => stop.kind === "activity").length
+      )
+    : [];
+  const dayTwoActivityTitles = recoveryPlan
+    ? recoveryPlan.itineraryDays[1]?.stops
+        .filter((stop) => stop.kind === "activity")
+        .map((stop) => stop.title.toLowerCase()) ?? []
+    : [];
+
+  return [
+    {
+      id: "I21",
+      area: "prompt-intent",
+      passed:
+        intent.activityFocus === "hiking" &&
+        intent.hardConstraints.activityAnchor === "summit_hike" &&
+        intent.hardConstraints.hikeDistanceKmTarget === 15 &&
+        intent.hardConstraints.requiresScenicView === true &&
+        intent.hardConstraints.requiresVegetarianOptions === true &&
+        intent.hardConstraints.mixedDietGroup === true &&
+        intent.softPreferences.wantsGoodFood === true &&
+        intent.suggestedBudgetPerTraveler === 600,
+      details: JSON.stringify({
+        activityFocus: intent.activityFocus,
+        hardConstraints: intent.hardConstraints,
+        softPreferences: intent.softPreferences,
+        suggestedBudgetPerTraveler: intent.suggestedBudgetPerTraveler,
+      }),
+    },
+    {
+      id: "I22",
+      area: "prompt-query",
+      passed:
+        activityQuery.toLowerCase().includes("summit") &&
+        activityQuery.toLowerCase().includes("15 km") &&
+        activityQuery.toLowerCase().includes("view"),
+      details: activityQuery,
+    },
+    {
+      id: "I23",
+      area: "food-query",
+      passed:
+        restaurantQuery.toLowerCase().includes("vegetarian-friendly") &&
+        restaurantQuery.toLowerCase().includes("mixed groups"),
+      details: restaurantQuery,
+    },
+    {
+      id: "I24",
+      area: "prompt-intent",
+      passed:
+        recoveryIntent.hardConstraints.activityAnchor === "summit_hike" &&
+        recoveryIntent.softPreferences.wantsRecoveryDays === true,
+      details: JSON.stringify(recoveryIntent.softPreferences),
+    },
+    {
+      id: "I25",
+      area: "builder-shape",
+      passed:
+        Boolean(recoveryPlan) &&
+        !/trailhead/i.test(recoveryPlan?.title ?? "") &&
+        recoveryActivityCounts[0] === 0 &&
+        (recoveryActivityCounts[1] ?? 0) <= 1 &&
+        (recoveryActivityCounts[2] ?? 0) <= 1 &&
+        dayTwoActivityTitles.includes((recoveryPlan?.title ?? "").toLowerCase()),
+      details: recoveryPlan
+        ? JSON.stringify({
+            title: recoveryPlan.title,
+            activityCounts: recoveryActivityCounts,
+            dayTwoActivityTitles,
+          })
+        : "No recovery-hike plan built",
+    },
+  ];
 }
 
 async function runRouteTests(): Promise<TestResult[]> {
@@ -400,8 +628,13 @@ async function runRouteTests(): Promise<TestResult[]> {
 
 async function main() {
   const plannerResults = await runPlannerTests();
+  const promptInterpretationResults = await runPromptInterpretationTests();
   const routeResults = await runRouteTests();
-  const allResults = [...plannerResults, ...routeResults];
+  const allResults = [
+    ...plannerResults,
+    ...promptInterpretationResults,
+    ...routeResults,
+  ];
 
   console.log(`Ran ${allResults.length} site-flow tests.`);
   console.log(`Pass count: ${allResults.filter((result) => result.passed).length}/${allResults.length}`);

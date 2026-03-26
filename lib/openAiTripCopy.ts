@@ -1,5 +1,6 @@
 import { ProviderOutcome, RankedDestination, TripInput } from "./types";
 import { reportProviderEvent } from "./providerTelemetry";
+import { deriveTripIntentFromPrompt } from "./tripIntent";
 
 export type OpenAITripPayload = {
   name: string;
@@ -158,6 +159,7 @@ export async function generateTripCopyWithOpenAI(
       : [],
     veganFriendly: trip.veganFriendly,
   }));
+  const promptIntent = deriveTripIntentFromPrompt(input.tripPrompt);
 
   const systemPrompt = [
     "You are writing destination-specific weekend trip copy for a trip planning app.",
@@ -187,6 +189,7 @@ export async function generateTripCopyWithOpenAI(
       },
       input,
       trip_brief: input.tripPrompt ?? null,
+      prompt_interpretation: promptIntent,
       trips: compactTrips,
     },
     null,

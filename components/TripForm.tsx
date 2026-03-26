@@ -132,6 +132,60 @@ function displayActivityFocusLabel(activityFocus?: ActivityFocus) {
   }
 }
 
+function hardConstraintLabels(intent: ReturnType<typeof deriveTripIntentFromPrompt>) {
+  const labels: string[] = [];
+
+  if (intent.hardConstraints.activityAnchor === "summit_hike") {
+    labels.push("Hard: summit-style hike");
+  } else if (intent.hardConstraints.activityAnchor === "campground_base") {
+    labels.push("Hard: camping base");
+  } else if (intent.hardConstraints.activityAnchor === "ski_trip") {
+    labels.push("Hard: ski-focused trip");
+  }
+
+  if (intent.hardConstraints.hikeDistanceKmTarget) {
+    labels.push(`Hard: about ${Math.round(intent.hardConstraints.hikeDistanceKmTarget)} km`);
+  }
+
+  if (intent.hardConstraints.requiresScenicView) {
+    labels.push("Hard: scenic payoff");
+  }
+
+  if (intent.hardConstraints.requiresVegetarianOptions) {
+    labels.push(
+      intent.hardConstraints.mixedDietGroup
+        ? "Hard: vegetarian-friendly for the group"
+        : intent.hardConstraints.dietaryPreference === "vegan"
+          ? "Hard: vegan-friendly food"
+          : "Hard: vegetarian-friendly food"
+    );
+  }
+
+  return labels;
+}
+
+function softPreferenceLabels(intent: ReturnType<typeof deriveTripIntentFromPrompt>) {
+  const labels: string[] = [];
+
+  if (intent.softPreferences.wantsGoodFood) {
+    labels.push("Soft: good food");
+  }
+
+  if (intent.softPreferences.wantsGetawayFeel && !intent.includeStaycations) {
+    labels.push("Soft: real getaway feel");
+  }
+
+  if (intent.softPreferences.wantsLowEffort) {
+    labels.push("Soft: low-friction pacing");
+  }
+
+  if (intent.softPreferences.wantsRecoveryDays) {
+    labels.push("Soft: relax on the other days");
+  }
+
+  return labels;
+}
+
 function FieldLabel({
   htmlFor,
   children,
@@ -378,6 +432,9 @@ export default function TripForm({
           />
 
           <div className="mt-4 flex flex-wrap gap-2">
+            {hardConstraintLabels(derivedIntent).map((label) => (
+              <SignalPill key={label}>{label}</SignalPill>
+            ))}
             <SignalPill>Style: {displayStyleLabel(derivedIntent.style)}</SignalPill>
             {displayActivityFocusLabel(derivedIntent.activityFocus) ? (
               <SignalPill>
@@ -400,7 +457,9 @@ export default function TripForm({
             ) : (
               <SignalPill>Getaway-first</SignalPill>
             )}
-            {derivedIntent.veganFriendly ? <SignalPill>Vegan-aware</SignalPill> : null}
+            {softPreferenceLabels(derivedIntent).map((label) => (
+              <SignalPill key={label}>{label}</SignalPill>
+            ))}
           </div>
         </div>
 

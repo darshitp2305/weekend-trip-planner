@@ -1,6 +1,32 @@
 import rawDestinations from "../data/destinations.json";
 import { ActivityFocus, RawDestination, TripStyle } from "./types";
 
+export type PromptActivityAnchor =
+  | "summit_hike"
+  | "campground_base"
+  | "ski_trip";
+
+export type DietaryPreference = "vegetarian" | "vegan";
+
+export type PromptHardConstraints = {
+  activityAnchor?: PromptActivityAnchor;
+  hikeDistanceKmTarget?: number;
+  hikeDistanceKmMin?: number;
+  hikeDistanceKmMax?: number;
+  requiresScenicView: boolean;
+  dietaryPreference?: DietaryPreference;
+  requiresVegetarianOptions: boolean;
+  mixedDietGroup: boolean;
+};
+
+export type PromptSoftPreferences = {
+  wantsGoodFood: boolean;
+  wantsScenery: boolean;
+  wantsGetawayFeel: boolean;
+  wantsLowEffort: boolean;
+  wantsRecoveryDays: boolean;
+};
+
 export type DerivedTripIntent = {
   style: TripStyle;
   activityFocus?: ActivityFocus;
@@ -10,9 +36,18 @@ export type DerivedTripIntent = {
   strictBudget: boolean;
   suggestedBudgetPerTraveler?: number;
   suggestedMaxDriveHours?: number;
+  hardConstraints: PromptHardConstraints;
+  softPreferences: PromptSoftPreferences;
 };
 
 type StyleSignals = Record<TripStyle, number>;
+
+const APPROXIMATE_BUDGET_PATTERN =
+  /budget(?:\s+of|\s+is)?\s+(around|about|roughly|approx(?:imately)?)\s*\$?\s*(\d{2,4})\s*(?:cad|dollars?)?\s*(?:each|per person|per traveler|per traveller|pp)?/i;
+const EXACT_BUDGET_PATTERN =
+  /(?:budget(?:\s+of|\s+is)?\s*\$?\s*(\d{2,4})\s*(?:cad|dollars?)?\s*(?:each|per person|per traveler|per traveller|pp)?|\$?\s*(\d{2,4})\s*(?:cad|dollars?)?\s*(?:each|per person|per traveler|per traveller|pp))/i;
+const HIKE_DISTANCE_PATTERN =
+  /(?:about|around|roughly|approx(?:imately)?)?\s*(\d{1,2}(?:\.\d)?)\s*(?:km|kilometers?|kilometres?)(?:\s*(?:long)?)?(?:\s*(?:for the )?(?:round trip|return|there and back|total))?/i;
 
 function normalizeText(value?: string) {
   return (value ?? "")
@@ -26,6 +61,10 @@ function countMatches(text: string, keywords: string[]) {
   return keywords.reduce((count, keyword) => {
     return count + (text.includes(keyword) ? 1 : 0);
   }, 0);
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, value));
 }
 
 function inferPreferredDestination(prompt: string): string | undefined {
@@ -95,6 +134,9 @@ function inferActivityFocus(text: string): ActivityFocus | undefined {
       "lookout",
       "viewpoint",
       "lake",
+      "peak",
+      "ridge",
+      "mountain",
     ]) >= 1
   ) {
     return "hiking";
@@ -137,6 +179,9 @@ function inferStyle(text: string, activityFocus?: ActivityFocus): TripStyle {
     "recharge",
     "romantic",
     "cozy",
+    "low effort",
+    "low effort",
+    "low-effort",
   ]);
 
   signals["solo reset"] += countMatches(text, [
@@ -173,6 +218,8 @@ function inferStyle(text: string, activityFocus?: ActivityFocus): TripStyle {
     "trail",
     "cabin",
     "hike",
+    "summit",
+    "camp",
   ]);
 
   signals.adventure += countMatches(text, [
@@ -186,6 +233,9 @@ function inferStyle(text: string, activityFocus?: ActivityFocus): TripStyle {
     "action",
     "gondola",
     "ski",
+    "summit",
+    "peak",
+    "ridge",
   ]);
 
   if (activityFocus === "hiking" || activityFocus === "camping") {
@@ -197,19 +247,84 @@ function inferStyle(text: string, activityFocus?: ActivityFocus): TripStyle {
     signals.outdoors += 2;
   }
 
-  const orderedStyles = (Object.entries(signals) as Array<[TripStyle, number]>).sort(
-    (a, b) => b[1] - a[1]
-  );
+  const orderedStyles = (
+    Object.entries(signals) as Array<[TripStyle, number]>
+  ).sort((a, b) => b[1] - a[1]);
 
   const [style, score] = orderedStyles[0] ?? ["adventure", 0];
   return score > 0 ? style : "adventure";
 }
 
-function inferBudget(prompt: string) {
-  const text = normalizeText(prompt);
+function inferDietaryPreference(text: string): DietaryPreference | undefined {
+  if (
+    countMatches(text, ["vegan", "plant based", "plant-based"]) >= 1
+  ) {
+    return "vegan";
+  }
+
+  if (countMatches(text, ["vegetarian"]) >= 1) {
+    return "vegetarian";
+  }
+
+  return undefined;
+}
+
+function inferMixedDietGroup(text: string, dietaryPreference?: DietaryPreference) {
+  if (!dietaryPreference) return false;
+
+  return (
+    countMatches(text, [
+      "my friends are not",
+      "friends are not",
+      "group is not",
+      "others are not",
+      "not vegetarian",
+      "not vegan",
+      "mixed group",
+      "my friends arent",
+      "friends arent",
+      "group isnt",
+    ]) >= 1
+  );
+}
+
+function extractBudgetPerTraveler(prompt: string) {
+  const approximateBudgetMatch = prompt.match(APPROXIMATE_BUDGET_PATTERN);
+  if (approximateBudgetMatch) {
+    const amount = Number.parseInt(approximateBudgetMatch[2] ?? "", 10);
+    if (Number.isFinite(amount) && amount >= 75 && amount <= 5000) {
+      return {
+        suggestedBudgetPerTraveler: amount,
+        strictBudget: false,
+      };
+    }
+  }
+
+  const exactBudgetMatch = prompt.match(EXACT_BUDGET_PATTERN);
+  if (exactBudgetMatch) {
+    const amount = Number.parseInt(
+      exactBudgetMatch[1] ?? exactBudgetMatch[2] ?? "",
+      10
+    );
+    if (Number.isFinite(amount) && amount >= 75 && amount <= 5000) {
+      return {
+        suggestedBudgetPerTraveler: amount,
+        strictBudget: true,
+      };
+    }
+  }
+
+  return null;
+}
+
+function inferBudget(prompt: string, normalizedPrompt: string) {
+  const explicitBudget = extractBudgetPerTraveler(prompt);
+  if (explicitBudget) {
+    return explicitBudget;
+  }
 
   if (
-    countMatches(text, [
+    countMatches(normalizedPrompt, [
       "cheap",
       "budget",
       "affordable",
@@ -226,7 +341,7 @@ function inferBudget(prompt: string) {
   }
 
   if (
-    countMatches(text, [
+    countMatches(normalizedPrompt, [
       "luxury",
       "splurge",
       "high end",
@@ -280,10 +395,166 @@ function inferDriveTolerance(prompt: string) {
   return undefined;
 }
 
-export function deriveTripIntentFromPrompt(prompt?: string): DerivedTripIntent {
+function extractHikeDistanceKm(prompt: string, activityFocus?: ActivityFocus) {
+  if (activityFocus !== "hiking") return undefined;
+
+  const match = prompt.match(HIKE_DISTANCE_PATTERN);
+  if (!match) return undefined;
+
+  const target = Number.parseFloat(match[1] ?? "");
+  if (!Number.isFinite(target) || target < 1 || target > 40) {
+    return undefined;
+  }
+
+  const tolerance = clamp(Math.round(target * 0.2), 2, 4);
+  return {
+    hikeDistanceKmTarget: target,
+    hikeDistanceKmMin: Math.max(1, target - tolerance),
+    hikeDistanceKmMax: target + tolerance,
+  };
+}
+
+function inferHardConstraints(
+  prompt: string,
+  activityFocus?: ActivityFocus
+): PromptHardConstraints {
   const normalizedPrompt = normalizeText(prompt);
+  const dietaryPreference = inferDietaryPreference(normalizedPrompt);
+  const mixedDietGroup = inferMixedDietGroup(
+    normalizedPrompt,
+    dietaryPreference
+  );
+  const hikeDistance = extractHikeDistanceKm(prompt, activityFocus);
+
+  const wantsSummitStyleHike =
+    activityFocus === "hiking" &&
+    countMatches(normalizedPrompt, [
+      "summit",
+      "peak",
+      "ridge",
+      "scramble",
+      "top of a mountain",
+      "mountaintop",
+      "mountain top",
+      "top of the mountain",
+    ]) >= 1;
+
+  let activityAnchor: PromptActivityAnchor | undefined;
+  if (activityFocus === "camping") {
+    activityAnchor = "campground_base";
+  } else if (activityFocus === "skiing") {
+    activityAnchor = "ski_trip";
+  } else if (wantsSummitStyleHike) {
+    activityAnchor = "summit_hike";
+  }
+
+  return {
+    activityAnchor,
+    ...hikeDistance,
+    requiresScenicView:
+      countMatches(normalizedPrompt, [
+        "scenic view",
+        "nice view",
+        "great view",
+        "good view",
+        "view at the top",
+        "viewpoint",
+        "lookout",
+        "panorama",
+        "panoramic",
+      ]) >= 1,
+    dietaryPreference,
+    requiresVegetarianOptions: Boolean(dietaryPreference),
+    mixedDietGroup,
+  };
+}
+
+function inferSoftPreferences(
+  prompt: string,
+  activityFocus?: ActivityFocus
+): PromptSoftPreferences {
+  const normalizedPrompt = normalizeText(prompt);
+
+  return {
+    wantsGoodFood:
+      countMatches(normalizedPrompt, [
+        "good food",
+        "great food",
+        "food",
+        "restaurant",
+        "restaurants",
+        "dinner",
+        "brunch",
+        "coffee",
+        "cafe",
+        "bakery",
+      ]) >= 1,
+    wantsScenery:
+      countMatches(normalizedPrompt, [
+        "scenic",
+        "view",
+        "views",
+        "mountain",
+        "mountains",
+        "lake",
+        "nature",
+        "lookout",
+        "panorama",
+      ]) >= 1,
+    wantsGetawayFeel:
+      activityFocus === "camping" ||
+      countMatches(normalizedPrompt, [
+        "getaway",
+        "weekend away",
+        "escape",
+        "trip",
+        "road trip",
+        "mountain weekend",
+      ]) >= 1,
+    wantsLowEffort:
+      countMatches(normalizedPrompt, [
+        "low effort",
+        "low-effort",
+        "easy",
+        "easygoing",
+        "light",
+        "not too much planning",
+        "simple",
+        "low key",
+        "low-key",
+      ]) >= 1,
+    wantsRecoveryDays:
+      countMatches(normalizedPrompt, [
+        "on the other days i just want to relax",
+        "other days i just want to relax",
+        "other days just want to relax",
+        "relax on the other days",
+        "rest day",
+        "rest days",
+        "recovery day",
+        "recovery days",
+        "keep the other days light",
+        "keep the rest of the trip light",
+        "rest of the trip i just want to relax",
+        "on the rest of the trip i just want to relax",
+      ]) >= 1 ||
+      (activityFocus === "hiking" &&
+        countMatches(normalizedPrompt, [
+          "relax",
+          "relaxing",
+          "rest",
+          "restful",
+          "unwind",
+          "take it easy",
+        ]) >= 1),
+  };
+}
+
+export function deriveTripIntentFromPrompt(prompt?: string): DerivedTripIntent {
+  const rawPrompt = prompt ?? "";
+  const normalizedPrompt = normalizeText(rawPrompt);
   const activityFocus = inferActivityFocus(normalizedPrompt);
-  const budget = inferBudget(normalizedPrompt);
+  const budget = inferBudget(rawPrompt, normalizedPrompt);
 
   const includeStaycations =
     countMatches(normalizedPrompt, [
@@ -294,21 +565,19 @@ export function deriveTripIntentFromPrompt(prompt?: string): DerivedTripIntent {
       "near home",
     ]) >= 1;
 
+  const hardConstraints = inferHardConstraints(rawPrompt, activityFocus);
+  const softPreferences = inferSoftPreferences(rawPrompt, activityFocus);
+
   return {
     style: inferStyle(normalizedPrompt, activityFocus),
     activityFocus,
-    preferredDestination: inferPreferredDestination(normalizedPrompt),
-    veganFriendly:
-      countMatches(normalizedPrompt, [
-        "vegan",
-        "plant based",
-        "plant-based",
-        "vegetarian",
-      ]) >= 1,
+    preferredDestination: inferPreferredDestination(rawPrompt),
+    veganFriendly: Boolean(hardConstraints.dietaryPreference),
     includeStaycations,
     strictBudget: budget.strictBudget,
     suggestedBudgetPerTraveler: budget.suggestedBudgetPerTraveler,
     suggestedMaxDriveHours: inferDriveTolerance(normalizedPrompt),
+    hardConstraints,
+    softPreferences,
   };
 }
-

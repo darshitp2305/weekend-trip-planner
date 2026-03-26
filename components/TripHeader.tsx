@@ -13,6 +13,7 @@ import {
   getRecommendedTripTitle,
 } from "../lib/tripSpecificity";
 import {
+  tripConfidenceLabel,
   tripFreshnessLabel,
   tripProviderStatusText,
   tripSourceLabel,
@@ -100,19 +101,6 @@ function Stat({
       <div className="mt-1 text-[15px] font-semibold text-slate-950 dark:text-slate-100">{value}</div>
     </div>
   );
-}
-
-function confidenceLabel(confidence?: string) {
-  switch (confidence) {
-    case "high":
-      return "Strong match";
-    case "medium":
-      return "Good match";
-    case "low":
-      return "Experimental";
-    default:
-      return "Trip plan";
-  }
 }
 
 function sourceLabel(trip: TripHeaderProps["trip"]) {
@@ -319,7 +307,7 @@ export default function TripHeader({ trip, shareMode = false }: TripHeaderProps)
               {tripDecisionLabel}
             </Badge>
           ) : null}
-          <Badge tone="violet">{confidenceLabel(trip.confidence)}</Badge>
+          <Badge tone="violet">{tripConfidenceLabel(trip.confidence)}</Badge>
           <Badge tone={tripSourceTone(trip)}>{sourceLabel(trip)}</Badge>
           {trip.routeSummary ? <Badge>OpenStreetMap route</Badge> : null}
         </div>
