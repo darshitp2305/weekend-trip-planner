@@ -556,8 +556,18 @@ function promptActivityConstraintScore(
       ) {
         score += 3;
       } else if (text.includes("trailhead")) {
-        score -= 4;
+        score -= 8;
+      } else if (text.includes("viewpoint")) {
+        score -= 7;
       }
+    }
+
+    if (text.includes("trailhead") && strongSummitSignal === 0) {
+      score -= 8;
+    }
+
+    if (text.includes("viewpoint") && strongSummitSignal === 0) {
+      score -= 8;
     }
 
     if (
@@ -888,6 +898,9 @@ function activityAnchorScore(activity?: ActivitySpot) {
 
   if (text.includes("park")) score += 5;
   if (text.includes("tour")) score += 4;
+
+  if (text.includes("trailhead")) score -= 3;
+  if (text.includes("viewpoint")) score -= 2;
 
   if (text.includes("red chair") || text.includes("totem pole")) {
     score -= 2;

@@ -1,7 +1,10 @@
 "use client";
 
 import { type ReactNode, useMemo, useState } from "react";
-import { deriveTripIntentFromPrompt } from "../lib/tripIntent";
+import {
+  deriveTripIntentFromPrompt,
+  extractPromptBudget,
+} from "../lib/tripIntent";
 import { isStartCity, START_CITY_OPTIONS, type StartCity } from "../lib/startCities";
 import {
   clampTripEndDate,
@@ -132,6 +135,35 @@ function displayActivityFocusLabel(activityFocus?: ActivityFocus) {
   }
 }
 
+function budgetSignalLabel(options: {
+  manualBudgetPerTraveler?: number;
+  promptBudgetAmount?: number;
+  promptBudgetScope?: "per_traveler" | "group_total";
+  promptBudgetApproximate?: boolean;
+  resolvedBudgetPerTraveler: number;
+  travelerCount: number;
+}) {
+  if (typeof options.manualBudgetPerTraveler === "number") {
+    return `Budget override: ${formatCurrency(options.manualBudgetPerTraveler)} each`;
+  }
+
+  if (
+    typeof options.promptBudgetAmount === "number" &&
+    options.promptBudgetScope === "per_traveler"
+  ) {
+    return `${options.promptBudgetApproximate ? "Budget from prompt: about" : "Budget from prompt:"} ${formatCurrency(options.promptBudgetAmount)} each`;
+  }
+
+  if (
+    typeof options.promptBudgetAmount === "number" &&
+    options.promptBudgetScope === "group_total"
+  ) {
+    return `${options.promptBudgetApproximate ? "Budget from prompt: about" : "Budget from prompt:"} ${formatCurrency(options.promptBudgetAmount)} total (${formatCurrency(options.resolvedBudgetPerTraveler)} each)`;
+  }
+
+  return `Budget assumption: ${formatCurrency(options.resolvedBudgetPerTraveler)} each`;
+}
+
 function hardConstraintLabels(intent: ReturnType<typeof deriveTripIntentFromPrompt>) {
   const labels: string[] = [];
 
@@ -227,17 +259,34 @@ export default function TripForm({
     () => deriveTripIntentFromPrompt(form.tripPrompt),
     [form.tripPrompt]
   );
+  const promptBudget = useMemo(
+    () => extractPromptBudget(form.tripPrompt),
+    [form.tripPrompt]
+  );
 
   const resolvedTravelerCount = clampNumber(
     parsePositiveInt(form.travelerCount, 2),
     1,
     12
   );
+  const manualBudgetPerTraveler = form.budgetPerTraveler
+    ? clampNumber(parsePositiveInt(form.budgetPerTraveler, 300), 50, 5000)
+    : undefined;
+  const promptBudgetPerTraveler =
+    promptBudget?.scope === "per_traveler"
+      ? promptBudget.amount
+      : promptBudget?.scope === "group_total"
+        ? clampNumber(
+            Math.max(1, Math.round(promptBudget.amount / resolvedTravelerCount)),
+            50,
+            5000
+          )
+        : undefined;
   const resolvedBudgetPerTraveler = clampNumber(
-    parsePositiveInt(
-      form.budgetPerTraveler,
-      derivedIntent.suggestedBudgetPerTraveler ?? 300
-    ),
+    manualBudgetPerTraveler ??
+      promptBudgetPerTraveler ??
+      derivedIntent.suggestedBudgetPerTraveler ??
+      300,
     50,
     5000
   );
@@ -450,7 +499,14 @@ export default function TripForm({
               Drive assumption: up to {resolvedMaxDriveHours}h
             </SignalPill>
             <SignalPill>
-              Budget assumption: {formatCurrency(resolvedBudgetPerTraveler)} each
+              {budgetSignalLabel({
+                manualBudgetPerTraveler,
+                promptBudgetAmount: promptBudget?.amount,
+                promptBudgetScope: promptBudget?.scope,
+                promptBudgetApproximate: promptBudget?.approximate,
+                resolvedBudgetPerTraveler,
+                travelerCount: resolvedTravelerCount,
+              })}
             </SignalPill>
             {derivedIntent.includeStaycations ? (
               <SignalPill>Local trips allowed</SignalPill>
@@ -474,8 +530,8 @@ export default function TripForm({
                 Optional planning assumptions
               </div>
               <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">
-                Only open this if you want to override the inferred drive or
-                budget assumptions.
+                Only open this if you want to override the prompt-led budget or
+                drive assumptions.
               </p>
             </div>
             <span className="inline-flex h-10 items-center justify-center rounded-full border border-slate-300 bg-white px-4 text-xs font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
@@ -530,7 +586,11 @@ export default function TripForm({
                   onChange={(event) =>
                     handleNumericChange("budgetPerTraveler", event.target.value)
                   }
-                  placeholder={`Auto: ${resolvedBudgetPerTraveler}`}
+                  placeholder={
+                    promptBudget
+                      ? `Prompt: ${resolvedBudgetPerTraveler}`
+                      : `Auto: ${resolvedBudgetPerTraveler}`
+                  }
                   className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-slate-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-emerald-500/20"
                 />
               </div>
@@ -547,9 +607,13 @@ export default function TripForm({
               <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">
                 Based on {resolvedTravelerCount} traveler
                 {resolvedTravelerCount === 1 ? "" : "s"} at{" "}
-                {formatCurrency(resolvedBudgetPerTraveler)} each. You will get
-                one trip recommendation, then you can swap stops day by day in
-                the builder.
+                {formatCurrency(resolvedBudgetPerTraveler)} each.
+                {promptBudget?.scope === "group_total"
+                  ? ` That comes from ${formatCurrency(promptBudget.amount)} total in your brief.`
+                  : promptBudget?.scope === "per_traveler"
+                    ? " That comes from the budget written in your brief."
+                    : ""}
+                {" "}You will get one trip recommendation, then you can swap stops day by day in the builder.
               </p>
             </div>
 

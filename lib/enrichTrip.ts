@@ -253,7 +253,11 @@ function promptActivitySignal(text: string, input: TripInput) {
     }
 
     if (text.includes("trailhead") && strongSummitSignal === 0) {
-      score -= 6;
+      score -= 12;
+    }
+
+    if (text.includes("viewpoint") && strongSummitSignal === 0) {
+      score -= 10;
     }
 
     if (
@@ -273,6 +277,13 @@ function promptActivitySignal(text: string, input: TripInput) {
       score += 6;
     } else if (!text.includes("trail") && !text.includes("hike")) {
       score -= 8;
+    }
+
+    if (
+      (text.includes("trailhead") || text.includes("viewpoint")) &&
+      strongSummitSignal === 0
+    ) {
+      score -= 6;
     }
   }
 

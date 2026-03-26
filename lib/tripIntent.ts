@@ -40,12 +40,24 @@ export type DerivedTripIntent = {
   softPreferences: PromptSoftPreferences;
 };
 
+export type PromptBudgetScope = "per_traveler" | "group_total";
+
+export type PromptBudgetMatch = {
+  amount: number;
+  scope: PromptBudgetScope;
+  approximate: boolean;
+};
+
 type StyleSignals = Record<TripStyle, number>;
 
-const APPROXIMATE_BUDGET_PATTERN =
-  /budget(?:\s+of|\s+is)?\s+(around|about|roughly|approx(?:imately)?)\s*\$?\s*(\d{2,4})\s*(?:cad|dollars?)?\s*(?:each|per person|per traveler|per traveller|pp)?/i;
-const EXACT_BUDGET_PATTERN =
-  /(?:budget(?:\s+of|\s+is)?\s*\$?\s*(\d{2,4})\s*(?:cad|dollars?)?\s*(?:each|per person|per traveler|per traveller|pp)?|\$?\s*(\d{2,4})\s*(?:cad|dollars?)?\s*(?:each|per person|per traveler|per traveller|pp))/i;
+const APPROXIMATE_PER_TRAVELER_BUDGET_PATTERN =
+  /(?:budget(?:\s+of|\s+is)?\s*)?(?:around|about|roughly|approx(?:imately)?)\s*\$?\s*(\d{2,5})\s*(?:cad|dollars?)?\s*(?:each|per person|per traveler|per traveller|pp)\b/i;
+const EXACT_PER_TRAVELER_BUDGET_PATTERN =
+  /(?:budget(?:\s+of|\s+is)?\s*)?\$?\s*(\d{2,5})\s*(?:cad|dollars?)?\s*(?:each|per person|per traveler|per traveller|pp)\b/i;
+const APPROXIMATE_GROUP_BUDGET_PATTERN =
+  /(?:our|total|overall|trip|weekend|all[\s-]?in)?\s*budget(?:\s+of|\s+is)?\s*(?:around|about|roughly|approx(?:imately)?)\s*\$?\s*(\d{2,5})\s*(?:cad|dollars?)?\s*(?:total|overall|for the trip|for this trip|for the weekend|all in|between us|for us|for both of us|for all of us)?\b/i;
+const EXACT_GROUP_BUDGET_PATTERN =
+  /(?:our|total|overall|trip|weekend|all[\s-]?in)?\s*budget(?:\s+of|\s+is)?\s*\$?\s*(\d{2,5})\s*(?:cad|dollars?)?\s*(?:total|overall|for the trip|for this trip|for the weekend|all in|between us|for us|for both of us|for all of us)\b/i;
 const HIKE_DISTANCE_PATTERN =
   /(?:about|around|roughly|approx(?:imately)?)?\s*(\d{1,2}(?:\.\d)?)\s*(?:km|kilometers?|kilometres?)(?:\s*(?:long)?)?(?:\s*(?:for the )?(?:round trip|return|there and back|total))?/i;
 
@@ -288,28 +300,53 @@ function inferMixedDietGroup(text: string, dietaryPreference?: DietaryPreference
   );
 }
 
-function extractBudgetPerTraveler(prompt: string) {
-  const approximateBudgetMatch = prompt.match(APPROXIMATE_BUDGET_PATTERN);
-  if (approximateBudgetMatch) {
-    const amount = Number.parseInt(approximateBudgetMatch[2] ?? "", 10);
-    if (Number.isFinite(amount) && amount >= 75 && amount <= 5000) {
+export function extractPromptBudget(prompt: string): PromptBudgetMatch | null {
+  const approximatePerTravelerMatch = prompt.match(
+    APPROXIMATE_PER_TRAVELER_BUDGET_PATTERN
+  );
+  if (approximatePerTravelerMatch) {
+    const amount = Number.parseInt(approximatePerTravelerMatch[1] ?? "", 10);
+    if (Number.isFinite(amount) && amount >= 75 && amount <= 10000) {
       return {
-        suggestedBudgetPerTraveler: amount,
-        strictBudget: false,
+        amount,
+        scope: "per_traveler",
+        approximate: true,
       };
     }
   }
 
-  const exactBudgetMatch = prompt.match(EXACT_BUDGET_PATTERN);
-  if (exactBudgetMatch) {
-    const amount = Number.parseInt(
-      exactBudgetMatch[1] ?? exactBudgetMatch[2] ?? "",
-      10
-    );
-    if (Number.isFinite(amount) && amount >= 75 && amount <= 5000) {
+  const exactPerTravelerMatch = prompt.match(EXACT_PER_TRAVELER_BUDGET_PATTERN);
+  if (exactPerTravelerMatch) {
+    const amount = Number.parseInt(exactPerTravelerMatch[1] ?? "", 10);
+    if (Number.isFinite(amount) && amount >= 75 && amount <= 10000) {
       return {
-        suggestedBudgetPerTraveler: amount,
-        strictBudget: true,
+        amount,
+        scope: "per_traveler",
+        approximate: false,
+      };
+    }
+  }
+
+  const approximateGroupMatch = prompt.match(APPROXIMATE_GROUP_BUDGET_PATTERN);
+  if (approximateGroupMatch) {
+    const amount = Number.parseInt(approximateGroupMatch[1] ?? "", 10);
+    if (Number.isFinite(amount) && amount >= 75 && amount <= 10000) {
+      return {
+        amount,
+        scope: "group_total",
+        approximate: true,
+      };
+    }
+  }
+
+  const exactGroupMatch = prompt.match(EXACT_GROUP_BUDGET_PATTERN);
+  if (exactGroupMatch) {
+    const amount = Number.parseInt(exactGroupMatch[1] ?? "", 10);
+    if (Number.isFinite(amount) && amount >= 75 && amount <= 10000) {
+      return {
+        amount,
+        scope: "group_total",
+        approximate: false,
       };
     }
   }
@@ -318,9 +355,12 @@ function extractBudgetPerTraveler(prompt: string) {
 }
 
 function inferBudget(prompt: string, normalizedPrompt: string) {
-  const explicitBudget = extractBudgetPerTraveler(prompt);
-  if (explicitBudget) {
-    return explicitBudget;
+  const explicitBudget = extractPromptBudget(prompt);
+  if (explicitBudget?.scope === "per_traveler") {
+    return {
+      suggestedBudgetPerTraveler: explicitBudget.amount,
+      strictBudget: !explicitBudget.approximate,
+    };
   }
 
   if (
@@ -428,16 +468,30 @@ function inferHardConstraints(
 
   const wantsSummitStyleHike =
     activityFocus === "hiking" &&
-    countMatches(normalizedPrompt, [
-      "summit",
-      "peak",
-      "ridge",
-      "scramble",
-      "top of a mountain",
-      "mountaintop",
-      "mountain top",
-      "top of the mountain",
-    ]) >= 1;
+    (
+      countMatches(normalizedPrompt, [
+        "summit",
+        "peak",
+        "ridge",
+        "scramble",
+        "top of a mountain",
+        "mountaintop",
+        "mountain top",
+        "top of the mountain",
+        "hike up a mountain",
+        "hike up the mountain",
+        "up a mountain",
+        "up the mountain",
+        "mountain hike",
+      ]) >= 1 ||
+      ((normalizedPrompt.includes("mountain") ||
+        normalizedPrompt.includes("mountains")) &&
+        (normalizedPrompt.includes("top") ||
+          normalizedPrompt.includes("summit") ||
+          normalizedPrompt.includes("peak") ||
+          normalizedPrompt.includes("scenic view at the top") ||
+          normalizedPrompt.includes("view at the top")))
+    );
 
   let activityAnchor: PromptActivityAnchor | undefined;
   if (activityFocus === "camping") {

@@ -12,7 +12,10 @@ import {
 import { rankDestinations } from "../lib/rankDestinations";
 import { deriveTripEndDate } from "../lib/tripDates";
 import { RankedDestination, TripInput, TripPlan, TripStyle } from "../lib/types";
-import { deriveTripIntentFromPrompt } from "../lib/tripIntent";
+import {
+  deriveTripIntentFromPrompt,
+  extractPromptBudget,
+} from "../lib/tripIntent";
 
 loadEnvConfig(process.cwd());
 
@@ -190,6 +193,12 @@ async function runPromptInterpretationTests(): Promise<TestResult[]> {
   const recoveryPrompt =
     "I want to go on a hiking trip to the top of a mountain with scenic views. The hike should be 15km long, round-trip. On the other days I just want to relax and eat good food, I'm a vegetarian, but my friends are not. Our budget is $400 per person.";
   const recoveryIntent = deriveTripIntentFromPrompt(recoveryPrompt);
+  const mountainPrompt =
+    "I want to go on a hike up a mountain with my friends. It should have a scenic view at the top and be about 15km long.";
+  const mountainIntent = deriveTripIntentFromPrompt(mountainPrompt);
+  const totalBudgetPrompt =
+    "We want a weekend in Canmore. Our total budget is $600 for the trip, and there are 2 of us.";
+  const totalBudgetMatch = extractPromptBudget(totalBudgetPrompt);
   const recoveryInput = makeInput({
     style: "outdoors",
     activityFocus: "hiking",
@@ -374,6 +383,25 @@ async function runPromptInterpretationTests(): Promise<TestResult[]> {
     },
     {
       id: "I25",
+      area: "prompt-intent",
+      passed:
+        mountainIntent.activityFocus === "hiking" &&
+        mountainIntent.hardConstraints.activityAnchor === "summit_hike" &&
+        mountainIntent.hardConstraints.requiresScenicView === true &&
+        mountainIntent.hardConstraints.hikeDistanceKmTarget === 15,
+      details: JSON.stringify(mountainIntent.hardConstraints),
+    },
+    {
+      id: "I26",
+      area: "prompt-budget",
+      passed:
+        totalBudgetMatch?.scope === "group_total" &&
+        totalBudgetMatch?.amount === 600 &&
+        totalBudgetMatch?.approximate === false,
+      details: JSON.stringify(totalBudgetMatch),
+    },
+    {
+      id: "I27",
       area: "builder-shape",
       passed:
         Boolean(recoveryPlan) &&

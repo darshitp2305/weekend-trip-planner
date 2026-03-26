@@ -252,18 +252,23 @@ function getActivityFocusSignal(
   }
 
   if (activityFocus === "hiking") {
-    return countMatches(text, [
-      "hike",
-      "hiking",
-      "trail",
-      "trailhead",
-      "canyon",
-      "viewpoint",
-      "lake",
-      "waterfall",
-      "park",
-      "summit",
-    ]);
+    return (
+      countMatches(text, [
+        "hike",
+        "hiking",
+        "trail",
+        "peak",
+        "ridge",
+        "summit",
+        "scramble",
+        "alpine",
+        "mountain",
+        "canyon",
+        "lake",
+        "waterfall",
+      ]) -
+      countMatches(text, ["trailhead", "viewpoint"])
+    );
   }
 
   return countMatches(text, [
@@ -325,21 +330,25 @@ function getScenicSignal(destination: MappedDestination): number {
 }
 
 function getMountainHikeSignal(destination: MappedDestination): number {
-  return countMatches(getJoinedSignals(destination), [
-    "hike",
-    "hiking",
-    "trail",
-    "summit",
-    "peak",
-    "ridge",
-    "scramble",
-    "alpine",
-    "mountain",
-    "viewpoint",
-    "lookout",
-    "canyon",
-    "lake",
-  ]);
+  const text = getJoinedSignals(destination);
+
+  return (
+    countMatches(text, [
+      "hike",
+      "hiking",
+      "trail",
+      "summit",
+      "peak",
+      "ridge",
+      "scramble",
+      "alpine",
+      "mountain",
+      "canyon",
+      "lake",
+    ]) +
+    countMatches(text, ["summit", "peak", "ridge", "scramble"]) -
+    countMatches(text, ["trailhead", "viewpoint"])
+  );
 }
 
 function getVegetarianFoodSignal(destination: MappedDestination): number {
