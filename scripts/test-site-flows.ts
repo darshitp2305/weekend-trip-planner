@@ -196,6 +196,9 @@ async function runPromptInterpretationTests(): Promise<TestResult[]> {
   const mountainPrompt =
     "I want to go on a hike up a mountain with my friends. It should have a scenic view at the top and be about 15km long.";
   const mountainIntent = deriveTripIntentFromPrompt(mountainPrompt);
+  const chillMountainPrompt =
+    "I want to go on a hike up a mountain with my friends, and there should be scenic views at the top of the hike. On the other days I just want to chill and eat good food. I'm a vegetarian, but my friends are not. The budget for this trip is $400 each.";
+  const chillMountainIntent = deriveTripIntentFromPrompt(chillMountainPrompt);
   const totalBudgetPrompt =
     "We want a weekend in Canmore. Our total budget is $600 for the trip, and there are 2 of us.";
   const totalBudgetMatch = extractPromptBudget(totalBudgetPrompt);
@@ -402,6 +405,23 @@ async function runPromptInterpretationTests(): Promise<TestResult[]> {
     },
     {
       id: "I27",
+      area: "prompt-intent",
+      passed:
+        chillMountainIntent.activityFocus === "hiking" &&
+        chillMountainIntent.hardConstraints.activityAnchor === "summit_hike" &&
+        chillMountainIntent.hardConstraints.requiresScenicView === true &&
+        chillMountainIntent.softPreferences.wantsRecoveryDays === true &&
+        chillMountainIntent.softPreferences.wantsGoodFood === true &&
+        chillMountainIntent.suggestedBudgetPerTraveler === 400,
+      details: JSON.stringify({
+        activityFocus: chillMountainIntent.activityFocus,
+        hardConstraints: chillMountainIntent.hardConstraints,
+        softPreferences: chillMountainIntent.softPreferences,
+        suggestedBudgetPerTraveler: chillMountainIntent.suggestedBudgetPerTraveler,
+      }),
+    },
+    {
+      id: "I28",
       area: "builder-shape",
       passed:
         Boolean(recoveryPlan) &&

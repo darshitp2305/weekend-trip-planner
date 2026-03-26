@@ -69,9 +69,20 @@ function normalizeText(value?: string) {
     .trim();
 }
 
+function hasKeywordMatch(text: string, keyword: string) {
+  const normalizedKeyword = normalizeText(keyword);
+  if (!normalizedKeyword) return false;
+
+  if (normalizedKeyword.includes(" ")) {
+    return ` ${text} `.includes(` ${normalizedKeyword} `);
+  }
+
+  return text.split(" ").includes(normalizedKeyword);
+}
+
 function countMatches(text: string, keywords: string[]) {
   return keywords.reduce((count, keyword) => {
-    return count + (text.includes(keyword) ? 1 : 0);
+    return count + (hasKeywordMatch(text, keyword) ? 1 : 0);
   }, 0);
 }
 
@@ -108,50 +119,50 @@ function inferPreferredDestination(prompt: string): string | undefined {
 }
 
 function inferActivityFocus(text: string): ActivityFocus | undefined {
-  if (
-    countMatches(text, [
-      "ski",
-      "skiing",
-      "snowboard",
-      "snowboarding",
-      "powder",
-      "winter",
-      "hill",
-    ]) >= 1
-  ) {
-    return "skiing";
+  const skiingScore = countMatches(text, [
+    "ski",
+    "skiing",
+    "snowboard",
+    "snowboarding",
+    "powder",
+    "ski hill",
+    "ski resort",
+    "chairlift",
+    "lift ticket",
+  ]);
+  const campingScore = countMatches(text, [
+    "camp",
+    "camping",
+    "campground",
+    "campsite",
+    "fire",
+    "tent",
+    "rv",
+  ]);
+  const hikingScore = countMatches(text, [
+    "hike",
+    "hiking",
+    "trail",
+    "waterfall",
+    "summit",
+    "lookout",
+    "viewpoint",
+    "lake",
+    "peak",
+    "ridge",
+    "mountain",
+  ]);
+
+  if (hikingScore >= Math.max(skiingScore, campingScore) && hikingScore >= 1) {
+    return "hiking";
   }
 
-  if (
-    countMatches(text, [
-      "camp",
-      "camping",
-      "campground",
-      "campsite",
-      "fire",
-      "tent",
-      "rv",
-    ]) >= 1
-  ) {
+  if (campingScore >= Math.max(skiingScore, hikingScore) && campingScore >= 1) {
     return "camping";
   }
 
-  if (
-    countMatches(text, [
-      "hike",
-      "hiking",
-      "trail",
-      "waterfall",
-      "summit",
-      "lookout",
-      "viewpoint",
-      "lake",
-      "peak",
-      "ridge",
-      "mountain",
-    ]) >= 1
-  ) {
-    return "hiking";
+  if (skiingScore >= 1) {
+    return "skiing";
   }
 
   return undefined;
@@ -181,6 +192,9 @@ function inferStyle(text: string, activityFocus?: ActivityFocus): TripStyle {
   ]);
 
   signals.chill += countMatches(text, [
+    "chill",
+    "chill out",
+    "chill time",
     "relax",
     "relaxing",
     "slow",
@@ -508,10 +522,13 @@ function inferHardConstraints(
     requiresScenicView:
       countMatches(normalizedPrompt, [
         "scenic view",
+        "scenic views",
         "nice view",
         "great view",
         "good view",
         "view at the top",
+        "views at the top",
+        "top of the hike",
         "viewpoint",
         "lookout",
         "panorama",
@@ -580,9 +597,13 @@ function inferSoftPreferences(
     wantsRecoveryDays:
       countMatches(normalizedPrompt, [
         "on the other days i just want to relax",
+        "on the other days i just want to chill",
         "other days i just want to relax",
+        "other days i just want to chill",
         "other days just want to relax",
+        "other days just want to chill",
         "relax on the other days",
+        "chill on the other days",
         "rest day",
         "rest days",
         "recovery day",
@@ -594,11 +615,13 @@ function inferSoftPreferences(
       ]) >= 1 ||
       (activityFocus === "hiking" &&
         countMatches(normalizedPrompt, [
-          "relax",
-          "relaxing",
-          "rest",
-          "restful",
-          "unwind",
+        "relax",
+        "relaxing",
+        "chill",
+        "chill out",
+        "rest",
+        "restful",
+        "unwind",
           "take it easy",
         ]) >= 1),
   };
