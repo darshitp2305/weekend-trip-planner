@@ -393,6 +393,8 @@ export default function TripPage() {
     ) ?? hotelOptions[0];
   }, [activeSelectionState.hotelName, hotelOptions, trip]);
 
+  const stayPriceIsVerified = selectedHotel?.availabilityStatus === "available";
+
   const selectedBudget = useMemo(() => {
     if (!trip) return null;
 
@@ -503,22 +505,28 @@ export default function TripPage() {
     if (Math.abs(delta) <= Math.max(50, targetTotalBudget * 0.05)) {
       return {
         label: "On target",
-        detail: `Within ${formatMoney(Math.abs(delta))} of your target budget.`,
+        detail: stayPriceIsVerified
+          ? `Within ${formatMoney(Math.abs(delta))} of your target budget.`
+          : `Within ${formatMoney(Math.abs(delta))} of your target budget, but the stay price is still estimated.`,
       };
     }
 
     if (delta < 0) {
       return {
         label: "Under target",
-        detail: `${formatMoney(Math.abs(delta))} under the target total.`,
+        detail: stayPriceIsVerified
+          ? `${formatMoney(Math.abs(delta))} under the target total.`
+          : `${formatMoney(Math.abs(delta))} under the target total, but the stay price is still estimated.`,
       };
     }
 
     return {
       label: "Over target",
-      detail: `${formatMoney(delta)} over the target total.`,
+      detail: stayPriceIsVerified
+        ? `${formatMoney(delta)} over the target total.`
+        : `${formatMoney(delta)} over the target total, with the stay price still estimated.`,
     };
-  }, [estimatedTotalCost, targetTotalBudget]);
+  }, [estimatedTotalCost, stayPriceIsVerified, targetTotalBudget]);
 
   const budgetDelta = useMemo(() => {
     if (targetTotalBudget <= 0 || estimatedTotalCost <= 0) {
@@ -527,6 +535,20 @@ export default function TripPage() {
 
     return estimatedTotalCost - targetTotalBudget;
   }, [estimatedTotalCost, targetTotalBudget]);
+
+  const budgetNotes = useMemo(() => {
+    const notes = [
+      "Parking, trailhead, and conservation pass fees can still show up under misc.",
+    ];
+
+    if (!stayPriceIsVerified) {
+      notes.unshift(
+        "Stay pricing is still an estimate until the selected hotel has live availability for your dates."
+      );
+    }
+
+    return notes;
+  }, [stayPriceIsVerified]);
 
   const itineraryOverview = useMemo(() => {
     const editableStops = itineraryDays.reduce((sum, day) => {
@@ -1094,6 +1116,17 @@ export default function TripPage() {
         ) : null}
 
         <TripHeader trip={persistedTrip ?? trip} shareMode={isShareView} />
+        {constraintFitSummary &&
+        constraintFitSummary.toLowerCase().includes("approximate fit") ? (
+          <section className="rounded-[1.5rem] border border-amber-200 bg-amber-50 p-5 shadow-sm dark:border-amber-500/30 dark:bg-amber-500/10">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-amber-700 dark:text-amber-300">
+              Fit warning
+            </div>
+            <p className="mt-2 max-w-4xl text-sm leading-6 text-amber-900 dark:text-amber-100">
+              This is a best-fit draft, not a hard match. The requested ~15 km summit-hike target is still approximate and should be verified before you lock the trip around Ha Ling.
+            </p>
+          </section>
+        ) : null}
 
         {isOwner && syncConflict ? (
           <section className="rounded-[1.5rem] border border-amber-200 bg-amber-50 p-5 shadow-sm dark:border-amber-500/30 dark:bg-amber-500/10">
@@ -1138,7 +1171,10 @@ export default function TripPage() {
             />
 
             <section className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-              <BudgetBreakdown breakdown={selectedBudget ?? trip.budgetBreakdown} />
+              <BudgetBreakdown
+                breakdown={selectedBudget ?? trip.budgetBreakdown}
+                notes={budgetNotes}
+              />
             </section>
 
             <TripFeedbackPanel
@@ -1211,7 +1247,7 @@ export default function TripPage() {
 
                     <div className="rounded-xl border border-violet-200 bg-violet-50 p-3 dark:border-violet-500/30 dark:bg-violet-500/10">
                       <div className="text-[10px] font-medium uppercase tracking-[0.1em] text-violet-700 dark:text-violet-300">
-                        Selected each
+                        {stayPriceIsVerified ? "Selected each" : "Estimated each"}
                       </div>
                       <div className="mt-1 text-base font-semibold text-slate-950 dark:text-slate-100">
                         {formatMoney(estimatedBudgetPerTraveler)}
@@ -1220,7 +1256,7 @@ export default function TripPage() {
 
                     <div className="rounded-xl border border-violet-200 bg-violet-50 p-3 dark:border-violet-500/30 dark:bg-violet-500/10">
                       <div className="text-[10px] font-medium uppercase tracking-[0.1em] text-violet-700 dark:text-violet-300">
-                        Selected total
+                        {stayPriceIsVerified ? "Selected total" : "Estimated total"}
                       </div>
                       <div className="mt-1 text-base font-semibold text-slate-950 dark:text-slate-100">
                         {formatMoney(estimatedTotalCost)}
@@ -1228,7 +1264,10 @@ export default function TripPage() {
                     </div>
                   </div>
 
-                  <BudgetBreakdown breakdown={selectedBudget ?? trip.budgetBreakdown} />
+                  <BudgetBreakdown
+                    breakdown={selectedBudget ?? trip.budgetBreakdown}
+                    notes={budgetNotes}
+                  />
                 </section>
 
                 <div className="border-t border-slate-200 dark:border-slate-800" />

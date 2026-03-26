@@ -1,6 +1,7 @@
 import { enrichRankedTrip } from "./enrichTrip";
 import { reportProviderEvent } from "./providerTelemetry";
 import { rankDestinations } from "./rankDestinations";
+import { deriveTripIntentFromPrompt } from "./tripIntent";
 import { RankedDestination, TripInput } from "./types";
 
 type GenerateRankedTripsResult = {
@@ -894,11 +895,18 @@ function countStrongReasonFamilies(trip: RankedDestination): number {
   ).length;
 }
 
-function recalculateConfidence(
+export function recalculateConfidence(
   trips: RankedDestination[],
   input: TripInput
 ): RankedDestination[] {
   const topScore = trips[0]?.score ?? 0;
+  const promptIntent = deriveTripIntentFromPrompt(input.tripPrompt);
+  const hasHikeDistanceConstraint = Boolean(
+    promptIntent.hardConstraints.hikeDistanceKmTarget
+  );
+  const isTwoDaySummitCompromise =
+    promptIntent.hardConstraints.activityAnchor === "summit_hike" &&
+    input.tripLengthDays <= 2;
 
   return trips.map((trip, index) => {
     let score = 0;
@@ -926,6 +934,8 @@ function recalculateConfidence(
 
     if (trip.liveDataSummary?.usedFallbackData) score -= 2;
     if (!trip.liveDataSummary?.usedPlacesData) score -= 1;
+    if (hasHikeDistanceConstraint) score -= 1;
+    if (isTwoDaySummitCompromise) score -= 2;
 
     if (isCrossCityStaycation(trip, input.startCity)) score -= 3;
 
@@ -942,6 +952,18 @@ function recalculateConfidence(
       confidence = "medium";
       confidenceLabel = "Good match";
     } else {
+      confidence = "low";
+      confidenceLabel = "Promising";
+    }
+
+    // Distance-specific hike briefs should not surface as high conviction
+    // until the planner can verify trail mileage rather than place signals.
+    if (confidence === "high" && hasHikeDistanceConstraint) {
+      confidence = "medium";
+      confidenceLabel = "Good match";
+    }
+
+    if (isTwoDaySummitCompromise && confidence === "medium") {
       confidence = "low";
       confidenceLabel = "Promising";
     }

@@ -31,6 +31,16 @@ const defaultInput: TripInput = {
   strictBudget: false,
 };
 
+export type TripPlanPreview = {
+  safeInput: TripInput;
+  filteredTrip: RankedDestination;
+  budgetBreakdown: BudgetBreakdown;
+  itineraryDays: ItineraryDayData[];
+  recommendedTitle: string;
+  driveHoursFromStart: number;
+  driveTimeText: string;
+};
+
 // Normalize partial API/UI input into a complete trip request so the planner
 // runs with consistent assumptions everywhere.
 function normalizeInput(input?: Partial<TripInput>): TripInput {
@@ -448,6 +458,22 @@ function displayActivityName(activity?: Pick<ActivitySpot, "name"> | string) {
       ? activity
       : activity?.name;
   return normalizePlaceDisplayName(name) || name || "Activity";
+}
+
+function isDemandingHikeActivity(activity?: ActivitySpot) {
+  const text = normalizedActivitySignals(activity);
+  if (!text) return false;
+
+  const summitSignal =
+    ["summit", "peak", "ridge", "scramble", "alpine", "mountain"].some((term) =>
+      text.includes(term)
+    );
+  const hikeSignal =
+    ["trail", "hike", "trailhead", "backcountry"].some((term) =>
+      text.includes(term)
+    );
+
+  return summitSignal && hikeSignal;
 }
 
 function promptFoodConstraintScore(food: FoodSpot | undefined, input: TripInput) {
@@ -1841,6 +1867,7 @@ function buildGetawayFinalDay(
 ): ItineraryDayData {
   const summitTrip = isSummitHikeTrip(input);
   const recoveryDays = prefersRecoveryDays(input);
+  const isTwoDaySummitCompromise = summitTrip && input.tripLengthDays <= 2;
   const baseCoordinate =
     toCoordinate(trip.hotelOptions?.[0]) ?? buildBaseCoordinate(trip);
   const breakfast =
@@ -1915,9 +1942,13 @@ function buildGetawayFinalDay(
   setPreviousDayActivities(ctx, [finalActivity]);
 
   return {
-    title: "Final half-day and drive back",
+    title: isTwoDaySummitCompromise
+      ? "Compromise summit day and drive back"
+      : "Final half-day and drive back",
     summary:
-      recoveryDays && !useFinalDayAsPrimaryAnchor
+      isTwoDaySummitCompromise
+        ? `This is the compromise version of the brief: use the morning for the main hike, then drive back to ${input.startCity} the same day.`
+        : recoveryDays && !useFinalDayAsPrimaryAnchor
         ? `Keep the final day lighter with a slower meal and, at most, one scenic stop before the return to ${input.startCity}.`
         : input.style === "hidden gems"
         ? `Keep the final day lighter and use it for one more scenic or heritage stop before returning to ${input.startCity}.`
@@ -2111,7 +2142,10 @@ function buildMiddleDay(
         kind: "food" as const,
       },
       mainActivity && {
-        time: "Late morning",
+        time:
+          summitTrip && isDemandingHikeActivity(mainActivity)
+            ? "Late morning to afternoon"
+            : "Late morning",
         title: displayActivityName(mainActivity),
         description: styleActivityDescription(
           input,
@@ -2213,11 +2247,10 @@ function buildItineraryDays(
   return days;
 }
 
-export function buildTripPlan(
+export function buildTripPlanPreview(
   trip: RankedDestination,
-  input?: Partial<TripInput>,
-  dataSource: TripDataSource = "static-fallback"
-): TripPlan {
+  input?: Partial<TripInput>
+): TripPlanPreview {
   const safeInput = normalizeInput(input);
   const baseCoordinate = buildBaseCoordinate(trip);
   const foodDistanceCapKm = maxLegDistanceKm(safeInput);
@@ -2291,16 +2324,34 @@ export function buildTripPlan(
   const driveHoursFromStart = trip.isStaycation ? 0 : trip.driveHoursFromStart;
   const driveTimeText = trip.isStaycation ? "0 hours" : makeDriveText(trip);
 
+  return {
+    safeInput,
+    filteredTrip,
+    budgetBreakdown,
+    itineraryDays,
+    recommendedTitle,
+    driveHoursFromStart,
+    driveTimeText,
+  };
+}
+
+export function buildTripPlan(
+  trip: RankedDestination,
+  input?: Partial<TripInput>,
+  dataSource: TripDataSource = "static-fallback"
+): TripPlan {
+  const preview = buildTripPlanPreview(trip, input);
+
   return ensureTripEditToken({
     id: crypto.randomUUID(),
 
     destinationName: trip.name,
-    startCity: safeInput.startCity,
+    startCity: preview.safeInput.startCity,
     region: trip.province,
     summary: trip.summary,
     imageUrl: trip.imageUrl,
 
-    driveTimeText,
+    driveTimeText: preview.driveTimeText,
     score: trip.score,
     styleMatchStrength: trip.styleMatchStrength,
     confidence: trip.confidence,
@@ -2308,11 +2359,11 @@ export function buildTripPlan(
     rankingReasons: trip.rankingReasons ?? [],
     tags: trip.rawVibes ?? [],
 
-    budgetBreakdown,
-    hotelOptions: filteredTrip.hotelOptions,
-    foodSpots: filteredFoodSpots,
-    topActivities: filteredTrip.topActivities,
-    itineraryDays,
+    budgetBreakdown: preview.budgetBreakdown,
+    hotelOptions: preview.filteredTrip.hotelOptions,
+    foodSpots: preview.filteredTrip.foodSpots,
+    topActivities: preview.filteredTrip.topActivities,
+    itineraryDays: preview.itineraryDays,
 
     aiSummary: trip.aiSummary ?? "",
     aiBudgetNote: trip.aiBudgetNote ?? "",
@@ -2322,14 +2373,14 @@ export function buildTripPlan(
     createdAt: new Date().toISOString(),
     sourceCheckedAt: trip.sourceCheckedAt,
     providerStatus: trip.providerStatus,
-    travelerCount: safeInput.travelerCount,
-    budgetPerTraveler: safeInput.budgetPerTraveler,
-    totalBudget: safeInput.budget,
-    tripLengthDays: safeInput.tripLengthDays,
-    tripStartDate: safeInput.tripStartDate,
-    tripEndDate: safeInput.tripEndDate,
-    tripPrompt: safeInput.tripPrompt,
-    maxDriveMinutesBetweenStops: safeInput.maxDriveMinutesBetweenStops,
+    travelerCount: preview.safeInput.travelerCount,
+    budgetPerTraveler: preview.safeInput.budgetPerTraveler,
+    totalBudget: preview.safeInput.budget,
+    tripLengthDays: preview.safeInput.tripLengthDays,
+    tripStartDate: preview.safeInput.tripStartDate,
+    tripEndDate: preview.safeInput.tripEndDate,
+    tripPrompt: preview.safeInput.tripPrompt,
+    maxDriveMinutesBetweenStops: preview.safeInput.maxDriveMinutesBetweenStops,
     status: "draft",
     decisionStatus: "waiting_on_partner",
     bookingChecklist: {
@@ -2348,10 +2399,10 @@ export function buildTripPlan(
     },
 
     name: trip.name,
-    title: recommendedTitle,
+    title: preview.recommendedTitle,
     destination: trip.name,
     province: trip.province,
-    driveHoursFromStart,
+    driveHoursFromStart: preview.driveHoursFromStart,
     rawVibes: trip.rawVibes ?? [],
     source: dataSource,
     isStaycation: trip.isStaycation,

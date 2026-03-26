@@ -3,16 +3,21 @@
 import Image from "next/image";
 import { type ReactNode, useState } from "react";
 import { useRouter } from "next/navigation";
-import { RankedDestination, TripDataSource, TripInput } from "../lib/types";
-import { buildTripPlan } from "../lib/buildTripPlan";
+import {
+  ItineraryDayData,
+  RankedDestination,
+  TripDataSource,
+  TripInput,
+} from "../lib/types";
+import { buildTripPlan, buildTripPlanPreview } from "../lib/buildTripPlan";
 import { formatDisplayTag, formatDisplayText } from "../lib/displayText";
 import { isStartCity } from "../lib/startCities";
 import { deriveTripEndDate } from "../lib/tripDates";
 import { saveTripPlan } from "../lib/tripStore";
 import {
+  getPromptAwareTripSummary,
   getPromptConstraintFitSummary,
   getRecommendationContextLabel,
-  getRecommendedTripTitle,
   normalizePlaceDisplayName,
 } from "../lib/tripSpecificity";
 import { trackProductEvent } from "../lib/productAnalytics";
@@ -22,6 +27,7 @@ import {
   tripProviderStatusText,
   tripSourceLabel,
   tripSourceTone,
+  tripTrustNote,
 } from "../lib/trustSignals";
 
 const LAST_INPUT_STORAGE_KEY = "weekend-trip-last-input";
@@ -32,12 +38,6 @@ type Props = {
   onSave?: (tripName: string) => void;
   onRemoveSaved?: (tripName: string) => void;
   isSaved?: boolean;
-};
-
-type EnrichTripResponse = {
-  success?: boolean;
-  trip?: RankedDestination | null;
-  source?: TripDataSource;
 };
 
 function strengthLabel(strength: RankedDestination["styleMatchStrength"]) {
@@ -53,11 +53,48 @@ function strengthLabel(strength: RankedDestination["styleMatchStrength"]) {
   }
 }
 
+function budgetFitDetail(total: number, budget?: number) {
+  if (typeof budget !== "number" || budget <= 0) {
+    return "Budget will update when you swap stops.";
+  }
+
+  if (total <= budget * 0.7) {
+    return `Estimated total sits comfortably under your $${Math.round(budget)} group budget.`;
+  }
+
+  if (total <= budget) {
+    return `Estimated total stays within your $${Math.round(budget)} group budget.`;
+  }
+
+  return `Estimated total is currently above your $${Math.round(budget)} group budget.`;
+}
+
 function cleanItineraryLine(line: string) {
   return line.replace(/^day\s*\d+\s*:\s*/i, "").trim();
 }
 
-function getItineraryPreviewItems(trip: RankedDestination) {
+function getItineraryPreviewItems(
+  itineraryDays: ItineraryDayData[],
+  trip: RankedDestination
+) {
+  if (itineraryDays.length) {
+    return itineraryDays.slice(0, 3).map((day, index) => {
+      const firstMeaningfulStop = day.stops.find(
+        (stop) => stop.kind && stop.kind !== "travel"
+      );
+      const text =
+        day.summary?.trim() ||
+        firstMeaningfulStop?.title?.trim() ||
+        day.title?.trim() ||
+        `Day ${index + 1}`;
+
+      return {
+        label: `Day ${index + 1}`,
+        text: cleanItineraryLine(text),
+      };
+    });
+  }
+
   if (trip.aiItinerary?.length) {
     return trip.aiItinerary.slice(0, 3).map((line, index) => ({
       label: `Day ${index + 1}`,
@@ -174,6 +211,10 @@ function Stat({
   );
 }
 
+function confidenceTone(confidence?: RankedDestination["confidence"]) {
+  return confidence === "high" ? "green" : "slate";
+}
+
 export default function TripCard({
   trip,
   input,
@@ -185,37 +226,49 @@ export default function TripCard({
   const [saving, setSaving] = useState(false);
 
   const normalizedInput = normalizeTripInput(input);
-  const displayCost =
-    trip.budgetBreakdown?.totalExpected ??
-    trip.budgetBreakdown?.total ??
-    trip.estimatedCost;
-  const travelerCount = Math.max(1, normalizedInput?.travelerCount ?? 1);
+  const previewPlan = buildTripPlanPreview(trip, normalizedInput);
+  const previewTrip = previewPlan.filteredTrip;
+  const displayCost = previewPlan.budgetBreakdown.totalExpected;
+  const travelerCount = Math.max(1, previewPlan.safeInput.travelerCount ?? 1);
   const perTravelerDisplay = Math.round(displayCost / travelerCount);
-  const itineraryPreviewItems = getItineraryPreviewItems(trip);
-  const tripPrompt = normalizedInput?.tripPrompt;
-  const topWhyRanked =
-    trip.rankingReasons?.[0]?.label ??
-    trip.matchReasons?.[0] ??
-    "This was the strongest overall fit for the trip brief.";
-  const promptConstraintNote = getPromptConstraintFitSummary(trip, normalizedInput);
-  const whyThisIsTheCall = promptConstraintNote ?? trip.aiBestFit ?? topWhyRanked;
-  const trustNote = tripProviderStatusText(trip);
-  const tags = Array.isArray(trip.rawVibes) ? trip.rawVibes.slice(0, 4) : [];
-  const displayTitle = getRecommendedTripTitle(
-    {
-      name: trip.name,
-      destinationName: trip.name,
-      province: trip.province,
-      hotelOptions: trip.hotelOptions,
-      topActivities: trip.topActivities,
-    },
-    normalizedInput
+  const itineraryPreviewItems = getItineraryPreviewItems(
+    previewPlan.itineraryDays,
+    previewTrip
   );
+  const tripPrompt = previewPlan.safeInput.tripPrompt;
+  const topWhyRanked =
+    previewTrip.rankingReasons?.[0]?.label ??
+    previewTrip.matchReasons?.[0] ??
+    "This was the strongest overall fit for the trip brief.";
+  const promptConstraintNote = getPromptConstraintFitSummary(
+    previewTrip,
+    previewPlan.safeInput
+  );
+  const whyThisIsTheCall =
+    promptConstraintNote ?? previewTrip.aiBestFit ?? topWhyRanked;
+  const trustNote = tripTrustNote(previewTrip);
+  const providerStatus = tripProviderStatusText(previewTrip);
+  const tags = Array.isArray(previewTrip.rawVibes)
+    ? previewTrip.rawVibes.slice(0, 4)
+    : [];
+  const displayTitle = previewPlan.recommendedTitle;
+  const heroImageUrl = previewTrip.imageUrl || trip.imageUrl;
+  const displaySummary = getPromptAwareTripSummary({
+    summary: previewTrip.aiSummary ?? previewTrip.summary,
+    tripPrompt,
+    tripLengthDays: previewPlan.safeInput.tripLengthDays,
+    destinationName: previewTrip.name,
+    destination: previewTrip.name,
+    homeBaseCity: previewTrip.homeBaseCity,
+    name: previewTrip.name,
+  });
   const titleContext = getRecommendationContextLabel(
     {
-      name: trip.name,
-      destinationName: trip.name,
-      province: trip.province,
+      name: previewTrip.name,
+      destinationName: previewTrip.name,
+      destination: previewTrip.name,
+      homeBaseCity: previewTrip.homeBaseCity,
+      province: previewTrip.province,
     },
     displayTitle
   );
@@ -224,8 +277,7 @@ export default function TripCard({
     try {
       setSaving(true);
 
-      let enrichedTrip = trip;
-      let source: TripDataSource = trip.liveDataSummary?.usedPlacesData
+      const source: TripDataSource = trip.liveDataSummary?.usedPlacesData
         ? "live-google-places"
         : trip.liveDataSummary?.usedFallbackData
           ? "static-fallback"
@@ -233,53 +285,8 @@ export default function TripCard({
 
       const propInput = normalizeTripInput(input);
       const storedInput = getStoredLastInput();
-      const effectiveInput = storedInput ?? propInput;
-
-      if (effectiveInput) {
-        try {
-          const enrichRes = await fetch("/api/enrich-trip", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              trip,
-              input: effectiveInput,
-            }),
-          });
-
-          const text = await enrichRes.text();
-          let enrichData: EnrichTripResponse | null = null;
-
-          if (text) {
-            try {
-              enrichData = JSON.parse(text);
-            } catch (parseError) {
-              console.error("Failed to parse enrich-trip response:", parseError, text);
-            }
-          }
-
-          if (!enrichRes.ok) {
-            console.error("enrich-trip request failed:", enrichRes.status, enrichData);
-          } else {
-            if (enrichData?.success && enrichData?.trip) {
-              enrichedTrip = enrichData.trip;
-            }
-
-            if (
-              enrichData?.source === "live-google-places" ||
-              enrichData?.source === "static-fallback" ||
-              enrichData?.source === "static-ranking"
-            ) {
-              source = enrichData.source;
-            }
-          }
-        } catch (enrichError) {
-          console.error("enrich-trip fetch failed, using current trip:", enrichError);
-        }
-      }
-
-      const plan = buildTripPlan(enrichedTrip, effectiveInput, source);
+      const effectiveInput = storedInput ?? propInput ?? previewPlan.safeInput;
+      const plan = buildTripPlan(trip, effectiveInput, source);
       const saveResult = await saveTripPlan(plan);
 
       if (!saveResult.success) {
@@ -312,10 +319,10 @@ export default function TripCard({
 
   return (
     <article className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
-      {trip.imageUrl ? (
+      {heroImageUrl ? (
         <div className="aspect-[16/8.5] w-full overflow-hidden bg-slate-100 dark:bg-slate-800">
           <Image
-            src={trip.imageUrl}
+            src={heroImageUrl}
             alt={displayTitle}
             width={1600}
             height={900}
@@ -329,10 +336,20 @@ export default function TripCard({
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="max-w-3xl">
             <div className="flex flex-wrap gap-2">
-              <Badge tone="green">{tripConfidenceLabel(trip.confidence)}</Badge>
-              <Badge>{trip.isStaycation ? "Staycation" : `${trip.province} getaway`}</Badge>
-              <Badge tone={tripSourceTone(trip) === "green" ? "green" : "slate"}>
-                {tripSourceLabel(trip)}
+              <Badge tone={confidenceTone(previewTrip.confidence)}>
+                {tripConfidenceLabel(previewTrip.confidence)}
+              </Badge>
+              <Badge>
+                {previewTrip.isStaycation
+                  ? "Staycation"
+                  : `${previewTrip.province} getaway`}
+              </Badge>
+              <Badge
+                tone={
+                  tripSourceTone(previewTrip) === "green" ? "green" : "slate"
+                }
+              >
+                {tripSourceLabel(previewTrip)}
               </Badge>
             </div>
 
@@ -345,7 +362,9 @@ export default function TripCard({
               </p>
             ) : null}
             <p className="mt-2 text-base leading-7 text-slate-600 dark:text-slate-300">
-              {formatDisplayText(trip.aiSummary ?? trip.summary)}
+              {formatDisplayText(
+                displaySummary ?? previewTrip.aiSummary ?? previewTrip.summary
+              )}
             </p>
             {tripPrompt ? (
               <p className="mt-3 text-sm leading-6 text-slate-500 dark:text-slate-400">
@@ -373,12 +392,12 @@ export default function TripCard({
           <Stat
             label="Per traveler"
             value={`$${perTravelerDisplay}`}
-            detail={trip.aiBudgetNote ?? "Budget will update when you swap stops."}
+            detail={budgetFitDetail(displayCost, previewPlan.safeInput.budget)}
           />
           <Stat
             label="Drive and fit"
-            value={`${trip.driveHoursFromStart}h`}
-            detail={strengthLabel(trip.styleMatchStrength)}
+            value={previewPlan.driveTimeText}
+            detail={strengthLabel(previewTrip.styleMatchStrength)}
           />
         </div>
 
@@ -450,11 +469,14 @@ export default function TripCard({
                 Planning trust
               </div>
               <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">
-                {tripFreshnessLabel(trip)}
+                {tripFreshnessLabel(previewTrip)}
               </p>
-              {trustNote ? (
+              <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
+                {trustNote}
+              </p>
+              {providerStatus ? (
                 <p className="mt-2 text-xs font-medium uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
-                  {trustNote}
+                  {providerStatus}
                 </p>
               ) : null}
             </div>

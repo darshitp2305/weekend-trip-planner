@@ -102,6 +102,8 @@ function timeWindowLabel(time?: string) {
       return "8:00-10:00 AM";
     case "late morning":
       return "10:30 AM-12:30 PM";
+    case "late morning to afternoon":
+      return "10:30 AM-4:00 PM";
     case "afternoon":
       return "1:00-4:00 PM";
     case "late afternoon":
@@ -124,6 +126,47 @@ function guessActivityCost(activity: Activity, travelers: number) {
 
 function stopKey(dayIndex: number, stopIndex: number) {
   return `day-${dayIndex}-stop-${stopIndex}`;
+}
+
+function isDemandingHikeText(value?: string) {
+  const text = normalized(value);
+  if (!text) return false;
+
+  const summitSignal =
+    ["summit", "peak", "ridge", "scramble", "alpine", "mountain"].some((term) =>
+      text.includes(term)
+    );
+  const hikeSignal =
+    ["trail", "hike", "trailhead", "backcountry"].some((term) =>
+      text.includes(term)
+    );
+
+  return text.includes("signature summit-style hike") || (summitSignal && hikeSignal);
+}
+
+function isDemandingHikeStop(
+  stop: { title?: string; description?: string },
+  activity?: Activity
+) {
+  return isDemandingHikeText(
+    [stop.title, stop.description, activity?.name, activity?.type, activity?.shortDescription]
+      .filter(Boolean)
+      .join(" ")
+  );
+}
+
+function activityPlannerLabel(
+  stop: { title?: string; description?: string },
+  activity?: Pick<Activity, "name">
+) {
+  const name = activity?.name?.trim();
+  if (!name) return "Activity";
+
+  if (isDemandingHikeText([stop.title, stop.description, name].filter(Boolean).join(" "))) {
+    return name.replace(/\s*trailhead$/i, "").trim();
+  }
+
+  return name;
 }
 
 function toStopCoordinate(
@@ -897,6 +940,7 @@ export default function InteractiveItinerary({
             let editableStopCount = 0;
             let driveSegmentCount = 0;
             let daySpendEstimate = 0;
+            let hasDemandingHike = false;
 
             dayStops.forEach((stop, stopIndex) => {
               const key = stopKey(dayIndex, stopIndex);
@@ -940,15 +984,21 @@ export default function InteractiveItinerary({
                 );
                 if (selectedActivity) {
                   daySpendEstimate += guessActivityCost(selectedActivity, travelerCount);
-                  if (!anchorNames.includes(selectedActivity.name)) {
-                    anchorNames.push(selectedActivity.name);
+                  if (isDemandingHikeStop(stop, selectedActivity)) {
+                    hasDemandingHike = true;
+                  }
+                  const activityLabel = activityPlannerLabel(stop, selectedActivity);
+                  if (!anchorNames.includes(activityLabel)) {
+                    anchorNames.push(activityLabel);
                   }
                 }
               }
             });
 
             const tempoLabel =
-              editableStopCount <= 2
+              hasDemandingHike
+                ? "Hard hike day"
+                : editableStopCount <= 2
                 ? "Easy pace"
                 : editableStopCount <= 4
                   ? "Balanced pace"
@@ -984,7 +1034,9 @@ export default function InteractiveItinerary({
                       {tempoLabel}
                     </div>
                     <p className="mt-1 text-[12px] leading-5 text-slate-600 dark:text-slate-300">
-                      {editableStopCount} decision stop{editableStopCount === 1 ? "" : "s"} and {driveSegmentCount} travel leg{driveSegmentCount === 1 ? "" : "s"}.
+                      {hasDemandingHike
+                        ? "Treat the summit hike as the main effort and keep the rest of the day light."
+                        : `${editableStopCount} decision stop${editableStopCount === 1 ? "" : "s"} and ${driveSegmentCount} travel leg${driveSegmentCount === 1 ? "" : "s"}.`}
                     </p>
                   </div>
 
@@ -1017,7 +1069,9 @@ export default function InteractiveItinerary({
                       Route note
                     </div>
                     <div className="mt-1 text-sm font-semibold text-slate-950 dark:text-slate-100">
-                      {driveBackDistance !== undefined
+                      {hasDemandingHike
+                        ? "Main effort is the summit hike"
+                        : driveBackDistance !== undefined
                         ? `${formatTransferMinutes(
                             estimateTransferMinutes(driveBackDistance)
                           )} back to stay`
@@ -1351,7 +1405,7 @@ export default function InteractiveItinerary({
                             <div className="mt-3">
                               <CompactSelectionCard
                                 label="Current activity"
-                                title={selectedActivity.name}
+                                title={activityPlannerLabel(stop, selectedActivity)}
                                 subtitle={
                                   formatDistanceFromPrevious(
                                     priorStop,

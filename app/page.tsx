@@ -26,6 +26,12 @@ type GenerateTripResponse = {
   rankings?: RankedDestination[];
 };
 
+type EnrichTripResponse = {
+  success?: boolean;
+  trip?: RankedDestination | null;
+  source?: "live-google-places" | "static-fallback" | "static-ranking";
+};
+
 type StoredPageState = {
   currentTrip?: RankedDestination | null;
   shownDestinationNames?: string[];
@@ -66,6 +72,49 @@ function extractResults(
   if (Array.isArray(payload?.destinations)) return payload.destinations;
   if (Array.isArray(payload?.rankings)) return payload.rankings;
   return null;
+}
+
+async function enrichSelectedTrip(
+  trip: RankedDestination,
+  input: TripInput
+): Promise<RankedDestination> {
+  try {
+    const response = await fetch("/api/enrich-trip", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        trip,
+        input,
+      }),
+    });
+
+    const text = await response.text();
+    let data: EnrichTripResponse | null = null;
+
+    if (text) {
+      try {
+        data = JSON.parse(text);
+      } catch (parseError) {
+        console.error(
+          "Failed to parse /api/enrich-trip response:",
+          parseError,
+          text
+        );
+      }
+    }
+
+    if (!response.ok) {
+      console.error("/api/enrich-trip failed:", response.status, data);
+      return trip;
+    }
+
+    return data?.trip ? ensureTripImage(data.trip) : trip;
+  } catch (error) {
+    console.error("Trip enrichment failed, using generated trip:", error);
+    return trip;
+  }
 }
 
 function SkeletonTripCard() {
@@ -112,6 +161,32 @@ function StepCard({
       </p>
     </div>
   );
+}
+
+function recommendationHeading(confidence?: RankedDestination["confidence"]) {
+  switch (confidence) {
+    case "high":
+      return "High-conviction recommendation";
+    case "medium":
+      return "Best-fit recommendation";
+    case "low":
+      return "Best available recommendation";
+    default:
+      return "Trip recommendation";
+  }
+}
+
+function recommendationDescription(confidence?: RankedDestination["confidence"]) {
+  switch (confidence) {
+    case "high":
+      return "This is the single trip Trippify thinks best fits the brief. If it is close but not perfect, build it and adjust the days instead of starting over.";
+    case "medium":
+      return "This is the single trip that best fits the brief right now. Some details may still need builder edits or live verification before you lock it in.";
+    case "low":
+      return "This is the closest trip shape available right now. Expect to swap stops, adjust pacing, or tighten the plan in the builder before you finalize it.";
+    default:
+      return "This is the single trip Trippify thinks best fits the brief. If it is close but not perfect, build it and adjust the days instead of starting over.";
+  }
 }
 
 export default function HomePage() {
@@ -396,6 +471,7 @@ export default function HomePage() {
           aiTrips && aiTrips.length > 0
             ? ensureTripImage(aiTrips[0])
             : rankedTrip;
+        const enrichedSelectedTrip = await enrichSelectedTrip(selectedTrip, input);
 
         trackProductEvent("trip_generated", {
           metadata: {
@@ -403,7 +479,7 @@ export default function HomePage() {
             rankedCount: 1,
             usedLiveData: Boolean(rankData.usedLiveData),
             source: data?.source ?? "fallback-template",
-            destinationNames: [selectedTrip.name],
+            destinationNames: [enrichedSelectedTrip.name],
             preferredDestination: input.preferredDestination ?? null,
           },
         });
@@ -417,10 +493,10 @@ export default function HomePage() {
               ? "Built from live place data with fallback trip copy."
               : "Built from ranked trip data with fallback trip copy.";
 
-        setCurrentTrip(selectedTrip);
+        setCurrentTrip(enrichedSelectedTrip);
         setAiStatusMessage(statusMessage);
         persistPageState({
-          currentTrip: selectedTrip,
+          currentTrip: enrichedSelectedTrip,
           shownDestinationNames: nextShownDestinationNames,
           lastInput: input,
           aiStatusMessage: statusMessage,
@@ -530,7 +606,7 @@ export default function HomePage() {
 
           <div className="mt-6 max-w-4xl">
             <h1 className="text-4xl font-semibold tracking-tight text-slate-950 dark:text-white sm:text-5xl">
-              One high-conviction trip you can actually go on.
+              One trip recommendation you can actually shape into a real weekend.
             </h1>
             <p className="mt-4 text-base leading-7 text-slate-600 dark:text-slate-300 sm:text-lg">
               Pick the dates, say how many people are going, and describe the
@@ -581,12 +657,10 @@ export default function HomePage() {
                   Your trip
                 </div>
                 <h2 className="mt-2 text-3xl font-semibold tracking-tight text-slate-950 dark:text-white">
-                  High-conviction recommendation
+                  {recommendationHeading(currentTrip?.confidence)}
                 </h2>
                 <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
-                  This is the single trip Trippify thinks best fits the brief.
-                  If it is close but not perfect, build it and adjust the days
-                  instead of starting over.
+                  {recommendationDescription(currentTrip?.confidence)}
                 </p>
               </div>
 
@@ -621,4 +695,3 @@ export default function HomePage() {
     </main>
   );
 }
-

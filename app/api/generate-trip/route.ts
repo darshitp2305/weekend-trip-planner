@@ -5,6 +5,7 @@ import {
   rejectOversizedJsonRequest,
 } from "../../../lib/apiSecurity";
 import { generateTripCopyWithOpenAI } from "../../../lib/openAiTripCopy";
+import { recalculateConfidence } from "../../../lib/generateRankedTrips";
 import { isStartCity } from "../../../lib/startCities";
 import { deriveTripEndDate, isIsoDate } from "../../../lib/tripDates";
 import { rankDestinations } from "../../../lib/rankDestinations";
@@ -263,6 +264,7 @@ export async function POST(req: Request) {
     if (!rankedTrips || rankedTrips.length === 0) {
       rankedTrips = rankDestinations(input);
     }
+    rankedTrips = recalculateConfidence(rankedTrips, input);
 
     const openAiResult = await generateTripCopyWithOpenAI(input, rankedTrips);
     if (openAiResult.trips) {

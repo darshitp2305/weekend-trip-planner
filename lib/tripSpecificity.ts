@@ -30,6 +30,15 @@ type PromptFitTripLike = Pick<RecommendationTripLike, "topActivities"> & {
   itineraryDays?: Pick<ItineraryDayData, "stops">[];
 };
 
+type PromptSummaryTripLike = Pick<
+  RecommendationTripLike,
+  "destination" | "destinationName" | "homeBaseCity" | "name"
+> & {
+  summary?: string;
+  tripPrompt?: string;
+  tripLengthDays?: number;
+};
+
 function normalized(value?: string) {
   return (value ?? "").trim().toLowerCase().replace(/\s+/g, " ");
 }
@@ -294,6 +303,8 @@ export function getPromptConstraintFitSummary(
   if (promptIntent.hardConstraints.activityAnchor === "summit_hike") {
     const hikeAnchor = [...(trip.topActivities ?? [])]
       .sort((a, b) => hikeSpecificityScore(b) - hikeSpecificityScore(a))[0];
+    const isTwoDayCompromise =
+      typeof input?.tripLengthDays === "number" && input.tripLengthDays <= 2;
 
     if (hikeAnchor?.name?.trim() && hikeSpecificityScore(hikeAnchor) >= 40) {
       summitAnchorName = normalizePlaceDisplayName(hikeAnchor.name);
@@ -304,11 +315,13 @@ export function getPromptConstraintFitSummary(
 
     if (promptIntent.softPreferences.wantsRecoveryDays) {
       parts.push(
-        trip.itineraryDays?.length
-          ? hasLighterRecoveryDays(trip, summitAnchorName)
-            ? "Keeps the other days lighter around the main hike"
-            : "Still needs clearer recovery-day pacing around the main hike"
-          : "Leaves room for lighter recovery time around the main hike"
+        isTwoDayCompromise
+          ? "This is the tighter compromise version, with the main hike and drive-back happening in the same trip window"
+          : trip.itineraryDays?.length
+            ? hasLighterRecoveryDays(trip, summitAnchorName)
+              ? "Keeps the other days lighter around the main hike"
+              : "Still needs clearer recovery-day pacing around the main hike"
+            : "Leaves room for lighter recovery time around the main hike"
       );
     }
   }
@@ -338,11 +351,46 @@ export function getPromptConstraintFitSummary(
 
   if (promptIntent.hardConstraints.hikeDistanceKmTarget) {
     parts.push(
-      `The ~${promptIntent.hardConstraints.hikeDistanceKmTarget} km round-trip target is still approximate from place signals, not trail-specific distance data`
+      `The requested ~${promptIntent.hardConstraints.hikeDistanceKmTarget} km round-trip hike length is not verified from trail-specific distance data yet, so treat this as a best-fit draft rather than a hard match`
     );
   }
 
   return parts.length > 0 ? `${parts.join(". ")}.` : undefined;
+}
+
+export function getPromptAwareTripSummary(trip: PromptSummaryTripLike) {
+  if (!trip.tripPrompt) return trip.summary;
+
+  const promptIntent = deriveTripIntentFromPrompt(trip.tripPrompt);
+  if (promptIntent.hardConstraints.activityAnchor !== "summit_hike") {
+    return trip.summary;
+  }
+
+  const baseName =
+    trip.homeBaseCity?.trim() ??
+    trip.destinationName?.trim() ??
+    trip.destination?.trim() ??
+    trip.name?.trim() ??
+    "This trip";
+  const hasVegetarianNeed =
+    promptIntent.hardConstraints.requiresVegetarianOptions;
+  const hikeDistanceTarget =
+    promptIntent.hardConstraints.hikeDistanceKmTarget;
+  const isTwoDayCompromise =
+    typeof trip.tripLengthDays === "number" && trip.tripLengthDays <= 2;
+
+  const mealClause = hasVegetarianNeed
+    ? "shared meal options that can still work for a vegetarian plus non-vegetarian group"
+    : "shared food stops around the main hike";
+  const distanceClause = hikeDistanceTarget
+    ? ` The requested ~${hikeDistanceTarget} km hike length is still only an approximate fit, not a trail-verified match.`
+    : "";
+
+  if (isTwoDayCompromise) {
+    return `${baseName} works as a mountain base for a compromise summit-hike version of the brief: one hard hike day, same-day drive back, and ${mealClause}.${distanceClause}`;
+  }
+
+  return `${baseName} works as a mountain base for one hard summit-hike day with easier recovery time and ${mealClause}.${distanceClause}`;
 }
 
 function buildCampgroundStayOption(
@@ -466,6 +514,11 @@ export function getRecommendedTripTitle(
   trip: RecommendationTripLike,
   input?: Partial<TripInput> | null
 ) {
+  const summitBaseName =
+    trip.homeBaseCity?.trim() ??
+    trip.destinationName?.trim() ??
+    trip.destination?.trim() ??
+    trip.name?.trim();
   const selectedStayName = trip.savedSelectionState?.hotelName?.trim();
   const titleLooksCampingSpecific = isCampingStayLikeText(trip.title);
   const firstHotelLooksCampingSpecific = isCampingStayLikeHotel(
@@ -483,9 +536,27 @@ export function getRecommendedTripTitle(
   }
 
   if (trip.title?.trim()) {
-    return isSummitHikeFocused(input)
-      ? normalizePlaceDisplayName(trip.title)
-      : trip.title.trim();
+    if (isSummitHikeFocused(input)) {
+      const summitTitle = normalizePlaceDisplayName(trip.title);
+      const normalizedSummitTitle = normalized(summitTitle);
+      const normalizedDestinationName = normalized(summitBaseName);
+
+      if (
+        summitTitle &&
+        summitBaseName &&
+        normalizedSummitTitle &&
+        normalizedDestinationName &&
+        normalizedSummitTitle !== normalizedDestinationName &&
+        !normalizedSummitTitle.includes(normalizedDestinationName) &&
+        !normalizedDestinationName.includes(normalizedSummitTitle)
+      ) {
+        return `${summitBaseName} with ${summitTitle}`;
+      }
+
+      return summitTitle;
+    }
+
+    return trip.title.trim();
   }
 
   if (isSummitHikeFocused(input)) {
@@ -494,7 +565,23 @@ export function getRecommendedTripTitle(
       .sort((a, b) => hikeSpecificityScore(b) - hikeSpecificityScore(a))[0];
 
     if (hikeAnchor?.name?.trim() && hikeSpecificityScore(hikeAnchor) >= 40) {
-      return normalizePlaceDisplayName(hikeAnchor.name);
+      const summitTitle = normalizePlaceDisplayName(hikeAnchor.name);
+      const normalizedSummitTitle = normalized(summitTitle);
+      const normalizedDestinationName = normalized(summitBaseName);
+
+      if (
+        summitTitle &&
+        summitBaseName &&
+        normalizedSummitTitle &&
+        normalizedDestinationName &&
+        normalizedSummitTitle !== normalizedDestinationName &&
+        !normalizedSummitTitle.includes(normalizedDestinationName) &&
+        !normalizedDestinationName.includes(normalizedSummitTitle)
+      ) {
+        return `${summitBaseName} with ${summitTitle}`;
+      }
+
+      return summitTitle;
     }
   }
 
@@ -525,12 +612,15 @@ export function getRecommendedTripTitle(
 export function getRecommendationContextLabel(
   trip: Pick<
     RecommendationTripLike,
-    "destinationName" | "destination" | "name" | "province"
+    "destinationName" | "destination" | "homeBaseCity" | "name" | "province"
   >,
   title: string
 ) {
   const destinationName =
-    trip.destinationName?.trim() ?? trip.destination?.trim() ?? trip.name?.trim();
+    trip.homeBaseCity?.trim() ??
+    trip.destinationName?.trim() ??
+    trip.destination?.trim() ??
+    trip.name?.trim();
   const destinationLabel = [destinationName, trip.province?.trim()]
     .filter(Boolean)
     .join(", ");

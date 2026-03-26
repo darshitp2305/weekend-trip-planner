@@ -6,6 +6,7 @@ import {
   rejectOversizedJsonRequest,
 } from "../../../lib/apiSecurity";
 import { enrichRankedTrip } from "../../../lib/enrichTrip";
+import { recalculateConfidence } from "../../../lib/generateRankedTrips";
 import { RankedDestination, TripInput } from "../../../lib/types";
 
 type Body = {
@@ -41,10 +42,11 @@ export async function POST(req: NextRequest) {
     }
 
     const result = await enrichRankedTrip(body.trip, body.input);
+    const [reconciledTrip] = recalculateConfidence([result.trip], body.input);
 
     return jsonNoStore({
       success: true,
-      trip: result.trip,
+      trip: reconciledTrip ?? result.trip,
       source: result.source,
     });
   } catch (error) {

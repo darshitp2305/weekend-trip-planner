@@ -11,6 +11,7 @@ type BudgetBreakdownData = {
 
 type Props = {
   breakdown?: BudgetBreakdownData;
+  notes?: string[];
 };
 
 function formatMoney(value?: number) {
@@ -87,7 +88,7 @@ function TotalCard({
   );
 }
 
-export default function BudgetBreakdown({ breakdown }: Props) {
+export default function BudgetBreakdown({ breakdown, notes = [] }: Props) {
   return (
     <section>
       <div className="flex flex-col gap-1">
@@ -100,6 +101,14 @@ export default function BudgetBreakdown({ breakdown }: Props) {
         <p className="text-[12px] leading-5 text-slate-500 dark:text-slate-400">
           Food and activity totals are planning estimates based on your current selections.
         </p>
+        {notes.map((note) => (
+          <p
+            key={note}
+            className="text-[12px] leading-5 text-slate-500 dark:text-slate-400"
+          >
+            {note}
+          </p>
+        ))}
       </div>
 
       <div className="mt-4 grid grid-cols-2 gap-2.5 sm:grid-cols-3">
@@ -110,7 +119,7 @@ export default function BudgetBreakdown({ breakdown }: Props) {
         <BudgetChip
           label="Misc"
           value={breakdown?.misc}
-          info="10% contingency buffer for small trip costs like parking, tips, snacks, and incidental fees."
+          info="10% contingency buffer for small trip costs like parking, park or conservation passes, tips, snacks, and incidental fees."
         />
       </div>
 

@@ -9,7 +9,9 @@ import {
   TripSelectionState,
 } from "../lib/types";
 import {
+  getPromptAwareTripSummary,
   getRecommendationContextLabel,
+  getPromptConstraintFitSummary,
   getRecommendedTripTitle,
 } from "../lib/tripSpecificity";
 import {
@@ -18,6 +20,7 @@ import {
   tripProviderStatusText,
   tripSourceLabel,
   tripSourceTone,
+  tripTrustNote,
 } from "../lib/trustSignals";
 
 type TripHeaderProps = {
@@ -60,6 +63,14 @@ type TripHeaderProps = {
       hotels?: "live_success" | "live_unavailable" | "fallback_used";
       tripCopy?: "live_success" | "live_unavailable" | "fallback_used";
     };
+    tripPrompt?: string;
+    travelerCount?: number;
+    budgetPerTraveler?: number;
+    totalBudget?: number;
+    itineraryDays?: TripPlan["itineraryDays"];
+    topActivities?: TripPlan["topActivities"];
+    estimatedCost?: number;
+    budgetBreakdown?: TripPlan["budgetBreakdown"];
   };
 };
 
@@ -167,9 +178,15 @@ function formatDurationFromSeconds(seconds?: number) {
 }
 
 function formatDistanceFromMeters(meters?: number) {
-  if (meters === undefined || !Number.isFinite(meters)) return "-";
+  if (meters === undefined || !Number.isFinite(meters)) return undefined;
   const km = meters / 1000;
   return `${Math.round(km)} km`;
+}
+
+function confidenceTone(confidence?: TripHeaderProps["trip"]["confidence"]) {
+  if (confidence === "high") return "green" as const;
+  if (confidence === "low") return "violet" as const;
+  return "slate" as const;
 }
 
 export default function TripHeader({ trip, shareMode = false }: TripHeaderProps) {
@@ -180,12 +197,16 @@ export default function TripHeader({ trip, shareMode = false }: TripHeaderProps)
     name: trip.name,
     destination: trip.destination,
     destinationName: trip.destinationName,
+    homeBaseCity: trip.homeBaseCity,
     province: trip.province,
     hotelOptions: trip.hotelOptions as HotelOption[] | undefined,
     savedSelectionState: trip.savedSelectionState,
+  }, {
+    tripPrompt: trip.tripPrompt,
   });
   const titleContext = getRecommendationContextLabel(
     {
+      homeBaseCity: trip.homeBaseCity,
       destinationName: trip.destinationName,
       destination: trip.destination,
       name: trip.name,
@@ -274,9 +295,19 @@ export default function TripHeader({ trip, shareMode = false }: TripHeaderProps)
 
   const driveTimeValue = routedDuration ?? formatDriveHours(fallbackDriveHours);
 
-  const distanceValue = formatDistanceFromMeters(
-    trip.routeSummary?.distanceMeters
-  );
+  const distanceValue =
+    formatDistanceFromMeters(trip.routeSummary?.distanceMeters) ??
+    (fallbackDriveHours !== undefined ? "Approx only" : "-");
+  const summaryText = getPromptAwareTripSummary({
+    summary: trip.summary,
+    tripPrompt: trip.tripPrompt,
+    tripLengthDays: trip.itineraryDays?.length,
+    destinationName: trip.destinationName,
+    destination: trip.destination,
+    homeBaseCity: trip.homeBaseCity,
+    name: trip.name,
+  });
+  const promptConstraintSummary = getPromptConstraintFitSummary(trip, trip);
 
   const finalizedDateLabel = formatFinalizedAt(trip.finalizedAt);
   const tripDecisionLabel = decisionLabel(trip.decisionStatus);
@@ -307,7 +338,9 @@ export default function TripHeader({ trip, shareMode = false }: TripHeaderProps)
               {tripDecisionLabel}
             </Badge>
           ) : null}
-          <Badge tone="violet">{tripConfidenceLabel(trip.confidence)}</Badge>
+          <Badge tone={confidenceTone(trip.confidence)}>
+            {tripConfidenceLabel(trip.confidence)}
+          </Badge>
           <Badge tone={tripSourceTone(trip)}>{sourceLabel(trip)}</Badge>
           {trip.routeSummary ? <Badge>OpenStreetMap route</Badge> : null}
         </div>
@@ -322,10 +355,16 @@ export default function TripHeader({ trip, shareMode = false }: TripHeaderProps)
             </p>
           ) : null}
 
-          {trip.summary ? (
+          {summaryText ? (
             <p className="mt-2.5 max-w-4xl text-[15px] leading-7 text-slate-600 dark:text-slate-300">
-              {formatDisplayText(trip.summary)}
+              {formatDisplayText(summaryText)}
             </p>
+          ) : null}
+          {promptConstraintSummary &&
+          promptConstraintSummary.toLowerCase().includes("approximate fit") ? (
+            <div className="mt-3 max-w-4xl rounded-[1rem] border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-100">
+              Best-fit draft, not a hard match: the requested hike length is still approximate and should be verified before booking around it.
+            </div>
           ) : null}
 
           {trip.status === "finalized" && finalizedDateLabel ? (
@@ -338,6 +377,11 @@ export default function TripHeader({ trip, shareMode = false }: TripHeaderProps)
               {tripFreshnessLabel(trip)}
             </p>
           ) : null}
+          {!isDraft ? (
+            <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+              {tripTrustNote(trip)}
+            </p>
+          ) : null}
           {!isDraft && tripProviderStatusText(trip) ? (
             <p className="mt-2 text-xs font-medium uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
               {tripProviderStatusText(trip)}
@@ -347,7 +391,7 @@ export default function TripHeader({ trip, shareMode = false }: TripHeaderProps)
 
         <div className="mt-5 grid gap-2.5 sm:grid-cols-2 lg:max-w-4xl lg:grid-cols-4">
           <Stat label="Drive time" value={driveTimeValue} />
-          <Stat label="Distance" value={distanceValue} />
+          <Stat label="Route distance" value={distanceValue} />
           <Stat label="Style fit" value={trip.styleMatchStrength ?? "-"} />
           <Stat
             label="Score"
