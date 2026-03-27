@@ -15,6 +15,10 @@ import { isStartCity } from "../lib/startCities";
 import { deriveTripEndDate } from "../lib/tripDates";
 import { saveTripPlan } from "../lib/tripStore";
 import {
+  buildDefaultSelectionState,
+  calculateSelectedBudget,
+} from "../lib/tripSelections";
+import {
   getPromptAwareTripSummary,
   getPromptConstraintFitSummary,
   getRecommendationContextLabel,
@@ -228,8 +232,23 @@ export default function TripCard({
   const normalizedInput = normalizeTripInput(input);
   const previewPlan = buildTripPlanPreview(trip, normalizedInput);
   const previewTrip = previewPlan.filteredTrip;
-  const displayCost = previewPlan.budgetBreakdown.totalExpected;
   const travelerCount = Math.max(1, previewPlan.safeInput.travelerCount ?? 1);
+  const defaultSelection = buildDefaultSelectionState(
+    previewPlan.itineraryDays,
+    previewTrip.hotelOptions ?? [],
+    previewTrip.foodSpots ?? [],
+    previewTrip.topActivities ?? []
+  );
+  const displayBudget = calculateSelectedBudget({
+    tripLengthDays: previewPlan.safeInput.tripLengthDays,
+    travelerCount,
+    hotelOptions: previewTrip.hotelOptions ?? [],
+    foodSpots: previewTrip.foodSpots ?? [],
+    activities: previewTrip.topActivities ?? [],
+    selection: defaultSelection,
+    fallbackBreakdown: previewPlan.budgetBreakdown,
+  });
+  const displayCost = displayBudget.totalExpected;
   const perTravelerDisplay = Math.round(displayCost / travelerCount);
   const itineraryPreviewItems = getItineraryPreviewItems(
     previewPlan.itineraryDays,
@@ -286,7 +305,12 @@ export default function TripCard({
       const propInput = normalizeTripInput(input);
       const storedInput = getStoredLastInput();
       const effectiveInput = storedInput ?? propInput ?? previewPlan.safeInput;
-      const plan = buildTripPlan(trip, effectiveInput, source);
+      const basePlan = buildTripPlan(trip, effectiveInput, source);
+      const plan = {
+        ...basePlan,
+        savedSelectionState: defaultSelection,
+        budgetBreakdown: displayBudget,
+      };
       const saveResult = await saveTripPlan(plan);
 
       if (!saveResult.success) {

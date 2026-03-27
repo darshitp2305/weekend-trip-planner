@@ -22,7 +22,11 @@ import InteractiveItinerary from "../../../components/InteractiveItinerary";
 import ExpediaStayWidget from "../../../components/ExpediaStayWidget";
 import { formatDateRange } from "../../../lib/tripDates";
 import { isStartCity } from "../../../lib/startCities";
-import { estimateFoodCostForGroup } from "../../../lib/foodPricing";
+import {
+  buildDefaultSelectionState,
+  calculateSelectedBudget,
+  emptySelectionState,
+} from "../../../lib/tripSelections";
 import { getPromptConstraintFitSummary } from "../../../lib/tripSpecificity";
 import {
   baseTripAnalytics,
@@ -91,14 +95,6 @@ function optionSortScore(name: string, preferredTitle?: string) {
 
 function stopKey(dayIndex: number, stopIndex: number) {
   return `day-${dayIndex}-stop-${stopIndex}`;
-}
-
-function emptySelectionState(): TripSelectionState {
-  return {
-    hotelName: undefined,
-    foods: {},
-    activities: {},
-  };
 }
 
 type TripSyncSaveMessages = {
@@ -375,8 +371,16 @@ export default function TripPage() {
       return selectionState.selection;
     }
 
-    return trip.savedSelectionState ?? emptySelectionState();
-  }, [selectionState, trip]);
+    return (
+      trip.savedSelectionState ??
+      buildDefaultSelectionState(
+        itineraryDays,
+        trip.hotelOptions ?? [],
+        trip.foodSpots ?? [],
+        trip.topActivities ?? []
+      )
+    );
+  }, [itineraryDays, selectionState, trip]);
 
   const travelerCount = useMemo(() => {
     const value = Number(trip?.travelerCount ?? 1);
@@ -398,60 +402,15 @@ export default function TripPage() {
   const selectedBudget = useMemo(() => {
     if (!trip) return null;
 
-    const tripLengthDays = deriveTripLengthDays(trip);
-    const nights = Math.max(1, tripLengthDays - 1);
-    const gas = Number(trip?.budgetBreakdown?.gas ?? 0);
-
-    const selectedHotel = hotelOptions.find(
-      (hotel: HotelOption) => hotel.name === activeSelectionState.hotelName
-    );
-
-    const hotel =
-      typeof selectedHotel?.totalStayPrice === "number"
-        ? selectedHotel.totalStayPrice
-        : typeof selectedHotel?.pricePerNight === "number"
-          ? selectedHotel.pricePerNight * nights
-          : Number(trip?.budgetBreakdown?.hotel ?? 0);
-
-    const food = Object.values(activeSelectionState.foods).reduce((sum, selectedName) => {
-      const spot = (trip.foodSpots ?? []).find(
-        (item: FoodSpot) => item.name === selectedName
-      );
-
-      if (!spot) return sum;
-
-      return sum + estimateFoodCostForGroup(spot, travelerCount);
-    }, 0);
-
-    const activities = Object.values(activeSelectionState.activities).reduce(
-      (sum, selectedName) => {
-        const activity = (trip.topActivities ?? []).find(
-          (item: Activity) => item.name === selectedName
-        );
-        if (!activity) return sum;
-
-        return (
-          sum +
-          (activity.costEstimate ?? activity.estimatedCost ?? 0) * travelerCount
-        );
-      },
-      0
-    );
-
-    const misc = Math.round((hotel + food + gas + activities) * 0.1);
-    const totalExpected = Math.round(hotel + food + gas + activities + misc);
-
-    return {
-      hotel: Math.round(hotel),
-      food: Math.round(food),
-      gas: Math.round(gas),
-      activities: Math.round(activities),
-      misc,
-      total: totalExpected,
-      totalExpected,
-      totalLow: Math.round(totalExpected * 0.9),
-      totalHigh: Math.round(totalExpected * 1.15),
-    };
+    return calculateSelectedBudget({
+      tripLengthDays: deriveTripLengthDays(trip),
+      travelerCount,
+      hotelOptions,
+      foodSpots: trip.foodSpots ?? [],
+      activities: trip.topActivities ?? [],
+      selection: activeSelectionState,
+      fallbackBreakdown: trip.budgetBreakdown,
+    });
   }, [activeSelectionState, hotelOptions, travelerCount, trip]);
 
   const targetTotalBudget = useMemo(() => {

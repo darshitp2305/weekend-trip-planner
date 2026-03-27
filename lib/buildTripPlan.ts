@@ -10,6 +10,10 @@ import { sortHotelOptions } from "./hotelAvailability";
 import { deriveTripEndDate } from "./tripDates";
 import { ensureTripEditToken } from "./tripSecurity";
 import {
+  buildDefaultSelectionState,
+  calculateSelectedBudget,
+} from "./tripSelections";
+import {
   getRecommendedTripTitle,
   normalizePlaceDisplayName,
   refineTripStayRecommendation,
@@ -80,10 +84,6 @@ function normalizeInput(input?: Partial<TripInput>): TripInput {
   };
 }
 
-function roundMoney(value: number) {
-  return Math.round(value);
-}
-
 function makeDriveText(trip: RankedDestination) {
   return `${trip.driveHoursFromStart} hour${
     trip.driveHoursFromStart === 1 ? "" : "s"
@@ -95,92 +95,30 @@ function buildBudgetBreakdown(
   input: TripInput,
   itineraryDays: ItineraryDayData[]
 ): BudgetBreakdown {
-  const nights = Math.max(input.tripLengthDays - 1, 1);
-  const travelerCount = Math.max(1, input.travelerCount);
-
-  const firstHotelPrice = trip.hotelOptions?.[0]?.pricePerNight;
-  const firstHotelTotal = trip.hotelOptions?.[0]?.totalStayPrice;
-  // Prefer concrete hotel totals when we have them, then fall back through
-  // nightly rate and any upstream trip-level budget estimate.
-  const hotelBase =
-    trip.isStaycation
-      ? 0
-      : typeof firstHotelTotal === "number"
-      ? firstHotelTotal
-      : typeof firstHotelPrice === "number"
-      ? firstHotelPrice * nights
-      : trip.budgetBreakdown?.hotel ?? 0;
-
-  const fallbackFoodPerDayPerTraveler =
-    input.style === "foodie"
-      ? 65
-      : input.style === "chill" || input.style === "solo reset"
-          ? 45
-          : 50;
-
-  // Use itinerary-selected food stops first so builder edits immediately
-  // change the trip budget instead of waiting for a fresh generation pass.
-  const foodBase =
-    itineraryDays
-      .flatMap((day) => day.stops)
-      .filter((stop) => stop.kind === "food")
-      .reduce((sum, stop) => {
-        const estimated =
-          typeof stop.estimatedCost === "number" && stop.estimatedCost > 0
-            ? stop.estimatedCost
-            : fallbackFoodPerDayPerTraveler * travelerCount * 0.8;
-        return sum + estimated;
-      }, 0) ||
-    (trip.budgetBreakdown?.food && trip.budgetBreakdown.food > 0
-      ? trip.budgetBreakdown.food
-      : input.tripLengthDays * fallbackFoodPerDayPerTraveler * travelerCount);
-
-  const gasBase = trip.isStaycation
-    ? 0
-    : trip.budgetBreakdown?.gas && trip.budgetBreakdown.gas > 0
-    ? trip.budgetBreakdown.gas
-    : Math.max(40, trip.driveHoursFromStart * 22);
-
-  const activitiesFromItinerary = itineraryDays
-    .flatMap((day) => day.stops)
-    .filter((stop) => stop.kind === "activity")
-    .reduce((sum, stop) => sum + (stop.estimatedCost || 0), 0);
-
-  const activitiesBase =
-    activitiesFromItinerary > 0
-      ? activitiesFromItinerary
-      : (trip.budgetBreakdown?.activities ?? 0);
-
-  // Misc is an explicit contingency bucket for parking, tips, snacks, and
-  // other small spend we do not model directly.
-  const miscBase = roundMoney(
-    (hotelBase + foodBase + gasBase + activitiesBase) * 0.1
+  const defaultSelection = buildDefaultSelectionState(
+    itineraryDays,
+    trip.hotelOptions ?? [],
+    trip.foodSpots ?? [],
+    trip.topActivities ?? []
   );
 
-  const totalExpected = roundMoney(
-    hotelBase + foodBase + gasBase + activitiesBase + miscBase
-  );
-
-  if (
-    typeof trip.estimatedCost === "number" &&
-    trip.estimatedCost > 0 &&
-    totalExpected > trip.estimatedCost * 1.05 &&
-    trip.budgetBreakdown
-  ) {
-    return trip.budgetBreakdown;
-  }
-
-  return {
-    hotel: roundMoney(hotelBase),
-    food: roundMoney(foodBase),
-    gas: roundMoney(gasBase),
-    activities: roundMoney(activitiesBase),
-    misc: miscBase,
-    total: totalExpected,
-    totalLow: roundMoney(totalExpected * 0.9),
-    totalExpected,
-    totalHigh: roundMoney(totalExpected * 1.15),
-  };
+  return calculateSelectedBudget({
+    tripLengthDays: input.tripLengthDays,
+    travelerCount: input.travelerCount,
+    hotelOptions: trip.hotelOptions ?? [],
+    foodSpots: trip.foodSpots ?? [],
+    activities: trip.topActivities ?? [],
+    selection: defaultSelection,
+    fallbackBreakdown: {
+      ...trip.budgetBreakdown,
+      gas:
+        trip.isStaycation
+          ? 0
+          : trip.budgetBreakdown?.gas && trip.budgetBreakdown.gas > 0
+            ? trip.budgetBreakdown.gas
+            : Math.max(40, trip.driveHoursFromStart * 22),
+    },
+  });
 }
 
 type FoodSpot = NonNullable<RankedDestination["foodSpots"]>[number];
@@ -2341,6 +2279,21 @@ export function buildTripPlan(
   dataSource: TripDataSource = "static-fallback"
 ): TripPlan {
   const preview = buildTripPlanPreview(trip, input);
+  const defaultSelection = buildDefaultSelectionState(
+    preview.itineraryDays,
+    preview.filteredTrip.hotelOptions,
+    preview.filteredTrip.foodSpots,
+    preview.filteredTrip.topActivities
+  );
+  const selectedBudget = calculateSelectedBudget({
+    tripLengthDays: preview.safeInput.tripLengthDays,
+    travelerCount: preview.safeInput.travelerCount,
+    hotelOptions: preview.filteredTrip.hotelOptions,
+    foodSpots: preview.filteredTrip.foodSpots,
+    activities: preview.filteredTrip.topActivities,
+    selection: defaultSelection,
+    fallbackBreakdown: preview.budgetBreakdown,
+  });
 
   return ensureTripEditToken({
     id: crypto.randomUUID(),
@@ -2359,7 +2312,7 @@ export function buildTripPlan(
     rankingReasons: trip.rankingReasons ?? [],
     tags: trip.rawVibes ?? [],
 
-    budgetBreakdown: preview.budgetBreakdown,
+    budgetBreakdown: selectedBudget,
     hotelOptions: preview.filteredTrip.hotelOptions,
     foodSpots: preview.filteredTrip.foodSpots,
     topActivities: preview.filteredTrip.topActivities,
@@ -2381,6 +2334,7 @@ export function buildTripPlan(
     tripEndDate: preview.safeInput.tripEndDate,
     tripPrompt: preview.safeInput.tripPrompt,
     maxDriveMinutesBetweenStops: preview.safeInput.maxDriveMinutesBetweenStops,
+    savedSelectionState: defaultSelection,
     status: "draft",
     decisionStatus: "waiting_on_partner",
     bookingChecklist: {

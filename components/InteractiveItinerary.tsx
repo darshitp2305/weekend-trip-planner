@@ -14,6 +14,7 @@ import {
   estimateFoodCostRangeForGroup,
   foodPricingSourceLabel,
 } from "../lib/foodPricing";
+import { buildDefaultSelectionState } from "../lib/tripSelections";
 import { preferredHotelBookingUrl } from "../lib/expediaLinks";
 import {
   hotelAvailabilityLabel,
@@ -607,43 +608,10 @@ export default function InteractiveItinerary({
 }: Props) {
   // Seed the planner from the generated itinerary so each day already has a
   // sensible default hotel, food stop, and activity before the user edits it.
-  const defaultSelection = useMemo<TripSelectionState>(() => {
-    const initial: TripSelectionState = {
-      hotelName: hotels[0]?.name,
-      foods: {},
-      activities: {},
-    };
-
-    days.forEach((day, dayIndex) => {
-      (day.stops ?? []).forEach((stop, stopIndex) => {
-        const key = stopKey(dayIndex, stopIndex);
-
-        if (stop.kind === "food") {
-          const match = foodSpots.find(
-            (spot) => normalized(spot.name) === normalized(stop.title)
-          );
-          if (match?.name) initial.foods[key] = match.name;
-        }
-
-        if (stop.kind === "activity") {
-          const match = activities.find(
-            (item) => normalized(item.name) === normalized(stop.title)
-          );
-          if (match?.name) initial.activities[key] = match.name;
-        }
-
-        if (stop.kind === "stay") {
-          const hotelName = stop.title?.replace(/^Check in at\s+/i, "");
-          const match = hotels.find(
-            (item) => normalized(item.name) === normalized(hotelName)
-          );
-          if (match?.name) initial.hotelName = match.name;
-        }
-      });
-    });
-
-    return initial;
-  }, [activities, days, foodSpots, hotels]);
+  const defaultSelection = useMemo<TripSelectionState>(
+    () => buildDefaultSelectionState(days, hotels, foodSpots, activities),
+    [activities, days, foodSpots, hotels]
+  );
 
   const [selection, setSelection] = useState<TripSelectionState>(
     () => initialSelection ?? defaultSelection
