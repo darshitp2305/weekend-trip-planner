@@ -3,6 +3,11 @@
 import { preferredHotelBookingUrl } from "../lib/expediaLinks";
 import { TripPlan, TripSelectionState } from "../lib/types";
 import {
+  getAddedStopsForDay,
+  getCustomStopForKey,
+  normalizeSelectionState,
+} from "../lib/tripSelections";
+import {
   tripFreshnessLabel,
   tripProviderStatusText,
   tripSourceLabel,
@@ -94,8 +99,9 @@ export default function SharedTripSnapshot({
   estimatedBudgetPerTraveler,
   travelerCount,
 }: Props) {
+  const normalizedSelection = normalizeSelectionState(selection);
   const selectedHotel =
-    trip.hotelOptions.find((hotel) => hotel.name === selection.hotelName) ??
+    trip.hotelOptions.find((hotel) => hotel.name === normalizedSelection.hotelName) ??
     trip.hotelOptions[0];
 
   const lodgingLink = preferredHotelBookingUrl({
@@ -255,17 +261,22 @@ export default function SharedTripSnapshot({
               <div className="mt-4 space-y-3">
                 {(day.stops ?? []).map((stop, stopIndex) => {
                   const key = stopKey(dayIndex, stopIndex);
+                  const customStop = getCustomStopForKey(normalizedSelection, key);
+                  const customReplacement =
+                    customStop?.kind === stop.kind ? customStop : undefined;
                   const selectedFood = trip.foodSpots.find(
-                    (item) => item.name === selection.foods[key]
+                    (item) => item.name === normalizedSelection.foods[key]
                   );
                   const selectedActivity = trip.topActivities.find(
-                    (item) => item.name === selection.activities[key]
+                    (item) => item.name === normalizedSelection.activities[key]
                   );
                   const title =
                     stop.kind === "stay"
                       ? selectedHotel?.name
                         ? `Check in at ${selectedHotel.name}`
                         : stop.title
+                      : customReplacement
+                        ? customReplacement.title
                       : stop.kind === "food"
                         ? selectedFood?.name ?? stop.title
                         : stop.kind === "activity"
@@ -274,6 +285,8 @@ export default function SharedTripSnapshot({
                   const subtitle =
                     stop.kind === "stay"
                       ? selectedHotel?.shortDescription ?? stop.description
+                      : customReplacement
+                        ? customReplacement.description ?? stop.description
                       : stop.kind === "food"
                         ? selectedFood?.shortDescription ?? stop.description
                         : stop.kind === "activity"
@@ -304,6 +317,25 @@ export default function SharedTripSnapshot({
                     </div>
                   );
                 })}
+
+                {getAddedStopsForDay(normalizedSelection, dayIndex).map((addedStop) => (
+                  <div
+                    key={addedStop.id}
+                    className="rounded-[1rem] border border-emerald-200 bg-emerald-50 p-3.5 dark:border-emerald-500/30 dark:bg-emerald-500/10"
+                  >
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-700 dark:text-emerald-300">
+                      {addedStop.time ?? "Added stop"}
+                    </div>
+                    <div className="mt-1 text-sm font-semibold text-slate-950 dark:text-slate-100">
+                      {addedStop.title}
+                    </div>
+                    {addedStop.description ? (
+                      <p className="mt-1 text-sm leading-6 text-slate-700 dark:text-slate-200">
+                        {addedStop.description}
+                      </p>
+                    ) : null}
+                  </div>
+                ))}
               </div>
             </div>
           ))}

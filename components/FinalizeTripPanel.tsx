@@ -61,9 +61,17 @@ function selectedHotelLabel(trip: TripPlan, selection: TripSelectionState) {
 }
 
 function countSelectedStops(selection: TripSelectionState) {
+  const customReplacementCount = Object.values(selection.customStops ?? {}).length;
+  const addedStopCount = Object.values(selection.addedStops ?? {}).reduce(
+    (sum, stops) => sum + (stops?.length ?? 0),
+    0
+  );
+
   return (
     Object.keys(selection.foods ?? {}).length +
-    Object.keys(selection.activities ?? {}).length
+    Object.keys(selection.activities ?? {}).length +
+    customReplacementCount +
+    addedStopCount
   );
 }
 

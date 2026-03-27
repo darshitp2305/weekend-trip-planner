@@ -26,6 +26,9 @@ import {
   buildDefaultSelectionState,
   calculateSelectedBudget,
   emptySelectionState,
+  getAddedStopsForDay,
+  getCustomStopForKey,
+  normalizeSelectionState,
 } from "../../../lib/tripSelections";
 import { getPromptConstraintFitSummary } from "../../../lib/tripSpecificity";
 import {
@@ -368,10 +371,10 @@ export default function TripPage() {
     }
 
     if (selectionState.tripId === trip.id) {
-      return selectionState.selection;
+      return normalizeSelectionState(selectionState.selection);
     }
 
-    return (
+    return normalizeSelectionState(
       trip.savedSelectionState ??
       buildDefaultSelectionState(
         itineraryDays,
@@ -510,26 +513,38 @@ export default function TripPage() {
   }, [stayPriceIsVerified]);
 
   const itineraryOverview = useMemo(() => {
-    const editableStops = itineraryDays.reduce((sum, day) => {
+    const editableStops = itineraryDays.reduce((sum, day, dayIndex) => {
+      const addedStops = getAddedStopsForDay(activeSelectionState, dayIndex);
       return (
         sum +
         (day.stops ?? []).filter((stop) =>
           stop.kind === "stay" || stop.kind === "food" || stop.kind === "activity"
-        ).length
+        ).length +
+        addedStops.length
       );
     }, 0);
 
     const foodStops = itineraryDays.reduce(
-      (sum, day) => sum + (day.stops ?? []).filter((stop) => stop.kind === "food").length,
+      (sum, day, dayIndex) =>
+        sum +
+        (day.stops ?? []).filter((stop) => stop.kind === "food").length +
+        getAddedStopsForDay(activeSelectionState, dayIndex).filter(
+          (stop) => stop.kind === "food"
+        ).length,
       0
     );
     const activityStops = itineraryDays.reduce(
-      (sum, day) => sum + (day.stops ?? []).filter((stop) => stop.kind === "activity").length,
+      (sum, day, dayIndex) =>
+        sum +
+        (day.stops ?? []).filter((stop) => stop.kind === "activity").length +
+        getAddedStopsForDay(activeSelectionState, dayIndex).filter(
+          (stop) => stop.kind === "activity"
+        ).length,
       0
     );
 
     return { editableStops, foodStops, activityStops };
-  }, [itineraryDays]);
+  }, [activeSelectionState, itineraryDays]);
 
   const tripMapData = useMemo(() => {
     if (!trip) {
@@ -581,6 +596,7 @@ export default function TripPage() {
 
       (day.stops ?? []).forEach((stop, stopIndex) => {
         const key = stopKey(dayIndex, stopIndex);
+        const customStop = getCustomStopForKey(activeSelectionState, key);
 
         if (stop.kind === "stay") {
           const selectedHotel =
@@ -626,6 +642,33 @@ export default function TripPage() {
         }
 
         if (stop.kind === "food") {
+          if (customStop?.kind === "food") {
+            if (
+              typeof customStop.latitude === "number" &&
+              typeof customStop.longitude === "number"
+            ) {
+              pins.push({
+                id: `food-${key}-${customStop.id}`,
+                label: customStop.title,
+                day: dayNumber,
+                type: "food",
+                latitude: customStop.latitude,
+                longitude: customStop.longitude,
+                subtitle: customStop.description,
+                mapsUrl: customStop.mapsUrl || customStop.websiteUrl,
+              });
+
+              routePoints.push({
+                latitude: customStop.latitude,
+                longitude: customStop.longitude,
+              });
+            } else {
+              missingLocationCount += 1;
+            }
+
+            return;
+          }
+
           const selectedName =
             activeSelectionState.foods[key] ??
             pickMatchedFood(foodSpots, stop.title)?.name;
@@ -662,6 +705,33 @@ export default function TripPage() {
         }
 
         if (stop.kind === "activity") {
+          if (customStop?.kind === "activity") {
+            if (
+              typeof customStop.latitude === "number" &&
+              typeof customStop.longitude === "number"
+            ) {
+              pins.push({
+                id: `activity-${key}-${customStop.id}`,
+                label: customStop.title,
+                day: dayNumber,
+                type: "activity",
+                latitude: customStop.latitude,
+                longitude: customStop.longitude,
+                subtitle: customStop.description,
+                mapsUrl: customStop.mapsUrl || customStop.websiteUrl,
+              });
+
+              routePoints.push({
+                latitude: customStop.latitude,
+                longitude: customStop.longitude,
+              });
+            } else {
+              missingLocationCount += 1;
+            }
+
+            return;
+          }
+
           const selectedName =
             activeSelectionState.activities[key] ??
             pickMatchedActivity(activities, stop.title)?.name;
@@ -698,6 +768,31 @@ export default function TripPage() {
           } else {
             missingLocationCount += 1;
           }
+        }
+      });
+
+      getAddedStopsForDay(activeSelectionState, dayIndex).forEach((addedStop) => {
+        if (
+          typeof addedStop.latitude === "number" &&
+          typeof addedStop.longitude === "number"
+        ) {
+          pins.push({
+            id: `${addedStop.kind}-${dayNumber}-${addedStop.id}`,
+            label: addedStop.title,
+            day: dayNumber,
+            type: addedStop.kind === "food" ? "food" : "activity",
+            latitude: addedStop.latitude,
+            longitude: addedStop.longitude,
+            subtitle: addedStop.description,
+            mapsUrl: addedStop.mapsUrl || addedStop.websiteUrl,
+          });
+
+          routePoints.push({
+            latitude: addedStop.latitude,
+            longitude: addedStop.longitude,
+          });
+        } else {
+          missingLocationCount += 1;
         }
       });
 

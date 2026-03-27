@@ -2,11 +2,13 @@
 
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
+import { applyItineraryPrompt, extractDesiredText } from "../lib/itineraryPrompt";
 import {
   Activity,
   FoodSpot,
   HotelOption,
   ItineraryDayData,
+  TripCustomStop,
   TripSelectionState,
 } from "../lib/types";
 import {
@@ -14,7 +16,12 @@ import {
   estimateFoodCostRangeForGroup,
   foodPricingSourceLabel,
 } from "../lib/foodPricing";
-import { buildDefaultSelectionState } from "../lib/tripSelections";
+import {
+  buildDefaultSelectionState,
+  getAddedStopsForDay,
+  getCustomStopForKey,
+  normalizeSelectionState,
+} from "../lib/tripSelections";
 import { preferredHotelBookingUrl } from "../lib/expediaLinks";
 import {
   hotelAvailabilityLabel,
@@ -69,6 +76,24 @@ type StopCoordinate = {
   longitude: number;
 };
 
+type ResolvedStopChoice = {
+  name: string;
+  shortDescription?: string;
+  rating?: number;
+  estimatedCost?: number;
+  category?: string;
+  type?: string;
+  websiteUrl?: string;
+  mapsUrl?: string;
+  bookingLink?: string;
+  photoRef?: string;
+  photoUrl?: string;
+  latitude?: number;
+  longitude?: number;
+  source: "catalog" | "custom";
+  sourceType?: TripCustomStop["sourceType"];
+};
+
 function buildPhotoUrl(photoRef?: string) {
   if (!photoRef) return undefined;
   return `/api/place-photo?ref=${encodeURIComponent(photoRef)}`;
@@ -91,6 +116,22 @@ function optionSortScore(name: string, preferredTitle?: string) {
 // Keep food pricing consistent with the shared trip budget logic.
 function guessFoodCost(spot: FoodSpot, travelers: number) {
   return estimateFoodCostForGroup(spot, travelers);
+}
+
+function resolvedFoodCost(choice: ResolvedStopChoice, travelers: number) {
+  if (choice.source === "custom") {
+    return choice.estimatedCost ?? 0;
+  }
+
+  return estimateFoodCostForGroup(
+    {
+      name: choice.name,
+      tags: [],
+      category: choice.category,
+      estimatedCost: choice.estimatedCost,
+    },
+    travelers
+  );
 }
 
 function formatMoney(value: number) {
@@ -120,9 +161,34 @@ function timeWindowLabel(time?: string) {
   }
 }
 
+function shiftTimeLabel(time?: string, steps = 0) {
+  if (!time || steps <= 0) return time;
+
+  const orderedTimes = [
+    "morning",
+    "late morning",
+    "afternoon",
+    "late afternoon",
+    "evening",
+    "night",
+  ];
+  const currentIndex = orderedTimes.indexOf(normalized(time));
+  if (currentIndex < 0) return time;
+
+  return orderedTimes[Math.min(orderedTimes.length - 1, currentIndex + steps)];
+}
+
 function guessActivityCost(activity: Activity, travelers: number) {
   const base = activity.costEstimate ?? activity.estimatedCost ?? 0;
   return base * Math.max(1, travelers);
+}
+
+function resolvedActivityCost(choice: ResolvedStopChoice, travelers: number) {
+  if (choice.source === "custom") {
+    return choice.estimatedCost ?? 0;
+  }
+
+  return (choice.estimatedCost ?? 0) * Math.max(1, travelers);
 }
 
 function stopKey(dayIndex: number, stopIndex: number) {
@@ -147,7 +213,7 @@ function isDemandingHikeText(value?: string) {
 
 function isDemandingHikeStop(
   stop: { title?: string; description?: string },
-  activity?: Activity
+  activity?: Pick<Activity, "name" | "type" | "shortDescription"> | ResolvedStopChoice
 ) {
   return isDemandingHikeText(
     [stop.title, stop.description, activity?.name, activity?.type, activity?.shortDescription]
@@ -180,6 +246,72 @@ function toStopCoordinate(
   }
 
   return { label, latitude, longitude };
+}
+
+function customStopChoice(stop: TripCustomStop): ResolvedStopChoice {
+  return {
+    name: stop.title,
+    shortDescription: stop.description,
+    rating: stop.rating,
+    estimatedCost: stop.estimatedCost,
+    category: stop.category,
+    websiteUrl: stop.websiteUrl,
+    mapsUrl: stop.mapsUrl,
+    photoRef: stop.photoRef,
+    photoUrl: stop.photoUrl,
+    latitude: stop.latitude,
+    longitude: stop.longitude,
+    source: "custom",
+    sourceType: stop.sourceType,
+  };
+}
+
+function choiceCoordinate(choice?: ResolvedStopChoice) {
+  if (!choice) return undefined;
+  return toStopCoordinate(choice.name, choice.latitude, choice.longitude);
+}
+
+function customChoiceLabel(choice?: ResolvedStopChoice) {
+  if (!choice || choice.source !== "custom") return null;
+
+  return choice.sourceType === "catalog_match"
+    ? "Matched from builder prompt"
+    : "Traveler-requested stop";
+}
+
+function foodChoice(spot: FoodSpot): ResolvedStopChoice {
+  return {
+    name: spot.name,
+    shortDescription: spot.shortDescription,
+    rating: spot.rating,
+    category: spot.category ?? spot.tags?.[0] ?? "Food stop",
+    websiteUrl: spot.websiteUrl || spot.link,
+    mapsUrl: spot.mapsUrl,
+    photoRef: spot.photoRef,
+    photoUrl: spot.photoUrl,
+    latitude: spot.latitude,
+    longitude: spot.longitude,
+    source: "catalog",
+  };
+}
+
+function activityChoice(activity: Activity): ResolvedStopChoice {
+  return {
+    name: activity.name,
+    shortDescription: activity.shortDescription,
+    rating: activity.rating,
+    estimatedCost: activity.costEstimate ?? activity.estimatedCost ?? 0,
+    type: activity.type,
+    category: activity.type,
+    websiteUrl: activity.websiteUrl,
+    mapsUrl: activity.mapsUrl,
+    bookingLink: activity.bookingLink,
+    photoRef: activity.photoRef,
+    photoUrl: activity.photoUrl,
+    latitude: activity.latitude,
+    longitude: activity.longitude,
+    source: "catalog",
+  };
 }
 
 function haversineDistanceKm(from: StopCoordinate, to: StopCoordinate) {
@@ -314,6 +446,14 @@ function CampfireBadge() {
         />
       </svg>
       Camping
+    </span>
+  );
+}
+
+function BuilderPromptPill({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
+      {children}
     </span>
   );
 }
@@ -613,16 +753,204 @@ export default function InteractiveItinerary({
     [activities, days, foodSpots, hotels]
   );
 
-  const [selection, setSelection] = useState<TripSelectionState>(
-    () => initialSelection ?? defaultSelection
+  const [selection, setSelection] = useState<TripSelectionState>(() =>
+    normalizeSelectionState(initialSelection ?? defaultSelection)
   );
   // Keep only one option grid open at a time so the long trip page stays
   // easier to scan and compare.
   const [editingStopKey, setEditingStopKey] = useState<string | null>(null);
+  const [builderPrompt, setBuilderPrompt] = useState("");
+  const [builderPromptFeedback, setBuilderPromptFeedback] = useState<{
+    tone: "success" | "warning";
+    title: string;
+    detail?: string;
+    issues: string[];
+  } | null>(null);
 
   useEffect(() => {
     onSelectionChange?.(selection);
   }, [onSelectionChange, selection]);
+
+  function customStopForKey(key: string) {
+    return getCustomStopForKey(selection, key);
+  }
+
+  function addedStopsForDay(dayIndex: number) {
+    return getAddedStopsForDay(selection, dayIndex);
+  }
+
+  function addedStopsInsertedAfter(dayIndex: number, insertAfterStopIndex: number) {
+    return addedStopsForDay(dayIndex).filter(
+      (stop) => (stop.insertAfterStopIndex ?? Number.MAX_SAFE_INTEGER) === insertAfterStopIndex
+    );
+  }
+
+  function addedStopsBefore(dayIndex: number, stopIndex: number) {
+    return addedStopsForDay(dayIndex).filter(
+      (stop) =>
+        typeof stop.insertAfterStopIndex === "number" &&
+        stop.insertAfterStopIndex < stopIndex
+    );
+  }
+
+  function addedStopCoordinate(stop: TripCustomStop) {
+    return toStopCoordinate(stop.title, stop.latitude, stop.longitude);
+  }
+
+  function displayTimeForStop(
+    dayIndex: number,
+    stopIndex: number,
+    stop: ItineraryDayData["stops"][number]
+  ) {
+    if (stop.kind !== "travel") {
+      return stop.time;
+    }
+
+    return shiftTimeLabel(stop.time, addedStopsBefore(dayIndex, stopIndex).length);
+  }
+
+  function setCatalogSelection(
+    kind: "food" | "activity",
+    key: string,
+    name: string
+  ) {
+    setSelection((prev) => {
+      const next = normalizeSelectionState(prev);
+      if (kind === "food") {
+        next.foods[key] = name;
+      } else {
+        next.activities[key] = name;
+      }
+
+      if (next.customStops?.[key]) {
+        delete next.customStops[key];
+      }
+
+      return next;
+    });
+  }
+
+  function removeAddedStop(dayIndex: number, stopId: string) {
+    setSelection((prev) => {
+      const next = normalizeSelectionState(prev);
+      const key = `day-${dayIndex}`;
+      next.addedStops = {
+        ...(next.addedStops ?? {}),
+        [key]: (next.addedStops?.[key] ?? []).filter((stop) => stop.id !== stopId),
+      };
+      return next;
+    });
+  }
+
+  function renderAddedStopCard(dayIndex: number, addedStop: TripCustomStop) {
+    const addedChoice = customStopChoice(addedStop);
+    const estimatedCost =
+      addedStop.kind === "food"
+        ? resolvedFoodCost(addedChoice, travelerCount)
+        : resolvedActivityCost(addedChoice, travelerCount);
+    const previewImageUrl =
+      buildPhotoUrl(addedStop.photoRef) ?? addedStop.photoUrl ?? destinationImageUrl;
+
+    return (
+      <div
+        key={addedStop.id}
+        className="group rounded-[1.1rem] border border-emerald-200 bg-emerald-50/70 p-3.5 dark:border-emerald-500/30 dark:bg-emerald-500/10"
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-700 dark:text-emerald-300">
+              {addedStop.time ?? "Added stop"}
+            </div>
+            {timeWindowLabel(addedStop.time) ? (
+              <div className="mt-1 text-[12px] font-medium leading-5 text-emerald-700/80 dark:text-emerald-200/80">
+                {timeWindowLabel(addedStop.time)}
+              </div>
+            ) : null}
+            <h4 className="mt-1 text-sm font-semibold text-slate-950 dark:text-slate-100">
+              {addedStop.title}
+            </h4>
+            {addedStop.description ? (
+              <p className="mt-1.5 text-[13px] leading-5 text-slate-700 dark:text-slate-200">
+                {addedStop.description}
+              </p>
+            ) : null}
+          </div>
+
+          <button
+            type="button"
+            onClick={() => removeAddedStop(dayIndex, addedStop.id)}
+            className="inline-flex h-9 shrink-0 items-center justify-center rounded-full border border-emerald-300 bg-white px-3.5 text-xs font-semibold text-emerald-800 transition hover:bg-emerald-100 dark:border-emerald-500/30 dark:bg-slate-900 dark:text-emerald-200 dark:hover:bg-slate-800"
+          >
+            Remove
+          </button>
+        </div>
+
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          <OptionPill tone="green">
+            {addedStop.kind === "food" ? "Added food stop" : "Added activity"}
+          </OptionPill>
+          {addedStop.category ? <OptionPill>{addedStop.category}</OptionPill> : null}
+          {typeof addedStop.rating === "number" ? (
+            <OptionPill tone="green">Rating {addedStop.rating}</OptionPill>
+          ) : null}
+          {estimatedCost > 0 ? (
+            <OptionPill>Est. group spend {formatMoney(estimatedCost)}</OptionPill>
+          ) : (
+            <OptionPill>
+              {addedStop.kind === "activity" ? "Free or custom pricing" : "Custom pricing"}
+            </OptionPill>
+          )}
+        </div>
+
+        {addedStop.websiteUrl || addedStop.mapsUrl ? (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {addedStop.websiteUrl ? (
+              <a
+                href={addedStop.websiteUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex h-9 items-center justify-center rounded-full border border-slate-300 bg-white px-3.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+              >
+                {addedStop.kind === "food" ? "Restaurant site" : "Activity site"}
+              </a>
+            ) : null}
+            {addedStop.mapsUrl ? (
+              <a
+                href={addedStop.mapsUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex h-9 items-center justify-center rounded-full border border-slate-300 bg-white px-3.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+              >
+                Open map
+              </a>
+            ) : null}
+          </div>
+        ) : null}
+
+        {previewImageUrl ? (
+          <div className="max-h-0 overflow-hidden opacity-0 transition-all duration-200 ease-out group-hover:mt-3 group-hover:max-h-40 group-hover:opacity-100 group-focus-within:mt-3 group-focus-within:max-h-40 group-focus-within:opacity-100">
+            <div className="overflow-hidden rounded-[0.9rem] border border-emerald-200/70 bg-white/80 dark:border-emerald-500/20 dark:bg-slate-900/70">
+              <Image
+                src={previewImageUrl}
+                alt={addedStop.title}
+                width={800}
+                height={288}
+                unoptimized
+                className="h-36 w-full object-cover"
+                loading="lazy"
+              />
+            </div>
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+
+  function renderInsertedStops(dayIndex: number, insertAfterStopIndex: number) {
+    return addedStopsInsertedAfter(dayIndex, insertAfterStopIndex).map((addedStop) =>
+      renderAddedStopCard(dayIndex, addedStop)
+    );
+  }
 
   function rankedHotelOptions(stopTitle?: string) {
     return [...hotels]
@@ -743,6 +1071,7 @@ export default function InteractiveItinerary({
   function selectedCoordinateForStop(dayIndex: number, stopIndex: number) {
     const stop = days[dayIndex]?.stops?.[stopIndex];
     if (!stop) return undefined;
+    const key = stopKey(dayIndex, stopIndex);
 
     if (stop.kind === "stay") {
       const selectedHotel = hotels.find(
@@ -758,8 +1087,17 @@ export default function InteractiveItinerary({
     }
 
     if (stop.kind === "food") {
+      const customStop = customStopForKey(key);
+      if (customStop?.kind === "food") {
+        return toStopCoordinate(
+          customStop.title,
+          customStop.latitude,
+          customStop.longitude
+        );
+      }
+
       const selectedFood = foodSpots.find(
-        (spot) => spot.name === selection.foods[stopKey(dayIndex, stopIndex)]
+        (spot) => spot.name === selection.foods[key]
       );
       return selectedFood
         ? toStopCoordinate(
@@ -771,9 +1109,17 @@ export default function InteractiveItinerary({
     }
 
     if (stop.kind === "activity") {
+      const customStop = customStopForKey(key);
+      if (customStop?.kind === "activity") {
+        return toStopCoordinate(
+          customStop.title,
+          customStop.latitude,
+          customStop.longitude
+        );
+      }
+
       const selectedActivity = activities.find(
-        (activity) =>
-          activity.name === selection.activities[stopKey(dayIndex, stopIndex)]
+        (activity) => activity.name === selection.activities[key]
       );
       return selectedActivity
         ? toStopCoordinate(
@@ -801,7 +1147,19 @@ export default function InteractiveItinerary({
   function finalDayStopCoordinate(dayIndex: number) {
     const stops = days[dayIndex]?.stops ?? [];
 
-    for (let currentStop = stops.length - 1; currentStop >= 0; currentStop -= 1) {
+    for (let currentStop = stops.length - 1; currentStop >= -1; currentStop -= 1) {
+      const insertedStops = addedStopsInsertedAfter(dayIndex, currentStop);
+      for (let insertedIndex = insertedStops.length - 1; insertedIndex >= 0; insertedIndex -= 1) {
+        const insertedStop = insertedStops[insertedIndex];
+        if (insertedStop.kind === "stay") continue;
+        const coordinate = addedStopCoordinate(insertedStop);
+        if (coordinate) return coordinate;
+      }
+
+      if (currentStop < 0) {
+        continue;
+      }
+
       const stop = stops[currentStop];
       if (stop.kind === "stay" || stop.kind === "travel") continue;
 
@@ -817,7 +1175,17 @@ export default function InteractiveItinerary({
     stopIndex: number,
     stopKind?: ItineraryDayData["stops"][number]["kind"]
   ) {
-    for (let currentStop = stopIndex - 1; currentStop >= 0; currentStop -= 1) {
+    for (let currentStop = stopIndex - 1; currentStop >= -1; currentStop -= 1) {
+      const insertedStops = addedStopsInsertedAfter(dayIndex, currentStop);
+      for (let insertedIndex = insertedStops.length - 1; insertedIndex >= 0; insertedIndex -= 1) {
+        const coordinate = addedStopCoordinate(insertedStops[insertedIndex]);
+        if (coordinate) return coordinate;
+      }
+
+      if (currentStop < 0) {
+        continue;
+      }
+
       const coordinate = selectedCoordinateForStop(dayIndex, currentStop);
       if (coordinate) return coordinate;
     }
@@ -867,7 +1235,14 @@ export default function InteractiveItinerary({
 
   function selectedFoodForKey(key: string, stopTitle?: string, previousStop?: StopCoordinate) {
     const options = rankedFoodOptions(stopTitle, previousStop);
-    return foodSpots.find((spot) => spot.name === selection.foods[key]) ?? options[0];
+    const customStop = customStopForKey(key);
+    if (customStop?.kind === "food") {
+      return customStopChoice(customStop);
+    }
+
+    const selectedSpot =
+      foodSpots.find((spot) => spot.name === selection.foods[key]) ?? options[0];
+    return selectedSpot ? foodChoice(selectedSpot) : undefined;
   }
 
   function selectedActivityForKey(
@@ -876,9 +1251,261 @@ export default function InteractiveItinerary({
     previousStop?: StopCoordinate
   ) {
     const options = rankedActivityOptions(stopTitle, previousStop);
+    const customStop = customStopForKey(key);
+    if (customStop?.kind === "activity") {
+      return customStopChoice(customStop);
+    }
+
+    const selectedActivity =
+      activities.find((activity) => activity.name === selection.activities[key]) ??
+      options[0];
+    return selectedActivity ? activityChoice(selectedActivity) : undefined;
+  }
+
+  function shouldTryLiveFoodFallback(
+    prompt: string,
+    result: {
+      appliedChanges: Array<{
+        kind: "stay" | "food" | "activity";
+        source: "catalog" | "custom";
+      }>;
+      issues: string[];
+    }
+  ) {
+    if (!destinationLabel) return false;
+
+    const foodSignal =
+      /\b(food|restaurant|eat|meal|breakfast|brunch|lunch|dinner|coffee|cafe|bakery|greek|mediterranean|italian|mexican|thai|indian|japanese|sushi|korean|chinese|vegan|vegetarian|burger|pizza|bbq)\b/i.test(
+        prompt
+      );
+
+    if (!foodSignal) return false;
+
     return (
-      activities.find((activity) => activity.name === selection.activities[key]) ?? options[0]
+      result.appliedChanges.some(
+        (change) => change.kind === "food" && change.source === "custom"
+      ) ||
+      result.issues.some((issue) =>
+        /\bfood\b|\brestaurant\b|\bmeal\b|\bcafe\b/i.test(issue)
+      ) ||
+      result.appliedChanges.length === 0
     );
+  }
+
+  function shouldTryLiveActivityFallback(
+    prompt: string,
+    result: {
+      appliedChanges: Array<{
+        kind: "stay" | "food" | "activity";
+        source: "catalog" | "custom";
+      }>;
+      issues: string[];
+    }
+  ) {
+    if (!destinationLabel) return false;
+
+    const activitySignal =
+      /\b(activity|event|swim|swimming|pool|beach|lake|hot spring|hot springs|spa|kayak|canoe|paddle|rafting|float|walk|trail|hike|museum|gallery|lookout|viewpoint|adventure|tour|sightseeing)\b/i.test(
+        prompt
+      );
+
+    if (!activitySignal) return false;
+
+    return (
+      result.appliedChanges.some(
+        (change) => change.kind === "activity" && change.source === "custom"
+      ) ||
+      result.issues.some((issue) =>
+        /\bactivity\b|\bswim\b|\btrail\b|\bhike\b|\bwalk\b|\bspa\b|\bmuseum\b/i.test(
+          issue
+        )
+      ) ||
+      result.appliedChanges.length === 0
+    );
+  }
+
+  function promptResultQuality(result: {
+    appliedChanges: Array<{
+      kind: "stay" | "food" | "activity";
+      source: "catalog" | "custom";
+    }>;
+    issues: string[];
+  }) {
+    const catalogCount = result.appliedChanges.filter(
+      (change) => change.source === "catalog"
+    ).length;
+    const customCount = result.appliedChanges.filter(
+      (change) => change.source === "custom"
+    ).length;
+
+    return (
+      catalogCount * 14 +
+      result.appliedChanges.length * 8 -
+      customCount * 3 -
+      result.issues.length * 4
+    );
+  }
+
+  async function fetchLiveFoodFallback(desiredText: string) {
+    if (!destinationLabel || !desiredText) {
+      return [];
+    }
+
+    const hotelCoordinate = selectedHotelCoordinate();
+
+    const response = await fetch("/api/prompt-place-search", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        desiredText,
+        destination: destinationLabel,
+        kind: "food",
+        latitude: hotelCoordinate?.latitude,
+        longitude: hotelCoordinate?.longitude,
+        radiusKm: hotelCoordinate ? 28 : undefined,
+      }),
+    });
+
+    if (!response.ok) {
+      return [];
+    }
+
+    const data = (await response.json()) as {
+      success?: boolean;
+      foodSpots?: FoodSpot[];
+    };
+
+    return Array.isArray(data.foodSpots) ? data.foodSpots : [];
+  }
+
+  async function fetchLiveActivityFallback(desiredText: string) {
+    if (!destinationLabel || !desiredText) {
+      return [];
+    }
+
+    const hotelCoordinate = selectedHotelCoordinate();
+
+    const response = await fetch("/api/prompt-place-search", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        desiredText,
+        destination: destinationLabel,
+        kind: "activity",
+        latitude: hotelCoordinate?.latitude,
+        longitude: hotelCoordinate?.longitude,
+        radiusKm: hotelCoordinate ? 30 : undefined,
+      }),
+    });
+
+    if (!response.ok) {
+      return [];
+    }
+
+    const data = (await response.json()) as {
+      success?: boolean;
+      activities?: Activity[];
+    };
+
+    return Array.isArray(data.activities) ? data.activities : [];
+  }
+
+  async function handleBuilderPromptApply(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const trimmedPrompt = builderPrompt.trim();
+    if (!trimmedPrompt) {
+      setBuilderPromptFeedback({
+        tone: "warning",
+        title: "Add a trip edit first",
+        detail:
+          "Try a sentence like “Day 2 lunch to Wild Flour Bakery”, “Add a coffee stop on day 3 before we leave”, or “Switch the stay to Rimrock Resort Hotel.”",
+        issues: [],
+      });
+      return;
+    }
+
+    let result = applyItineraryPrompt({
+      prompt: trimmedPrompt,
+      days,
+      hotels,
+      foodSpots,
+      activities,
+      selection,
+      travelerCount,
+    });
+
+    const desiredText = extractDesiredText(trimmedPrompt);
+    let externalFoodSpots: FoodSpot[] = [];
+    let externalActivities: Activity[] = [];
+
+    if (shouldTryLiveFoodFallback(trimmedPrompt, result)) {
+      try {
+        externalFoodSpots = await fetchLiveFoodFallback(desiredText);
+      } catch {
+        // Keep the local parser result if live place search is unavailable.
+      }
+    }
+
+    if (shouldTryLiveActivityFallback(trimmedPrompt, result)) {
+      try {
+        externalActivities = await fetchLiveActivityFallback(desiredText);
+      } catch {
+        // Keep the local parser result if live place search is unavailable.
+      }
+    }
+
+    if (externalFoodSpots.length > 0 || externalActivities.length > 0) {
+      const retriedResult = applyItineraryPrompt({
+        prompt: trimmedPrompt,
+        days,
+        hotels,
+        foodSpots,
+        externalFoodSpots,
+        activities,
+        externalActivities,
+        selection,
+        travelerCount,
+      });
+
+      if (promptResultQuality(retriedResult) > promptResultQuality(result)) {
+        result = retriedResult;
+      }
+    }
+
+    if (result.appliedChanges.length > 0) {
+      setSelection(result.selection);
+      setEditingStopKey(result.appliedChanges[0]?.stopKey ?? null);
+      setBuilderPromptFeedback({
+        tone: result.issues.length > 0 ? "warning" : "success",
+        title:
+          result.appliedChanges.length === 1
+            ? "1 builder edit applied"
+            : `${result.appliedChanges.length} builder edits applied`,
+        detail: result.appliedChanges
+          .map((change) =>
+            change.mode === "added"
+              ? `${change.targetLabel}: ${change.selectedName}`
+              : `${change.targetLabel} -> ${change.selectedName}`
+          )
+          .join(" · "),
+        issues: result.issues,
+      });
+      return;
+    }
+
+    setBuilderPromptFeedback({
+      tone: "warning",
+      title: "No itinerary edits were applied",
+      detail:
+        result.issues[0] ??
+        "Use day numbers and either name a place or describe the stop you want added or changed.",
+      issues: result.issues,
+    });
   }
 
   return (
@@ -894,6 +1521,106 @@ export default function InteractiveItinerary({
         </p>
       </div>
 
+      <form
+        onSubmit={handleBuilderPromptApply}
+        className="mt-5 rounded-[1.5rem] border border-slate-200 bg-[linear-gradient(135deg,#f0fdf4,#ecfeff)] p-4 dark:border-slate-700 dark:bg-[linear-gradient(135deg,rgba(6,78,59,0.22),rgba(15,23,42,0.92))]"
+      >
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700 dark:text-emerald-300">
+              Builder prompt
+            </div>
+            <h3 className="mt-2 text-lg font-semibold tracking-tight text-slate-950 dark:text-slate-100">
+              Describe the itinerary change in plain English
+            </h3>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-700 dark:text-slate-200">
+              Use one change per sentence. Mention the day for food or
+              activity edits, and say whether you want to swap a stop or add a
+              new one. I can use existing picks or create a traveler-requested
+              stop when the exact place is not already in the builder.
+            </p>
+          </div>
+
+          <BuilderPromptPill>Auto-saves with the rest of the builder</BuilderPromptPill>
+        </div>
+
+        <textarea
+          value={builderPrompt}
+          onChange={(event) => setBuilderPrompt(event.target.value)}
+          placeholder="Examples: Day 2 lunch to Wild Flour Bakery. Add a coffee stop on day 3 before we leave for Edmonton. Change day 1 activity to a quiet lakeside walk."
+          className="mt-4 min-h-[132px] w-full rounded-[1.25rem] border border-slate-200 bg-white px-4 py-4 text-sm leading-6 text-slate-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-emerald-500/20"
+        />
+
+        <div className="mt-4 flex flex-wrap gap-2">
+          <BuilderPromptPill>Day 2 lunch to Wild Flour Bakery</BuilderPromptPill>
+          <BuilderPromptPill>Add a coffee stop on day 3 before we leave</BuilderPromptPill>
+          <BuilderPromptPill>Day 3 activity to Johnston Canyon</BuilderPromptPill>
+          <BuilderPromptPill>Switch the stay to Rimrock Resort Hotel</BuilderPromptPill>
+        </div>
+
+        <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <p className="max-w-3xl text-xs leading-5 text-slate-500 dark:text-slate-400">
+            Best for traveler-led changes like swapping a stop, adding a meal,
+            or introducing a custom activity. The manual cards below are still
+            there when you want to fine-tune specific picks.
+          </p>
+
+          <button
+            type="submit"
+            className="inline-flex h-11 items-center justify-center rounded-2xl bg-slate-950 px-5 text-sm font-semibold text-white transition hover:bg-slate-800 dark:bg-emerald-400 dark:text-slate-950 dark:hover:bg-emerald-300"
+          >
+            Apply changes
+          </button>
+        </div>
+
+        {builderPromptFeedback ? (
+          <div
+            className={
+              builderPromptFeedback.tone === "success"
+                ? "mt-4 rounded-[1.1rem] border border-emerald-200 bg-emerald-50 px-4 py-3 dark:border-emerald-500/30 dark:bg-emerald-500/10"
+                : "mt-4 rounded-[1.1rem] border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-500/30 dark:bg-amber-500/10"
+            }
+          >
+            <div
+              className={
+                builderPromptFeedback.tone === "success"
+                  ? "text-sm font-semibold text-emerald-800 dark:text-emerald-200"
+                  : "text-sm font-semibold text-amber-800 dark:text-amber-200"
+              }
+            >
+              {builderPromptFeedback.title}
+            </div>
+            {builderPromptFeedback.detail ? (
+              <p
+                className={
+                  builderPromptFeedback.tone === "success"
+                    ? "mt-1 text-sm leading-6 text-emerald-900 dark:text-emerald-100"
+                    : "mt-1 text-sm leading-6 text-amber-900 dark:text-amber-100"
+                }
+              >
+                {builderPromptFeedback.detail}
+              </p>
+            ) : null}
+            {builderPromptFeedback.issues.length > 0 ? (
+              <div className="mt-2 space-y-1">
+                {builderPromptFeedback.issues.map((issue) => (
+                  <p
+                    key={issue}
+                    className={
+                      builderPromptFeedback.tone === "success"
+                        ? "text-xs leading-5 text-emerald-800/90 dark:text-emerald-100/85"
+                        : "text-xs leading-5 text-amber-800/90 dark:text-amber-100/85"
+                    }
+                  >
+                    {issue}
+                  </p>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+      </form>
+
       <div className="mt-5 space-y-4">
         {days.map((day, dayIndex) => (
           (() => {
@@ -904,13 +1631,57 @@ export default function InteractiveItinerary({
                 ? haversineDistanceKm(lastStopOfDay, hotelCoordinate)
                 : undefined;
             const dayStops = day.stops ?? [];
+            const dayOrderedStops = [
+              ...addedStopsInsertedAfter(dayIndex, -1).map((addedStop) => ({
+                type: "added" as const,
+                addedStop,
+              })),
+              ...dayStops.flatMap((stop, stopIndex) => [
+                {
+                  type: "base" as const,
+                  stop,
+                  stopIndex,
+                },
+                ...addedStopsInsertedAfter(dayIndex, stopIndex).map((addedStop) => ({
+                  type: "added" as const,
+                  addedStop,
+                })),
+              ]),
+            ];
             const anchorNames: string[] = [];
             let editableStopCount = 0;
             let driveSegmentCount = 0;
             let daySpendEstimate = 0;
             let hasDemandingHike = false;
 
-            dayStops.forEach((stop, stopIndex) => {
+            dayOrderedStops.forEach((entry) => {
+              if (entry.type === "added") {
+                editableStopCount += 1;
+
+                if (entry.addedStop.kind === "food") {
+                  const choice = customStopChoice(entry.addedStop);
+                  daySpendEstimate += resolvedFoodCost(choice, travelerCount);
+                  if (!anchorNames.includes(choice.name)) {
+                    anchorNames.push(choice.name);
+                  }
+                  return;
+                }
+
+                if (entry.addedStop.kind === "activity") {
+                  const choice = customStopChoice(entry.addedStop);
+                  daySpendEstimate += resolvedActivityCost(choice, travelerCount);
+                  if (isDemandingHikeStop(entry.addedStop, choice)) {
+                    hasDemandingHike = true;
+                  }
+                  if (!anchorNames.includes(choice.name)) {
+                    anchorNames.push(choice.name);
+                  }
+                }
+
+                return;
+              }
+
+              const { stop, stopIndex } = entry;
               const key = stopKey(dayIndex, stopIndex);
               const priorStop = previousStopCoordinate(dayIndex, stopIndex, stop.kind);
 
@@ -935,7 +1706,7 @@ export default function InteractiveItinerary({
                 editableStopCount += 1;
                 const selectedSpot = selectedFoodForKey(key, stop.title, priorStop);
                 if (selectedSpot) {
-                  daySpendEstimate += guessFoodCost(selectedSpot, travelerCount);
+                  daySpendEstimate += resolvedFoodCost(selectedSpot, travelerCount);
                   if (!anchorNames.includes(selectedSpot.name)) {
                     anchorNames.push(selectedSpot.name);
                   }
@@ -951,7 +1722,10 @@ export default function InteractiveItinerary({
                   priorStop
                 );
                 if (selectedActivity) {
-                  daySpendEstimate += guessActivityCost(selectedActivity, travelerCount);
+                  daySpendEstimate += resolvedActivityCost(
+                    selectedActivity,
+                    travelerCount
+                  );
                   if (isDemandingHikeStop(stop, selectedActivity)) {
                     hasDemandingHike = true;
                   }
@@ -1054,6 +1828,7 @@ export default function InteractiveItinerary({
                 </div>
 
                 <div className="space-y-3">
+                  {renderInsertedStops(dayIndex, -1)}
                   {dayStops.map((stop, stopIndex) => {
                     const key = stopKey(dayIndex, stopIndex);
                     const priorStop = previousStopCoordinate(
@@ -1061,6 +1836,7 @@ export default function InteractiveItinerary({
                       stopIndex,
                       stop.kind
                     );
+                    const displayedStopTime = displayTimeForStop(dayIndex, stopIndex, stop);
 
                     if (stop.kind === "stay") {
                       const options = rankedHotelOptions(stop.title);
@@ -1070,18 +1846,16 @@ export default function InteractiveItinerary({
                       const isEditing = editingStopKey === key;
 
                       return (
-                        <div
-                          key={key}
-                          className="rounded-[1.1rem] border border-slate-200 bg-white p-3.5 dark:border-slate-700 dark:bg-slate-900"
-                        >
-                          <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
-                            {stop.time ?? "Stay"}
-                          </div>
-                          {timeWindowLabel(stop.time) ? (
-                            <div className="mt-1 text-[12px] font-medium leading-5 text-slate-500 dark:text-slate-400">
-                              {timeWindowLabel(stop.time)}
+                        <div key={`group-${key}`} className="space-y-3">
+                          <div className="rounded-[1.1rem] border border-slate-200 bg-white p-3.5 dark:border-slate-700 dark:bg-slate-900">
+                            <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+                              {displayedStopTime ?? "Stay"}
                             </div>
-                          ) : null}
+                            {timeWindowLabel(displayedStopTime) ? (
+                              <div className="mt-1 text-[12px] font-medium leading-5 text-slate-500 dark:text-slate-400">
+                                {timeWindowLabel(displayedStopTime)}
+                              </div>
+                            ) : null}
                           <h4 className="mt-1 text-sm font-semibold text-slate-950 dark:text-slate-100">
                             Pick where to stay
                           </h4>
@@ -1139,60 +1913,62 @@ export default function InteractiveItinerary({
                             </div>
                           ) : null}
 
-                          {isEditing ? (
-                            <div className="mt-3 grid gap-2.5 lg:grid-cols-2">
-                              {options.map((hotel, optionIndex) => (
-                                <SelectorCard
-                                  key={hotel.name}
-                                    option={{
-                                      name: hotel.name,
-                                      subtitle: hotel.shortDescription,
-                                      rating: hotel.rating,
-                                      pricePerNight: hotel.pricePerNight,
-                                      totalStayPrice: hotel.totalStayPrice,
-                                      primaryUrl: preferredHotelBookingUrl({
+                            {isEditing ? (
+                              <div className="mt-3 grid gap-2.5 lg:grid-cols-2">
+                                {options.map((hotel, optionIndex) => (
+                                  <SelectorCard
+                                    key={hotel.name}
+                                      option={{
+                                        name: hotel.name,
+                                        subtitle: hotel.shortDescription,
+                                        rating: hotel.rating,
+                                        pricePerNight: hotel.pricePerNight,
+                                        totalStayPrice: hotel.totalStayPrice,
+                                        primaryUrl: preferredHotelBookingUrl({
+                                          hotel,
+                                          destination: destinationLabel,
+                                          tripStartDate,
+                                          tripEndDate,
+                                          travelerCount,
+                                        }),
+                                        primaryLabel: "Stay site",
+                                      mapsUrl: hotel.mapsUrl,
+                                      photoRef: hotel.photoRef,
+                                      photoUrl: hotel.photoUrl,
+                                      fallbackPhotoUrl: destinationImageUrl,
+                                      latitude: hotel.latitude,
+                                      longitude: hotel.longitude,
+                                      availabilityLabel: hotelAvailabilityLabel(
                                         hotel,
-                                        destination: destinationLabel,
-                                        tripStartDate,
-                                        tripEndDate,
-                                        travelerCount,
-                                      }),
-                                      primaryLabel: "Stay site",
-                                    mapsUrl: hotel.mapsUrl,
-                                    photoRef: hotel.photoRef,
-                                    photoUrl: hotel.photoUrl,
-                                    fallbackPhotoUrl: destinationImageUrl,
-                                    latitude: hotel.latitude,
-                                    longitude: hotel.longitude,
-                                    availabilityLabel: hotelAvailabilityLabel(
-                                      hotel,
-                                      Boolean(tripStartDate && tripEndDate)
-                                    ),
-                                    availabilityTone: hotelAvailabilityTone(
-                                      hotel.availabilityStatus
-                                    ),
-                                  }}
-                                  selected={selection.hotelName === hotel.name}
-                                  recommended={optionIndex === 0}
-                                  distanceFromPrevious={formatDistanceFromPrevious(
-                                    priorStop,
-                                    toStopCoordinate(
-                                      hotel.name,
-                                      hotel.latitude,
-                                      hotel.longitude
-                                    )
-                                  )}
-                                  onSelect={() => {
-                                    setSelection((prev) => ({
-                                      ...prev,
-                                      hotelName: hotel.name,
-                                    }));
-                                    setEditingStopKey(null);
-                                  }}
-                                />
-                              ))}
-                            </div>
-                          ) : null}
+                                        Boolean(tripStartDate && tripEndDate)
+                                      ),
+                                      availabilityTone: hotelAvailabilityTone(
+                                        hotel.availabilityStatus
+                                      ),
+                                    }}
+                                    selected={selection.hotelName === hotel.name}
+                                    recommended={optionIndex === 0}
+                                    distanceFromPrevious={formatDistanceFromPrevious(
+                                      priorStop,
+                                      toStopCoordinate(
+                                        hotel.name,
+                                        hotel.latitude,
+                                        hotel.longitude
+                                      )
+                                    )}
+                                    onSelect={() => {
+                                      setSelection((prev) => ({
+                                        ...prev,
+                                        hotelName: hotel.name,
+                                      }));
+                                      setEditingStopKey(null);
+                                    }}
+                                  />
+                                ))}
+                              </div>
+                            ) : null}
+                          </div>
+                          {renderInsertedStops(dayIndex, stopIndex)}
                         </div>
                       );
                     }
@@ -1204,22 +1980,35 @@ export default function InteractiveItinerary({
                       // Show a range instead of a fake exact amount because the
                       // food pricing is heuristic, not live menu data.
                       const selectedSpotRange = selectedSpot
-                        ? estimateFoodCostRangeForGroup(selectedSpot, travelerCount)
+                        ? selectedSpot.source === "catalog"
+                          ? estimateFoodCostRangeForGroup(
+                              {
+                                name: selectedSpot.name,
+                                tags: [],
+                                category: selectedSpot.category,
+                                estimatedCost: selectedSpot.estimatedCost,
+                              },
+                              travelerCount
+                            )
+                          : (selectedSpot.estimatedCost ?? 0) > 0
+                            ? {
+                                low: Math.round((selectedSpot.estimatedCost ?? 0) * 0.85),
+                                high: Math.round((selectedSpot.estimatedCost ?? 0) * 1.15),
+                              }
+                            : null
                         : null;
 
                       return (
-                        <div
-                          key={key}
-                          className="rounded-[1.1rem] border border-slate-200 bg-white p-3.5 dark:border-slate-700 dark:bg-slate-900"
-                        >
-                          <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
-                            {stop.time ?? "Food"}
-                          </div>
-                          {timeWindowLabel(stop.time) ? (
-                            <div className="mt-1 text-[12px] font-medium leading-5 text-slate-500 dark:text-slate-400">
-                              {timeWindowLabel(stop.time)}
+                        <div key={`group-${key}`} className="space-y-3">
+                          <div className="rounded-[1.1rem] border border-slate-200 bg-white p-3.5 dark:border-slate-700 dark:bg-slate-900">
+                            <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+                              {displayedStopTime ?? "Food"}
                             </div>
-                          ) : null}
+                            {timeWindowLabel(displayedStopTime) ? (
+                              <div className="mt-1 text-[12px] font-medium leading-5 text-slate-500 dark:text-slate-400">
+                                {timeWindowLabel(displayedStopTime)}
+                              </div>
+                            ) : null}
                           <h4 className="mt-1 text-sm font-semibold text-slate-950 dark:text-slate-100">
                             Pick a food stop
                           </h4>
@@ -1237,15 +2026,14 @@ export default function InteractiveItinerary({
                                 subtitle={
                                   formatDistanceFromPrevious(
                                     priorStop,
-                                    toStopCoordinate(
-                                      selectedSpot.name,
-                                      selectedSpot.latitude,
-                                      selectedSpot.longitude
-                                    )
+                                    choiceCoordinate(selectedSpot)
                                   ) ?? selectedSpot.shortDescription
                                 }
                                 pills={[
                                   ...(selectedSpot.category ? [selectedSpot.category] : []),
+                                  ...(customChoiceLabel(selectedSpot)
+                                    ? [customChoiceLabel(selectedSpot) as string]
+                                    : []),
                                   ...(typeof selectedSpot.rating === "number"
                                     ? [`Rating ${selectedSpot.rating}`]
                                     : []),
@@ -1255,7 +2043,7 @@ export default function InteractiveItinerary({
                                       ]
                                     : []),
                                 ]}
-                                primaryUrl={selectedSpot.websiteUrl || selectedSpot.link}
+                                primaryUrl={selectedSpot.websiteUrl}
                                 primaryLabel="Restaurant site"
                                 mapsUrl={selectedSpot.mapsUrl}
                                 photoRef={selectedSpot.photoRef}
@@ -1264,76 +2052,83 @@ export default function InteractiveItinerary({
                                 onToggleEditing={() => toggleEditing(key)}
                               />
                               <p className="mt-2 text-[12px] leading-5 text-slate-500 dark:text-slate-400">
-                                {foodPricingSourceLabel(selectedSpot)}
+                                {selectedSpot.source === "catalog"
+                                  ? foodPricingSourceLabel({
+                                      name: selectedSpot.name,
+                                      tags: [],
+                                      category: selectedSpot.category,
+                                      estimatedCost: selectedSpot.estimatedCost,
+                                    })
+                                  : customChoiceLabel(selectedSpot) ??
+                                    "Matched from your builder prompt."}
                               </p>
                             </div>
                           ) : null}
 
-                          {isEditing ? (
-                            <div className="mt-3 grid gap-2.5 lg:grid-cols-2">
-                              {options.map((spot, optionIndex) => {
-                                const estimatedCost = guessFoodCost(spot, travelerCount);
-                                const estimatedRange = estimateFoodCostRangeForGroup(
-                                  spot,
-                                  travelerCount
-                                );
+                            {isEditing ? (
+                              <div className="mt-3 grid gap-2.5 lg:grid-cols-2">
+                                {options.map((spot, optionIndex) => {
+                                  const estimatedCost = guessFoodCost(spot, travelerCount);
+                                  const estimatedRange = estimateFoodCostRangeForGroup(
+                                    spot,
+                                    travelerCount
+                                  );
 
-                                return (
-                                  <SelectorCard
-                                    key={spot.name}
-                                    option={{
-                                      name: spot.name,
-                                      subtitle: `${spot.shortDescription ?? ""}${
-                                        spot.shortDescription ? " " : ""
-                                      }${foodPricingSourceLabel(spot)}`,
-                                      rating: spot.rating,
-                                      estimatedCost,
-                                      estimatedCostLabel: `Est. ${formatMoney(
-                                        estimatedRange.low
-                                      )}-${formatMoney(estimatedRange.high)}`,
-                                      category:
-                                        spot.category ??
-                                        spot.tags?.[0] ??
-                                        "Food stop",
-                                      primaryUrl: spot.websiteUrl || spot.link,
-                                      primaryLabel: "Restaurant site",
-                                      mapsUrl: spot.mapsUrl,
-                                      photoRef: spot.photoRef,
-                                      photoUrl: spot.photoUrl,
-                                      latitude: spot.latitude,
-                                      longitude: spot.longitude,
-                                    }}
-                                    selected={selection.foods[key] === spot.name}
-                                    recommended={optionIndex === 0}
-                                    distanceFromPrevious={formatDistanceFromPrevious(
-                                      priorStop,
-                                      toStopCoordinate(
+                                  return (
+                                    <SelectorCard
+                                      key={spot.name}
+                                      option={{
+                                        name: spot.name,
+                                        subtitle: `${spot.shortDescription ?? ""}${
+                                          spot.shortDescription ? " " : ""
+                                        }${foodPricingSourceLabel(spot)}`,
+                                        rating: spot.rating,
+                                        estimatedCost,
+                                        estimatedCostLabel: `Est. ${formatMoney(
+                                          estimatedRange.low
+                                        )}-${formatMoney(estimatedRange.high)}`,
+                                        category:
+                                          spot.category ??
+                                          spot.tags?.[0] ??
+                                          "Food stop",
+                                        primaryUrl: spot.websiteUrl || spot.link,
+                                        primaryLabel: "Restaurant site",
+                                        mapsUrl: spot.mapsUrl,
+                                        photoRef: spot.photoRef,
+                                        photoUrl: spot.photoUrl,
+                                        latitude: spot.latitude,
+                                        longitude: spot.longitude,
+                                      }}
+                                      selected={
+                                        selection.foods[key] === spot.name &&
+                                        customStopForKey(key)?.kind !== "food"
+                                      }
+                                      recommended={optionIndex === 0}
+                                      distanceFromPrevious={formatDistanceFromPrevious(
+                                        priorStop,
+                                        toStopCoordinate(
+                                          spot.name,
+                                          spot.latitude,
+                                          spot.longitude
+                                        )
+                                      )}
+                                      selectedElsewhereLabel={elsewhereSelectionLabel(
+                                        "food",
                                         spot.name,
-                                        spot.latitude,
-                                        spot.longitude
-                                      )
-                                    )}
-                                    selectedElsewhereLabel={elsewhereSelectionLabel(
-                                      "food",
-                                      spot.name,
-                                      dayIndex,
-                                      stopIndex
-                                    )}
-                                    onSelect={() => {
-                                      setSelection((prev) => ({
-                                        ...prev,
-                                        foods: {
-                                          ...prev.foods,
-                                          [key]: spot.name,
-                                        },
-                                      }));
-                                      setEditingStopKey(null);
-                                    }}
-                                  />
-                                );
-                              })}
-                            </div>
-                          ) : null}
+                                        dayIndex,
+                                        stopIndex
+                                      )}
+                                      onSelect={() => {
+                                        setCatalogSelection("food", key, spot.name);
+                                        setEditingStopKey(null);
+                                      }}
+                                    />
+                                  );
+                                })}
+                              </div>
+                            ) : null}
+                          </div>
+                          {renderInsertedStops(dayIndex, stopIndex)}
                         </div>
                       );
                     }
@@ -1348,18 +2143,16 @@ export default function InteractiveItinerary({
                       const isEditing = editingStopKey === key;
 
                       return (
-                        <div
-                          key={key}
-                          className="rounded-[1.1rem] border border-slate-200 bg-white p-3.5 dark:border-slate-700 dark:bg-slate-900"
-                        >
-                          <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
-                            {stop.time ?? "Activity"}
-                          </div>
-                          {timeWindowLabel(stop.time) ? (
-                            <div className="mt-1 text-[12px] font-medium leading-5 text-slate-500 dark:text-slate-400">
-                              {timeWindowLabel(stop.time)}
+                        <div key={`group-${key}`} className="space-y-3">
+                          <div className="rounded-[1.1rem] border border-slate-200 bg-white p-3.5 dark:border-slate-700 dark:bg-slate-900">
+                            <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+                              {displayedStopTime ?? "Activity"}
                             </div>
-                          ) : null}
+                            {timeWindowLabel(displayedStopTime) ? (
+                              <div className="mt-1 text-[12px] font-medium leading-5 text-slate-500 dark:text-slate-400">
+                                {timeWindowLabel(displayedStopTime)}
+                              </div>
+                            ) : null}
                           <h4 className="mt-1 text-sm font-semibold text-slate-950 dark:text-slate-100">
                             Pick an activity
                           </h4>
@@ -1377,22 +2170,21 @@ export default function InteractiveItinerary({
                                 subtitle={
                                   formatDistanceFromPrevious(
                                     priorStop,
-                                    toStopCoordinate(
-                                      selectedActivity.name,
-                                      selectedActivity.latitude,
-                                      selectedActivity.longitude
-                                    )
+                                    choiceCoordinate(selectedActivity)
                                   ) ?? selectedActivity.shortDescription
                                 }
                                 pills={[
-                                  selectedActivity.type,
+                                  ...(selectedActivity.type ? [selectedActivity.type] : []),
+                                  ...(customChoiceLabel(selectedActivity)
+                                    ? [customChoiceLabel(selectedActivity) as string]
+                                    : []),
                                   ...(typeof selectedActivity.rating === "number"
                                     ? [`Rating ${selectedActivity.rating}`]
                                     : []),
-                                  ...(guessActivityCost(selectedActivity, travelerCount) > 0
+                                  ...(resolvedActivityCost(selectedActivity, travelerCount) > 0
                                     ? [
                                         `Est. group spend ${formatMoney(
-                                          guessActivityCost(
+                                          resolvedActivityCost(
                                             selectedActivity,
                                             travelerCount
                                           )
@@ -1413,114 +2205,113 @@ export default function InteractiveItinerary({
                             </div>
                           ) : null}
 
-                          {isEditing ? (
-                            <div className="mt-3 grid gap-2.5 lg:grid-cols-2">
-                              {options.map((activity, optionIndex) => {
-                                const estimatedCost = guessActivityCost(
-                                  activity,
-                                  travelerCount
-                                );
+                            {isEditing ? (
+                              <div className="mt-3 grid gap-2.5 lg:grid-cols-2">
+                                {options.map((activity, optionIndex) => {
+                                  const estimatedCost = guessActivityCost(
+                                    activity,
+                                    travelerCount
+                                  );
 
-                                return (
-                                  <SelectorCard
-                                    key={activity.name}
-                                    option={{
-                                      name: activity.name,
-                                      subtitle: activity.shortDescription,
-                                      rating: activity.rating,
-                                      estimatedCost,
-                                      estimatedCostLabel:
-                                        estimatedCost > 0
-                                          ? `Est. group spend ${formatMoney(estimatedCost)}`
-                                          : "Free",
-                                      category: activity.type,
-                                      primaryUrl:
-                                        activity.websiteUrl || activity.bookingLink,
-                                      primaryLabel: "Activity site",
-                                      mapsUrl: activity.mapsUrl,
-                                      photoRef: activity.photoRef,
-                                      photoUrl: activity.photoUrl,
-                                      latitude: activity.latitude,
-                                      longitude: activity.longitude,
-                                    }}
-                                    selected={selection.activities[key] === activity.name}
-                                    recommended={optionIndex === 0}
-                                    distanceFromPrevious={formatDistanceFromPrevious(
-                                      priorStop,
-                                      toStopCoordinate(
+                                  return (
+                                    <SelectorCard
+                                      key={activity.name}
+                                      option={{
+                                        name: activity.name,
+                                        subtitle: activity.shortDescription,
+                                        rating: activity.rating,
+                                        estimatedCost,
+                                        estimatedCostLabel:
+                                          estimatedCost > 0
+                                            ? `Est. group spend ${formatMoney(estimatedCost)}`
+                                            : "Free",
+                                        category: activity.type,
+                                        primaryUrl:
+                                          activity.websiteUrl || activity.bookingLink,
+                                        primaryLabel: "Activity site",
+                                        mapsUrl: activity.mapsUrl,
+                                        photoRef: activity.photoRef,
+                                        photoUrl: activity.photoUrl,
+                                        latitude: activity.latitude,
+                                        longitude: activity.longitude,
+                                      }}
+                                      selected={
+                                        selection.activities[key] === activity.name &&
+                                        customStopForKey(key)?.kind !== "activity"
+                                      }
+                                      recommended={optionIndex === 0}
+                                      distanceFromPrevious={formatDistanceFromPrevious(
+                                        priorStop,
+                                        toStopCoordinate(
+                                          activity.name,
+                                          activity.latitude,
+                                          activity.longitude
+                                        )
+                                      )}
+                                      selectedElsewhereLabel={elsewhereSelectionLabel(
+                                        "activity",
                                         activity.name,
-                                        activity.latitude,
-                                        activity.longitude
-                                      )
-                                    )}
-                                    selectedElsewhereLabel={elsewhereSelectionLabel(
-                                      "activity",
-                                      activity.name,
-                                      dayIndex,
-                                      stopIndex
-                                    )}
-                                    onSelect={() => {
-                                      setSelection((prev) => ({
-                                        ...prev,
-                                        activities: {
-                                          ...prev.activities,
-                                          [key]: activity.name,
-                                        },
-                                      }));
-                                      setEditingStopKey(null);
-                                    }}
-                                  />
-                                );
-                              })}
-                            </div>
-                          ) : null}
+                                        dayIndex,
+                                        stopIndex
+                                      )}
+                                      onSelect={() => {
+                                        setCatalogSelection("activity", key, activity.name);
+                                        setEditingStopKey(null);
+                                      }}
+                                    />
+                                  );
+                                })}
+                              </div>
+                            ) : null}
+                          </div>
+                          {renderInsertedStops(dayIndex, stopIndex)}
                         </div>
                       );
                     }
 
                     return (
-                      <div
-                        key={key}
-                        className="rounded-[1.1rem] border border-slate-200 bg-white p-3.5 dark:border-slate-700 dark:bg-slate-900"
-                      >
-                        {stop.time ? (
-                          <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
-                            {stop.time}
-                          </div>
-                        ) : null}
-                        {timeWindowLabel(stop.time) ? (
-                          <div className="mt-1 text-[12px] font-medium leading-5 text-slate-500 dark:text-slate-400">
-                            {timeWindowLabel(stop.time)}
-                          </div>
-                        ) : null}
-                        <h4 className="mt-1 text-sm font-semibold text-slate-950 dark:text-slate-100">
-                          {stop.title}
-                        </h4>
-                        {stop.description ? (
-                          <p className="mt-1.5 text-[13px] leading-5 text-slate-600 dark:text-slate-300">
-                            {stop.description}
-                          </p>
-                        ) : null}
-                        {stop.kind === "travel" &&
-                        stopIndex === (day.stops?.length ?? 0) - 1 &&
-                        dayIndex === days.length - 1 &&
-                        priorStop &&
-                        startCityCoordinate ? (
-                          <div className="mt-2 text-[12px] font-medium leading-5 text-slate-500 dark:text-slate-400">
-                            {(() => {
-                              const distanceKm = haversineDistanceKm(priorStop, {
-                                label: startCityLabel ?? "start city",
-                                latitude: startCityCoordinate.latitude,
-                                longitude: startCityCoordinate.longitude,
-                              });
+                      <div key={`group-${key}`} className="space-y-3">
+                        <div className="rounded-[1.1rem] border border-slate-200 bg-white p-3.5 dark:border-slate-700 dark:bg-slate-900">
+                          {displayedStopTime ? (
+                            <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+                              {displayedStopTime}
+                            </div>
+                          ) : null}
+                          {timeWindowLabel(displayedStopTime) ? (
+                            <div className="mt-1 text-[12px] font-medium leading-5 text-slate-500 dark:text-slate-400">
+                              {timeWindowLabel(displayedStopTime)}
+                            </div>
+                          ) : null}
+                          <h4 className="mt-1 text-sm font-semibold text-slate-950 dark:text-slate-100">
+                            {stop.title}
+                          </h4>
+                          {stop.description ? (
+                            <p className="mt-1.5 text-[13px] leading-5 text-slate-600 dark:text-slate-300">
+                              {stop.description}
+                            </p>
+                          ) : null}
+                          {stop.kind === "travel" &&
+                          stopIndex === (day.stops?.length ?? 0) - 1 &&
+                          dayIndex === days.length - 1 &&
+                          priorStop &&
+                          startCityCoordinate ? (
+                            <div className="mt-2 text-[12px] font-medium leading-5 text-slate-500 dark:text-slate-400">
+                              {(() => {
+                                const distanceKm = haversineDistanceKm(priorStop, {
+                                  label: startCityLabel ?? "start city",
+                                  latitude: startCityCoordinate.latitude,
+                                  longitude: startCityCoordinate.longitude,
+                                });
 
-                              return `${formatTransferMinutes(
-                                estimateTransferMinutes(distanceKm)
-                              )} / ${formatDistanceKm(distanceKm)} from ${priorStop.label} to `;
-                            })()}
-                            {startCityLabel ?? "your starting city"}
-                          </div>
-                        ) : null}
+                                return `${formatTransferMinutes(
+                                  estimateTransferMinutes(distanceKm)
+                                )} / ${formatDistanceKm(distanceKm)} from ${priorStop.label} to `;
+                              })()}
+                              {startCityLabel ?? "your starting city"}
+                            </div>
+                          ) : null}
+                        </div>
+                        {renderInsertedStops(dayIndex, stopIndex)}
                       </div>
                     );
                   })}

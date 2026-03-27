@@ -6,6 +6,11 @@ import {
 } from "./tripDates";
 import { preferredHotelBookingUrl } from "./expediaLinks";
 import { TripPlan, TripSelectionState } from "./types";
+import {
+  getAddedStopsForDay,
+  getCustomStopForKey,
+  normalizeSelectionState,
+} from "./tripSelections";
 
 const TRACKING_PARAMS = [
   "utm_source",
@@ -55,7 +60,7 @@ function buildEventDateTime(dateIso: string, hours: number, minutes = 0) {
 }
 
 function resolveSelectionState(trip: TripPlan): TripSelectionState {
-  return (
+  return normalizeSelectionState(
     trip.savedSelectionState ?? {
       hotelName: trip.hotelOptions?.[0]?.name,
       foods: {},
@@ -195,6 +200,9 @@ function stopDetails(
 ) {
   const stop = trip.itineraryDays[dayIndex]?.stops?.[stopIndex];
   if (!stop) return null;
+  const key = stopKey(dayIndex, stopIndex);
+  const customStop = getCustomStopForKey(selection, key);
+  const customReplacement = customStop?.kind === stop.kind ? customStop : undefined;
 
   const hotel = stop.kind === "stay" ? selectedHotel(trip, selection) : undefined;
   const food = stop.kind === "food" ? selectedFood(trip, selection, dayIndex, stopIndex) : undefined;
@@ -203,13 +211,21 @@ function stopDetails(
       ? selectedActivity(trip, selection, dayIndex, stopIndex)
       : undefined;
 
-  const venueName = hotel?.name ?? food?.name ?? activity?.name ?? stop.title;
+  const venueName =
+    customReplacement?.title ??
+    hotel?.name ??
+    food?.name ??
+    activity?.name ??
+    stop.title;
   const title =
     stop.kind === "stay"
       ? `Check in at ${venueName}`
       : venueName;
 
   const link =
+    cleanShareUrl(
+      customReplacement ? customReplacement.mapsUrl || customReplacement.websiteUrl : undefined
+    ) ||
     cleanShareUrl(hotel?.mapsUrl) ||
     cleanShareUrl(hotel?.websiteUrl) ||
     cleanShareUrl(hotel?.bookingLink) ||
@@ -223,12 +239,16 @@ function stopDetails(
     cleanShareUrl(stop.websiteUrl);
 
   const location =
+    customReplacement?.description ??
     hotel?.shortDescription ??
     food?.shortDescription ??
     activity?.shortDescription;
 
   const descriptionParts = [
-    selectedStopDescription(stop.kind, venueName, stop.description),
+    customReplacement
+      ? customReplacement.description ??
+        selectedStopDescription(stop.kind, venueName, stop.description)
+      : selectedStopDescription(stop.kind, venueName, stop.description),
     location,
     link ? `Link: ${link}` : undefined,
   ].filter(Boolean);
@@ -238,7 +258,10 @@ function stopDetails(
     description: descriptionParts.join("\n\n"),
     location,
     link,
-    timing: stopTiming(stop.time, stop.kind),
+    timing: stopTiming(
+      customReplacement ? customReplacement.time : stop.time,
+      stop.kind
+    ),
     kind: stop.kind,
   };
 }
@@ -305,6 +328,29 @@ export function buildTripCalendarIcs(trip: TripPlan) {
         `SUMMARY:${escapeIcsText(details.title)}`,
         `DESCRIPTION:${escapeIcsText(details.description)}`,
         details.location ? `LOCATION:${escapeIcsText(details.location)}` : undefined,
+        "END:VEVENT",
+      ]
+        .filter(Boolean)
+        .join("\r\n"));
+    });
+
+    getAddedStopsForDay(selection, dayIndex).forEach((addedStop, addedIndex) => {
+      const timing = stopTiming(addedStop.time, addedStop.kind);
+      const start = buildEventDateTime(dateIso, timing.startHour, timing.startMinute);
+      const end = new Date(start);
+      end.setMinutes(end.getMinutes() + timing.durationMinutes);
+
+      events.push([
+        "BEGIN:VEVENT",
+        `UID:${trip.id}-${dayIndex}-added-${addedIndex}@weekend-trip-planner`,
+        `DTSTAMP:${createdStamp}`,
+        `DTSTART:${formatIcsDateTime(start)}`,
+        `DTEND:${formatIcsDateTime(end)}`,
+        `SUMMARY:${escapeIcsText(addedStop.title)}`,
+        `DESCRIPTION:${escapeIcsText(addedStop.description ?? "Added from builder prompt.")}`,
+        addedStop.mapsUrl || addedStop.websiteUrl
+          ? `LOCATION:${escapeIcsText(addedStop.mapsUrl || addedStop.websiteUrl)}`
+          : undefined,
         "END:VEVENT",
       ]
         .filter(Boolean)
@@ -379,6 +425,19 @@ export function buildTripSummaryText(trip: TripPlan) {
 
       if (details.description) {
         details.description.split("\n").forEach((line) => {
+          if (line.trim()) {
+            lines.push(`  ${line}`);
+          }
+        });
+      }
+    });
+
+    getAddedStopsForDay(selection, dayIndex).forEach((addedStop) => {
+      const prefix = addedStop.time ? `${addedStop.time}: ` : "";
+      lines.push(`- ${prefix}${addedStop.title}`);
+
+      if (addedStop.description) {
+        addedStop.description.split("\n").forEach((line) => {
           if (line.trim()) {
             lines.push(`  ${line}`);
           }

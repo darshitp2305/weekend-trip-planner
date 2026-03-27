@@ -4,6 +4,7 @@ import {
   FoodSpot,
   HotelOption,
   ItineraryDayData,
+  TripCustomStop,
   TripSelectionState,
 } from "./types";
 import { estimateFoodCostForGroup } from "./foodPricing";
@@ -16,12 +17,33 @@ function stopKey(dayIndex: number, stopIndex: number) {
   return `day-${dayIndex}-stop-${stopIndex}`;
 }
 
-export function emptySelectionState(): TripSelectionState {
+function dayKey(dayIndex: number) {
+  return `day-${dayIndex}`;
+}
+
+function asNumber(value?: number) {
+  return typeof value === "number" && Number.isFinite(value) ? value : 0;
+}
+
+export function normalizeSelectionState(
+  selection?: Partial<TripSelectionState> | null
+): TripSelectionState {
   return {
-    hotelName: undefined,
-    foods: {},
-    activities: {},
+    hotelName: selection?.hotelName,
+    foods: { ...(selection?.foods ?? {}) },
+    activities: { ...(selection?.activities ?? {}) },
+    customStops: { ...(selection?.customStops ?? {}) },
+    addedStops: Object.fromEntries(
+      Object.entries(selection?.addedStops ?? {}).map(([key, stops]) => [
+        key,
+        Array.isArray(stops) ? [...stops] : [],
+      ])
+    ),
   };
+}
+
+export function emptySelectionState(): TripSelectionState {
+  return normalizeSelectionState();
 }
 
 export function buildDefaultSelectionState(
@@ -34,6 +56,8 @@ export function buildDefaultSelectionState(
     hotelName: hotels[0]?.name,
     foods: {},
     activities: {},
+    customStops: {},
+    addedStops: {},
   };
 
   days.forEach((day, dayIndex) => {
@@ -65,6 +89,22 @@ export function buildDefaultSelectionState(
   });
 
   return initial;
+}
+
+export function getCustomStopForKey(
+  selection: TripSelectionState | null | undefined,
+  key: string
+) {
+  return selection?.customStops?.[key];
+}
+
+export function getAddedStopsForDay(
+  selection: TripSelectionState | null | undefined,
+  dayIndex: number
+) {
+  return [...(selection?.addedStops?.[dayKey(dayIndex)] ?? [])].sort(
+    (a, b) => (a.insertAfterStopIndex ?? Number.MAX_SAFE_INTEGER) - (b.insertAfterStopIndex ?? Number.MAX_SAFE_INTEGER)
+  );
 }
 
 type SelectionBudgetInput = {
@@ -108,15 +148,40 @@ export function calculateSelectedBudget({
         ? selectedHotel.pricePerNight * nights
         : Number(fallbackBreakdown?.hotel ?? 0);
 
-  const selectedFoodNames = Object.values(safeSelection.foods);
+  const customReplacementStops = Object.entries(safeSelection.customStops ?? {}).reduce(
+    (result, [key, stop]) => {
+      result[key] = stop;
+      return result;
+    },
+    {} as Record<string, TripCustomStop>
+  );
+
+  const selectedFoodNames = Object.entries(safeSelection.foods)
+    .filter(([key]) => customReplacementStops[key]?.kind !== "food")
+    .map(([, selectedName]) => selectedName);
   const food =
     selectedFoodNames.reduce((sum, selectedName) => {
       const spot = foodSpots.find((item) => item.name === selectedName);
       if (!spot) return sum;
       return sum + estimateFoodCostForGroup(spot, safeTravelerCount);
-    }, 0) || Number(fallbackBreakdown?.food ?? 0);
+    }, 0) +
+    Object.values(customReplacementStops).reduce((sum, stop) => {
+      if (stop.kind !== "food") return sum;
+      return sum + asNumber(stop.estimatedCost);
+    }, 0) +
+    Object.values(safeSelection.addedStops ?? {}).reduce((sum, stops) => {
+      return (
+        sum +
+        (stops ?? []).reduce((dayTotal, stop) => {
+          if (stop.kind !== "food") return dayTotal;
+          return dayTotal + asNumber(stop.estimatedCost);
+        }, 0)
+      );
+    }, 0);
 
-  const selectedActivityNames = Object.values(safeSelection.activities);
+  const selectedActivityNames = Object.entries(safeSelection.activities)
+    .filter(([key]) => customReplacementStops[key]?.kind !== "activity")
+    .map(([, selectedName]) => selectedName);
   const activitiesTotal =
     selectedActivityNames.reduce((sum, selectedName) => {
       const activity = activities.find((item) => item.name === selectedName);
@@ -125,17 +190,36 @@ export function calculateSelectedBudget({
         sum +
         (activity.costEstimate ?? activity.estimatedCost ?? 0) * safeTravelerCount
       );
-    }, 0) || Number(fallbackBreakdown?.activities ?? 0);
+    }, 0) +
+    Object.values(customReplacementStops).reduce((sum, stop) => {
+      if (stop.kind !== "activity") return sum;
+      return sum + asNumber(stop.estimatedCost);
+    }, 0) +
+    Object.values(safeSelection.addedStops ?? {}).reduce((sum, stops) => {
+      return (
+        sum +
+        (stops ?? []).reduce((dayTotal, stop) => {
+          if (stop.kind !== "activity") return dayTotal;
+          return dayTotal + asNumber(stop.estimatedCost);
+        }, 0)
+      );
+    }, 0);
+
+  const resolvedFood = food || Number(fallbackBreakdown?.food ?? 0);
+  const resolvedActivities =
+    activitiesTotal || Number(fallbackBreakdown?.activities ?? 0);
 
   const gas = Number(fallbackBreakdown?.gas ?? 0);
-  const misc = Math.round((hotel + food + gas + activitiesTotal) * 0.1);
-  const totalExpected = Math.round(hotel + food + gas + activitiesTotal + misc);
+  const misc = Math.round((hotel + resolvedFood + gas + resolvedActivities) * 0.1);
+  const totalExpected = Math.round(
+    hotel + resolvedFood + gas + resolvedActivities + misc
+  );
 
   return {
     hotel: Math.round(hotel),
-    food: Math.round(food),
+    food: Math.round(resolvedFood),
     gas: Math.round(gas),
-    activities: Math.round(activitiesTotal),
+    activities: Math.round(resolvedActivities),
     misc,
     total: totalExpected,
     totalLow: Math.round(totalExpected * 0.9),

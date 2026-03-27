@@ -17,6 +17,15 @@ const textSearchCache = new Map<string, CacheEntry>();
 type TextSearchRequest = {
   textQuery: string;
   maxResultCount?: number;
+  locationBias?: {
+    circle: {
+      center: {
+        latitude: number;
+        longitude: number;
+      };
+      radius: number;
+    };
+  };
 };
 
 function getGoogleMapsApiKey() {
@@ -165,6 +174,149 @@ export async function searchRestaurants(
     {
       textQuery,
       maxResultCount: 10,
+    },
+    FIELD_MASK
+  );
+}
+
+function cleanPreferenceText(value: string) {
+  return value
+    .trim()
+    .replace(/[?!.,]+$/g, "")
+    .replace(/\b(?:instead|please)\b/gi, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+export function buildPreferenceRestaurantTextQuery(
+  destination: string,
+  preference: string
+) {
+  const cleanedPreference = cleanPreferenceText(preference);
+
+  if (!cleanedPreference) {
+    return buildRestaurantTextQuery(destination, { wantsGoodFood: true });
+  }
+
+  if (
+    /\b(cafe|coffee|bakery|dessert|brunch|breakfast)\b/i.test(cleanedPreference)
+  ) {
+    return `best ${cleanedPreference} in ${destination}`;
+  }
+
+  return /\b(restaurant|restaurants|food|dinner|lunch|breakfast|brunch|cafe|bakery|bar|pub|bistro)\b/i.test(
+    cleanedPreference
+  )
+    ? `best ${cleanedPreference} in ${destination}`
+    : `best ${cleanedPreference} restaurant in ${destination}`;
+}
+
+export async function searchRestaurantsByPreference(
+  destination: string,
+  preference: string,
+  options?: {
+    latitude?: number;
+    longitude?: number;
+    radiusKm?: number;
+  }
+) {
+  const textQuery = buildPreferenceRestaurantTextQuery(destination, preference);
+  const radiusKm = options?.radiusKm ?? 25;
+  const hasLocationBias =
+    typeof options?.latitude === "number" &&
+    typeof options?.longitude === "number" &&
+    Number.isFinite(options.latitude) &&
+    Number.isFinite(options.longitude);
+
+  return placesTextSearch<{ places?: GooglePlace[] }>(
+    {
+      textQuery,
+      maxResultCount: 8,
+      ...(hasLocationBias
+        ? {
+            locationBias: {
+              circle: {
+                center: {
+                  latitude: options!.latitude!,
+                  longitude: options!.longitude!,
+                },
+                radius: Math.max(1, radiusKm) * 1000,
+              },
+            },
+          }
+        : {}),
+    },
+    FIELD_MASK
+  );
+}
+
+export function buildPreferenceActivityTextQuery(
+  destination: string,
+  preference: string
+) {
+  const cleanedPreference = cleanPreferenceText(preference);
+
+  if (!cleanedPreference) {
+    return `top activities in ${destination}`;
+  }
+
+  if (/\b(swim|swimming|beach|lake|pool)\b/i.test(cleanedPreference)) {
+    return `best places to swim, swimming spots, lakes, beaches, and outdoor pools in ${destination}`;
+  }
+
+  if (/\b(hot spring|hot springs|spa)\b/i.test(cleanedPreference)) {
+    return `best hot springs and spa experiences in ${destination}`;
+  }
+
+  if (/\b(kayak|canoe|paddle|rafting)\b/i.test(cleanedPreference)) {
+    return `best paddling, kayaking, canoeing, and rafting spots in ${destination}`;
+  }
+
+  if (/\b(walk|trail|hike|lookout|viewpoint)\b/i.test(cleanedPreference)) {
+    return `best ${cleanedPreference} in ${destination}`;
+  }
+
+  return /\b(activity|activities|tour|museum|gallery|spa|lake|beach|pool|trail|walk|hike|paddle|swim)\b/i.test(
+    cleanedPreference
+  )
+    ? `best ${cleanedPreference} in ${destination}`
+    : `best ${cleanedPreference} activities in ${destination}`;
+}
+
+export async function searchActivitiesByPreference(
+  destination: string,
+  preference: string,
+  options?: {
+    latitude?: number;
+    longitude?: number;
+    radiusKm?: number;
+  }
+) {
+  const textQuery = buildPreferenceActivityTextQuery(destination, preference);
+  const radiusKm = options?.radiusKm ?? 28;
+  const hasLocationBias =
+    typeof options?.latitude === "number" &&
+    typeof options?.longitude === "number" &&
+    Number.isFinite(options.latitude) &&
+    Number.isFinite(options.longitude);
+
+  return placesTextSearch<{ places?: GooglePlace[] }>(
+    {
+      textQuery,
+      maxResultCount: 8,
+      ...(hasLocationBias
+        ? {
+            locationBias: {
+              circle: {
+                center: {
+                  latitude: options!.latitude!,
+                  longitude: options!.longitude!,
+                },
+                radius: Math.max(1, radiusKm) * 1000,
+              },
+            },
+          }
+        : {}),
     },
     FIELD_MASK
   );

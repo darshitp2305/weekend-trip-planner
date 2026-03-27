@@ -1,6 +1,9 @@
 import { HotelOption } from "./types";
 
 const SERPAPI_BASE_URL = "https://serpapi.com/search.json";
+const SERPAPI_RATE_LIMIT_COOLDOWN_MS = 1000 * 60 * 5;
+const SERPAPI_QUOTA_COOLDOWN_MS = 1000 * 60 * 30;
+let serpApiUnavailableUntil = 0;
 
 type SearchHotelsOptions = {
   destination: string;
@@ -96,6 +99,10 @@ function pickBestPrice(result: SerpApiHotelResult): {
 export async function searchHotelsWithSerpApi(
   options: SearchHotelsOptions
 ): Promise<HotelOption[]> {
+  if (serpApiUnavailableUntil > Date.now()) {
+    return [];
+  }
+
   const apiKey = process.env.SERPAPI_API_KEY;
   if (!apiKey) {
     throw new Error("Missing SERPAPI_API_KEY in .env.local");
@@ -118,6 +125,13 @@ export async function searchHotelsWithSerpApi(
 
   if (!response.ok) {
     const text = await response.text();
+    if (response.status === 429) {
+      serpApiUnavailableUntil =
+        Date.now() +
+        (text.toLowerCase().includes("run out of searches")
+          ? SERPAPI_QUOTA_COOLDOWN_MS
+          : SERPAPI_RATE_LIMIT_COOLDOWN_MS);
+    }
     throw new Error(`SerpApi hotel search failed: ${response.status} ${text}`);
   }
 

@@ -15,6 +15,7 @@ import { sortHotelOptions } from "./hotelAvailability";
 import { fetchHotelsDotComHotelData } from "./hotelsDotComHotelProvider";
 import { fetchPlacesProviderData } from "./placesProvider";
 import { reportProviderEvent } from "./providerTelemetry";
+import { searchHotelsWithSerpApi } from "./serpApiHotels";
 import { deriveTripIntentFromPrompt } from "./tripIntent";
 
 const ENRICH_CACHE_TTL_MS = 1000 * 60 * 20;
@@ -548,6 +549,314 @@ function hotelSearchText(hotel: {
   return normalizeLocationText([hotel.name, hotel.shortDescription].join(" "));
 }
 
+function normalizeHotelIdentity(value?: string) {
+  return normalizeLocationText(value)
+    .replace(/\b(the|by|at)\b/gu, " ")
+    .replace(
+      /\b(hotel|hotels|resort|resorts|inn|inns|lodge|lodges|suite|suites|motel|spa|retreat|accommodation|accommodations|lodging|guesthouse|apartments|apartment|chalets|chalet)\b/gu,
+      " "
+    )
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function hotelNameTokens(value?: string) {
+  return normalizeHotelIdentity(value)
+    .split(/\s+/)
+    .filter((token) => token.length >= 3);
+}
+
+function countSharedTokens(left: string[], right: string[]) {
+  const rightSet = new Set(right);
+  return left.reduce((count, token) => count + Number(rightSet.has(token)), 0);
+}
+
+function toFiniteNumber(value?: number) {
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+function distanceBetweenCoordinatesKm(
+  leftLat?: number,
+  leftLon?: number,
+  rightLat?: number,
+  rightLon?: number
+) {
+  const lat1 = toFiniteNumber(leftLat);
+  const lon1 = toFiniteNumber(leftLon);
+  const lat2 = toFiniteNumber(rightLat);
+  const lon2 = toFiniteNumber(rightLon);
+
+  if (
+    lat1 === undefined ||
+    lon1 === undefined ||
+    lat2 === undefined ||
+    lon2 === undefined
+  ) {
+    return undefined;
+  }
+
+  const toRadians = (degrees: number) => (degrees * Math.PI) / 180;
+  const earthRadiusKm = 6371;
+  const deltaLat = toRadians(lat2 - lat1);
+  const deltaLon = toRadians(lon2 - lon1);
+  const a =
+    Math.sin(deltaLat / 2) ** 2 +
+    Math.cos(toRadians(lat1)) *
+      Math.cos(toRadians(lat2)) *
+      Math.sin(deltaLon / 2) ** 2;
+
+  return earthRadiusKm * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function hotelMatchKey(hotel: {
+  name?: string;
+  shortDescription?: string;
+  latitude?: number;
+  longitude?: number;
+}) {
+  const identityKey = normalizeHotelIdentity(hotel.name) || normalizeName(hotel.name);
+  if (identityKey) return identityKey;
+
+  return [
+    normalizeLocationText(hotel.shortDescription),
+    toFiniteNumber(hotel.latitude)?.toFixed(4) ?? "",
+    toFiniteNumber(hotel.longitude)?.toFixed(4) ?? "",
+  ].join("|");
+}
+
+function hotelMatchSignal(
+  baseHotel: Pick<
+    HotelOption,
+    "name" | "shortDescription" | "latitude" | "longitude" | "availabilityStatus"
+  >,
+  candidateHotel: Pick<
+    HotelOption,
+    "name" | "shortDescription" | "latitude" | "longitude" | "availabilityStatus"
+  >
+) {
+  const normalizedBaseName = normalizeName(baseHotel.name);
+  const normalizedCandidateName = normalizeName(candidateHotel.name);
+  const baseIdentity = normalizeHotelIdentity(baseHotel.name);
+  const candidateIdentity = normalizeHotelIdentity(candidateHotel.name);
+  const baseTokens = hotelNameTokens(baseHotel.name);
+  const candidateTokens = hotelNameTokens(candidateHotel.name);
+  const tokenOverlap = countSharedTokens(baseTokens, candidateTokens);
+  const baseAddressTokens = wordsFromLocationText(baseHotel.shortDescription);
+  const candidateAddressTokens = wordsFromLocationText(
+    candidateHotel.shortDescription
+  );
+  const addressOverlap = countSharedTokens(
+    baseAddressTokens,
+    candidateAddressTokens
+  );
+  const distanceKm = distanceBetweenCoordinatesKm(
+    baseHotel.latitude,
+    baseHotel.longitude,
+    candidateHotel.latitude,
+    candidateHotel.longitude
+  );
+  const exactNameMatch =
+    Boolean(normalizedBaseName) && normalizedBaseName === normalizedCandidateName;
+  const exactIdentityMatch =
+    Boolean(baseIdentity) && baseIdentity === candidateIdentity;
+  const partialIdentityMatch =
+    Boolean(baseIdentity) &&
+    Boolean(candidateIdentity) &&
+    baseIdentity !== candidateIdentity &&
+    (baseIdentity.includes(candidateIdentity) ||
+      candidateIdentity.includes(baseIdentity));
+
+  let score = 0;
+
+  if (exactNameMatch) score += 120;
+  if (exactIdentityMatch) score += 100;
+  if (partialIdentityMatch) score += 44;
+  score += tokenOverlap * 18;
+
+  const normalizedBaseAddress = normalizeLocationText(baseHotel.shortDescription);
+  const normalizedCandidateAddress = normalizeLocationText(
+    candidateHotel.shortDescription
+  );
+
+  if (
+    normalizedBaseAddress &&
+    normalizedCandidateAddress &&
+    normalizedBaseAddress === normalizedCandidateAddress
+  ) {
+    score += 60;
+  } else {
+    score += Math.min(30, addressOverlap * 8);
+  }
+
+  if (typeof distanceKm === "number") {
+    if (distanceKm <= 0.2) {
+      score += 72;
+    } else if (distanceKm <= 0.75) {
+      score += 54;
+    } else if (distanceKm <= 2) {
+      score += 34;
+    } else if (distanceKm <= 5) {
+      score += 16;
+    } else if (distanceKm > 25) {
+      score -= 90;
+    } else if (distanceKm > 12) {
+      score -= 36;
+    }
+  }
+
+  if (
+    baseHotel.availabilityStatus !== "available" &&
+    candidateHotel.availabilityStatus === "available"
+  ) {
+    score += 8;
+  }
+
+  return {
+    score,
+    tokenOverlap,
+    addressOverlap,
+    distanceKm,
+    exactNameMatch,
+    exactIdentityMatch,
+  };
+}
+
+function isStrongHotelMatch(
+  signal: ReturnType<typeof hotelMatchSignal>
+) {
+  if (signal.exactNameMatch || signal.exactIdentityMatch) return true;
+  if (signal.tokenOverlap >= 2 && signal.addressOverlap >= 2) return true;
+  if (
+    signal.tokenOverlap >= 2 &&
+    typeof signal.distanceKm === "number" &&
+    signal.distanceKm <= 2
+  ) {
+    return true;
+  }
+  if (
+    signal.addressOverlap >= 3 &&
+    typeof signal.distanceKm === "number" &&
+    signal.distanceKm <= 1
+  ) {
+    return true;
+  }
+
+  return signal.score >= 90;
+}
+
+function mergeHotelRecords(baseHotel: HotelOption, candidateHotel: HotelOption) {
+  return {
+    ...candidateHotel,
+    ...baseHotel,
+    name: baseHotel.name || candidateHotel.name,
+    pricePerNight: candidateHotel.pricePerNight ?? baseHotel.pricePerNight,
+    totalStayPrice: candidateHotel.totalStayPrice ?? baseHotel.totalStayPrice,
+    pricingSource: candidateHotel.pricingSource ?? baseHotel.pricingSource,
+    availabilityStatus:
+      candidateHotel.availabilityStatus ?? baseHotel.availabilityStatus,
+    availabilitySource:
+      candidateHotel.availabilitySource ?? baseHotel.availabilitySource,
+    hotelId: candidateHotel.hotelId ?? baseHotel.hotelId,
+    destinationId: candidateHotel.destinationId ?? baseHotel.destinationId,
+    bookingLink: candidateHotel.bookingLink || baseHotel.bookingLink,
+    shortDescription:
+      baseHotel.shortDescription || candidateHotel.shortDescription,
+    rating: baseHotel.rating ?? candidateHotel.rating,
+    photoRef: baseHotel.photoRef ?? candidateHotel.photoRef,
+    photoUrl: baseHotel.photoUrl ?? candidateHotel.photoUrl,
+    mapsUrl: baseHotel.mapsUrl ?? candidateHotel.mapsUrl,
+    websiteUrl: baseHotel.websiteUrl ?? candidateHotel.websiteUrl,
+    latitude: baseHotel.latitude ?? candidateHotel.latitude,
+    longitude: baseHotel.longitude ?? candidateHotel.longitude,
+  };
+}
+
+function mergeHotelCollections(
+  baseHotels: HotelOption[],
+  enrichmentHotels: HotelOption[]
+) {
+  const usedMatches = new Set<string>();
+
+  const mergedBaseHotels = baseHotels.map((hotel) => {
+    let bestMatch:
+      | { hotel: HotelOption; score: number }
+      | undefined;
+
+    for (const candidateHotel of enrichmentHotels) {
+      const candidateKey = hotelMatchKey(candidateHotel);
+      if (usedMatches.has(candidateKey)) continue;
+
+      const signal = hotelMatchSignal(hotel, candidateHotel);
+      if (!isStrongHotelMatch(signal)) continue;
+
+      if (!bestMatch || signal.score > bestMatch.score) {
+        bestMatch = { hotel: candidateHotel, score: signal.score };
+      }
+    }
+
+    if (!bestMatch) return hotel;
+
+    usedMatches.add(hotelMatchKey(bestMatch.hotel));
+    return mergeHotelRecords(hotel, bestMatch.hotel);
+  });
+
+  const unmatchedEnrichmentHotels = enrichmentHotels.filter(
+    (hotel) => !usedMatches.has(hotelMatchKey(hotel))
+  );
+
+  return [...mergedBaseHotels, ...unmatchedEnrichmentHotels];
+}
+
+function dedupeHotelOptions(hotels: HotelOption[]) {
+  const mergedByIdentity = new Map<string, HotelOption>();
+
+  for (const hotel of hotels) {
+    const key = hotelMatchKey(hotel);
+    if (!key) continue;
+
+    const existing = mergedByIdentity.get(key);
+    if (!existing) {
+      mergedByIdentity.set(key, hotel);
+      continue;
+    }
+
+    mergedByIdentity.set(key, mergeHotelRecords(existing, hotel));
+  }
+
+  return Array.from(mergedByIdentity.values());
+}
+
+async function fetchSerpApiHotelInventory(options: {
+  destination: string;
+  tripStartDate?: string;
+  tripEndDate?: string;
+  adults: number;
+}) {
+  if (!options.tripStartDate || !options.tripEndDate) {
+    return [];
+  }
+
+  try {
+    return await searchHotelsWithSerpApi({
+      destination: options.destination,
+      tripStartDate: options.tripStartDate,
+      tripEndDate: options.tripEndDate,
+      adults: options.adults,
+    });
+  } catch (error) {
+    reportProviderEvent({
+      provider: "serpapi",
+      operation: "hotel_search",
+      outcome: "live_unavailable",
+      destination: options.destination,
+      detail:
+        "SerpApi hotel availability lookup failed. Falling back to other hotel sources.",
+      error,
+    });
+    return [];
+  }
+}
+
 function createEnrichCacheKey(trip: RankedDestination, input: TripInput) {
   return JSON.stringify({
     name: trip.name,
@@ -559,60 +868,6 @@ function createEnrichCacheKey(trip: RankedDestination, input: TripInput) {
     tripStartDate: input.tripStartDate,
     tripEndDate: input.tripEndDate,
     travelerCount: input.travelerCount,
-  });
-}
-
-function mergeHotelSources<
-  TPrimary extends {
-    name?: string;
-    photoRef?: string;
-    photoUrl?: string;
-    mapsUrl?: string;
-    websiteUrl?: string;
-    bookingLink?: string;
-    shortDescription?: string;
-    rating?: number;
-    availabilityStatus?: HotelOption["availabilityStatus"];
-    availabilitySource?: string;
-  },
-  TFallback extends {
-    name?: string;
-    photoRef?: string;
-    photoUrl?: string;
-    mapsUrl?: string;
-    websiteUrl?: string;
-    bookingLink?: string;
-    shortDescription?: string;
-    rating?: number;
-    availabilityStatus?: HotelOption["availabilityStatus"];
-    availabilitySource?: string;
-  },
->(primary: TPrimary[], fallback: TFallback[]) {
-  // Google Places is better for identity and photos; inventory providers are
-  // better for hotel commerce fields. Merge by normalized name so each source
-  // fills gaps.
-  const fallbackByName = new Map(
-    fallback.map((item) => [normalizeName(item.name), item] as const)
-  );
-
-  return primary.map((item) => {
-    const match = fallbackByName.get(normalizeName(item.name));
-
-    if (!match) return item;
-
-    return {
-      ...match,
-      ...item,
-      photoRef: item.photoRef ?? match.photoRef,
-      photoUrl: item.photoUrl ?? match.photoUrl,
-      mapsUrl: item.mapsUrl ?? match.mapsUrl,
-      websiteUrl: item.websiteUrl ?? match.websiteUrl,
-      bookingLink: item.bookingLink ?? match.bookingLink,
-      shortDescription: item.shortDescription ?? match.shortDescription,
-      rating: item.rating ?? match.rating,
-      availabilityStatus: item.availabilityStatus ?? match.availabilityStatus,
-      availabilitySource: item.availabilitySource ?? match.availabilitySource,
-    };
   });
 }
 
@@ -766,11 +1021,12 @@ export async function enrichRankedTrip(
   }
 
   const destinationQuery = `${trip.name}, ${trip.province}`;
+  const hotelDestinationQuery = `${trip.homeBaseCity || trip.name}, ${trip.province}`;
   const sourceCheckedAt = new Date().toISOString();
 
   try {
     const locationContext = destinationLocationContext(trip);
-    const [placesData, hotelsDotComHotels] =
+    const [placesData, hotelsDotComHotels, serpApiHotels] =
       await Promise.all([
         fetchPlacesProviderData({
           destination: destinationQuery,
@@ -782,7 +1038,13 @@ export async function enrichRankedTrip(
           tripEndDate: input.tripEndDate,
         }),
         fetchHotelsDotComHotelData({
-          destination: destinationQuery,
+          destination: hotelDestinationQuery,
+          tripStartDate: input.tripStartDate,
+          tripEndDate: input.tripEndDate,
+          adults: input.travelerCount,
+        }),
+        fetchSerpApiHotelInventory({
+          destination: hotelDestinationQuery,
           tripStartDate: input.tripStartDate,
           tripEndDate: input.tripEndDate,
           adults: input.travelerCount,
@@ -807,12 +1069,17 @@ export async function enrichRankedTrip(
         .filter(hasName)
     );
 
-    const hotelsDotComInventory = dedupeByName(
-      hotelsDotComHotels
-        .filter(hasName)
-        .filter((hotel) =>
-          hasStrongLocationMatch(hotelSearchText(hotel), locationContext)
-        )
+    const staticHotels = dedupeHotelOptions(
+      sortHotelOptions((trip.hotelOptions ?? []).filter(hasName))
+    );
+
+    const providerInventoryHotels = dedupeHotelOptions([
+      ...hotelsDotComHotels.filter(hasName),
+      ...serpApiHotels.filter(hasName),
+    ]);
+
+    const locationMatchedProviderHotels = providerInventoryHotels.filter(
+      (hotel) => hasStrongLocationMatch(hotelSearchText(hotel), locationContext)
     );
 
     const placesHotels = dedupeByName(
@@ -821,13 +1088,25 @@ export async function enrichRankedTrip(
         .filter(hasName)
     );
 
-    const inventoryHotels = sortHotelOptions(
-      dedupeByName([...hotelsDotComInventory])
+    const baseHotels = dedupeHotelOptions(
+      mergeHotelCollections(
+        placesHotels.length > 0 ? placesHotels : staticHotels,
+        staticHotels
+      )
     );
-    const liveHotels =
-      inventoryHotels.length > 0
-        ? sortHotelOptions(mergeHotelSources(inventoryHotels, placesHotels))
-        : sortHotelOptions(placesHotels);
+
+    const inventoryHotels = sortHotelOptions(
+      locationMatchedProviderHotels.length > 0
+        ? locationMatchedProviderHotels
+        : providerInventoryHotels
+    );
+    const liveHotels = sortHotelOptions(
+      dedupeHotelOptions(
+        inventoryHotels.length > 0
+          ? mergeHotelCollections(baseHotels, inventoryHotels)
+          : baseHotels
+      )
+    );
 
     const balancedFoodSpots = dedupeByName(
       interleaveArrays(liveRestaurants, liveCafes)

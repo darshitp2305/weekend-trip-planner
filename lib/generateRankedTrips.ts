@@ -31,6 +31,32 @@ function round2(value: number): number {
   return Math.round(value * 100) / 100;
 }
 
+async function mapWithConcurrencyLimit<TInput, TOutput>(
+  items: TInput[],
+  limit: number,
+  mapper: (item: TInput, index: number) => Promise<TOutput>
+) {
+  if (items.length === 0) return [] as TOutput[];
+
+  const safeLimit = Math.max(1, Math.min(limit, items.length));
+  const results = new Array<TOutput>(items.length);
+  let nextIndex = 0;
+
+  async function worker() {
+    while (nextIndex < items.length) {
+      const currentIndex = nextIndex;
+      nextIndex += 1;
+      results[currentIndex] = await mapper(items[currentIndex], currentIndex);
+    }
+  }
+
+  await Promise.all(
+    Array.from({ length: safeLimit }, () => worker())
+  );
+
+  return results;
+}
+
 // Convert confidence labels into a stable sort weight for tie-breaking.
 function confidenceOrder(confidence?: RankedDestination["confidence"]): number {
   switch (confidence) {
@@ -991,8 +1017,10 @@ export async function generateRankedTrips(
     excludedDestinationNames: options?.excludedDestinationNames,
   });
 
-  const enrichedTrips = await Promise.all(
-    initialCandidates.map(async (trip) => {
+  const enrichedTrips = await mapWithConcurrencyLimit(
+    initialCandidates,
+    2,
+    async (trip) => {
       try {
         const enriched = await enrichRankedTrip(trip, input);
         return enriched.trip;
@@ -1007,7 +1035,7 @@ export async function generateRankedTrips(
         });
         return trip;
       }
-    })
+    }
   );
 
   const usedLiveData = enrichedTrips.some((trip) => trip.liveDataSummary?.usedPlacesData);

@@ -254,10 +254,26 @@ export interface ItineraryDayData {
   stops: ItineraryStop[];
 }
 
+export interface TripCustomStop extends ItineraryStop {
+  id: string;
+  kind: "stay" | "food" | "activity";
+  category?: string;
+  rating?: number;
+  photoRef?: string;
+  photoUrl?: string;
+  latitude?: number;
+  longitude?: number;
+  insertAfterStopIndex?: number;
+  sourcePrompt?: string;
+  sourceType?: "custom_request" | "catalog_match";
+}
+
 export interface TripSelectionState {
   hotelName?: string;
   foods: Record<string, string>;
   activities: Record<string, string>;
+  customStops?: Record<string, TripCustomStop>;
+  addedStops?: Record<string, TripCustomStop[]>;
 }
 
 export type TripFeedbackReaction = "love" | "maybe" | "pass";

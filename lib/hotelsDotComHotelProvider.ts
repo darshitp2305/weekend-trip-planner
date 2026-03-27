@@ -5,6 +5,7 @@ const HOTELS_DOT_COM_HOST = "hotels4.p.rapidapi.com";
 const HOTELS_DOT_COM_BASE_URL = `https://${HOTELS_DOT_COM_HOST}`;
 const REQUEST_TIMEOUT_MS = 12000;
 const CACHE_TTL_MS = 1000 * 60 * 30;
+const RATE_LIMIT_COOLDOWN_MS = 1000 * 8;
 
 type CacheEntry = {
   expiresAt: number;
@@ -12,6 +13,7 @@ type CacheEntry = {
 };
 
 const providerCache = new Map<string, CacheEntry>();
+let rateLimitedUntil = 0;
 
 type DestinationEntity = {
   destinationId?: string;
@@ -75,6 +77,10 @@ function getHotelsDotComApiKey() {
 }
 
 async function requestHotelsDotCom<T>(pathWithQuery: string): Promise<T | null> {
+  if (rateLimitedUntil > Date.now()) {
+    return null;
+  }
+
   const cached = providerCache.get(pathWithQuery);
   if (cached && cached.expiresAt > Date.now()) {
     return cached.value as T;
@@ -109,6 +115,9 @@ async function requestHotelsDotCom<T>(pathWithQuery: string): Promise<T | null> 
 
   if (!response.ok) {
     const text = await response.text();
+    if (response.status === 429) {
+      rateLimitedUntil = Date.now() + RATE_LIMIT_COOLDOWN_MS;
+    }
     const error = new Error(
       `Hotels.com RapidAPI request failed: ${response.status} ${text}`
     ) as Error & { status?: number };
