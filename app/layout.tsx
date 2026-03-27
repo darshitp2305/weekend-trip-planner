@@ -3,9 +3,9 @@ import ThemeToggle from "../components/ThemeToggle";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Trippify | Weekend trip planning",
+  title: "Trippify | Trip planning",
   description:
-    "Trippify helps you find ranked weekend trips based on budget, drive time, and travel style.",
+    "Trippify helps you find ranked trips based on budget, drive time, dates, and travel style.",
   icons: {
     icon: "/trippify-icon.svg",
     shortcut: "/trippify-icon.svg",

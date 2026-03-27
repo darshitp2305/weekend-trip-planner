@@ -92,7 +92,7 @@ async function geocodeWithNominatim(input: LocationInput): Promise<Coordinate | 
 
   const response = await fetch(url.toString(), {
     headers: {
-      "User-Agent": "WeekendTripPlanner/1.0",
+      "User-Agent": "TrippifyTripPlanner/1.0",
       "Accept-Language": "en-CA,en;q=0.9",
     },
     cache: "no-store",

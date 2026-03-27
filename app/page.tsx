@@ -592,7 +592,7 @@ export default function HomePage() {
         <section className="mb-8">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="inline-flex items-center rounded-full border border-white/70 bg-white/80 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-700 shadow-sm dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-200">
-              Alberta weekend planner
+              Alberta trip planner
             </div>
 
             <button
@@ -606,13 +606,8 @@ export default function HomePage() {
 
           <div className="mt-6 max-w-4xl">
             <h1 className="text-4xl font-semibold tracking-tight text-slate-950 dark:text-white sm:text-5xl">
-              One trip recommendation you can actually shape into a real weekend.
+              One trip recommendation you can actually shape into a real plan.
             </h1>
-            <p className="mt-4 text-base leading-7 text-slate-600 dark:text-slate-300 sm:text-lg">
-              Pick the dates, say how many people are going, and describe the
-              kind of weekend you want. Trippify returns one trip recommendation,
-              then lets you swap stops and reshape days once you open the builder.
-            </p>
           </div>
 
           <div className="mt-6 grid gap-3 md:grid-cols-3">

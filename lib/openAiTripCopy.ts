@@ -162,7 +162,7 @@ export async function generateTripCopyWithOpenAI(
   const promptIntent = deriveTripIntentFromPrompt(input.tripPrompt);
 
   const systemPrompt = [
-    "You are writing destination-specific weekend trip copy for a trip planning app.",
+    "You are writing destination-specific trip copy for a trip planning app.",
     "The product delivers one high-conviction trip the traveler can actually act on.",
     "Return ONLY valid JSON.",
     "Do not use markdown fences.",

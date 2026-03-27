@@ -321,7 +321,7 @@ function SavedTripCard({
                 type="text"
                 value={renameValue}
                 onChange={(event) => onRenameValueChange?.(event.target.value)}
-                placeholder="Weekend in Canmore"
+                placeholder="Trip in Canmore"
                 className="mt-2 h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-violet-500/20"
               />
               <div className="mt-3 flex flex-wrap gap-2">

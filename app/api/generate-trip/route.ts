@@ -189,7 +189,7 @@ function buildFallbackAiContent(
       : ""
   }`;
 
-  const aiBestFit = `Best for a ${input.style}-focused weekend that balances drive time, cost, and trip value for ${input.travelerCount} traveler${
+  const aiBestFit = `Best for a ${input.style}-focused trip that balances drive time, cost, and trip value for ${input.travelerCount} traveler${
     input.travelerCount === 1 ? "" : "s"
   }.`;
 

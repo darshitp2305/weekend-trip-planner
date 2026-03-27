@@ -274,7 +274,7 @@ export function buildTripCalendarIcs(trip: TripPlan) {
       : getTodayIsoDate();
   const created = new Date();
   const createdStamp = created.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
-  const calendarName = `${trip.destinationName || trip.name || "Weekend trip"} itinerary`;
+  const calendarName = `${trip.destinationName || trip.name || "Trip"} itinerary`;
   const events: string[] = [];
 
   trip.itineraryDays.forEach((day, dayIndex) => {
@@ -288,7 +288,7 @@ export function buildTripCalendarIcs(trip: TripPlan) {
 
       events.push([
         "BEGIN:VEVENT",
-        `UID:${trip.id}-stay-${dayIndex}@weekend-trip-planner`,
+        `UID:${trip.id}-stay-${dayIndex}@trippify-trip-planner`,
         `DTSTAMP:${createdStamp}`,
         `DTSTART;VALUE=DATE:${formatIcsDate(stayStart)}`,
         `DTEND;VALUE=DATE:${formatIcsDate(stayEnd)}`,
@@ -321,7 +321,7 @@ export function buildTripCalendarIcs(trip: TripPlan) {
 
       events.push([
         "BEGIN:VEVENT",
-        `UID:${trip.id}-${dayIndex}-${stopIndex}@weekend-trip-planner`,
+        `UID:${trip.id}-${dayIndex}-${stopIndex}@trippify-trip-planner`,
         `DTSTAMP:${createdStamp}`,
         `DTSTART:${formatIcsDateTime(start)}`,
         `DTEND:${formatIcsDateTime(end)}`,
@@ -342,7 +342,7 @@ export function buildTripCalendarIcs(trip: TripPlan) {
 
       events.push([
         "BEGIN:VEVENT",
-        `UID:${trip.id}-${dayIndex}-added-${addedIndex}@weekend-trip-planner`,
+        `UID:${trip.id}-${dayIndex}-added-${addedIndex}@trippify-trip-planner`,
         `DTSTAMP:${createdStamp}`,
         `DTSTART:${formatIcsDateTime(start)}`,
         `DTEND:${formatIcsDateTime(end)}`,
@@ -361,7 +361,7 @@ export function buildTripCalendarIcs(trip: TripPlan) {
   return [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//Weekend Trip Planner//EN",
+    "PRODID:-//Trippify Trip Planner//EN",
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
     `X-WR-CALNAME:${escapeIcsText(calendarName)}`,
@@ -372,12 +372,12 @@ export function buildTripCalendarIcs(trip: TripPlan) {
 }
 
 export function suggestedCalendarFileName(trip: TripPlan) {
-  const base = (trip.destinationName || trip.name || "weekend-trip")
+  const base = (trip.destinationName || trip.name || "trip")
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
 
-  return `${base || "weekend-trip"}-itinerary.ics`;
+  return `${base || "trip"}-itinerary.ics`;
 }
 
 export function buildTripSummaryText(trip: TripPlan) {
@@ -390,7 +390,7 @@ export function buildTripSummaryText(trip: TripPlan) {
     undefined;
 
   const lines: string[] = [];
-  lines.push(`${trip.destinationName || trip.name || "Weekend Trip"}`);
+  lines.push(`${trip.destinationName || trip.name || "Trip"}`);
 
   if (dateRange) {
     lines.push(dateRange);

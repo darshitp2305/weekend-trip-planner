@@ -1363,7 +1363,7 @@ export default function TripPage() {
                       Ready-to-go snapshot
                     </h2>
                     <p className="max-w-3xl text-sm leading-5 text-slate-600 dark:text-slate-300">
-                      Scan the weekend shape first, then fine-tune stops below. Food and budget numbers are shown as estimates, not live checkout prices.
+                      Scan the trip shape first, then fine-tune stops below. Food and budget numbers are shown as estimates, not live checkout prices.
                     </p>
                   </div>
 

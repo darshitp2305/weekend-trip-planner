@@ -1,6 +1,7 @@
 "use client";
 
 import { type ReactNode, useMemo, useState } from "react";
+import DestinationShowcase from "./DestinationShowcase";
 import {
   deriveTripIntentFromPrompt,
   extractPromptBudget,
@@ -397,19 +398,7 @@ export default function TripForm({
   return (
     <section className="w-full">
       <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="overflow-hidden rounded-[2rem] border border-slate-200 bg-[linear-gradient(135deg,#f0fdf4,#ecfeff)] p-6 shadow-sm dark:border-slate-800 dark:bg-[linear-gradient(135deg,rgba(6,78,59,0.35),rgba(15,23,42,0.95))] sm:p-7">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700 dark:text-emerald-300">
-            One trip, not a shortlist
-          </div>
-          <h2 className="mt-3 text-3xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">
-            Tell us the dates, group size, and what this trip needs to be.
-          </h2>
-          <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-700 dark:text-slate-200">
-            Trippify will infer the trip style from your brief, pick one Alberta
-            plan with conviction, and then let you reshape the days in the
-            builder.
-          </p>
-        </div>
+        <DestinationShowcase />
 
         <div className="grid gap-4 md:grid-cols-3">
           <div>
@@ -460,7 +449,7 @@ export default function TripForm({
             <div>
               <FieldLabel htmlFor="tripPrompt">What do you want from this trip?</FieldLabel>
               <p className="mb-3 max-w-3xl text-sm leading-6 text-slate-600 dark:text-slate-300">
-                Describe the kind of weekend people would actually say yes to.
+                Describe the kind of trip people would actually say yes to.
                 Mention the vibe, pace, food, scenery, or any destination you
                 already have in mind.
               </p>
@@ -476,7 +465,7 @@ export default function TripForm({
             minLength={8}
             value={form.tripPrompt}
             onChange={(event) => updateField("tripPrompt", event.target.value)}
-            placeholder="Example: We want a low-effort mountain weekend with good coffee, one scenic hike, and enough payoff that four of us would actually commit to going."
+            placeholder="Example: We want a low-effort mountain trip with good coffee, one scenic hike, and enough payoff that four of us would actually commit to going."
             className="min-h-[160px] w-full rounded-[1.4rem] border border-slate-200 bg-slate-50 px-4 py-4 text-sm leading-6 text-slate-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-emerald-500/20"
           />
 
