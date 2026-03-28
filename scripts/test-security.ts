@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import {
   enforceRateLimit,
   enforceSameOrigin,
+  isAllowedExternalFetchUrl,
   isSafeInternalRedirect,
   isValidPublicTripId,
   rejectOversizedJsonRequest,
@@ -13,6 +14,7 @@ import {
   sanitizeTripForResponse,
 } from "../lib/tripSecurity";
 import type { TripPlan } from "../lib/types";
+import { sanitizeExternalNavigationUrl } from "../lib/urlSafety";
 
 function sampleTrip(): TripPlan {
   return {
@@ -250,6 +252,72 @@ function testIdAndRedirectValidation() {
   assert.equal(isSafeInternalRedirect("/trip/123"), true);
   assert.equal(isSafeInternalRedirect("//evil.example.com"), false);
   assert.equal(isSafeInternalRedirect("https://evil.example.com"), false);
+
+  assert.equal(
+    isAllowedExternalFetchUrl(
+      "https://lh3.googleusercontent.com/photo.jpg",
+      ["googleusercontent.com", "googleapis.com"]
+    ),
+    true
+  );
+  assert.equal(
+    isAllowedExternalFetchUrl(
+      "https://places.googleapis.com/v1/photo",
+      ["googleusercontent.com", "googleapis.com"]
+    ),
+    true
+  );
+  assert.equal(
+    isAllowedExternalFetchUrl(
+      "http://lh3.googleusercontent.com/photo.jpg",
+      ["googleusercontent.com"]
+    ),
+    false
+  );
+  assert.equal(
+    isAllowedExternalFetchUrl(
+      "https://googleusercontent.com.evil.example/photo.jpg",
+      ["googleusercontent.com"]
+    ),
+    false
+  );
+  assert.equal(
+    isAllowedExternalFetchUrl(
+      "https://user:pass@lh3.googleusercontent.com/photo.jpg",
+      ["googleusercontent.com"]
+    ),
+    false
+  );
+}
+
+function testNavigationUrlSanitizer() {
+  assert.equal(
+    sanitizeExternalNavigationUrl(
+      "https://example.com/stay?utm_source=test&fbclid=123"
+    ),
+    "https://example.com/stay"
+  );
+  assert.equal(
+    sanitizeExternalNavigationUrl("http://example.com/trip?utm_campaign=spring"),
+    "http://example.com/trip"
+  );
+  assert.equal(
+    sanitizeExternalNavigationUrl("javascript:alert('xss')"),
+    undefined
+  );
+  assert.equal(
+    sanitizeExternalNavigationUrl("data:text/html,<script>alert(1)</script>"),
+    undefined
+  );
+  assert.equal(
+    sanitizeExternalNavigationUrl("https://user:pass@example.com/private"),
+    undefined
+  );
+  assert.equal(
+    sanitizeExternalNavigationUrl("https://www.google.com/aclk?foo=bar"),
+    undefined
+  );
+  assert.equal(sanitizeExternalNavigationUrl("/trip/123"), undefined);
 }
 
 function main() {
@@ -257,6 +325,7 @@ function main() {
   testCollaborativeTripMerge();
   testRouteGuards();
   testIdAndRedirectValidation();
+  testNavigationUrlSanitizer();
   console.log("Security helper tests passed.");
 }
 

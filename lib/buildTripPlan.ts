@@ -108,6 +108,7 @@ function buildBudgetBreakdown(
     hotelOptions: trip.hotelOptions ?? [],
     foodSpots: trip.foodSpots ?? [],
     activities: trip.topActivities ?? [],
+    itineraryDays,
     selection: defaultSelection,
     fallbackBreakdown: {
       ...trip.budgetBreakdown,
@@ -2291,6 +2292,7 @@ export function buildTripPlan(
     hotelOptions: preview.filteredTrip.hotelOptions,
     foodSpots: preview.filteredTrip.foodSpots,
     activities: preview.filteredTrip.topActivities,
+    itineraryDays: preview.itineraryDays,
     selection: defaultSelection,
     fallbackBreakdown: preview.budgetBreakdown,
   });

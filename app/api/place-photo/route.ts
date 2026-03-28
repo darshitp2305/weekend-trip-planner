@@ -1,7 +1,43 @@
 import { NextResponse } from "next/server";
-import { enforceRateLimit, jsonNoStore } from "../../../lib/apiSecurity";
+import {
+  enforceRateLimit,
+  isAllowedExternalFetchUrl,
+  jsonNoStore,
+} from "../../../lib/apiSecurity";
 
 const API_KEY = process.env.GOOGLE_MAPS_API_KEY;
+const ALLOWED_GOOGLE_PHOTO_HOSTS = [
+  "googleapis.com",
+  "googleusercontent.com",
+  "gstatic.com",
+];
+
+async function fetchAllowedPhoto(url: string, redirectsRemaining = 2): Promise<Response> {
+  if (!isAllowedExternalFetchUrl(url, ALLOWED_GOOGLE_PHOTO_HOSTS)) {
+    throw new Error("Blocked photo fetch to untrusted host.");
+  }
+
+  const response = await fetch(url, {
+    cache: "force-cache",
+    redirect: "manual",
+  });
+
+  if ([301, 302, 303, 307, 308].includes(response.status)) {
+    if (redirectsRemaining <= 0) {
+      throw new Error("Photo fetch exceeded redirect limit.");
+    }
+
+    const location = response.headers.get("location");
+    if (!location) {
+      throw new Error("Photo fetch redirect missing location.");
+    }
+
+    const nextUrl = new URL(location, url).toString();
+    return fetchAllowedPhoto(nextUrl, redirectsRemaining - 1);
+  }
+
+  return response;
+}
 
 export async function GET(request: Request) {
   const rateLimitViolation = enforceRateLimit(request, {
@@ -58,22 +94,23 @@ export async function GET(request: Request) {
       );
     }
 
-    const imageResponse = await fetch(photoMeta.photoUri, {
-      cache: "force-cache",
-    });
+    const imageResponse = await fetchAllowedPhoto(photoMeta.photoUri);
 
     if (!imageResponse.ok) {
       throw new Error(`Photo fetch failed: ${imageResponse.status}`);
     }
 
-    const contentType =
-      imageResponse.headers.get("content-type") ?? "image/jpeg";
+    const contentType = imageResponse.headers.get("content-type") ?? "";
+    if (!contentType.toLowerCase().startsWith("image/")) {
+      throw new Error(`Unexpected photo content type: ${contentType || "unknown"}`);
+    }
 
     return new NextResponse(imageResponse.body, {
       headers: {
         "Content-Type": contentType,
         "Cache-Control": "public, max-age=86400, s-maxage=86400",
         "Cross-Origin-Resource-Policy": "same-origin",
+        "X-Content-Type-Options": "nosniff",
       },
     });
   } catch (error) {

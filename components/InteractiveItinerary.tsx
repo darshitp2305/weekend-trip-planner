@@ -28,6 +28,7 @@ import {
   hotelAvailabilityPriorityFor,
   hotelAvailabilityTone,
 } from "../lib/hotelAvailability";
+import { sanitizeExternalNavigationUrl } from "../lib/urlSafety";
 
 type Props = {
   days: ItineraryDayData[];
@@ -496,6 +497,8 @@ function SelectorCard({
   const previewImageUrl =
     buildPhotoUrl(option.photoRef) ?? option.photoUrl ?? option.fallbackPhotoUrl;
   const showCampingBadge = isCampingOnlyLikeOption(option);
+  const safePrimaryUrl = sanitizeExternalNavigationUrl(option.primaryUrl);
+  const safeMapsUrl = sanitizeExternalNavigationUrl(option.mapsUrl);
 
   return (
     <div
@@ -586,9 +589,9 @@ function SelectorCard({
           {selected ? "Selected" : "Choose this"}
         </button>
 
-        {option.primaryUrl ? (
+        {safePrimaryUrl ? (
           <a
-            href={option.primaryUrl}
+            href={safePrimaryUrl}
             target="_blank"
             rel="noreferrer"
             className="inline-flex h-10 items-center justify-center rounded-full border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-800 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
@@ -597,9 +600,9 @@ function SelectorCard({
           </a>
         ) : null}
 
-        {option.mapsUrl ? (
+        {safeMapsUrl ? (
           <a
-            href={option.mapsUrl}
+            href={safeMapsUrl}
             target="_blank"
             rel="noreferrer"
             className="inline-flex h-10 items-center justify-center rounded-full border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-800 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
@@ -646,6 +649,8 @@ function CompactSelectionCard({
     subtitle,
     category: pills?.[0],
   });
+  const safePrimaryUrl = sanitizeExternalNavigationUrl(primaryUrl);
+  const safeMapsUrl = sanitizeExternalNavigationUrl(mapsUrl);
 
   return (
     <div className="group rounded-[1rem] border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/70">
@@ -687,11 +692,11 @@ function CompactSelectionCard({
         </div>
       ) : null}
 
-      {(primaryUrl || mapsUrl) ? (
+      {(safePrimaryUrl || safeMapsUrl) ? (
         <div className="mt-3 flex flex-wrap gap-2">
-          {primaryUrl ? (
+          {safePrimaryUrl ? (
             <a
-              href={primaryUrl}
+              href={safePrimaryUrl}
               target="_blank"
               rel="noreferrer"
               className="inline-flex h-9 items-center justify-center rounded-full border border-slate-300 bg-white px-3.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
@@ -699,9 +704,9 @@ function CompactSelectionCard({
               {primaryLabel ?? "Visit site"}
             </a>
           ) : null}
-          {mapsUrl ? (
+          {safeMapsUrl ? (
             <a
-              href={mapsUrl}
+              href={safeMapsUrl}
               target="_blank"
               rel="noreferrer"
               className="inline-flex h-9 items-center justify-center rounded-full border border-slate-300 bg-white px-3.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
@@ -850,6 +855,10 @@ export default function InteractiveItinerary({
         : resolvedActivityCost(addedChoice, travelerCount);
     const previewImageUrl =
       buildPhotoUrl(addedStop.photoRef) ?? addedStop.photoUrl ?? destinationImageUrl;
+    const safeAddedStopWebsiteUrl = sanitizeExternalNavigationUrl(
+      addedStop.websiteUrl
+    );
+    const safeAddedStopMapsUrl = sanitizeExternalNavigationUrl(addedStop.mapsUrl);
 
     return (
       <div
@@ -902,11 +911,11 @@ export default function InteractiveItinerary({
           )}
         </div>
 
-        {addedStop.websiteUrl || addedStop.mapsUrl ? (
+        {safeAddedStopWebsiteUrl || safeAddedStopMapsUrl ? (
           <div className="mt-3 flex flex-wrap gap-2">
-            {addedStop.websiteUrl ? (
+            {safeAddedStopWebsiteUrl ? (
               <a
-                href={addedStop.websiteUrl}
+                href={safeAddedStopWebsiteUrl}
                 target="_blank"
                 rel="noreferrer"
                 className="inline-flex h-9 items-center justify-center rounded-full border border-slate-300 bg-white px-3.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
@@ -914,9 +923,9 @@ export default function InteractiveItinerary({
                 {addedStop.kind === "food" ? "Restaurant site" : "Activity site"}
               </a>
             ) : null}
-            {addedStop.mapsUrl ? (
+            {safeAddedStopMapsUrl ? (
               <a
-                href={addedStop.mapsUrl}
+                href={safeAddedStopMapsUrl}
                 target="_blank"
                 rel="noreferrer"
                 className="inline-flex h-9 items-center justify-center rounded-full border border-slate-300 bg-white px-3.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"

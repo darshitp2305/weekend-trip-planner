@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef } from "react";
 import L from "leaflet";
+import { sanitizeExternalNavigationUrl } from "../lib/urlSafety";
 
 type TripStopPin = {
   id: string;
@@ -176,10 +177,15 @@ export default function TripStopMap({
   const mappedPins = useMemo(
     () =>
       jitterDuplicatePins(
-        pins.filter(
-          (pin) =>
-            Number.isFinite(pin.latitude) && Number.isFinite(pin.longitude)
-        )
+        pins
+          .filter(
+            (pin) =>
+              Number.isFinite(pin.latitude) && Number.isFinite(pin.longitude)
+          )
+          .map((pin) => ({
+            ...pin,
+            mapsUrl: sanitizeExternalNavigationUrl(pin.mapsUrl),
+          }))
       ),
     [pins]
   );

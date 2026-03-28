@@ -1,3 +1,5 @@
+import { sanitizeExternalNavigationUrl } from "../lib/urlSafety";
+
 type Activity = {
   id?: string;
   name?: string;
@@ -65,7 +67,10 @@ export default function ActivitySection({ activities }: Props) {
       <div className="mt-5 grid gap-4 md:grid-cols-2">
         {activities.length > 0 ? (
           activities.map((activity, index) => {
-            const primaryLink = activity.bookingLink ?? activity.websiteUrl;
+            const primaryLink = sanitizeExternalNavigationUrl(
+              activity.bookingLink ?? activity.websiteUrl
+            );
+            const mapsLink = sanitizeExternalNavigationUrl(activity.mapsUrl);
             const cost = formatCost(activity.estimatedCost);
 
             return (
@@ -106,9 +111,9 @@ export default function ActivitySection({ activities }: Props) {
                     </a>
                   ) : null}
 
-                  {activity.mapsUrl ? (
+                  {mapsLink ? (
                     <a
-                      href={activity.mapsUrl}
+                      href={mapsLink}
                       target="_blank"
                       rel="noreferrer"
                       className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-100"

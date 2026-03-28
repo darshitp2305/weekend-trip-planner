@@ -514,11 +514,6 @@ export function getRecommendedTripTitle(
   trip: RecommendationTripLike,
   input?: Partial<TripInput> | null
 ) {
-  const summitBaseName =
-    trip.homeBaseCity?.trim() ??
-    trip.destinationName?.trim() ??
-    trip.destination?.trim() ??
-    trip.name?.trim();
   const selectedStayName = trip.savedSelectionState?.hotelName?.trim();
   const titleLooksCampingSpecific = isCampingStayLikeText(trip.title);
   const firstHotelLooksCampingSpecific = isCampingStayLikeHotel(
@@ -538,22 +533,7 @@ export function getRecommendedTripTitle(
   if (trip.title?.trim()) {
     if (isSummitHikeFocused(input)) {
       const summitTitle = normalizePlaceDisplayName(trip.title);
-      const normalizedSummitTitle = normalized(summitTitle);
-      const normalizedDestinationName = normalized(summitBaseName);
-
-      if (
-        summitTitle &&
-        summitBaseName &&
-        normalizedSummitTitle &&
-        normalizedDestinationName &&
-        normalizedSummitTitle !== normalizedDestinationName &&
-        !normalizedSummitTitle.includes(normalizedDestinationName) &&
-        !normalizedDestinationName.includes(normalizedSummitTitle)
-      ) {
-        return `${summitBaseName} with ${summitTitle}`;
-      }
-
-      return summitTitle;
+      return summitTitle || trip.title.trim();
     }
 
     return trip.title.trim();
@@ -566,21 +546,6 @@ export function getRecommendedTripTitle(
 
     if (hikeAnchor?.name?.trim() && hikeSpecificityScore(hikeAnchor) >= 40) {
       const summitTitle = normalizePlaceDisplayName(hikeAnchor.name);
-      const normalizedSummitTitle = normalized(summitTitle);
-      const normalizedDestinationName = normalized(summitBaseName);
-
-      if (
-        summitTitle &&
-        summitBaseName &&
-        normalizedSummitTitle &&
-        normalizedDestinationName &&
-        normalizedSummitTitle !== normalizedDestinationName &&
-        !normalizedSummitTitle.includes(normalizedDestinationName) &&
-        !normalizedDestinationName.includes(normalizedSummitTitle)
-      ) {
-        return `${summitBaseName} with ${summitTitle}`;
-      }
-
       return summitTitle;
     }
   }

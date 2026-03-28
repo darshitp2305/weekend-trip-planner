@@ -201,3 +201,33 @@ export function isValidPublicTripId(value: string) {
 export function isSafeInternalRedirect(value: string | undefined) {
   return Boolean(value && value.startsWith("/") && !value.startsWith("//"));
 }
+
+export function isAllowedExternalFetchUrl(
+  value: string | undefined,
+  allowedHosts: string[]
+) {
+  if (!value) return false;
+
+  try {
+    const url = new URL(value);
+    const hostname = url.hostname.toLowerCase();
+
+    if (url.protocol !== "https:") {
+      return false;
+    }
+
+    if (url.username || url.password) {
+      return false;
+    }
+
+    return allowedHosts.some((allowedHost) => {
+      const normalizedAllowedHost = allowedHost.toLowerCase();
+      return (
+        hostname === normalizedAllowedHost ||
+        hostname.endsWith(`.${normalizedAllowedHost}`)
+      );
+    });
+  } catch {
+    return false;
+  }
+}

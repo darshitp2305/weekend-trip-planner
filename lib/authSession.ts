@@ -14,11 +14,10 @@ type SessionPayload = {
 };
 
 function getSessionSecret(): string {
-  const secret =
-    process.env.AUTH_SESSION_SECRET ?? process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const secret = process.env.AUTH_SESSION_SECRET;
 
   if (!secret) {
-    throw new Error("Missing AUTH_SESSION_SECRET or SUPABASE_SERVICE_ROLE_KEY.");
+    throw new Error("Missing AUTH_SESSION_SECRET.");
   }
 
   return secret;

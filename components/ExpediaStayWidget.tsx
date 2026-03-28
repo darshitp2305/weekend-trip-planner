@@ -9,6 +9,7 @@ import {
 import { formatDateRange, isIsoDate } from "../lib/tripDates";
 import { isCampingStayLikeHotel } from "../lib/tripSpecificity";
 import { HotelOption } from "../lib/types";
+import { sanitizeExternalNavigationUrl } from "../lib/urlSafety";
 
 declare global {
   interface Window {
@@ -87,6 +88,10 @@ export default function ExpediaStayWidget({
     [selectedHotel]
   );
   const isCampingStay = isCampingStayLikeHotel(selectedHotel);
+  const safeSelectedHotelMapUrl = useMemo(
+    () => sanitizeExternalNavigationUrl(selectedHotel?.mapsUrl),
+    [selectedHotel?.mapsUrl]
+  );
   const searchUrl = useMemo(
     () => {
       const trimmedQuery = searchQuery.trim();
@@ -105,14 +110,14 @@ export default function ExpediaStayWidget({
     Boolean(selectedHotelName?.trim()) &&
     searchQuery.trim().toLowerCase() === selectedHotelName!.trim().toLowerCase();
   const actionUrl = isCampingStay
-    ? directStayUrl ?? selectedHotel?.mapsUrl ?? searchUrl
+    ? directStayUrl ?? safeSelectedHotelMapUrl ?? searchUrl
     : directExpediaUrl && isExactSelectedHotelSearch
       ? directExpediaUrl
       : searchUrl;
   const actionLabel = isCampingStay
     ? directStayUrl
       ? "Open stay site"
-      : selectedHotel?.mapsUrl
+      : safeSelectedHotelMapUrl
         ? "Open map"
         : "Search stay"
     : directExpediaUrl && isExactSelectedHotelSearch
@@ -200,7 +205,7 @@ export default function ExpediaStayWidget({
   }, [showOfficialWidget]);
 
   function handleOpenSearch() {
-    if (!canSearch) return;
+    if (!canSearch || !actionUrl) return;
     window.open(actionUrl, "_blank", "noopener,noreferrer");
   }
 
@@ -257,9 +262,9 @@ export default function ExpediaStayWidget({
               >
                 {actionLabel}
               </button>
-              {selectedHotel?.mapsUrl ? (
+              {safeSelectedHotelMapUrl ? (
                 <a
-                  href={selectedHotel.mapsUrl}
+                  href={safeSelectedHotelMapUrl}
                   target="_blank"
                   rel="noreferrer"
                   className="inline-flex h-12 items-center justify-center rounded-xl border border-slate-300 bg-white px-5 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:bg-slate-800"

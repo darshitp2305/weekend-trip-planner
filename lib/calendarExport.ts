@@ -6,27 +6,12 @@ import {
 } from "./tripDates";
 import { preferredHotelBookingUrl } from "./expediaLinks";
 import { TripPlan, TripSelectionState } from "./types";
+import { sanitizeExternalNavigationUrl } from "./urlSafety";
 import {
   getAddedStopsForDay,
   getCustomStopForKey,
   normalizeSelectionState,
 } from "./tripSelections";
-
-const TRACKING_PARAMS = [
-  "utm_source",
-  "utm_medium",
-  "utm_campaign",
-  "utm_term",
-  "utm_content",
-  "gclid",
-  "gbraid",
-  "wbraid",
-  "fbclid",
-  "msclkid",
-  "dclid",
-  "mc_cid",
-  "mc_eid",
-];
 
 function escapeIcsText(value?: string) {
   return (value ?? "")
@@ -101,26 +86,7 @@ function selectedActivity(
 }
 
 function cleanShareUrl(value?: string) {
-  if (!value) return undefined;
-
-  try {
-    const url = new URL(value);
-    const host = url.hostname.toLowerCase();
-    const path = url.pathname.toLowerCase();
-
-    if ((host === "www.google.com" || host === "google.com") && path === "/aclk") {
-      return undefined;
-    }
-
-    for (const param of TRACKING_PARAMS) {
-      url.searchParams.delete(param);
-    }
-
-    const serialized = url.toString();
-    return serialized.length > 0 ? serialized : undefined;
-  } catch {
-    return value;
-  }
+  return sanitizeExternalNavigationUrl(value);
 }
 
 function preferredHotelShareUrl(trip: TripPlan, selection: TripSelectionState) {
@@ -285,6 +251,9 @@ export function buildTripCalendarIcs(trip: TripPlan) {
       const stayStart = new Date(`${dateIso}T00:00:00`);
       const stayEnd = new Date(stayStart);
       stayEnd.setDate(stayEnd.getDate() + 1);
+      const stayBookingUrl = cleanShareUrl(
+        selectedStay.websiteUrl || selectedStay.bookingLink
+      );
 
       events.push([
         "BEGIN:VEVENT",
@@ -296,9 +265,7 @@ export function buildTripCalendarIcs(trip: TripPlan) {
         `DESCRIPTION:${escapeIcsText(
           [
             selectedStay.shortDescription,
-            selectedStay.websiteUrl || selectedStay.bookingLink
-              ? `Booking: ${selectedStay.websiteUrl || selectedStay.bookingLink}`
-              : undefined,
+            stayBookingUrl ? `Booking: ${stayBookingUrl}` : undefined,
           ]
             .filter(Boolean)
             .join("\n\n")
@@ -339,6 +306,9 @@ export function buildTripCalendarIcs(trip: TripPlan) {
       const start = buildEventDateTime(dateIso, timing.startHour, timing.startMinute);
       const end = new Date(start);
       end.setMinutes(end.getMinutes() + timing.durationMinutes);
+      const addedStopLocation = cleanShareUrl(
+        addedStop.mapsUrl || addedStop.websiteUrl
+      );
 
       events.push([
         "BEGIN:VEVENT",
@@ -348,9 +318,7 @@ export function buildTripCalendarIcs(trip: TripPlan) {
         `DTEND:${formatIcsDateTime(end)}`,
         `SUMMARY:${escapeIcsText(addedStop.title)}`,
         `DESCRIPTION:${escapeIcsText(addedStop.description ?? "Added from builder prompt.")}`,
-        addedStop.mapsUrl || addedStop.websiteUrl
-          ? `LOCATION:${escapeIcsText(addedStop.mapsUrl || addedStop.websiteUrl)}`
-          : undefined,
+        addedStopLocation ? `LOCATION:${escapeIcsText(addedStopLocation)}` : undefined,
         "END:VEVENT",
       ]
         .filter(Boolean)

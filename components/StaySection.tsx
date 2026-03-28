@@ -3,6 +3,7 @@ import {
   hotelAvailabilityLabel,
   hotelAvailabilityTone,
 } from "../lib/hotelAvailability";
+import { sanitizeExternalNavigationUrl } from "../lib/urlSafety";
 
 type Stay = {
   id?: string;
@@ -100,7 +101,10 @@ export default function StaySection({
       <div className="mt-5 grid gap-4 md:grid-cols-2">
         {stays.length > 0 ? (
           stays.map((stay, index) => {
-            const primaryLink = stay.bookingLink ?? stay.websiteUrl;
+            const primaryLink = sanitizeExternalNavigationUrl(
+              stay.bookingLink ?? stay.websiteUrl
+            );
+            const mapsLink = sanitizeExternalNavigationUrl(stay.mapsUrl);
             const hasNightlyPrice = stay.pricePerNight !== undefined;
             const hasDates = Boolean(dateRange);
             const availabilityLabel = hotelAvailabilityLabel(stay, hasDates);
@@ -164,9 +168,9 @@ export default function StaySection({
                     </a>
                   ) : null}
 
-                  {stay.mapsUrl ? (
+                  {mapsLink ? (
                     <a
-                      href={stay.mapsUrl}
+                      href={mapsLink}
                       target="_blank"
                       rel="noreferrer"
                       className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-100"

@@ -1,3 +1,5 @@
+import { sanitizeExternalNavigationUrl } from "../lib/urlSafety";
+
 type FoodSpot = {
   id?: string;
   name?: string;
@@ -58,7 +60,10 @@ export default function FoodSection({ foodSpots }: Props) {
       <div className="mt-5 grid gap-4 md:grid-cols-2">
         {foodSpots.length > 0 ? (
           foodSpots.map((spot, index) => {
-            const primaryLink = spot.link ?? spot.websiteUrl;
+            const primaryLink = sanitizeExternalNavigationUrl(
+              spot.link ?? spot.websiteUrl
+            );
+            const mapsLink = sanitizeExternalNavigationUrl(spot.mapsUrl);
 
             return (
               <article
@@ -101,9 +106,9 @@ export default function FoodSection({ foodSpots }: Props) {
                     </a>
                   ) : null}
 
-                  {spot.mapsUrl ? (
+                  {mapsLink ? (
                     <a
-                      href={spot.mapsUrl}
+                      href={mapsLink}
                       target="_blank"
                       rel="noreferrer"
                       className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
