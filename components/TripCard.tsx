@@ -4,13 +4,12 @@ import Image from "next/image";
 import { type ReactNode, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  ItineraryDayData,
   RankedDestination,
   TripDataSource,
   TripInput,
 } from "../lib/types";
 import { buildTripPlan, buildTripPlanPreview } from "../lib/buildTripPlan";
-import { formatDisplayTag, formatDisplayText } from "../lib/displayText";
+import { formatDisplayText } from "../lib/displayText";
 import { isStartCity } from "../lib/startCities";
 import { deriveTripEndDate } from "../lib/tripDates";
 import { saveTripPlan } from "../lib/tripStore";
@@ -20,18 +19,13 @@ import {
 } from "../lib/tripSelections";
 import {
   getPromptAwareTripSummary,
-  getPromptConstraintFitSummary,
   getRecommendationContextLabel,
-  normalizePlaceDisplayName,
 } from "../lib/tripSpecificity";
 import { trackProductEvent } from "../lib/productAnalytics";
 import {
   tripConfidenceLabel,
-  tripFreshnessLabel,
-  tripProviderStatusText,
   tripSourceLabel,
   tripSourceTone,
-  tripTrustNote,
 } from "../lib/trustSignals";
 
 const LAST_INPUT_STORAGE_KEY = "weekend-trip-last-input";
@@ -77,19 +71,21 @@ function cleanItineraryLine(line: string) {
   return line.replace(/^day\s*\d+\s*:\s*/i, "").trim();
 }
 
-function getItineraryPreviewItems(
-  itineraryDays: ItineraryDayData[],
-  trip: RankedDestination
-) {
+function getItineraryPreviewItems(trip: RankedDestination, itineraryDays: unknown[]) {
   if (itineraryDays.length) {
-    return itineraryDays.slice(0, 3).map((day, index) => {
-      const firstMeaningfulStop = day.stops.find(
+    return itineraryDays.slice(0, 2).map((day, index) => {
+      const typedDay = day as {
+        summary?: string;
+        title?: string;
+        stops?: Array<{ kind?: string; title?: string }>;
+      };
+      const firstMeaningfulStop = typedDay.stops?.find(
         (stop) => stop.kind && stop.kind !== "travel"
       );
       const text =
-        day.summary?.trim() ||
+        typedDay.summary?.trim() ||
         firstMeaningfulStop?.title?.trim() ||
-        day.title?.trim() ||
+        typedDay.title?.trim() ||
         `Day ${index + 1}`;
 
       return {
@@ -100,15 +96,15 @@ function getItineraryPreviewItems(
   }
 
   if (trip.aiItinerary?.length) {
-    return trip.aiItinerary.slice(0, 3).map((line, index) => ({
+    return trip.aiItinerary.slice(0, 2).map((line, index) => ({
       label: `Day ${index + 1}`,
       text: cleanItineraryLine(line),
     }));
   }
 
-  return trip.topActivities.slice(0, 3).map((activity, index) => ({
+  return trip.topActivities.slice(0, 2).map((activity, index) => ({
     label: `Stop ${index + 1}`,
-    text: normalizePlaceDisplayName(activity.name) || activity.name,
+    text: activity.name,
   }));
 }
 
@@ -245,31 +241,17 @@ export default function TripCard({
     hotelOptions: previewTrip.hotelOptions ?? [],
     foodSpots: previewTrip.foodSpots ?? [],
     activities: previewTrip.topActivities ?? [],
+    itineraryDays: previewPlan.itineraryDays,
     selection: defaultSelection,
     fallbackBreakdown: previewPlan.budgetBreakdown,
   });
   const displayCost = displayBudget.totalExpected;
   const perTravelerDisplay = Math.round(displayCost / travelerCount);
   const itineraryPreviewItems = getItineraryPreviewItems(
-    previewPlan.itineraryDays,
-    previewTrip
+    previewTrip,
+    previewPlan.itineraryDays
   );
   const tripPrompt = previewPlan.safeInput.tripPrompt;
-  const topWhyRanked =
-    previewTrip.rankingReasons?.[0]?.label ??
-    previewTrip.matchReasons?.[0] ??
-    "This was the strongest overall fit for the trip brief.";
-  const promptConstraintNote = getPromptConstraintFitSummary(
-    previewTrip,
-    previewPlan.safeInput
-  );
-  const whyThisIsTheCall =
-    promptConstraintNote ?? previewTrip.aiBestFit ?? topWhyRanked;
-  const trustNote = tripTrustNote(previewTrip);
-  const providerStatus = tripProviderStatusText(previewTrip);
-  const tags = Array.isArray(previewTrip.rawVibes)
-    ? previewTrip.rawVibes.slice(0, 4)
-    : [];
   const displayTitle = previewPlan.recommendedTitle;
   const heroImageUrl = previewTrip.imageUrl || trip.imageUrl;
   const displaySummary = getPromptAwareTripSummary({
@@ -390,20 +372,6 @@ export default function TripCard({
                 displaySummary ?? previewTrip.aiSummary ?? previewTrip.summary
               )}
             </p>
-            {tripPrompt ? (
-              <p className="mt-3 text-sm leading-6 text-slate-500 dark:text-slate-400">
-                Built for your brief: &quot;{tripPrompt}&quot;
-              </p>
-            ) : null}
-          </div>
-
-          <div className="rounded-[1.4rem] border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-100 lg:max-w-sm">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.16em]">
-              Why This Is The Call
-            </div>
-            <p className="mt-2 font-semibold text-slate-950 dark:text-slate-100">
-              {whyThisIsTheCall}
-            </p>
           </div>
         </div>
 
@@ -425,98 +393,32 @@ export default function TripCard({
           />
         </div>
 
-        <div className="grid gap-5 lg:grid-cols-[0.95fr_1.05fr]">
-          <section className="rounded-[1.4rem] border border-slate-200 bg-slate-50 p-5 dark:border-slate-700 dark:bg-slate-800/70">
+        {itineraryPreviewItems.length > 0 ? (
+          <section className="rounded-[1.25rem] border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/70">
             <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
               Trip shape
             </div>
-            <div className="mt-3 space-y-3">
-              {itineraryPreviewItems.length > 0 ? (
-                itineraryPreviewItems.map((item) => (
-                  <div
-                    key={`${item.label}-${item.text}`}
-                    className="rounded-[1rem] border border-white bg-white p-4 dark:border-slate-700 dark:bg-slate-900"
-                  >
-                    <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
-                      {item.label}
-                    </div>
-                    <p className="mt-1 text-sm leading-6 text-slate-700 dark:text-slate-200">
-                      {item.text}
-                    </p>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              {itineraryPreviewItems.map((item) => (
+                <div
+                  key={`${item.label}-${item.text}`}
+                  className="rounded-[1rem] bg-white px-4 py-3 dark:bg-slate-900"
+                >
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+                    {item.label}
                   </div>
-                ))
-              ) : (
-                <p className="text-sm leading-6 text-slate-600 dark:text-slate-300">
-                  Open the trip builder to see the stop-by-stop itinerary.
-                </p>
-              )}
-            </div>
-          </section>
-
-          <section className="rounded-[1.4rem] border border-slate-200 bg-slate-50 p-5 dark:border-slate-700 dark:bg-slate-800/70">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
-              Decision notes
-            </div>
-
-            <div className="mt-3 rounded-[1rem] border border-white bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
-              <div className="text-sm font-semibold text-slate-950 dark:text-slate-100">
-                Lead reason
-              </div>
-              <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">
-                {topWhyRanked}
-              </p>
-            </div>
-
-            {promptConstraintNote ? (
-              <div className="mt-3 rounded-[1rem] border border-white bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
-                <div className="text-sm font-semibold text-slate-950 dark:text-slate-100">
-                  Constraint check
+                  <p className="mt-1 text-sm leading-6 text-slate-700 dark:text-slate-200">
+                    {item.text}
+                  </p>
                 </div>
-                <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">
-                  {promptConstraintNote}
-                </p>
-              </div>
-            ) : null}
-
-            <div className="mt-3 rounded-[1rem] border border-white bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
-              <div className="text-sm font-semibold text-slate-950 dark:text-slate-100">
-                Builder promise
-              </div>
-              <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">
-                Open the builder to change a specific day, swap the stay, or fit
-                a different activity into the trip without rebuilding from scratch.
-              </p>
-            </div>
-
-            <div className="mt-3 rounded-[1rem] border border-white bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
-              <div className="text-sm font-semibold text-slate-950 dark:text-slate-100">
-                Planning trust
-              </div>
-              <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">
-                {tripFreshnessLabel(previewTrip)}
-              </p>
-              <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
-                {trustNote}
-              </p>
-              {providerStatus ? (
-                <p className="mt-2 text-xs font-medium uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
-                  {providerStatus}
-                </p>
-              ) : null}
+              ))}
             </div>
           </section>
-        </div>
+        ) : null}
 
-        {tags.length > 0 ? (
-          <div className="flex flex-wrap gap-2">
-            {tags.map((tag) => (
-              <span
-                key={tag}
-                className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
-              >
-                {formatDisplayTag(tag)}
-              </span>
-            ))}
+        {tripPrompt ? (
+          <div className="rounded-[1.25rem] border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-800/70 dark:text-slate-300">
+            Built around your brief so you can open the builder and adjust the days from there.
           </div>
         ) : null}
 
@@ -541,7 +443,7 @@ export default function TripCard({
           )}
 
           <div className="inline-flex min-h-12 items-center rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
-            Day-level edits happen after you open the builder.
+            Open the builder for day-by-day details and edits.
           </div>
         </div>
       </div>

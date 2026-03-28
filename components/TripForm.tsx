@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode, useMemo, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import DestinationShowcase from "./DestinationShowcase";
 import {
   deriveTripIntentFromPrompt,
@@ -45,8 +45,314 @@ const DEFAULT_FORM: FormState = {
   tripEndDate: "",
 };
 
-const DATE_INPUT_CLASS =
-  "date-input-fix h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-slate-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-emerald-500/20 dark:[&::-webkit-calendar-picker-indicator]:invert";
+const DATE_TRIGGER_CLASS =
+  "flex h-12 w-full items-center justify-between rounded-[1.25rem] border border-slate-300 bg-white px-4 text-left text-slate-950 shadow-sm outline-none transition hover:border-slate-400 focus:border-slate-500 focus:ring-2 focus:ring-slate-200 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:hover:border-slate-600 dark:focus:ring-slate-700";
+const CALENDAR_WEEKDAY_LABELS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+
+function parseIsoDate(value?: string) {
+  if (!value) return null;
+
+  const [year, month, day] = value.split("-").map(Number);
+  if (!year || !month || !day) return null;
+
+  const date = new Date(year, month - 1, day);
+  if (Number.isNaN(date.getTime())) return null;
+
+  return date;
+}
+
+function formatIsoDate(date: Date) {
+  const year = date.getFullYear();
+  const month = `${date.getMonth() + 1}`.padStart(2, "0");
+  const day = `${date.getDate()}`.padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
+function formatDateButtonLabel(value: string) {
+  const date = parseIsoDate(value);
+  if (!date) return "Select date";
+
+  return new Intl.DateTimeFormat("en-CA", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(date);
+}
+
+function formatCalendarMonth(date: Date) {
+  return new Intl.DateTimeFormat("en-CA", {
+    month: "long",
+    year: "numeric",
+  }).format(date);
+}
+
+function startOfMonth(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth(), 1);
+}
+
+function addMonths(date: Date, delta: number) {
+  return new Date(date.getFullYear(), date.getMonth() + delta, 1);
+}
+
+function isSameDay(left: Date | null, right: Date | null) {
+  if (!left || !right) return false;
+
+  return (
+    left.getFullYear() === right.getFullYear() &&
+    left.getMonth() === right.getMonth() &&
+    left.getDate() === right.getDate()
+  );
+}
+
+function CalendarIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className="h-5 w-5 text-slate-500 dark:text-slate-400"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <rect x="3.5" y="5" width="17" height="15.5" rx="2.5" />
+      <path d="M7.5 3.5v4M16.5 3.5v4M3.5 9.5h17" />
+    </svg>
+  );
+}
+
+function ChevronIcon({ direction }: { direction: "left" | "right" }) {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className="h-4 w-4"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      {direction === "left" ? (
+        <path d="M15 18l-6-6 6-6" />
+      ) : (
+        <path d="M9 18l6-6-6-6" />
+      )}
+    </svg>
+  );
+}
+
+function DatePickerField({
+  id,
+  label,
+  value,
+  min,
+  max,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  value: string;
+  min?: string;
+  max?: string;
+  onChange: (value: string) => void;
+}) {
+  const selectedDate = parseIsoDate(value);
+  const minDate = parseIsoDate(min);
+  const maxDate = parseIsoDate(max);
+  const [open, setOpen] = useState(false);
+  const [visibleMonth, setVisibleMonth] = useState<Date>(
+    () => selectedDate ?? minDate ?? new Date()
+  );
+  const popoverRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const handlePointerDown = (event: MouseEvent | TouchEvent) => {
+      if (!popoverRef.current?.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("touchstart", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("touchstart", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [open]);
+
+  const monthStart = startOfMonth(visibleMonth);
+  const monthGridStart = new Date(
+    monthStart.getFullYear(),
+    monthStart.getMonth(),
+    1 - monthStart.getDay()
+  );
+  const minMonth = minDate ? startOfMonth(minDate) : null;
+  const maxMonth = maxDate ? startOfMonth(maxDate) : null;
+  const canGoPrev = !minMonth || addMonths(monthStart, -1) >= minMonth;
+  const canGoNext = !maxMonth || addMonths(monthStart, 1) <= maxMonth;
+
+  return (
+    <div className="relative">
+      <FieldLabel htmlFor={id}>{label}</FieldLabel>
+      <button
+        id={id}
+        type="button"
+        onClick={() =>
+          setOpen((current) => {
+            if (!current) {
+              setVisibleMonth(selectedDate ?? minDate ?? new Date());
+            }
+
+            return !current;
+          })
+        }
+        className={DATE_TRIGGER_CLASS}
+        aria-expanded={open}
+        aria-haspopup="dialog"
+      >
+        <span className="text-base">{formatDateButtonLabel(value)}</span>
+        <CalendarIcon />
+      </button>
+
+      {open ? (
+        <div
+          ref={popoverRef}
+          className="absolute left-0 top-full z-30 mt-3 w-[20rem] rounded-[1.6rem] border border-slate-200/80 bg-white/95 p-4 shadow-[0_24px_70px_rgba(15,23,42,0.18)] backdrop-blur dark:border-slate-700/80 dark:bg-slate-900/95"
+          role="dialog"
+          aria-label={`${label} calendar`}
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700 dark:text-emerald-300">
+                Pick a date
+              </div>
+              <div className="mt-1 text-lg font-semibold text-slate-950 dark:text-slate-100">
+                {formatCalendarMonth(monthStart)}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => canGoPrev && setVisibleMonth((current) => addMonths(current, -1))}
+                disabled={!canGoPrev}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300 dark:hover:bg-slate-800"
+                aria-label="Previous month"
+              >
+                <ChevronIcon direction="left" />
+              </button>
+              <button
+                type="button"
+                onClick={() => canGoNext && setVisibleMonth((current) => addMonths(current, 1))}
+                disabled={!canGoNext}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300 dark:hover:bg-slate-800"
+                aria-label="Next month"
+              >
+                <ChevronIcon direction="right" />
+              </button>
+            </div>
+          </div>
+
+          <div className="mt-4 grid grid-cols-7 gap-1 text-center text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
+            {CALENDAR_WEEKDAY_LABELS.map((day) => (
+              <div key={day} className="py-2">
+                {day}
+              </div>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-7 gap-1">
+            {Array.from({ length: 42 }, (_, index) => {
+              const date = new Date(
+                monthGridStart.getFullYear(),
+                monthGridStart.getMonth(),
+                monthGridStart.getDate() + index
+              );
+              const iso = formatIsoDate(date);
+              const inCurrentMonth = date.getMonth() === monthStart.getMonth();
+              const disabled =
+                (typeof min === "string" && iso < min) ||
+                (typeof max === "string" && iso > max);
+              const selected = isSameDay(date, selectedDate);
+              const isToday = isSameDay(date, new Date());
+
+              return (
+                <button
+                  key={iso}
+                  type="button"
+                  disabled={disabled}
+                  onClick={() => {
+                    onChange(iso);
+                    setOpen(false);
+                  }}
+                  className={[
+                    "flex h-10 items-center justify-center rounded-xl text-sm font-medium transition",
+                    selected
+                      ? "bg-slate-950 text-white shadow-[0_10px_24px_rgba(15,23,42,0.22)] dark:bg-emerald-400 dark:text-slate-950"
+                      : disabled
+                        ? "cursor-not-allowed text-slate-300 dark:text-slate-700"
+                        : inCurrentMonth
+                          ? "text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
+                          : "text-slate-400 hover:bg-slate-100 dark:text-slate-500 dark:hover:bg-slate-800",
+                    isToday && !selected
+                      ? "border border-emerald-200 bg-emerald-50 dark:border-emerald-500/30 dark:bg-emerald-500/10"
+                      : "",
+                  ].join(" ")}
+                >
+                  {date.getDate()}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="mt-4 flex items-center justify-between border-t border-slate-200 pt-3 dark:border-slate-700">
+            <button
+              type="button"
+              onClick={() => {
+                const target = minDate && formatIsoDate(new Date()) < min ? minDate : new Date();
+                const normalized = startOfMonth(target);
+                setVisibleMonth(normalized);
+                const iso = formatIsoDate(target);
+
+                if (
+                  (!min || iso >= min) &&
+                  (!max || iso <= max)
+                ) {
+                  onChange(iso);
+                  setOpen(false);
+                }
+              }}
+              className="text-sm font-semibold text-emerald-700 transition hover:text-emerald-800 dark:text-emerald-300 dark:hover:text-emerald-200"
+            >
+              Today
+            </button>
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              className="text-sm font-semibold text-slate-500 transition hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
 
 function buildFormState(
   initialInput?: Partial<TripInput>,
@@ -238,7 +544,7 @@ function FieldLabel({
 
 function SignalPill({ children }: { children: ReactNode }) {
   return (
-    <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
+    <span className="inline-flex items-center rounded-full border border-slate-300 bg-white px-3 py-1 text-xs font-medium text-slate-800 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
       {children}
     </span>
   );
@@ -397,58 +703,50 @@ export default function TripForm({
 
   return (
     <section className="w-full">
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-7">
         <DestinationShowcase />
 
-        <div className="grid gap-4 md:grid-cols-3">
-          <div>
-            <FieldLabel htmlFor="tripStartDate">Start date</FieldLabel>
-            <input
+        <div className="rounded-[1.9rem] border border-slate-200 bg-white p-5 shadow-[0_12px_32px_rgba(15,23,42,0.05)] dark:border-slate-700/80 dark:bg-slate-900">
+          <div className="grid gap-4 md:grid-cols-3">
+            <DatePickerField
               id="tripStartDate"
-              type="date"
+              label="Start date"
               min={minTripStartDate}
-              required
               value={form.tripStartDate}
-              onChange={(event) => handleTripStartDateChange(event.target.value)}
-              className={DATE_INPUT_CLASS}
+              onChange={handleTripStartDateChange}
             />
-          </div>
 
-          <div>
-            <FieldLabel htmlFor="tripEndDate">End date</FieldLabel>
-            <input
+            <DatePickerField
               id="tripEndDate"
-              type="date"
+              label="End date"
               min={form.tripStartDate}
               max={maxTripEndDate}
-              required
               value={form.tripEndDate}
-              onChange={(event) => handleTripEndDateChange(event.target.value)}
-              className={DATE_INPUT_CLASS}
+              onChange={handleTripEndDateChange}
             />
-          </div>
 
-          <div>
-            <FieldLabel htmlFor="travelerCount">How many people</FieldLabel>
-            <input
-              id="travelerCount"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              type="text"
-              value={form.travelerCount}
-              onChange={(event) =>
-                handleNumericChange("travelerCount", event.target.value)
-              }
-              className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-slate-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-emerald-500/20"
-            />
+            <div>
+              <FieldLabel htmlFor="travelerCount">How many people</FieldLabel>
+              <input
+                id="travelerCount"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                type="text"
+                value={form.travelerCount}
+                onChange={(event) =>
+                  handleNumericChange("travelerCount", event.target.value)
+                }
+                className="h-12 w-full rounded-[1.25rem] border border-slate-300 bg-white px-4 text-slate-950 shadow-sm outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-slate-700"
+              />
+            </div>
           </div>
         </div>
 
-        <div className="rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/90">
+        <div className="rounded-[1.9rem] border border-slate-200 bg-white p-5 shadow-[0_12px_32px_rgba(15,23,42,0.05)] dark:border-slate-700/80 dark:bg-slate-900">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <FieldLabel htmlFor="tripPrompt">What do you want from this trip?</FieldLabel>
-              <p className="mb-3 max-w-3xl text-sm leading-6 text-slate-600 dark:text-slate-300">
+              <p className="mb-3 max-w-3xl text-sm leading-6 text-slate-700 dark:text-slate-300">
                 Describe the kind of trip people would actually say yes to.
                 Mention the vibe, pace, food, scenery, or any destination you
                 already have in mind.
@@ -466,7 +764,7 @@ export default function TripForm({
             value={form.tripPrompt}
             onChange={(event) => updateField("tripPrompt", event.target.value)}
             placeholder="Example: We want a low-effort mountain trip with good coffee, one scenic hike, and enough payoff that four of us would actually commit to going."
-            className="min-h-[160px] w-full rounded-[1.4rem] border border-slate-200 bg-slate-50 px-4 py-4 text-sm leading-6 text-slate-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-emerald-500/20"
+            className="min-h-[170px] w-full rounded-[1.55rem] border border-slate-300 bg-white px-5 py-4 text-sm leading-7 text-slate-950 shadow-sm outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-slate-700"
           />
 
           <div className="mt-4 flex flex-wrap gap-2">
@@ -508,7 +806,7 @@ export default function TripForm({
           </div>
         </div>
 
-        <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/70">
+        <div className="rounded-[1.75rem] border border-slate-200 bg-white p-4 shadow-[0_10px_28px_rgba(15,23,42,0.04)] dark:border-slate-700 dark:bg-slate-900">
           <button
             type="button"
             onClick={() => setAdvancedOpen((current) => !current)}
@@ -518,12 +816,12 @@ export default function TripForm({
               <div className="text-sm font-semibold text-slate-950 dark:text-slate-100">
                 Optional planning assumptions
               </div>
-              <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">
+              <p className="mt-1 text-sm leading-6 text-slate-700 dark:text-slate-300">
                 Only open this if you want to override the prompt-led budget or
                 drive assumptions.
               </p>
             </div>
-            <span className="inline-flex h-10 items-center justify-center rounded-full border border-slate-300 bg-white px-4 text-xs font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
+            <span className="inline-flex h-10 items-center justify-center rounded-full border border-slate-300 bg-white px-4 text-xs font-semibold text-slate-800 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200">
               {advancedOpen ? "Hide" : "Edit"}
             </span>
           </button>
@@ -538,7 +836,7 @@ export default function TripForm({
                   onChange={(event) =>
                     updateField("startCity", event.target.value as StartCity)
                   }
-                  className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-slate-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-emerald-500/20"
+                  className="h-12 w-full rounded-[1.25rem] border border-slate-300 bg-white px-4 text-slate-950 shadow-sm outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-slate-700"
                 >
                   {START_CITY_OPTIONS.map((city) => (
                     <option key={city} value={city}>
@@ -560,7 +858,7 @@ export default function TripForm({
                     handleNumericChange("maxDriveHours", event.target.value)
                   }
                   placeholder={`Auto: ${resolvedMaxDriveHours}`}
-                  className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-slate-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-emerald-500/20"
+                  className="h-12 w-full rounded-[1.25rem] border border-slate-300 bg-white px-4 text-slate-950 shadow-sm outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-slate-700"
                 />
               </div>
 
@@ -580,20 +878,20 @@ export default function TripForm({
                       ? `Prompt: ${resolvedBudgetPerTraveler}`
                       : `Auto: ${resolvedBudgetPerTraveler}`
                   }
-                  className="h-12 w-full rounded-2xl border border-slate-200 bg-white px-4 text-slate-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-emerald-500/20"
+                  className="h-12 w-full rounded-[1.25rem] border border-slate-300 bg-white px-4 text-slate-950 shadow-sm outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-slate-700"
                 />
               </div>
             </div>
           ) : null}
         </div>
 
-        <div className="rounded-[1.5rem] border border-slate-200 bg-white px-5 py-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/90">
+        <div className="overflow-hidden rounded-[1.9rem] border border-slate-200 bg-white px-5 py-5 shadow-[0_12px_32px_rgba(15,23,42,0.05)] dark:border-slate-700 dark:bg-slate-900">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <div className="text-sm font-semibold text-slate-950 dark:text-slate-100">
                 Estimated target budget: {formatCurrency(totalBudget)}
               </div>
-              <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">
+              <p className="mt-1 text-sm leading-6 text-slate-700 dark:text-slate-300">
                 Based on {resolvedTravelerCount} traveler
                 {resolvedTravelerCount === 1 ? "" : "s"} at{" "}
                 {formatCurrency(resolvedBudgetPerTraveler)} each.
@@ -609,7 +907,7 @@ export default function TripForm({
             <button
               type="submit"
               disabled={loading || !form.tripStartDate || !form.tripPrompt.trim()}
-              className="inline-flex h-12 items-center justify-center rounded-2xl bg-slate-950 px-6 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-emerald-400 dark:text-slate-950 dark:hover:bg-emerald-300"
+              className="inline-flex h-12 items-center justify-center rounded-2xl bg-slate-900 px-6 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-slate-100 dark:text-slate-950 dark:hover:bg-white"
             >
               {loading ? "Building your trip..." : "Build my trip"}
             </button>

@@ -259,6 +259,7 @@ export default function TripPage() {
     phase: "idle",
     message: "Waiting for edits.",
   });
+  const [showBuilderModeBanner, setShowBuilderModeBanner] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
@@ -302,6 +303,10 @@ export default function TripPage() {
       cancelled = true;
     };
   }, [params?.tripId]);
+
+  useEffect(() => {
+    setShowBuilderModeBanner(true);
+  }, [trip?.id]);
 
   useEffect(() => {
     let cancelled = false;
@@ -411,10 +416,11 @@ export default function TripPage() {
       hotelOptions,
       foodSpots: trip.foodSpots ?? [],
       activities: trip.topActivities ?? [],
+      itineraryDays,
       selection: activeSelectionState,
       fallbackBreakdown: trip.budgetBreakdown,
     });
-  }, [activeSelectionState, hotelOptions, travelerCount, trip]);
+  }, [activeSelectionState, hotelOptions, itineraryDays, travelerCount, trip]);
 
   const targetTotalBudget = useMemo(() => {
     const fromSavedField = Number(trip?.totalBudget);
@@ -1423,8 +1429,10 @@ export default function TripPage() {
                 </section>
               ) : null}
 
-              <section className="rounded-[1.5rem] border border-emerald-200 bg-emerald-50 p-5 shadow-sm dark:border-emerald-500/30 dark:bg-emerald-500/10">
-                <div className="flex flex-col gap-1">
+              {showBuilderModeBanner ? (
+                <section className="rounded-[1.5rem] border border-emerald-200 bg-emerald-50 p-5 shadow-sm dark:border-emerald-500/30 dark:bg-emerald-500/10">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="flex flex-col gap-1">
                   <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-700 dark:text-emerald-300">
                     Builder mode
                   </div>
@@ -1446,8 +1454,17 @@ export default function TripPage() {
                       Constraint check: {constraintFitSummary}
                     </p>
                   ) : null}
-                </div>
-              </section>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowBuilderModeBanner(false)}
+                      className="inline-flex h-10 shrink-0 items-center justify-center rounded-full border border-emerald-300 bg-white/80 px-4 text-sm font-semibold text-emerald-800 transition hover:bg-white dark:border-emerald-400/30 dark:bg-slate-950/30 dark:text-emerald-200 dark:hover:bg-slate-950/50"
+                    >
+                      Hide
+                    </button>
+                  </div>
+                </section>
+              ) : null}
 
               {showDraftBuilderMode ? (
                 <ExpediaStayWidget

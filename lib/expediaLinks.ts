@@ -1,5 +1,6 @@
 import { isIsoDate } from "./tripDates";
 import { HotelOption } from "./types";
+import { sanitizeExternalNavigationUrl } from "./urlSafety";
 
 type ExpediaStayLinkOptions = {
   hotel?: Pick<HotelOption, "name"> &
@@ -11,43 +12,31 @@ type ExpediaStayLinkOptions = {
 };
 
 function cleanUrl(value?: string) {
-  if (!value) return undefined;
+  return sanitizeExternalNavigationUrl(value);
+}
+
+function toCanadianExpediaUrl(value?: string) {
+  const cleaned = cleanUrl(value);
+  if (!cleaned) return undefined;
 
   try {
-    const url = new URL(value);
-
-    if (
-      (url.hostname === "www.google.com" || url.hostname === "google.com") &&
-      url.pathname === "/aclk"
-    ) {
-      return undefined;
+    const url = new URL(cleaned);
+    if (!/(^|\.)expedia\.[a-z.]+$/i.test(url.hostname)) {
+      return cleaned;
     }
 
-    [
-      "utm_source",
-      "utm_medium",
-      "utm_campaign",
-      "utm_term",
-      "utm_content",
-      "gclid",
-      "gbraid",
-      "wbraid",
-      "fbclid",
-      "msclkid",
-      "dclid",
-      "mc_cid",
-      "mc_eid",
-    ].forEach((param) => url.searchParams.delete(param));
+    url.hostname = "www.expedia.ca";
+    url.searchParams.set("currency", "CAD");
 
     return url.toString();
   } catch {
-    return value;
+    return cleaned;
   }
 }
 
 export function directHotelPropertyUrl(options: ExpediaStayLinkOptions) {
-  const cleanedBooking = cleanUrl(options.hotel?.bookingLink);
-  const cleanedWebsite = cleanUrl(options.hotel?.websiteUrl);
+  const cleanedBooking = toCanadianExpediaUrl(options.hotel?.bookingLink);
+  const cleanedWebsite = toCanadianExpediaUrl(options.hotel?.websiteUrl);
 
   return cleanedBooking ?? cleanedWebsite;
 }
@@ -75,7 +64,7 @@ export function buildExpediaHotelSearchUrl({
   tripEndDate,
   travelerCount,
 }: ExpediaStayLinkOptions) {
-  const url = new URL("https://www.expedia.com/Hotel-Search");
+  const url = new URL("https://www.expedia.ca/Hotel-Search");
   const destinationQuery = [hotel?.name, destination].filter(Boolean).join(", ").trim();
 
   if (destinationQuery) {
@@ -94,6 +83,7 @@ export function buildExpediaHotelSearchUrl({
 
   url.searchParams.set("rooms", "1");
   url.searchParams.set("adults", String(Math.max(1, travelerCount ?? 2)));
+  url.searchParams.set("currency", "CAD");
 
   return url.toString();
 }
