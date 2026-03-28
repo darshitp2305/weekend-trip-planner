@@ -113,6 +113,7 @@ type SelectionBudgetInput = {
   hotelOptions: HotelOption[];
   foodSpots: FoodSpot[];
   activities: Activity[];
+  itineraryDays?: ItineraryDayData[];
   selection?: TripSelectionState;
   fallbackBreakdown?: Partial<BudgetBreakdown>;
 };
@@ -123,6 +124,7 @@ export function calculateSelectedBudget({
   hotelOptions,
   foodSpots,
   activities,
+  itineraryDays,
   selection,
   fallbackBreakdown,
 }: SelectionBudgetInput): BudgetBreakdown {
@@ -136,17 +138,25 @@ export function calculateSelectedBudget({
       : 2;
   const nights = Math.max(1, safeTripLengthDays - 1);
   const safeSelection = selection ?? emptySelectionState();
+  const hasStructuredItinerary = Array.isArray(itineraryDays) && itineraryDays.length > 0;
+  const includesStayStop = hasStructuredItinerary
+    ? itineraryDays.some((day) =>
+        (day.stops ?? []).some((stop) => stop.kind === "stay")
+      )
+    : true;
 
   const selectedHotel =
     hotelOptions.find((hotel) => hotel.name === safeSelection.hotelName) ??
     hotelOptions[0];
 
   const hotel =
-    typeof selectedHotel?.totalStayPrice === "number"
-      ? selectedHotel.totalStayPrice
-      : typeof selectedHotel?.pricePerNight === "number"
-        ? selectedHotel.pricePerNight * nights
-        : Number(fallbackBreakdown?.hotel ?? 0);
+    hasStructuredItinerary && !includesStayStop
+      ? 0
+      : typeof selectedHotel?.totalStayPrice === "number"
+        ? selectedHotel.totalStayPrice
+        : typeof selectedHotel?.pricePerNight === "number"
+          ? selectedHotel.pricePerNight * nights
+          : Number(fallbackBreakdown?.hotel ?? 0);
 
   const customReplacementStops = Object.entries(safeSelection.customStops ?? {}).reduce(
     (result, [key, stop]) => {
@@ -155,47 +165,90 @@ export function calculateSelectedBudget({
     },
     {} as Record<string, TripCustomStop>
   );
+  const itineraryFoodCost = hasStructuredItinerary
+    ? itineraryDays.reduce((sum, day, dayIndex) => {
+        return (
+          sum +
+          (day.stops ?? []).reduce((dayTotal, stop, stopIndex) => {
+            if (stop.kind !== "food") return dayTotal;
 
-  const selectedFoodNames = Object.entries(safeSelection.foods)
-    .filter(([key]) => customReplacementStops[key]?.kind !== "food")
-    .map(([, selectedName]) => selectedName);
-  const food =
-    selectedFoodNames.reduce((sum, selectedName) => {
-      const spot = foodSpots.find((item) => item.name === selectedName);
-      if (!spot) return sum;
-      return sum + estimateFoodCostForGroup(spot, safeTravelerCount);
-    }, 0) +
-    Object.values(customReplacementStops).reduce((sum, stop) => {
-      if (stop.kind !== "food") return sum;
-      return sum + asNumber(stop.estimatedCost);
-    }, 0) +
-    Object.values(safeSelection.addedStops ?? {}).reduce((sum, stops) => {
-      return (
-        sum +
-        (stops ?? []).reduce((dayTotal, stop) => {
-          if (stop.kind !== "food") return dayTotal;
-          return dayTotal + asNumber(stop.estimatedCost);
-        }, 0)
-      );
-    }, 0);
+            const key = stopKey(dayIndex, stopIndex);
+            const customStop = customReplacementStops[key];
+            if (customStop?.kind === "food") {
+              return dayTotal + asNumber(customStop.estimatedCost);
+            }
 
-  const selectedActivityNames = Object.entries(safeSelection.activities)
-    .filter(([key]) => customReplacementStops[key]?.kind !== "activity")
-    .map(([, selectedName]) => selectedName);
-  const activitiesTotal =
-    selectedActivityNames.reduce((sum, selectedName) => {
-      const activity = activities.find((item) => item.name === selectedName);
-      if (!activity) return sum;
-      return (
-        sum +
-        (activity.costEstimate ?? activity.estimatedCost ?? 0) * safeTravelerCount
-      );
-    }, 0) +
-    Object.values(customReplacementStops).reduce((sum, stop) => {
-      if (stop.kind !== "activity") return sum;
-      return sum + asNumber(stop.estimatedCost);
-    }, 0) +
-    Object.values(safeSelection.addedStops ?? {}).reduce((sum, stops) => {
+            const selectedName = safeSelection.foods[key];
+            const selectedSpot = selectedName
+              ? foodSpots.find((item) => item.name === selectedName)
+              : undefined;
+            const stopEstimate = asNumber(stop.estimatedCost);
+            const selectedEstimate = selectedSpot
+              ? estimateFoodCostForGroup(selectedSpot, safeTravelerCount)
+              : 0;
+
+            return dayTotal + (stopEstimate || selectedEstimate);
+          }, 0)
+        );
+      }, 0)
+    : Object.entries(safeSelection.foods)
+        .filter(([key]) => customReplacementStops[key]?.kind !== "food")
+        .reduce((sum, [, selectedName]) => {
+          const spot = foodSpots.find((item) => item.name === selectedName);
+          if (!spot) return sum;
+          return sum + estimateFoodCostForGroup(spot, safeTravelerCount);
+        }, 0);
+
+  const itineraryActivityCost = hasStructuredItinerary
+    ? itineraryDays.reduce((sum, day, dayIndex) => {
+        return (
+          sum +
+          (day.stops ?? []).reduce((dayTotal, stop, stopIndex) => {
+            if (stop.kind !== "activity") return dayTotal;
+
+            const key = stopKey(dayIndex, stopIndex);
+            const customStop = customReplacementStops[key];
+            if (customStop?.kind === "activity") {
+              return dayTotal + asNumber(customStop.estimatedCost);
+            }
+
+            const selectedName = safeSelection.activities[key];
+            const selectedActivity = selectedName
+              ? activities.find((item) => item.name === selectedName)
+              : undefined;
+            const stopEstimate = asNumber(stop.estimatedCost);
+            const selectedEstimate = selectedActivity
+              ? (selectedActivity.costEstimate ?? selectedActivity.estimatedCost ?? 0) *
+                safeTravelerCount
+              : 0;
+
+            return dayTotal + (stopEstimate || selectedEstimate);
+          }, 0)
+        );
+      }, 0)
+    : Object.entries(safeSelection.activities)
+        .filter(([key]) => customReplacementStops[key]?.kind !== "activity")
+        .reduce((sum, [, selectedName]) => {
+          const activity = activities.find((item) => item.name === selectedName);
+          if (!activity) return sum;
+          return (
+            sum +
+            (activity.costEstimate ?? activity.estimatedCost ?? 0) * safeTravelerCount
+          );
+        }, 0);
+
+  const addedFoodCost = Object.values(safeSelection.addedStops ?? {}).reduce((sum, stops) => {
+    return (
+      sum +
+      (stops ?? []).reduce((dayTotal, stop) => {
+        if (stop.kind !== "food") return dayTotal;
+        return dayTotal + asNumber(stop.estimatedCost);
+      }, 0)
+    );
+  }, 0);
+
+  const addedActivityCost = Object.values(safeSelection.addedStops ?? {}).reduce(
+    (sum, stops) => {
       return (
         sum +
         (stops ?? []).reduce((dayTotal, stop) => {
@@ -203,11 +256,34 @@ export function calculateSelectedBudget({
           return dayTotal + asNumber(stop.estimatedCost);
         }, 0)
       );
-    }, 0);
+    },
+    0
+  );
 
-  const resolvedFood = food || Number(fallbackBreakdown?.food ?? 0);
-  const resolvedActivities =
-    activitiesTotal || Number(fallbackBreakdown?.activities ?? 0);
+  const customFoodReplacementCost = hasStructuredItinerary
+    ? 0
+    : Object.values(customReplacementStops).reduce((sum, stop) => {
+        if (stop.kind !== "food") return sum;
+        return sum + asNumber(stop.estimatedCost);
+      }, 0);
+
+  const customActivityReplacementCost = hasStructuredItinerary
+    ? 0
+    : Object.values(customReplacementStops).reduce((sum, stop) => {
+        if (stop.kind !== "activity") return sum;
+        return sum + asNumber(stop.estimatedCost);
+      }, 0);
+
+  const food = itineraryFoodCost + customFoodReplacementCost + addedFoodCost;
+  const activitiesTotal =
+    itineraryActivityCost + customActivityReplacementCost + addedActivityCost;
+
+  const resolvedFood = hasStructuredItinerary
+    ? food
+    : food || Number(fallbackBreakdown?.food ?? 0);
+  const resolvedActivities = hasStructuredItinerary
+    ? activitiesTotal
+    : activitiesTotal || Number(fallbackBreakdown?.activities ?? 0);
 
   const gas = Number(fallbackBreakdown?.gas ?? 0);
   const misc = Math.round((hotel + resolvedFood + gas + resolvedActivities) * 0.1);

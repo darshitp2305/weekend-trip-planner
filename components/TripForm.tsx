@@ -323,7 +323,9 @@ function DatePickerField({
             <button
               type="button"
               onClick={() => {
-                const target = minDate && formatIsoDate(new Date()) < min ? minDate : new Date();
+                const todayIso = formatIsoDate(new Date());
+                const target =
+                  minDate && min && todayIso < min ? minDate : new Date();
                 const normalized = startOfMonth(target);
                 setVisibleMonth(normalized);
                 const iso = formatIsoDate(target);
