@@ -149,14 +149,16 @@ function StepCard({
   detail: string;
 }) {
   return (
-    <div className="rounded-[1.4rem] border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/90">
-      <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700 dark:text-emerald-300">
-        {step}
+    <div className="group rounded-[1.5rem] bg-white/90 px-6 py-4 shadow-[0_18px_40px_rgba(15,23,42,0.12)] transition-colors dark:bg-slate-900/72">
+      <div>
+        <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-emerald-700 dark:text-emerald-300">
+          {step}
+        </div>
+        <div className="mt-2 text-lg font-semibold tracking-tight text-slate-950 dark:text-slate-100">
+          {title}
+        </div>
       </div>
-      <div className="mt-2 text-base font-semibold text-slate-950 dark:text-slate-100">
-        {title}
-      </div>
-      <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">
+      <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
         {detail}
       </p>
     </div>
@@ -547,7 +549,7 @@ export default function HomePage() {
   }
 
   return (
-    <main className="min-h-screen bg-[linear-gradient(180deg,#f7faf7_0%,#f8fafc_35%,#ffffff_100%)] text-slate-900 dark:bg-[linear-gradient(180deg,#020617_0%,#0f172a_42%,#111827_100%)] dark:text-slate-100">
+    <main className="min-h-screen bg-[linear-gradient(180deg,#f8fafc_0%,#f7fafc_28%,#ffffff_72%)] text-slate-900 dark:bg-[linear-gradient(180deg,#020617_0%,#0f172a_42%,#111827_100%)] dark:text-slate-100">
       <AccountPanel open={savedTripsOpen} onClose={() => setSavedTripsOpen(false)} />
 
       {destinationConstraintModal ? (
@@ -589,28 +591,32 @@ export default function HomePage() {
       ) : null}
 
       <div className="mx-auto max-w-6xl px-6 py-8 sm:px-8 lg:px-10">
-        <section className="mb-8">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="inline-flex items-center rounded-full border border-white/70 bg-white/80 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-700 shadow-sm dark:border-slate-700 dark:bg-slate-900/80 dark:text-slate-200">
-              Alberta trip planner
+        <section className="relative mb-8">
+          <div className="relative">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="inline-flex items-center rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold uppercase tracking-[0.22em] text-slate-600 shadow-sm dark:border-slate-700/80 dark:bg-slate-900 dark:text-slate-200">
+                Alberta trip planner
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setSavedTripsOpen(true)}
+                className="inline-flex h-11 items-center justify-center rounded-full border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-800 shadow-sm transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
+              >
+                Saved trips
+              </button>
             </div>
 
-            <button
-              type="button"
-              onClick={() => setSavedTripsOpen(true)}
-              className="inline-flex h-11 items-center justify-center rounded-full border border-slate-300 bg-white px-5 text-sm font-semibold text-slate-800 shadow-sm transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
-            >
-              Saved trips
-            </button>
+            <div className="mt-8">
+              <div className="max-w-4xl">
+                <h1 className="max-w-4xl text-[2.4rem] font-semibold tracking-[-0.035em] text-slate-950 dark:text-white sm:text-[3rem] sm:leading-[1.04] xl:text-[3.45rem] xl:max-w-5xl">
+                  Find a trip that actually fits.
+                </h1>
+              </div>
+            </div>
           </div>
 
-          <div className="mt-6 max-w-4xl">
-            <h1 className="text-4xl font-semibold tracking-tight text-slate-950 dark:text-white sm:text-5xl">
-              One trip recommendation you can actually shape into a real plan.
-            </h1>
-          </div>
-
-          <div className="mt-6 grid gap-3 md:grid-cols-3">
+          <div className="relative mt-8 grid gap-4 md:grid-cols-3">
             <StepCard
               step="Step 1"
               title="Set the basics"
@@ -629,13 +635,15 @@ export default function HomePage() {
           </div>
         </section>
 
-        <section className="rounded-[2rem] border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/90 sm:p-7">
-          <TripForm
-            key={lastInput ? JSON.stringify(lastInput) : "new-trip"}
-            onGenerate={handleGenerate}
-            loading={loading}
-            initialInput={lastInput ?? undefined}
-          />
+        <section className="relative overflow-hidden rounded-[2.2rem] border border-slate-200/80 bg-white p-[1px] shadow-[0_16px_42px_rgba(15,23,42,0.05)] dark:border-slate-700/80 dark:bg-slate-900/90">
+          <div className="relative rounded-[calc(2.2rem-1px)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,250,252,0.96))] p-5 dark:bg-[linear-gradient(180deg,rgba(2,6,23,0.95),rgba(15,23,42,0.92))] sm:p-7">
+            <TripForm
+              key={lastInput ? JSON.stringify(lastInput) : "new-trip"}
+              onGenerate={handleGenerate}
+              loading={loading}
+              initialInput={lastInput ?? undefined}
+            />
+          </div>
         </section>
 
         {aiStatusMessage ? (
