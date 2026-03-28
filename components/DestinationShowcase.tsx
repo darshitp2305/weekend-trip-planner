@@ -151,12 +151,6 @@ export default function DestinationShowcase() {
 
         <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(15,23,42,0.18),rgba(15,23,42,0.74)_68%,rgba(2,6,23,0.92)_100%)]" />
 
-        <div className="absolute inset-x-0 top-0 p-4 sm:p-6">
-          <div className="inline-flex items-center rounded-full border border-white/18 bg-white/12 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/88 backdrop-blur-sm">
-            One trip, not a shortlist
-          </div>
-        </div>
-
         <div className="absolute inset-x-0 bottom-0 p-5 sm:p-6">
           <div className="max-w-2xl">
             <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/72">
