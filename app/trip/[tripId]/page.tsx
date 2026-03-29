@@ -21,6 +21,7 @@ import TripActions from "../../../components/TripActions";
 import TripOperationsPanel from "../../../components/TripOperationsPanel";
 import InteractiveItinerary from "../../../components/InteractiveItinerary";
 import ExpediaStayWidget from "../../../components/ExpediaStayWidget";
+import { syncTripPlanTiming } from "../../../lib/buildTripPlan";
 import { formatDateRange } from "../../../lib/tripDates";
 import { isStartCity } from "../../../lib/startCities";
 import {
@@ -272,7 +273,7 @@ export default function TripPage() {
       const found = await getTripPlanById(params.tripId);
 
       if (!cancelled) {
-        setTrip(found);
+        setTrip(found ? syncTripPlanTiming(found) : found);
         if (found) {
           const pendingRecord = getPendingTripSyncRecord(found.id);
           if (
@@ -336,10 +337,10 @@ export default function TripPage() {
         if (!cancelled && response.ok && data?.success && data?.route) {
           setTrip((prev) => {
             if (!prev) return prev;
-            return {
+            return syncTripPlanTiming({
               ...prev,
               routeSummary: data.route,
-            };
+            });
           });
         }
       } catch (error) {

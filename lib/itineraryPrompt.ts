@@ -1,4 +1,5 @@
 import { estimateFoodCostForGroup } from "./foodPricing";
+import { START_CITY_OPTIONS } from "./startCities";
 import {
   Activity,
   FoodSpot,
@@ -445,6 +446,17 @@ function inferAction(instruction: string): PromptAction {
   return "replace";
 }
 
+function isRoutingConstraintInstruction(instruction: string) {
+  return (
+    /\bkeep\s+it\s+(?:close|nearby|near)\b/i.test(instruction) ||
+    /\bmake\s+sure\s+it\s+still\s+fits\b/i.test(instruction) ||
+    /\bstill\s+fits\s+before\b/i.test(instruction) ||
+    /\bbefore\s+(?:i|we)\s+(?:drive\s+back|head\s+back|go\s+back|leave)\b/i.test(
+      instruction
+    )
+  );
+}
+
 function cleanDesiredText(value: string) {
   return value
     .replace(/^(?:can|could|would|will)\s+you\s+/i, "")
@@ -494,6 +506,23 @@ function stripPlacementContext(value: string) {
 function searchableDesiredText(value: string) {
   const stripped = stripPlacementContext(value);
   return stripped || value.trim();
+}
+
+function extractReturnDestinationReference(instruction: string) {
+  const match = instruction.match(
+    /\b(?:drive back|head back|return|going back|leave for|heading back)\s+to\s+(.+?)(?=(?:[,.]|$))/i
+  );
+
+  return match?.[1]?.trim();
+}
+
+function isPureCityReference(value: string) {
+  const normalizedValue = normalized(value);
+  if (!normalizedValue) return false;
+
+  return START_CITY_OPTIONS.some(
+    (city) => normalized(city) === normalizedValue
+  );
 }
 
 export function extractDesiredText(instruction: string) {
@@ -2087,6 +2116,14 @@ export function applyItineraryPrompt({
 
     const desiredText = extractDesiredText(instruction);
     const desiredSearchText = searchableDesiredText(desiredText);
+    const returnDestinationReference = extractReturnDestinationReference(instruction);
+    const hasExplicitKindIntent =
+      hasFoodIntent(instruction) || hasActivityIntent(instruction) || hasStayIntent(instruction);
+
+    if (!hasExplicitKindIntent && isRoutingConstraintInstruction(instruction)) {
+      return;
+    }
+
     const shouldReusePreviousSelection = refersToPreviousSelection(instruction);
     const kind = inferInstructionKind(
       instruction,
@@ -2105,6 +2142,16 @@ export function applyItineraryPrompt({
     }
 
     const action = inferAction(instruction);
+
+    if (
+      action === "add" &&
+      returnDestinationReference &&
+      normalized(desiredSearchText) === normalized(returnDestinationReference) &&
+      isPureCityReference(desiredSearchText)
+    ) {
+      return;
+    }
+
     let dayIndex = explicitDayIndex ?? inheritedDayIndex;
 
     if (typeof dayIndex !== "number" && (kind === "food" || kind === "activity")) {

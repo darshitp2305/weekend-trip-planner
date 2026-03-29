@@ -120,6 +120,8 @@ function normalizeTripInput(
   const tripLengthDays = Number(input.tripLengthDays ?? 2);
   const tripStartDate =
     typeof input.tripStartDate === "string" ? input.tripStartDate : undefined;
+  const departureTime =
+    typeof input.departureTime === "string" ? input.departureTime : undefined;
 
   return {
     startCity: isStartCity(input.startCity) ? input.startCity : "Edmonton",
@@ -147,6 +149,7 @@ function normalizeTripInput(
         : undefined,
     tripStartDate,
     tripEndDate: deriveTripEndDate(tripStartDate, tripLengthDays),
+    departureTime,
   };
 }
 
@@ -295,7 +298,7 @@ export default function TripCard({
 
       const propInput = normalizeTripInput(input);
       const storedInput = getStoredLastInput();
-      const effectiveInput = storedInput ?? propInput ?? previewPlan.safeInput;
+      const effectiveInput = propInput ?? storedInput ?? previewPlan.safeInput;
       const basePlan = buildTripPlan(trip, effectiveInput, source);
       const plan = {
         ...basePlan,

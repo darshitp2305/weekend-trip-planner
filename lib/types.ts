@@ -190,6 +190,7 @@ export interface TripInput {
   preferredDestination?: string;
   tripStartDate?: string;
   tripEndDate?: string;
+  departureTime?: string;
 }
 
 export type ConfidenceLevel = "high" | "medium" | "low";
@@ -415,6 +416,7 @@ export interface TripPlan {
   tripLengthDays?: number;
   tripStartDate?: string;
   tripEndDate?: string;
+  departureTime?: string;
   tripPrompt?: string;
   maxDriveMinutesBetweenStops?: number;
   savedSelectionState?: TripSelectionState;

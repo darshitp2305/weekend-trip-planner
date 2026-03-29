@@ -4,12 +4,19 @@ import {
   jsonNoStore,
   rejectOversizedJsonRequest,
 } from "../../../lib/apiSecurity";
+import { enrichTripInputWithOpenAI } from "../../../lib/openAiPromptParameters";
 import { generateTripCopyWithOpenAI } from "../../../lib/openAiTripCopy";
 import { recalculateConfidence } from "../../../lib/generateRankedTrips";
 import { isStartCity } from "../../../lib/startCities";
-import { deriveTripEndDate, isIsoDate } from "../../../lib/tripDates";
+import { deriveTripEndDate, getTodayIsoDate, isIsoDate } from "../../../lib/tripDates";
+import { extractPromptDepartureTime } from "../../../lib/tripIntent";
 import { rankDestinations } from "../../../lib/rankDestinations";
-import { ActivityFocus, RankedDestination, TripInput } from "../../../lib/types";
+import {
+  ActivityFocus,
+  ProviderOutcome,
+  RankedDestination,
+  TripInput,
+} from "../../../lib/types";
 
 type GenerateTripSource = "live-openai" | "fallback-template";
 
@@ -31,6 +38,7 @@ type TripInputCandidate = Partial<TripInput> & {
   preferredDestination?: unknown;
   tripStartDate?: unknown;
   tripEndDate?: unknown;
+  departureTime?: unknown;
 };
 
 function isActivityFocus(value: unknown): value is ActivityFocus {
@@ -43,6 +51,8 @@ type GenerateTripBody = {
   trips?: RankedDestination[];
   destinations?: RankedDestination[];
   rankings?: RankedDestination[];
+  promptInputResolved?: unknown;
+  promptParseStatus?: unknown;
 };
 
 
@@ -71,8 +81,24 @@ function isTripInput(value: unknown): value is TripInput {
       typeof candidate.preferredDestination === "string") &&
     (candidate.tripStartDate === undefined ||
       typeof candidate.tripStartDate === "string") &&
-    (candidate.tripEndDate === undefined || typeof candidate.tripEndDate === "string")
+    (candidate.tripEndDate === undefined || typeof candidate.tripEndDate === "string") &&
+    (candidate.departureTime === undefined ||
+      typeof candidate.departureTime === "string")
   );
+}
+
+function getCurrentTimeValue(referenceDate = new Date()) {
+  return `${String(referenceDate.getHours()).padStart(2, "0")}:${String(
+    referenceDate.getMinutes()
+  ).padStart(2, "0")}`;
+}
+
+function normalizeDepartureTime(value: unknown) {
+  if (typeof value !== "string" || !/^\d{2}:\d{2}$/.test(value.trim())) {
+    return undefined;
+  }
+
+  return value.trim();
 }
 
 function normalizeInput(raw: unknown): TripInput | null {
@@ -85,6 +111,14 @@ function normalizeInput(raw: unknown): TripInput | null {
     ? candidateInput.tripStartDate
     : undefined;
   const tripLengthDays = Number(candidateInput.tripLengthDays);
+  const tripPrompt =
+    typeof candidateInput.tripPrompt === "string"
+      ? candidateInput.tripPrompt.trim() || undefined
+      : undefined;
+  const departureTime =
+    normalizeDepartureTime(candidateInput.departureTime) ??
+    extractPromptDepartureTime(tripPrompt) ??
+    (tripStartDate === getTodayIsoDate() ? getCurrentTimeValue() : undefined);
 
   const candidate = {
     startCity: candidateInput.startCity,
@@ -98,10 +132,7 @@ function normalizeInput(raw: unknown): TripInput | null {
     tripLengthDays,
     season: candidateInput.season,
     style: candidateInput.style,
-    tripPrompt:
-      typeof candidateInput.tripPrompt === "string"
-        ? candidateInput.tripPrompt.trim() || undefined
-        : undefined,
+    tripPrompt,
     activityFocus: isActivityFocus(candidateInput.activityFocus)
       ? candidateInput.activityFocus
       : undefined,
@@ -114,6 +145,7 @@ function normalizeInput(raw: unknown): TripInput | null {
         : undefined,
     tripStartDate,
     tripEndDate: deriveTripEndDate(tripStartDate, tripLengthDays),
+    departureTime,
   };
 
   if (!isTripInput(candidate)) return null;
@@ -140,6 +172,14 @@ function extractRankedTripsFromBody(
   if (Array.isArray(body?.destinations)) return body.destinations;
   if (Array.isArray(body?.rankings)) return body.rankings;
   return null;
+}
+
+function isProviderOutcome(value: unknown): value is ProviderOutcome {
+  return (
+    value === "live_success" ||
+    value === "live_unavailable" ||
+    value === "fallback_used"
+  );
 }
 
 function getBudgetTone(trip: RankedDestination, input: TripInput): string {
@@ -260,17 +300,33 @@ export async function POST(req: Request) {
       );
     }
 
+    const skipPromptReparse = body?.promptInputResolved === true;
+    const promptEnrichment = skipPromptReparse
+      ? {
+          input,
+          status: isProviderOutcome(body?.promptParseStatus)
+            ? body.promptParseStatus
+            : ("fallback_used" satisfies ProviderOutcome),
+        }
+      : await enrichTripInputWithOpenAI(input);
+    const resolvedInput = promptEnrichment.input;
+
     let rankedTrips = extractRankedTripsFromBody(body);
     if (!rankedTrips || rankedTrips.length === 0) {
-      rankedTrips = rankDestinations(input);
+      rankedTrips = rankDestinations(resolvedInput);
     }
-    rankedTrips = recalculateConfidence(rankedTrips, input);
+    rankedTrips = recalculateConfidence(rankedTrips, resolvedInput);
 
-    const openAiResult = await generateTripCopyWithOpenAI(input, rankedTrips);
+    const openAiResult = await generateTripCopyWithOpenAI(
+      resolvedInput,
+      rankedTrips
+    );
     if (openAiResult.trips) {
       return jsonNoStore({
         success: true,
         source: "live-openai" satisfies GenerateTripSource,
+        normalizedInput: resolvedInput,
+        promptParseStatus: promptEnrichment.status,
         results: openAiResult.trips.map((trip) => ({
           ...trip,
           providerStatus: {
@@ -283,7 +339,7 @@ export async function POST(req: Request) {
 
     const fallbackTrips = rankedTrips.map((trip) =>
       ({
-        ...buildFallbackAiContent(trip, input),
+        ...buildFallbackAiContent(trip, resolvedInput),
         providerStatus: {
           ...trip.providerStatus,
           tripCopy: openAiResult.status,
@@ -294,6 +350,8 @@ export async function POST(req: Request) {
     return jsonNoStore({
       success: true,
       source: "fallback-template" satisfies GenerateTripSource,
+      normalizedInput: resolvedInput,
+      promptParseStatus: promptEnrichment.status,
       results: fallbackTrips,
     });
   } catch (error) {

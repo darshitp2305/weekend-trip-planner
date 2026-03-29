@@ -7,12 +7,14 @@ import TripCard from "../components/TripCard";
 import TripForm from "../components/TripForm";
 import { trackProductEvent } from "../lib/productAnalytics";
 import { normalizeTripImageUrl } from "../lib/tripImages";
-import { RankedDestination, TripInput } from "../lib/types";
+import { ProviderOutcome, RankedDestination, TripInput } from "../lib/types";
 
 type RankTripsResponse = {
   success?: boolean;
   results?: RankedDestination[];
   usedLiveData?: boolean;
+  normalizedInput?: TripInput;
+  promptParseStatus?: ProviderOutcome;
   noMatchDiagnostics?: {
     headline?: string;
     reasons?: string[];
@@ -26,6 +28,8 @@ type GenerateTripResponse = {
   trips?: RankedDestination[];
   destinations?: RankedDestination[];
   rankings?: RankedDestination[];
+  normalizedInput?: TripInput;
+  promptParseStatus?: ProviderOutcome;
 };
 
 type EnrichTripResponse = {
@@ -350,9 +354,22 @@ export default function HomePage() {
         return;
       }
 
+      const resolvedInput = rankData?.normalizedInput ?? input;
+      setLastInput(resolvedInput);
+      if (typeof window !== "undefined") {
+        try {
+          sessionStorage.setItem(
+            LAST_INPUT_STORAGE_KEY,
+            JSON.stringify(resolvedInput)
+          );
+        } catch (error) {
+          console.error("Failed to persist resolved planner input:", error);
+        }
+      }
+
       if (!rankData?.results || rankData.results.length === 0) {
         if (excludedDestinationNames.length > 0) {
-          await handleGenerate(input, { resetShownDestinationNames: true });
+          await handleGenerate(resolvedInput, { resetShownDestinationNames: true });
           return;
         }
 
@@ -375,8 +392,8 @@ export default function HomePage() {
           .filter(Boolean)
           .join(" ");
 
-        if (input.preferredDestination) {
-          const destinationLabel = input.preferredDestination.trim();
+        if (resolvedInput.preferredDestination) {
+          const destinationLabel = resolvedInput.preferredDestination.trim();
           setDestinationConstraintModal({
             title: destinationLabel
               ? `${destinationLabel} does not fit this trip`
@@ -396,8 +413,8 @@ export default function HomePage() {
         persistPageState({
           currentTrip: null,
           shownDestinationNames: [],
-          lastInput: input,
-          aiStatusMessage: input.preferredDestination ? "" : noMatchMessage,
+          lastInput: resolvedInput,
+          aiStatusMessage: resolvedInput.preferredDestination ? "" : noMatchMessage,
         });
         return;
       }
@@ -413,7 +430,7 @@ export default function HomePage() {
       persistPageState({
         currentTrip: rankedTrip,
         shownDestinationNames: nextShownDestinationNames,
-        lastInput: input,
+        lastInput: resolvedInput,
         aiStatusMessage: "",
       });
 
@@ -424,8 +441,10 @@ export default function HomePage() {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            input,
+            input: resolvedInput,
             results: [rankedTrip],
+            promptInputResolved: true,
+            promptParseStatus: rankData?.promptParseStatus,
           }),
         });
 
@@ -453,7 +472,7 @@ export default function HomePage() {
           persistPageState({
             currentTrip: rankedTrip,
             shownDestinationNames: nextShownDestinationNames,
-            lastInput: input,
+            lastInput: resolvedInput,
             aiStatusMessage: fallbackMessage,
           });
           return;
@@ -464,7 +483,11 @@ export default function HomePage() {
           aiTrips && aiTrips.length > 0
             ? ensureTripImage(aiTrips[0])
             : rankedTrip;
-        const enrichedSelectedTrip = await enrichSelectedTrip(selectedTrip, input);
+        const finalInput = data?.normalizedInput ?? resolvedInput;
+        const enrichedSelectedTrip = await enrichSelectedTrip(
+          selectedTrip,
+          finalInput
+        );
 
         trackProductEvent("trip_generated", {
           metadata: {
@@ -473,7 +496,7 @@ export default function HomePage() {
             usedLiveData: Boolean(rankData.usedLiveData),
             source: data?.source ?? "fallback-template",
             destinationNames: [enrichedSelectedTrip.name],
-            preferredDestination: input.preferredDestination ?? null,
+            preferredDestination: finalInput.preferredDestination ?? null,
           },
         });
 
@@ -487,11 +510,12 @@ export default function HomePage() {
               : "Built from ranked trip data with fallback trip copy.";
 
         setCurrentTrip(enrichedSelectedTrip);
+        setLastInput(finalInput);
         setAiStatusMessage(statusMessage);
         persistPageState({
           currentTrip: enrichedSelectedTrip,
           shownDestinationNames: nextShownDestinationNames,
-          lastInput: input,
+          lastInput: finalInput,
           aiStatusMessage: statusMessage,
         });
       } catch (error) {
@@ -500,11 +524,12 @@ export default function HomePage() {
           ? "Built from live place data with fallback trip copy."
           : "Built from ranked trip data with fallback trip copy.";
         setCurrentTrip(rankedTrip);
+        setLastInput(resolvedInput);
         setAiStatusMessage(fallbackMessage);
         persistPageState({
           currentTrip: rankedTrip,
           shownDestinationNames: nextShownDestinationNames,
-          lastInput: input,
+          lastInput: resolvedInput,
           aiStatusMessage: fallbackMessage,
         });
       }

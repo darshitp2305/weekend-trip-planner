@@ -391,14 +391,10 @@ export default function TripHeader({ trip, shareMode = false }: TripHeaderProps)
           ) : null}
         </div>
 
-        <div className="mt-5 grid gap-2.5 sm:grid-cols-2 lg:max-w-4xl lg:grid-cols-4">
+        <div className="mt-5 grid gap-2.5 sm:grid-cols-2 lg:max-w-4xl lg:grid-cols-3">
           <Stat label="Drive time" value={driveTimeValue} />
           <Stat label="Route distance" value={distanceValue} />
           <Stat label="Style fit" value={trip.styleMatchStrength ?? "-"} />
-          <Stat
-            label="Score"
-            value={trip.score !== undefined ? String(trip.score) : "-"}
-          />
         </div>
 
         {!isDraft && !isShareReviewState ? (

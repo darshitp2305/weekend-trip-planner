@@ -322,6 +322,49 @@ function buildTests(): TestResult[] {
     });
   }
 
+  {
+    const result = buildResult(
+      "Day 2 activity to a quiet scenic viewpoint instead of anything intense. Keep it close to Canmore and make sure it still fits before we drive back to Calgary.",
+      {
+        activities: [
+          ...makeFixture().activities,
+          {
+            name: "Three Sisters Viewpoint",
+            type: "Viewpoint",
+            costEstimate: 0,
+            rating: 4.6,
+            shortDescription: "Scenic viewpoint close to Canmore with a light stop feel.",
+            latitude: 51.0902,
+            longitude: -115.347,
+          },
+          {
+            name: "Quarry Lake Park",
+            type: "Park",
+            costEstimate: 0,
+            rating: 4.6,
+            shortDescription: "Quiet scenic lake stop in Canmore.",
+            latitude: 51.083,
+            longitude: -115.381,
+          },
+        ],
+      }
+    );
+    const addedStops = addedStopsForDay(result, 1);
+    const allSelectedNames = [
+      ...result.appliedChanges.map((change) => change.selectedName),
+      ...addedStops.map((stop) => stop.title),
+      ...Object.values(result.selection.customStops ?? {}).map((stop) => stop.title),
+    ].join(" | ");
+
+    tests.push({
+      id: "BP06",
+      passed:
+        !/\bcalgary\b/i.test(allSelectedNames) &&
+        result.appliedChanges.length >= 1,
+      details: `issues=${result.issues.join(" | ") || "none"} selections=${allSelectedNames || "none"}`,
+    });
+  }
+
   return tests;
 }
 

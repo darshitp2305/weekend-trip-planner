@@ -511,7 +511,7 @@ function explainPreferredDestinationNoMatch(
     }
 
     if (!input.includeStaycations && destination.isStaycation) {
-      reasons.add(`${destination.name} is treated as a staycation and staycations are turned off`);
+      reasons.add(`${destination.name} is treated as a local/staycation-style option and does not fit the current trip setup`);
     }
 
     if (destination.avoidSeasons.includes(input.season)) {
@@ -531,7 +531,7 @@ function explainPreferredDestinationNoMatch(
     return {
       headline: `Trippify found ${preferredDestination}, but it does not fit the current trip constraints.`,
       reasons: [
-        `Try increasing drive time, loosening budget rules, changing dates, or turning staycations on.`,
+        `Try increasing drive time, loosening budget rules, or changing dates.`,
       ],
     };
   }
@@ -615,7 +615,7 @@ export function getNoMatchDiagnostics(
   }
 
   if (!input.includeStaycations && allowedStaycations.length === 0) {
-    blockers.push("the remaining options are staycations, but staycations are turned off");
+    blockers.push("the remaining options are local/staycation-style trips");
   }
 
   if (

@@ -21,6 +21,12 @@ type Evaluation = {
   notes: string[];
 };
 
+type RegressionCheck = {
+  id: string;
+  passed: boolean;
+  notes: string[];
+};
+
 function makeInput(partial: Partial<TripInput> & Pick<TripInput, "style">): TripInput {
   const travelerCount = partial.travelerCount ?? 2;
   const budgetPerTraveler = partial.budgetPerTraveler ?? 300;
@@ -199,19 +205,91 @@ function evaluateCase(testCase: TestCase): Evaluation {
   };
 }
 
+function evaluatePromptDrivenCanmoreRegression(): RegressionCheck {
+  const tripPrompt =
+    "We're 3 people in Calgary and want a Banff or Canmore overnight starting today, but we can't head out until after work, around 5:45pm. Keep the first night to check-in and a late casual dinner only, no hike on arrival day. Budget is about $220 each, we want cozy more than intense, but still want one scenic stop the next morning before driving back. Don't make us drive more than about 6 hours total for the trip.";
+
+  const input: TripInput = {
+    ...makeInput({
+      style: "chill",
+      startCity: "Calgary",
+      travelerCount: 3,
+      budgetPerTraveler: 220,
+      budget: 660,
+      tripLengthDays: 2,
+      maxDriveHours: 5,
+      preferredDestination: "Canmore",
+    }),
+    tripPrompt,
+    departureTime: "17:45",
+  };
+
+  const winner = rankDestinations(input, 1)[0];
+  if (!winner) {
+    return {
+      id: "R01",
+      passed: false,
+      notes: ["No destination matched the prompt-driven Canmore regression case."],
+    };
+  }
+
+  const plan = buildTripPlan(winner, input, "static-ranking");
+  const activityStops = plan.itineraryDays.flatMap((day) =>
+    day.stops.filter((stop) => stop.kind === "activity")
+  );
+  const activityText = activityStops
+    .flatMap((stop) => [stop.title, stop.description ?? ""])
+    .join(" ")
+    .toLowerCase();
+
+  const hospitalityActivityChosen = ["hotel", "resort", "lodge", "inn", "motel"].some((term) =>
+    activityText.includes(term)
+  );
+  const hasScenicLightActivity = ["view", "viewpoint", "lookout", "lake", "river", "creek", "walk", "trail", "boardwalk", "garden"].some(
+    (term) => activityText.includes(term)
+  );
+
+  const notes: string[] = [];
+  if (!winner.name.toLowerCase().includes("canmore")) {
+    notes.push(`Expected Canmore to win, got ${winner.name}.`);
+  }
+  if (activityStops.length < 1) {
+    notes.push("Expected at least one daytime activity stop for the final morning.");
+  }
+  if (hospitalityActivityChosen) {
+    notes.push("A hospitality property was selected as an activity anchor.");
+  }
+  if (!hasScenicLightActivity) {
+    notes.push("Expected a scenic/light activity for the chill Canmore brief.");
+  }
+
+  return {
+    id: "R01",
+    passed:
+      winner.name.toLowerCase().includes("canmore") &&
+      activityStops.length >= 1 &&
+      !hospitalityActivityChosen &&
+      hasScenicLightActivity,
+    notes,
+  };
+}
+
 function main() {
   const cases = buildCases();
   const evaluations = cases.map((testCase) => {
     const result = evaluateCase(testCase);
     return { testCase, result };
   });
+  const regressionChecks = [evaluatePromptDrivenCanmoreRegression()];
 
   const passCount = evaluations.filter(
     ({ result }) => result.stylePassed && result.budgetPassed && result.lengthPassed
   ).length;
+  const regressionPassCount = regressionChecks.filter((check) => check.passed).length;
 
   console.log(`Ran ${evaluations.length} itinerary tests.`);
   console.log(`Full pass count: ${passCount}/${evaluations.length}`);
+  console.log(`Prompt regression pass count: ${regressionPassCount}/${regressionChecks.length}`);
   console.log("");
 
   for (const { testCase, result } of evaluations) {
@@ -242,19 +320,28 @@ function main() {
   const failed = evaluations.filter(
     ({ result }) => !(result.stylePassed && result.budgetPassed && result.lengthPassed)
   );
+  const failedRegressions = regressionChecks.filter((check) => !check.passed);
 
   if (failed.length === 0) {
     console.log("No failing cases.");
-    return;
+  } else {
+    console.log("Failing cases summary:");
+    for (const { testCase, result } of failed) {
+      console.log(
+        `${testCase.id}: ${testCase.input.style} from ${testCase.input.startCity} -> ${
+          result.chosenDestination ?? "none"
+        }`
+      );
+    }
   }
 
-  console.log("Failing cases summary:");
-  for (const { testCase, result } of failed) {
-    console.log(
-      `${testCase.id}: ${testCase.input.style} from ${testCase.input.startCity} -> ${
-        result.chosenDestination ?? "none"
-      }`
-    );
+  if (failedRegressions.length === 0) {
+    console.log("No failing prompt regressions.");
+  } else {
+    console.log("Failing prompt regressions:");
+    for (const regression of failedRegressions) {
+      console.log(`${regression.id}: ${regression.notes.join(" ")}`);
+    }
   }
 }
 

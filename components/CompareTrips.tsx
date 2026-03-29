@@ -125,19 +125,9 @@ export default function CompareTrips({
                   </div>
                 </div>
 
-                <div className="flex shrink-0 items-center gap-2 self-start">
-                  <div className="rounded-2xl bg-slate-950 px-4 py-3 text-white">
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-white/65">
-                      Score
-                    </div>
-                    <div className="mt-1 text-lg font-semibold">
-                      {trip.score}
-                    </div>
-                  </div>
-                </div>
               </div>
 
-              <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+              <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                 <StatBlock
                   label="Drive"
                   value={`${trip.driveHoursFromStart}h`}

@@ -5,6 +5,8 @@ import DestinationShowcase from "./DestinationShowcase";
 import {
   deriveTripIntentFromPrompt,
   extractPromptBudget,
+  extractPromptDepartureTime,
+  extractPromptStartCity,
   extractPromptTravelerCount,
 } from "../lib/tripIntent";
 import { isStartCity, START_CITY_OPTIONS, type StartCity } from "../lib/startCities";
@@ -68,6 +70,12 @@ function formatIsoDate(date: Date) {
   const day = `${date.getDate()}`.padStart(2, "0");
 
   return `${year}-${month}-${day}`;
+}
+
+function formatTimeInputValue(date: Date) {
+  return `${String(date.getHours()).padStart(2, "0")}:${String(
+    date.getMinutes()
+  ).padStart(2, "0")}`;
 }
 
 function formatDateButtonLabel(value: string) {
@@ -587,6 +595,7 @@ export default function TripForm({
   );
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const lastPromptTravelerCountRef = useRef<number | null>(null);
+  const lastPromptStartCityRef = useRef<StartCity | null>(null);
 
   const derivedIntent = useMemo(
     () => deriveTripIntentFromPrompt(form.tripPrompt),
@@ -597,6 +606,7 @@ export default function TripForm({
     [form.tripPrompt]
   );
   const promptTravelerCount = derivedIntent.suggestedTravelerCount;
+  const promptStartCity = extractPromptStartCity(form.tripPrompt);
 
   useEffect(() => {
     const previousPromptTravelerCount = lastPromptTravelerCountRef.current;
@@ -627,6 +637,36 @@ export default function TripForm({
 
     lastPromptTravelerCountRef.current = promptTravelerCount ?? null;
   }, [form.travelerCount, promptTravelerCount]);
+
+  useEffect(() => {
+    const previousPromptStartCity = lastPromptStartCityRef.current;
+
+    if (
+      promptStartCity &&
+      promptStartCity !== previousPromptStartCity &&
+      form.startCity !== promptStartCity
+    ) {
+      setForm((prev) => ({
+        ...prev,
+        startCity: promptStartCity,
+      }));
+    }
+
+    if (previousPromptStartCity && !promptStartCity) {
+      setForm((prev) => {
+        if (prev.startCity !== previousPromptStartCity) {
+          return prev;
+        }
+
+        return {
+          ...prev,
+          startCity: DEFAULT_FORM.startCity,
+        };
+      });
+    }
+
+    lastPromptStartCityRef.current = promptStartCity ?? null;
+  }, [form.startCity, promptStartCity]);
 
   const resolvedTravelerCount = clampNumber(
     parsePositiveInt(form.travelerCount, 2),
@@ -727,6 +767,11 @@ export default function TripForm({
     const tripLengthDays =
       deriveTripLengthDays(tripStartDate, tripEndDate) ?? 1;
     const season = deriveSeasonFromDateRange(tripStartDate, tripEndDate);
+    const departureTime =
+      extractPromptDepartureTime(form.tripPrompt) ??
+      (tripStartDate === minTripStartDate
+        ? formatTimeInputValue(new Date())
+        : undefined);
 
     const cleanedInput: TripInput = {
       startCity: form.startCity,
@@ -746,6 +791,7 @@ export default function TripForm({
       preferredDestination: derivedIntent.preferredDestination,
       tripStartDate,
       tripEndDate,
+      departureTime,
     };
 
     const submitHandler = onGenerate ?? onSubmit;
@@ -764,7 +810,25 @@ export default function TripForm({
         <DestinationShowcase />
 
         <div className="rounded-[1.9rem] border border-slate-200 bg-white p-5 shadow-[0_12px_32px_rgba(15,23,42,0.05)] dark:border-slate-700/80 dark:bg-slate-900">
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-4">
+            <div>
+              <FieldLabel htmlFor="startCity">Starting city</FieldLabel>
+              <select
+                id="startCity"
+                value={form.startCity}
+                onChange={(event) =>
+                  updateField("startCity", event.target.value as StartCity)
+                }
+                className="h-12 w-full rounded-[1.25rem] border border-slate-300 bg-white px-4 text-slate-950 shadow-sm outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-slate-700"
+              >
+                {START_CITY_OPTIONS.map((city) => (
+                  <option key={city} value={city}>
+                    {city}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             <DatePickerField
               id="tripStartDate"
               label="Start date"
@@ -852,11 +916,8 @@ export default function TripForm({
                 travelerCount: resolvedTravelerCount,
               })}
             </SignalPill>
-            {derivedIntent.includeStaycations ? (
-              <SignalPill>Local trips allowed</SignalPill>
-            ) : (
-              <SignalPill>Getaway-first</SignalPill>
-            )}
+            <SignalPill>Starts from {form.startCity}</SignalPill>
+            <SignalPill>Local trips allowed</SignalPill>
             {softPreferenceLabels(derivedIntent).map((label) => (
               <SignalPill key={label}>{label}</SignalPill>
             ))}
@@ -884,25 +945,7 @@ export default function TripForm({
           </button>
 
           {advancedOpen ? (
-            <div className="mt-4 grid gap-4 border-t border-slate-200 pt-4 dark:border-slate-700 md:grid-cols-3">
-              <div>
-                <FieldLabel htmlFor="startCity">Starting city</FieldLabel>
-                <select
-                  id="startCity"
-                  value={form.startCity}
-                  onChange={(event) =>
-                    updateField("startCity", event.target.value as StartCity)
-                  }
-                  className="h-12 w-full rounded-[1.25rem] border border-slate-300 bg-white px-4 text-slate-950 shadow-sm outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-slate-700"
-                >
-                  {START_CITY_OPTIONS.map((city) => (
-                    <option key={city} value={city}>
-                      {city}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
+            <div className="mt-4 grid gap-4 border-t border-slate-200 pt-4 dark:border-slate-700 md:grid-cols-2">
               <div>
                 <FieldLabel htmlFor="maxDriveHours">Max drive hours</FieldLabel>
                 <input

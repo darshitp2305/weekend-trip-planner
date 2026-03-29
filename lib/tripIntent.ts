@@ -1,4 +1,5 @@
 import rawDestinations from "../data/destinations.json";
+import { START_CITY_OPTIONS } from "./startCities";
 import { ActivityFocus, RawDestination, TripStyle } from "./types";
 
 export type PromptActivityAnchor =
@@ -67,8 +68,50 @@ const TRAVELER_COUNT_PATTERNS = [
   /\bfor\s+(\d{1,2})\s+(?:people|travellers|travelers)\b/i,
   /\b(\d{1,2})\s+(?:people|travellers|travelers)\b/i,
 ];
+const START_CITY_PATTERNS = START_CITY_OPTIONS.map((city) => ({
+  city,
+  pattern: new RegExp(
+    `\\b(?:from|in|out of|leaving|departing|starting (?:from|in)?|based in)\\s+${normalizeCityPattern(
+      city
+    )}\\b`,
+    "i"
+  ),
+}));
+const DEPARTURE_TIME_PATTERNS = [
+  /\b(?:leave|leaving|depart|departing|head(?:ing)? out|set off|drive out|road trip starts?)(?:\s+[a-z]+){0,4}\s+(?:at\s+)?(?:around\s+|about\s+|roughly\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b/i,
+  /\b(?:leave|leaving|depart|departing|head(?:ing)? out|set off|drive out|road trip starts?)(?:\s+[a-z]+){0,4}\s+(?:at\s+)?(?:around\s+|about\s+|roughly\s+)?(\d{1,2}):(\d{2})\b/i,
+];
+const CONSTRAINED_DEPARTURE_TIME_PATTERNS = [
+  /\b(?:can(?:no)?t|won(?:no)?t|not)\s+(?:leave|leaving|depart|departing|head(?:ing)? out|set off|drive out)(?:\s+[a-z]+){0,4}\s+(?:until|before)\s+(?:around\s+|about\s+|roughly\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b/i,
+  /\b(?:earliest(?:\s+we\s+can)?\s+(?:leave|depart|head out|set off|drive out)|(?:leave|depart|head out|set off|drive out)\s+no\s+earlier\s+than)(?:\s+[a-z]+){0,4}\s+(?:is\s+)?(?:around\s+|about\s+|roughly\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b/i,
+  /\b(?:can(?:no)?t|won(?:no)?t|not)\s+(?:leave|leaving|depart|departing|head(?:ing)? out|set off|drive out)(?:\s+[a-z]+){0,4}\s+(?:until|before)\s+(?:around\s+|about\s+|roughly\s+)?(\d{1,2}):(\d{2})\b/i,
+  /\b(?:earliest(?:\s+we\s+can)?\s+(?:leave|depart|head out|set off|drive out)|(?:leave|depart|head out|set off|drive out)\s+no\s+earlier\s+than)(?:\s+[a-z]+){0,4}\s+(?:is\s+)?(?:around\s+|about\s+|roughly\s+)?(\d{1,2}):(\d{2})\b/i,
+];
+const FLEXIBLE_DEPARTURE_TIME_PATTERNS = [
+  /\bafter work(?:,\s*|\s+)(?:around\s+|about\s+|roughly\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b/i,
+  /\bafter work(?:,\s*|\s+)(?:around\s+|about\s+|roughly\s+)?(\d{1,2}):(\d{2})\b/i,
+  /\b(?:not\s+until|after)\s+(?:around\s+|about\s+|roughly\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b/i,
+  /\b(?:not\s+until|after)\s+(?:around\s+|about\s+|roughly\s+)?(\d{1,2}):(\d{2})\b/i,
+];
+const RELATIVE_DEPARTURE_TIME_SIGNALS: Array<{
+  pattern: RegExp;
+  time: string;
+}> = [
+  {
+    pattern: /\bafter work\b|\bonce work ends\b|\bwhen work is done\b|\bafter the work day\b/i,
+    time: "17:30",
+  },
+  {
+    pattern: /\bfirst thing in the morning\b|\bearly start\b|\bearly morning\b/i,
+    time: "08:00",
+  },
+];
 const HIKE_DISTANCE_PATTERN =
   /(?:about|around|roughly|approx(?:imately)?)?\s*(\d{1,2}(?:\.\d)?)\s*(?:km|kilometers?|kilometres?)(?:\s*(?:long)?)?(?:\s*(?:for the )?(?:round trip|return|there and back|total))?/i;
+
+function normalizeCityPattern(city: string) {
+  return city.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\s+/g, "\\s+");
+}
 
 function normalizeText(value?: string) {
   return (value ?? "")
@@ -95,18 +138,71 @@ function countMatches(text: string, keywords: string[]) {
   }, 0);
 }
 
+function hasNegatedActivityPhrase(text: string, activity: string) {
+  const escapedActivity = activity.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const patterns = [
+    new RegExp(`\\bno\\s+${escapedActivity}\\b`, "i"),
+    new RegExp(`\\bnot\\s+(?:a\\s+)?${escapedActivity}\\b`, "i"),
+    new RegExp(`\\bdon'?t\\s+want\\s+(?:a\\s+)?${escapedActivity}\\b`, "i"),
+    new RegExp(`\\bwithout\\s+(?:a\\s+)?${escapedActivity}\\b`, "i"),
+    new RegExp(`\\bskip\\s+(?:the\\s+)?${escapedActivity}\\b`, "i"),
+  ];
+
+  return patterns.some((pattern) => pattern.test(text));
+}
+
 function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
+}
+
+function normalizeDepartureTimeMatch(
+  hourText?: string,
+  minuteText?: string,
+  meridiemText?: string
+) {
+  const rawHour = Number.parseInt(hourText ?? "", 10);
+  const rawMinute = Number.parseInt(minuteText ?? "0", 10);
+  if (!Number.isFinite(rawHour) || !Number.isFinite(rawMinute)) {
+    return undefined;
+  }
+
+  if (rawMinute < 0 || rawMinute > 59) {
+    return undefined;
+  }
+
+  const meridiem = meridiemText?.toLowerCase();
+  let hour = rawHour;
+
+  if (meridiem === "am" || meridiem === "pm") {
+    if (hour < 1 || hour > 12) return undefined;
+    if (meridiem === "am") {
+      hour = hour === 12 ? 0 : hour;
+    } else {
+      hour = hour === 12 ? 12 : hour + 12;
+    }
+  } else if (hour < 0 || hour > 23) {
+    return undefined;
+  }
+
+  return `${String(hour).padStart(2, "0")}:${String(rawMinute).padStart(2, "0")}`;
 }
 
 function inferPreferredDestination(prompt: string): string | undefined {
   const normalizedPrompt = normalizeText(prompt);
   if (!normalizedPrompt) return undefined;
+  const normalizedStartCities = new Set(
+    START_CITY_OPTIONS.map((city) => normalizeText(city))
+  );
 
   const options = (rawDestinations as RawDestination[])
     .map((destination) => ({
       destinationName: destination.name?.trim(),
-      matchTexts: [destination.name, destination.home_base_city]
+      matchTexts: [
+        destination.name,
+        normalizedStartCities.has(normalizeText(destination.home_base_city))
+          ? undefined
+          : destination.home_base_city,
+      ]
         .map((value) => normalizeText(value))
         .filter(Boolean),
     }))
@@ -169,10 +265,22 @@ function inferActivityFocus(text: string): ActivityFocus | undefined {
     "lake",
     "peak",
     "ridge",
-    "mountain",
   ]);
+  const negatedHikeScore = [
+    "hike",
+    "hiking",
+    "trail",
+    "summit hike",
+    "big hike",
+  ].reduce((count, term) => {
+    return count + (hasNegatedActivityPhrase(text, term) ? 1 : 0);
+  }, 0);
+  const adjustedHikingScore = Math.max(0, hikingScore - negatedHikeScore * 2);
 
-  if (hikingScore >= Math.max(skiingScore, campingScore) && hikingScore >= 1) {
+  if (
+    adjustedHikingScore >= Math.max(skiingScore, campingScore) &&
+    adjustedHikingScore >= 2
+  ) {
     return "hiking";
   }
 
@@ -224,6 +332,8 @@ function inferStyle(text: string, activityFocus?: ActivityFocus): TripStyle {
     "recharge",
     "romantic",
     "cozy",
+    "casual",
+    "cozier",
     "low effort",
     "low effort",
     "low-effort",
@@ -282,6 +392,23 @@ function inferStyle(text: string, activityFocus?: ActivityFocus): TripStyle {
     "peak",
     "ridge",
   ]);
+
+  if (
+    /\bcozy\s+more\s+than\s+intense\b/i.test(text) ||
+    /\bmore\s+cozy\s+than\s+intense\b/i.test(text) ||
+    /\bnot\s+too\s+intense\b/i.test(text)
+  ) {
+    signals.chill += 4;
+    signals.adventure -= 2;
+  }
+
+  if (
+    /\blate\s+casual\s+dinner\b/i.test(text) ||
+    /\bcasual\s+dinner\b/i.test(text)
+  ) {
+    signals.chill += 2;
+    signals.foodie += 1;
+  }
 
   if (activityFocus === "hiking" || activityFocus === "camping") {
     signals.outdoors += 3;
@@ -387,6 +514,61 @@ export function extractPromptBudget(prompt: string): PromptBudgetMatch | null {
   return null;
 }
 
+export function extractPromptDepartureTime(prompt?: string): string | undefined {
+  const text = prompt?.trim();
+  if (!text) return undefined;
+
+  for (const pattern of CONSTRAINED_DEPARTURE_TIME_PATTERNS) {
+    const match = text.match(pattern);
+    if (!match) continue;
+
+    const normalized = normalizeDepartureTimeMatch(
+      match[1],
+      match[2],
+      match[3]
+    );
+    if (normalized) {
+      return normalized;
+    }
+  }
+
+  for (const pattern of DEPARTURE_TIME_PATTERNS) {
+    const match = text.match(pattern);
+    if (!match) continue;
+
+    const normalized = normalizeDepartureTimeMatch(
+      match[1],
+      match[2],
+      match[3]
+    );
+    if (normalized) {
+      return normalized;
+    }
+  }
+
+  for (const pattern of FLEXIBLE_DEPARTURE_TIME_PATTERNS) {
+    const match = text.match(pattern);
+    if (!match) continue;
+
+    const normalized = normalizeDepartureTimeMatch(
+      match[1],
+      match[2],
+      match[3]
+    );
+    if (normalized) {
+      return normalized;
+    }
+  }
+
+  for (const signal of RELATIVE_DEPARTURE_TIME_SIGNALS) {
+    if (signal.pattern.test(text)) {
+      return signal.time;
+    }
+  }
+
+  return undefined;
+}
+
 export function extractPromptTravelerCount(prompt: string): number | null {
   for (const pattern of TRAVELER_COUNT_PATTERNS) {
     const match = prompt.match(pattern);
@@ -399,6 +581,19 @@ export function extractPromptTravelerCount(prompt: string): number | null {
   }
 
   return null;
+}
+
+export function extractPromptStartCity(prompt?: string) {
+  const text = prompt?.trim();
+  if (!text) return undefined;
+
+  for (const option of START_CITY_PATTERNS) {
+    if (option.pattern.test(text)) {
+      return option.city;
+    }
+  }
+
+  return undefined;
 }
 
 function inferBudget(prompt: string, normalizedPrompt: string) {
@@ -667,14 +862,10 @@ export function deriveTripIntentFromPrompt(prompt?: string): DerivedTripIntent {
   const budget = inferBudget(rawPrompt, normalizedPrompt);
   const suggestedTravelerCount = extractPromptTravelerCount(rawPrompt) ?? undefined;
 
-  const includeStaycations =
-    countMatches(normalizedPrompt, [
-      "staycation",
-      "local",
-      "in the city",
-      "close to home",
-      "near home",
-    ]) >= 1;
+  // Staycations are now a ranking preference rather than a hidden hard filter.
+  // The UI no longer exposes a staycation toggle, so local options should stay
+  // available unless the user explicitly rejects them elsewhere.
+  const includeStaycations = true;
 
   const hardConstraints = inferHardConstraints(rawPrompt, activityFocus);
   const softPreferences = inferSoftPreferences(rawPrompt, activityFocus);

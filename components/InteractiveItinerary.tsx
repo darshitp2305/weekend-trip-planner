@@ -769,8 +769,10 @@ export default function InteractiveItinerary({
     tone: "success" | "warning";
     title: string;
     detail?: string;
+    interpretedPrompt?: string;
     issues: string[];
   } | null>(null);
+  const [builderPromptPending, setBuilderPromptPending] = useState(false);
 
   useEffect(() => {
     onSelectionChange?.(selection);
@@ -1460,6 +1462,38 @@ export default function InteractiveItinerary({
     return Array.isArray(data.activities) ? data.activities : [];
   }
 
+  async function interpretBuilderPrompt(prompt: string) {
+    const response = await fetch("/api/interpret-builder-prompt", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        prompt,
+        destinationLabel,
+        startCityLabel,
+        days,
+        hotels,
+        foodSpots,
+        activities,
+      }),
+    });
+
+    if (!response.ok) {
+      return prompt;
+    }
+
+    const data = (await response.json()) as {
+      success?: boolean;
+      rewrittenPrompt?: string | null;
+    };
+
+    const rewrittenPrompt =
+      typeof data.rewrittenPrompt === "string" ? data.rewrittenPrompt.trim() : "";
+
+    return rewrittenPrompt || prompt;
+  }
+
   async function handleBuilderPromptApply(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -1470,88 +1504,113 @@ export default function InteractiveItinerary({
         title: "Add a trip edit first",
         detail:
           'Try a sentence like "Day 2 lunch to Wild Flour Bakery", "Add a coffee stop on day 3 before we leave", or "Switch the stay to Rimrock Resort Hotel."',
+        interpretedPrompt: undefined,
         issues: [],
       });
       return;
     }
 
-    let result = applyItineraryPrompt({
-      prompt: trimmedPrompt,
-      days,
-      hotels,
-      foodSpots,
-      activities,
-      selection,
-      travelerCount,
-    });
-
-    const desiredText = extractDesiredText(trimmedPrompt);
-    let externalFoodSpots: FoodSpot[] = [];
-    let externalActivities: Activity[] = [];
-
-    if (shouldTryLiveFoodFallback(trimmedPrompt, result)) {
+    setBuilderPromptPending(true);
+    try {
+      let promptForApply = trimmedPrompt;
       try {
-        externalFoodSpots = await fetchLiveFoodFallback(desiredText);
+        promptForApply = await interpretBuilderPrompt(trimmedPrompt);
       } catch {
-        // Keep the local parser result if live place search is unavailable.
+        promptForApply = trimmedPrompt;
       }
-    }
+      const interpretedPrompt =
+        promptForApply.trim() !== trimmedPrompt ? promptForApply : undefined;
 
-    if (shouldTryLiveActivityFallback(trimmedPrompt, result)) {
-      try {
-        externalActivities = await fetchLiveActivityFallback(desiredText);
-      } catch {
-        // Keep the local parser result if live place search is unavailable.
-      }
-    }
-
-    if (externalFoodSpots.length > 0 || externalActivities.length > 0) {
-      const retriedResult = applyItineraryPrompt({
-        prompt: trimmedPrompt,
+      let result = applyItineraryPrompt({
+        prompt: promptForApply,
         days,
         hotels,
         foodSpots,
-        externalFoodSpots,
         activities,
-        externalActivities,
         selection,
         travelerCount,
       });
-
-      if (promptResultQuality(retriedResult) > promptResultQuality(result)) {
-        result = retriedResult;
+  
+      const desiredText = extractDesiredText(promptForApply);
+      let externalFoodSpots: FoodSpot[] = [];
+      let externalActivities: Activity[] = [];
+  
+      if (shouldTryLiveFoodFallback(promptForApply, result)) {
+        try {
+          externalFoodSpots = await fetchLiveFoodFallback(desiredText);
+        } catch {
+          // Keep the local parser result if live place search is unavailable.
+        }
       }
-    }
-
-    if (result.appliedChanges.length > 0) {
-      setSelection(result.selection);
-      setEditingStopKey(result.appliedChanges[0]?.stopKey ?? null);
+  
+      if (shouldTryLiveActivityFallback(promptForApply, result)) {
+        try {
+          externalActivities = await fetchLiveActivityFallback(desiredText);
+        } catch {
+          // Keep the local parser result if live place search is unavailable.
+        }
+      }
+  
+      if (externalFoodSpots.length > 0 || externalActivities.length > 0) {
+        const retriedResult = applyItineraryPrompt({
+          prompt: promptForApply,
+          days,
+          hotels,
+          foodSpots,
+          externalFoodSpots,
+          activities,
+          externalActivities,
+          selection,
+          travelerCount,
+        });
+  
+        if (promptResultQuality(retriedResult) > promptResultQuality(result)) {
+          result = retriedResult;
+        }
+      }
       setBuilderPromptFeedback({
-        tone: result.issues.length > 0 ? "warning" : "success",
+        tone:
+          result.appliedChanges.length > 0
+            ? result.issues.length > 0
+              ? "warning"
+              : "success"
+            : "warning",
         title:
-          result.appliedChanges.length === 1
-            ? "1 builder edit applied"
-            : `${result.appliedChanges.length} builder edits applied`,
-        detail: result.appliedChanges
-          .map((change) =>
-            change.mode === "added"
-              ? `${change.targetLabel}: ${change.selectedName}`
-              : `${change.targetLabel} -> ${change.selectedName}`
-          )
-          .join(" | "),
+          result.appliedChanges.length > 0
+            ? result.appliedChanges.length === 1
+              ? "1 builder edit applied"
+              : `${result.appliedChanges.length} builder edits applied`
+            : "No itinerary edits were applied",
+        detail:
+          result.appliedChanges.length > 0
+            ? result.appliedChanges
+                .map((change) =>
+                  change.mode === "added"
+                    ? `${change.targetLabel}: ${change.selectedName}`
+                    : `${change.targetLabel} -> ${change.selectedName}`
+                )
+                .join(" | ")
+            : result.issues[0] ??
+              "Use day numbers and either name a place or describe the stop you want added or changed.",
+        interpretedPrompt,
         issues: result.issues,
       });
-      return;
-    }
 
-    setBuilderPromptFeedback({
-      tone: "warning",
-      title: "No itinerary edits were applied",
-      detail:
-        result.issues[0] ??
-        "Use day numbers and either name a place or describe the stop you want added or changed.",
-      issues: result.issues,
-    });
+      if (result.appliedChanges.length > 0) {
+        setSelection(result.selection);
+        setEditingStopKey(result.appliedChanges[0]?.stopKey ?? null);
+      }
+    } catch {
+      setBuilderPromptFeedback({
+        tone: "warning",
+        title: "Builder prompt could not be applied",
+        detail: "Try a more explicit sentence with a day number and the stop you want changed.",
+        interpretedPrompt: undefined,
+        issues: [],
+      });
+    } finally {
+      setBuilderPromptPending(false);
+    }
   }
 
   return (
@@ -1613,9 +1672,10 @@ export default function InteractiveItinerary({
 
           <button
             type="submit"
+            disabled={builderPromptPending}
             className="inline-flex h-11 items-center justify-center rounded-2xl bg-slate-950 px-5 text-sm font-semibold text-white transition hover:bg-slate-800 dark:bg-emerald-400 dark:text-slate-950 dark:hover:bg-emerald-300"
           >
-            Apply changes
+            {builderPromptPending ? "Applying..." : "Apply changes"}
           </button>
         </div>
 
@@ -1645,6 +1705,17 @@ export default function InteractiveItinerary({
                 }
               >
                 {builderPromptFeedback.detail}
+              </p>
+            ) : null}
+            {builderPromptFeedback.interpretedPrompt ? (
+              <p
+                className={
+                  builderPromptFeedback.tone === "success"
+                    ? "mt-2 text-xs leading-5 text-emerald-800/90 dark:text-emerald-100/85"
+                    : "mt-2 text-xs leading-5 text-amber-800/90 dark:text-amber-100/85"
+                }
+              >
+                Interpreted as: {builderPromptFeedback.interpretedPrompt}
               </p>
             ) : null}
             {builderPromptFeedback.issues.length > 0 ? (

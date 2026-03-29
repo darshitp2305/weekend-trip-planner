@@ -1,13 +1,14 @@
 import {
   BudgetBreakdown,
   ItineraryDayData,
+  ItineraryStop,
   RankedDestination,
   TripDataSource,
   TripInput,
   TripPlan,
 } from "./types";
 import { sortHotelOptions } from "./hotelAvailability";
-import { deriveTripEndDate } from "./tripDates";
+import { deriveTripEndDate, getTodayIsoDate } from "./tripDates";
 import { ensureTripEditToken } from "./tripSecurity";
 import {
   buildDefaultSelectionState,
@@ -19,7 +20,7 @@ import {
   normalizePlaceDisplayName,
   refineTripStayRecommendation,
 } from "./tripSpecificity";
-import { deriveTripIntentFromPrompt } from "./tripIntent";
+import { deriveTripIntentFromPrompt, extractPromptDepartureTime } from "./tripIntent";
 
 const defaultInput: TripInput = {
   startCity: "Edmonton",
@@ -60,6 +61,14 @@ function normalizeInput(input?: Partial<TripInput>): TripInput {
   );
   const tripStartDate =
     typeof input?.tripStartDate === "string" ? input.tripStartDate : undefined;
+  const tripPrompt =
+    typeof input?.tripPrompt === "string"
+      ? input.tripPrompt.trim() || undefined
+      : undefined;
+  const departureTime =
+    normalizeDepartureTime(input?.departureTime) ??
+    extractPromptDepartureTime(tripPrompt) ??
+    (tripStartDate === getTodayIsoDate() ? getCurrentTimeValue() : undefined);
 
   return {
     ...defaultInput,
@@ -76,19 +85,169 @@ function normalizeInput(input?: Partial<TripInput>): TripInput {
     budgetPerTraveler,
     travelerCount,
     tripLengthDays,
-    tripPrompt:
-      typeof input?.tripPrompt === "string"
-        ? input.tripPrompt.trim() || undefined
-        : undefined,
+    tripPrompt,
     tripStartDate,
     tripEndDate: deriveTripEndDate(tripStartDate, tripLengthDays),
+    departureTime,
   };
 }
 
 function makeDriveText(trip: RankedDestination) {
+  const routeMinutes =
+    typeof trip.routeSummary?.durationSeconds === "number" &&
+    Number.isFinite(trip.routeSummary.durationSeconds) &&
+    trip.routeSummary.durationSeconds > 0
+      ? Math.round(trip.routeSummary.durationSeconds / 60)
+      : undefined;
+
+  if (routeMinutes !== undefined) {
+    const hours = Math.floor(routeMinutes / 60);
+    const minutes = routeMinutes % 60;
+
+    if (hours <= 0) {
+      return `${minutes} min`;
+    }
+
+    if (minutes === 0) {
+      return `${hours} hr${hours === 1 ? "" : "s"}`;
+    }
+
+    return `${hours} hr ${minutes} min`;
+  }
+
   return `${trip.driveHoursFromStart} hour${
     trip.driveHoursFromStart === 1 ? "" : "s"
   }`;
+}
+
+function getCurrentTimeValue(referenceDate = new Date()) {
+  return `${String(referenceDate.getHours()).padStart(2, "0")}:${String(
+    referenceDate.getMinutes()
+  ).padStart(2, "0")}`;
+}
+
+function normalizeDepartureTime(value?: string) {
+  if (typeof value !== "string" || !/^\d{2}:\d{2}$/.test(value.trim())) {
+    return undefined;
+  }
+
+  return value.trim();
+}
+
+function parseTimeValue(value?: string) {
+  const normalized = normalizeDepartureTime(value);
+  if (!normalized) return undefined;
+
+  const [hourText, minuteText] = normalized.split(":");
+  const hour = Number.parseInt(hourText ?? "", 10);
+  const minute = Number.parseInt(minuteText ?? "", 10);
+  if (!Number.isFinite(hour) || !Number.isFinite(minute)) {
+    return undefined;
+  }
+
+  return hour * 60 + minute;
+}
+
+function formatTimeLabel(totalMinutes: number) {
+  const normalizedMinutes = ((Math.round(totalMinutes) % 1440) + 1440) % 1440;
+  const hour24 = Math.floor(normalizedMinutes / 60);
+  const minutes = normalizedMinutes % 60;
+  const meridiem = hour24 >= 12 ? "PM" : "AM";
+  const hour12 = hour24 % 12 || 12;
+  return `${hour12}:${String(minutes).padStart(2, "0")} ${meridiem}`;
+}
+
+function timeBucketForMinutes(totalMinutes: number): ItineraryStop["time"] {
+  const normalizedMinutes = ((Math.round(totalMinutes) % 1440) + 1440) % 1440;
+
+  if (normalizedMinutes < 11 * 60) return "Morning";
+  if (normalizedMinutes < 14 * 60) return "Late morning";
+  if (normalizedMinutes < 16 * 60 + 30) return "Afternoon";
+  if (normalizedMinutes < 18 * 60 + 30) return "Late afternoon";
+  if (normalizedMinutes < 21 * 60) return "Evening";
+  return "Night";
+}
+
+function formatRemainingWindow(minutes: number) {
+  if (minutes <= 0) return "almost no time";
+
+  const hours = minutes / 60;
+  if (hours < 1.25) return "about an hour";
+  if (hours < 2) return "around an hour and a half";
+  if (hours < 3) return "about two hours";
+  if (hours < 4) return "around three hours";
+  return `about ${Math.round(hours)} hours`;
+}
+
+type ArrivalDayTiming = {
+  departureLabel: string;
+  arrivalLabel: string;
+  driveTime: ItineraryStop["time"];
+  hotelTime: ItineraryStop["time"];
+  activityTime: ItineraryStop["time"];
+  dinnerTime: ItineraryStop["time"];
+  includeArrivalActivity: boolean;
+  includeDinner: boolean;
+  remainingMinutesAfterArrival: number;
+};
+
+function getDriveDurationMinutes(
+  trip: Pick<RankedDestination, "driveHoursFromStart" | "routeSummary">
+) {
+  if (
+    typeof trip.routeSummary?.durationSeconds === "number" &&
+    Number.isFinite(trip.routeSummary.durationSeconds) &&
+    trip.routeSummary.durationSeconds > 0
+  ) {
+    return Math.round(trip.routeSummary.durationSeconds / 60);
+  }
+
+  return Math.round(trip.driveHoursFromStart * 60);
+}
+
+function getArrivalDayTiming(
+  trip: RankedDestination,
+  input: TripInput
+): ArrivalDayTiming | undefined {
+  const departureMinutes = parseTimeValue(input.departureTime);
+  if (departureMinutes === undefined) return undefined;
+
+  const arrivalMinutes = departureMinutes + getDriveDurationMinutes(trip);
+  const remainingMinutesAfterArrival = Math.max(0, 22 * 60 - arrivalMinutes);
+
+  return {
+    departureLabel: formatTimeLabel(departureMinutes),
+    arrivalLabel: formatTimeLabel(arrivalMinutes),
+    driveTime: timeBucketForMinutes(departureMinutes),
+    hotelTime: timeBucketForMinutes(arrivalMinutes),
+    activityTime: timeBucketForMinutes(arrivalMinutes + 60),
+    dinnerTime: timeBucketForMinutes(Math.max(arrivalMinutes + 120, 18 * 60 + 30)),
+    includeArrivalActivity:
+      remainingMinutesAfterArrival >= 180 && arrivalMinutes <= 17 * 60 + 30,
+    includeDinner: remainingMinutesAfterArrival >= 45 && arrivalMinutes <= 21 * 60,
+    remainingMinutesAfterArrival,
+  };
+}
+
+function arrivalDayTitle(options: {
+  includeDinner: boolean;
+  includeActivity: boolean;
+}) {
+  if (!options.includeDinner) return "Late arrival and settle-in";
+  if (!options.includeActivity) return "Arrival evening";
+  return "Arrival and easy first day";
+}
+
+function arrivalDaySummary(timing: ArrivalDayTiming) {
+  if (!timing.includeDinner) {
+    return `Leaving around ${timing.departureLabel} gets you to the hotel near ${timing.arrivalLabel}, so keep day one focused on arrival and settling in.`;
+  }
+
+  if (!timing.includeArrivalActivity) {
+    return `Leaving around ${timing.departureLabel} gets you to the hotel near ${timing.arrivalLabel}, so day one works best as check-in plus dinner with ${formatRemainingWindow(timing.remainingMinutesAfterArrival)} left after arrival.`;
+  }
+
+  return `Leaving around ${timing.departureLabel} still leaves ${formatRemainingWindow(timing.remainingMinutesAfterArrival)} after hotel arrival, so day one can fit one light stop before dinner without rushing.`;
 }
 
 function buildBudgetBreakdown(
@@ -390,6 +549,69 @@ function normalizedActivitySignals(activity?: ActivitySpot) {
     activity?.name ?? "",
     activity?.shortDescription ?? "",
   ]);
+}
+
+function promptExplicitlyWantsWellness(prompt?: string) {
+  const text = normalizeSignalText([prompt ?? ""]);
+
+  return (
+    text.includes("spa") ||
+    text.includes("wellness") ||
+    text.includes("hot spring") ||
+    text.includes("hot springs") ||
+    text.includes("sauna") ||
+    text.includes("bathhouse") ||
+    text.includes("thermal") ||
+    text.includes("mineral pool") ||
+    text.includes("nordic spa")
+  );
+}
+
+function isWellnessActivity(activity?: ActivitySpot) {
+  const text = normalizedActivitySignals(activity);
+
+  return (
+    text.includes("spa") ||
+    text.includes("wellness") ||
+    text.includes("hot spring") ||
+    text.includes("hot springs") ||
+    text.includes("sauna") ||
+    text.includes("bathhouse") ||
+    text.includes("thermal") ||
+    text.includes("mineral pool") ||
+    text.includes("nordic spa")
+  );
+}
+
+function isHospitalityLikeActivity(activity?: ActivitySpot) {
+  const text = normalizedActivitySignals(activity);
+
+  return (
+    text.includes("hotel") ||
+    text.includes("resort") ||
+    text.includes("lodge") ||
+    text.includes("inn") ||
+    text.includes("motel") ||
+    text.includes("suite") ||
+    text.includes("suites") ||
+    text.includes("accommodation") ||
+    text.includes("hostel")
+  );
+}
+
+function hospitalityActivityPenalty(
+  activity: ActivitySpot | undefined,
+  input: TripInput
+) {
+  if (!isHospitalityLikeActivity(activity)) {
+    return 0;
+  }
+
+  if (promptExplicitlyWantsWellness(input.tripPrompt) && isWellnessActivity(activity)) {
+    return -8;
+  }
+
+  return -28;
 }
 
 function displayActivityName(activity?: Pick<ActivitySpot, "name"> | string) {
@@ -1038,6 +1260,8 @@ function relaxActivityScore(activity: ActivitySpot | undefined, input: TripInput
     score += 4;
   }
 
+  score += hospitalityActivityPenalty(activity, input);
+
   return score;
 }
 
@@ -1234,7 +1458,8 @@ function pickAnchorActivity(
     (activity) =>
       activityAnchorScore(activity) +
       styleActivityScore(activity, input) +
-      promptActivityConstraintScore(activity, input),
+      promptActivityConstraintScore(activity, input) +
+      hospitalityActivityPenalty(activity, input),
     4,
     proximity
   );
@@ -1253,7 +1478,8 @@ function pickSecondaryActivity(
     (activity) =>
       activitySecondaryScore(activity) +
       styleActivityScore(activity, input) +
-      promptActivityConstraintScore(activity, input),
+      promptActivityConstraintScore(activity, input) +
+      hospitalityActivityPenalty(activity, input),
     1,
     proximity
   );
@@ -1272,7 +1498,8 @@ function pickFinalLightActivity(
     (activity) =>
       activityFinalLightScore(activity) +
       styleActivityScore(activity, input) +
-      promptActivityConstraintScore(activity, input),
+      promptActivityConstraintScore(activity, input) +
+      hospitalityActivityPenalty(activity, input),
     2,
     proximity
   );
@@ -1291,6 +1518,7 @@ function pickFlexibleActivity(
     (activity) =>
       styleActivityScore(activity, input) +
       promptActivityConstraintScore(activity, input) +
+      hospitalityActivityPenalty(activity, input) +
       activitySecondaryScore(activity) +
       normalizedActivitySignals(activity).length * 0.001,
     0,
@@ -1761,78 +1989,102 @@ function buildGetawayDayOne(
   const recoveryDays = prefersRecoveryDays(input);
   const hotel = trip.hotelOptions?.[0];
   const baseCoordinate = toCoordinate(hotel) ?? buildBaseCoordinate(trip);
+  const arrivalTiming = getArrivalDayTiming(trip, input);
+  const pacing = getTripPacing(trip);
   const dinner =
-    pickArrivalDinnerFood(
-      ctx,
-      input,
-      new Set<string>(),
-      buildFoodProximity(input, baseCoordinate, baseCoordinate)
-    ) ??
-    (input.style === "foodie"
-      ? pickFlexibleFood(
+    arrivalTiming?.includeDinner === false
+      ? undefined
+      : pickArrivalDinnerFood(
           ctx,
           input,
           new Set<string>(),
           buildFoodProximity(input, baseCoordinate, baseCoordinate)
-        )
-      : undefined);
-  const pacing = getTripPacing(trip);
-  const arrivalActivity =
-    summitTrip && input.tripLengthDays >= 3
-      ? undefined
-      : recoveryDays
-        ? pickRelaxActivity(
-            ctx,
-            input,
-            new Set<string>(),
-            buildActivityProximity(input, baseCoordinate, baseCoordinate)
-          )
-        : pacing === "easy" || (pacing === "balanced" && (input.style === "adventure" || input.style === "outdoors"))
-      ? pickFinalLightActivity(
-          ctx,
-          input,
-          new Set<string>(),
-          buildActivityProximity(input, baseCoordinate, baseCoordinate)
         ) ??
-        pickFlexibleActivity(
-          ctx,
-          input,
-          new Set<string>(),
-          buildActivityProximity(input, baseCoordinate, baseCoordinate)
-        )
-      : undefined;
+        (input.style === "foodie"
+          ? pickFlexibleFood(
+              ctx,
+              input,
+              new Set<string>(),
+              buildFoodProximity(input, baseCoordinate, baseCoordinate)
+            )
+          : undefined);
+  const arrivalActivity =
+    arrivalTiming?.includeArrivalActivity === false
+      ? undefined
+      : summitTrip && input.tripLengthDays >= 3
+        ? undefined
+        : recoveryDays
+          ? pickRelaxActivity(
+              ctx,
+              input,
+              new Set<string>(),
+              buildActivityProximity(input, baseCoordinate, baseCoordinate)
+            )
+          : pacing === "easy" ||
+              (pacing === "balanced" &&
+                (input.style === "adventure" || input.style === "outdoors"))
+            ? pickFinalLightActivity(
+                ctx,
+                input,
+                new Set<string>(),
+                buildActivityProximity(input, baseCoordinate, baseCoordinate)
+              ) ??
+              pickFlexibleActivity(
+                ctx,
+                input,
+                new Set<string>(),
+                buildActivityProximity(input, baseCoordinate, baseCoordinate)
+              )
+            : undefined;
 
   setPreviousDayFoods(ctx, [dinner]);
   setPreviousDayActivities(ctx, [arrivalActivity]);
 
-  return {
-    title: "Arrival and easy first day",
-    summary:
-      summitTrip && input.tripLengthDays >= 3
-        ? "Arrive, settle in, and save the signature hike for the first full day."
-        : input.style === "hidden gems"
+  const title = arrivalTiming
+    ? arrivalDayTitle({
+        includeDinner: Boolean(dinner),
+        includeActivity: Boolean(arrivalActivity),
+      })
+    : "Arrival and easy first day";
+  const summary = arrivalTiming
+    ? arrivalDaySummary({
+        ...arrivalTiming,
+        includeDinner: Boolean(dinner),
+        includeArrivalActivity: Boolean(arrivalActivity),
+      })
+    : summitTrip && input.tripLengthDays >= 3
+      ? "Arrive, settle in, and save the signature hike for the first full day."
+      : input.style === "hidden gems"
         ? "Arrive, settle in, and keep the first day focused on a distinctive local feel instead of rushing the trip."
         : pacing === "fatiguing"
           ? "Use day one to arrive, settle in, and avoid burning the trip on an overstuffed first evening."
-        : pacing === "balanced"
-          ? "Get there, settle in, and keep the first day useful without forcing too much into it."
-          : "Because the drive is short, day one can include one real stop without making the trip feel rushed.",
+          : pacing === "balanced"
+            ? "Get there, settle in, and keep the first day useful without forcing too much into it."
+            : "Because the drive is short, day one can include one real stop without making the trip feel rushed.";
+
+  return {
+    title,
+    summary,
     stops: compactStops([
       {
-        time: "Morning",
+        time: arrivalTiming?.driveTime ?? "Morning",
         title: `Drive from ${input.startCity} to ${trip.name}`,
-        description: `Estimated drive: ${makeDriveText(trip)}.`,
+        description: arrivalTiming
+          ? `Leave around ${arrivalTiming.departureLabel}. Estimated hotel arrival: ${arrivalTiming.arrivalLabel} after ${makeDriveText(trip)} on the road.`
+          : `Estimated drive: ${makeDriveText(trip)}.`,
         kind: "travel" as const,
       },
       hotel && {
-        time: "Afternoon",
+        time: arrivalTiming?.hotelTime ?? "Afternoon",
         title: `Check in at ${hotel.name}`,
-        description: `Use ${hotel.name} as your base, then start light.`,
+        description: arrivalTiming
+          ? `Arrive around ${arrivalTiming.arrivalLabel}, use ${hotel.name} as your base, and keep the rest of the day aligned with the time you have left.`
+          : `Use ${hotel.name} as your base, then start light.`,
         websiteUrl: hotel.bookingLink ?? hotel.websiteUrl,
         kind: "stay" as const,
       },
       arrivalActivity && {
-        time: "Late afternoon",
+        time: arrivalTiming?.activityTime ?? "Late afternoon",
         title: displayActivityName(arrivalActivity),
         description:
           recoveryDays || summitTrip
@@ -1843,7 +2095,7 @@ function buildGetawayDayOne(
         kind: "activity" as const,
       },
       dinner && {
-        time: "Evening",
+        time: arrivalTiming?.dinnerTime ?? "Evening",
         title: dinner.name,
         description: styleFoodDescription(input, dinner.name, "end"),
         websiteUrl: dinner.link,
@@ -2390,6 +2642,7 @@ export function buildTripPlan(
     tripLengthDays: preview.safeInput.tripLengthDays,
     tripStartDate: preview.safeInput.tripStartDate,
     tripEndDate: preview.safeInput.tripEndDate,
+    departureTime: preview.safeInput.departureTime,
     tripPrompt: preview.safeInput.tripPrompt,
     maxDriveMinutesBetweenStops: preview.safeInput.maxDriveMinutesBetweenStops,
     savedSelectionState: defaultSelection,
@@ -2420,4 +2673,99 @@ export function buildTripPlan(
     isStaycation: trip.isStaycation,
     homeBaseCity: trip.homeBaseCity,
   } as TripPlan);
+}
+
+export function syncTripPlanTiming(plan: TripPlan): TripPlan {
+  if (
+    !plan.departureTime ||
+    !Array.isArray(plan.itineraryDays) ||
+    plan.itineraryDays.length === 0 ||
+    typeof plan.routeSummary?.durationSeconds !== "number" ||
+    !Number.isFinite(plan.routeSummary.durationSeconds) ||
+    plan.routeSummary.durationSeconds <= 0
+  ) {
+    return plan;
+  }
+
+  const departureMinutes = parseTimeValue(plan.departureTime);
+  if (departureMinutes === undefined) return plan;
+
+  const arrivalMinutes =
+    departureMinutes + Math.round(plan.routeSummary.durationSeconds / 60);
+  const remainingMinutesAfterArrival = Math.max(0, 22 * 60 - arrivalMinutes);
+  const includeActivity =
+    remainingMinutesAfterArrival >= 180 && arrivalMinutes <= 17 * 60 + 30;
+  const includeDinner =
+    remainingMinutesAfterArrival >= 45 && arrivalMinutes <= 21 * 60;
+  const timing: ArrivalDayTiming = {
+    departureLabel: formatTimeLabel(departureMinutes),
+    arrivalLabel: formatTimeLabel(arrivalMinutes),
+    driveTime: timeBucketForMinutes(departureMinutes),
+    hotelTime: timeBucketForMinutes(arrivalMinutes),
+    activityTime: timeBucketForMinutes(arrivalMinutes + 60),
+    dinnerTime: timeBucketForMinutes(Math.max(arrivalMinutes + 120, 18 * 60 + 30)),
+    includeArrivalActivity: includeActivity,
+    includeDinner,
+    remainingMinutesAfterArrival,
+  };
+
+  const [firstDay, ...restDays] = plan.itineraryDays;
+  const updatedFirstDayStops = firstDay.stops
+    .filter((stop) => {
+      if (stop.kind === "activity" && !includeActivity) return false;
+      if (stop.kind === "food" && !includeDinner) return false;
+      return true;
+    })
+    .map((stop) => {
+      if (stop.kind === "travel") {
+        return {
+          ...stop,
+          time: timing.driveTime,
+          description: `Leave around ${timing.departureLabel}. Estimated hotel arrival: ${timing.arrivalLabel} after ${makeDriveText(plan as unknown as RankedDestination)} on the road.`,
+        };
+      }
+
+      if (stop.kind === "stay") {
+        const stayName = stop.title.replace(/^Check in at\s+/i, "").trim();
+
+        return {
+          ...stop,
+          time: timing.hotelTime,
+          description: `Arrive around ${timing.arrivalLabel}, use ${stayName || "your stay"} as your base, and keep the rest of the day aligned with the time you have left.`,
+        };
+      }
+
+      if (stop.kind === "activity") {
+        return {
+          ...stop,
+          time: timing.activityTime,
+        };
+      }
+
+      if (stop.kind === "food") {
+        return {
+          ...stop,
+          time: timing.dinnerTime,
+        };
+      }
+
+      return stop;
+    });
+
+  return {
+    ...plan,
+    driveTimeText: plan.isStaycation ? "0 hours" : makeDriveText(plan as unknown as RankedDestination),
+    itineraryDays: [
+      {
+        ...firstDay,
+        title: arrivalDayTitle({
+          includeDinner,
+          includeActivity,
+        }),
+        summary: arrivalDaySummary(timing),
+        stops: updatedFirstDayStops,
+      },
+      ...restDays,
+    ],
+  };
 }

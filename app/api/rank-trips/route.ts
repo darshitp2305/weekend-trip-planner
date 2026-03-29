@@ -4,8 +4,10 @@ import {
   jsonNoStore,
   rejectOversizedJsonRequest,
 } from "../../../lib/apiSecurity";
+import { enrichTripInputWithOpenAI } from "../../../lib/openAiPromptParameters";
 import { isStartCity } from "../../../lib/startCities";
-import { deriveTripEndDate, isIsoDate } from "../../../lib/tripDates";
+import { deriveTripEndDate, getTodayIsoDate, isIsoDate } from "../../../lib/tripDates";
+import { extractPromptDepartureTime } from "../../../lib/tripIntent";
 import { generateRankedTrips } from "../../../lib/generateRankedTrips";
 import { getNoMatchDiagnostics } from "../../../lib/rankDestinations";
 import { ActivityFocus, TripInput } from "../../../lib/types";
@@ -28,6 +30,7 @@ type TripInputCandidate = Partial<TripInput> & {
   preferredDestination?: unknown;
   tripStartDate?: unknown;
   tripEndDate?: unknown;
+  departureTime?: unknown;
 };
 
 function isActivityFocus(value: unknown): value is ActivityFocus {
@@ -59,8 +62,24 @@ function isTripInput(value: unknown): value is TripInput {
       typeof candidate.preferredDestination === "string") &&
     (candidate.tripStartDate === undefined ||
       typeof candidate.tripStartDate === "string") &&
-    (candidate.tripEndDate === undefined || typeof candidate.tripEndDate === "string")
+    (candidate.tripEndDate === undefined || typeof candidate.tripEndDate === "string") &&
+    (candidate.departureTime === undefined ||
+      typeof candidate.departureTime === "string")
   );
+}
+
+function getCurrentTimeValue(referenceDate = new Date()) {
+  return `${String(referenceDate.getHours()).padStart(2, "0")}:${String(
+    referenceDate.getMinutes()
+  ).padStart(2, "0")}`;
+}
+
+function normalizeDepartureTime(value: unknown) {
+  if (typeof value !== "string" || !/^\d{2}:\d{2}$/.test(value.trim())) {
+    return undefined;
+  }
+
+  return value.trim();
 }
 
 function normalizeInput(raw: unknown): TripInput | null {
@@ -73,6 +92,14 @@ function normalizeInput(raw: unknown): TripInput | null {
     ? candidateInput.tripStartDate
     : undefined;
   const tripLengthDays = Number(candidateInput.tripLengthDays);
+  const tripPrompt =
+    typeof candidateInput.tripPrompt === "string"
+      ? candidateInput.tripPrompt.trim() || undefined
+      : undefined;
+  const departureTime =
+    normalizeDepartureTime(candidateInput.departureTime) ??
+    extractPromptDepartureTime(tripPrompt) ??
+    (tripStartDate === getTodayIsoDate() ? getCurrentTimeValue() : undefined);
 
   const candidate = {
     startCity: candidateInput.startCity,
@@ -86,10 +113,7 @@ function normalizeInput(raw: unknown): TripInput | null {
     tripLengthDays,
     season: candidateInput.season,
     style: candidateInput.style,
-    tripPrompt:
-      typeof candidateInput.tripPrompt === "string"
-        ? candidateInput.tripPrompt.trim() || undefined
-        : undefined,
+    tripPrompt,
     activityFocus: isActivityFocus(candidateInput.activityFocus)
       ? candidateInput.activityFocus
       : undefined,
@@ -102,6 +126,7 @@ function normalizeInput(raw: unknown): TripInput | null {
         : undefined,
     tripStartDate,
     tripEndDate: deriveTripEndDate(tripStartDate, tripLengthDays),
+    departureTime,
   };
 
   if (!isTripInput(candidate)) return null;
@@ -147,20 +172,25 @@ export async function POST(req: Request) {
       );
     }
 
-    const pipeline = await generateRankedTrips(input, {
-      shortlistSize: input.preferredDestination ? 3 : 6,
+    const promptEnrichment = await enrichTripInputWithOpenAI(input);
+    const resolvedInput = promptEnrichment.input;
+
+    const pipeline = await generateRankedTrips(resolvedInput, {
+      shortlistSize: resolvedInput.preferredDestination ? 3 : 6,
       finalLimit: 1,
       excludedDestinationNames,
     });
 
     return jsonNoStore({
       success: true,
+      normalizedInput: resolvedInput,
+      promptParseStatus: promptEnrichment.status,
       initialCandidates: pipeline.initialCandidates,
       results: pipeline.finalTrips,
       usedLiveData: pipeline.usedLiveData,
       noMatchDiagnostics:
         pipeline.finalTrips.length === 0
-          ? getNoMatchDiagnostics(input, { excludedDestinationNames })
+          ? getNoMatchDiagnostics(resolvedInput, { excludedDestinationNames })
           : null,
     });
   } catch (error) {
