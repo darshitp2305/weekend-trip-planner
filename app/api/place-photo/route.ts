@@ -1,3 +1,8 @@
+/**
+ * Next.js API route for 'api/place-photo'.
+ * This handler validates the request, delegates to the relevant planner helpers, and returns the server response shape consumed by the client.
+ */
+
 import { NextResponse } from "next/server";
 import {
   enforceRateLimit,

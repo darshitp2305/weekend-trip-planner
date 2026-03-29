@@ -1,3 +1,8 @@
+/**
+ * ESLint configuration for the project.
+ * These rules keep code style and correctness checks consistent across the app and its scripts.
+ */
+
 import { defineConfig, globalIgnores } from "eslint/config";
 import nextVitals from "eslint-config-next/core-web-vitals";
 import nextTs from "eslint-config-next/typescript";

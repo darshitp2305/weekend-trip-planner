@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * Reusable UI component for the trip card section of the planner.
+ * Keeping this logic in its own component makes the page-level containers easier to scan and keeps related rendering and state updates together.
+ */
+
+
 import Image from "next/image";
 import { type ReactNode, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";

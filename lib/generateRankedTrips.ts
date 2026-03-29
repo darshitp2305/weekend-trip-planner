@@ -1,3 +1,8 @@
+/**
+ * Coordinator for prompt interpretation and ranked-trip generation.
+ * This module connects prompt parsing, destination ranking, and result shaping so routes and tests can share the same high-level flow.
+ */
+
 import { enrichRankedTrip } from "./enrichTrip";
 import { reportProviderEvent } from "./providerTelemetry";
 import { rankDestinations } from "./rankDestinations";

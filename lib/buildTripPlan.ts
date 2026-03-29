@@ -1,3 +1,8 @@
+/**
+ * Builds the normalized trip plan used by the UI and persistence layer.
+ * This module merges raw destination data with dates, budgets, itinerary defaults, and edit tokens so the rest of the app can work with one consistent shape.
+ */
+
 import {
   BudgetBreakdown,
   ItineraryDayData,

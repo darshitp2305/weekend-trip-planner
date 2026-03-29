@@ -1,3 +1,8 @@
+/**
+ * Helper module for place mappers concerns in the trip planner.
+ * These utilities centralize shared business logic so routes, pages, and components can reuse the same behavior instead of re-implementing it.
+ */
+
 import { Activity, FoodSpot, HotelOption } from "./types";
 import { GooglePlace } from "./googlePlaces";
 import { estimateFoodCostPerTraveler } from "./foodPricing";

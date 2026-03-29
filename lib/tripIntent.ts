@@ -1,3 +1,8 @@
+/**
+ * Utilities for inferring planner intent from free-form text.
+ * These helpers pull out signals like travel style, destination preferences, and departure timing so the ranking step can stay more structured.
+ */
+
 import rawDestinations from "../data/destinations.json";
 import { START_CITY_OPTIONS } from "./startCities";
 import { ActivityFocus, RawDestination, TripStyle } from "./types";

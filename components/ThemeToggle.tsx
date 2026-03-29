@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * Reusable UI component for the theme toggle section of the planner.
+ * Keeping this logic in its own component makes the page-level containers easier to scan and keeps related rendering and state updates together.
+ */
+
+
 import { useEffect, useState } from "react";
 
 const STORAGE_KEY = "trippify-theme";

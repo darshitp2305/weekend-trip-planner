@@ -1,3 +1,8 @@
+/**
+ * Helper module for map destination concerns in the trip planner.
+ * These utilities centralize shared business logic so routes, pages, and components can reuse the same behavior instead of re-implementing it.
+ */
+
 import { Destination, RawDestination, StyleScores, TripInput, TripStyle } from "./types";
 import { formatDisplayText } from "./displayText";
 import { normalizeTripImageUrl } from "./tripImages";

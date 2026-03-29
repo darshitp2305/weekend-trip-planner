@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * Primary form for collecting trip preferences before generation.
+ * The component manages builder-prompt input, validation, and the normalized values that are sent to the ranking and generation APIs.
+ */
+
+
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import DestinationShowcase from "./DestinationShowcase";
 import {
@@ -9,6 +15,10 @@ import {
   extractPromptStartCity,
   extractPromptTravelerCount,
 } from "../lib/tripIntent";
+import {
+  getPromptLimitError,
+  TRIP_PROMPT_MAX_CHARS,
+} from "../lib/promptLimits";
 import { isStartCity, START_CITY_OPTIONS, type StartCity } from "../lib/startCities";
 import {
   clampTripEndDate,
@@ -705,6 +715,8 @@ export default function TripForm({
     form.tripStartDate || undefined,
     form.tripEndDate || undefined
   );
+  const trimmedTripPrompt = form.tripPrompt.trim();
+  const tripPromptTooLong = trimmedTripPrompt.length > TRIP_PROMPT_MAX_CHARS;
   const maxTripEndDate =
     deriveTripEndDate(form.tripStartDate, 7) ?? form.tripStartDate;
 
@@ -754,7 +766,7 @@ export default function TripForm({
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (!form.tripStartDate || !form.tripPrompt.trim()) {
+    if (!form.tripStartDate || !trimmedTripPrompt || tripPromptTooLong) {
       return;
     }
 
@@ -783,7 +795,7 @@ export default function TripForm({
       tripLengthDays,
       season,
       style: derivedIntent.style,
-      tripPrompt: form.tripPrompt.trim(),
+      tripPrompt: trimmedTripPrompt,
       activityFocus: derivedIntent.activityFocus,
       veganFriendly: derivedIntent.veganFriendly,
       includeStaycations: derivedIntent.includeStaycations,
@@ -882,11 +894,35 @@ export default function TripForm({
             id="tripPrompt"
             required
             minLength={8}
+            maxLength={TRIP_PROMPT_MAX_CHARS}
             value={form.tripPrompt}
             onChange={(event) => updateField("tripPrompt", event.target.value)}
             placeholder="Example: We want a low-effort mountain trip with good coffee, one scenic hike, and enough payoff that four of us would actually commit to going."
             className="min-h-[170px] w-full rounded-[1.55rem] border border-slate-300 bg-white px-5 py-4 text-sm leading-7 text-slate-950 shadow-sm outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-slate-700"
           />
+
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+            <p
+              className={
+                tripPromptTooLong
+                  ? "text-xs font-medium text-rose-700 dark:text-rose-300"
+                  : "text-xs text-slate-500 dark:text-slate-400"
+              }
+            >
+              {tripPromptTooLong
+                ? getPromptLimitError("Trip prompt", TRIP_PROMPT_MAX_CHARS)
+                : "Keep the brief focused so the planner can parse it cleanly."}
+            </p>
+            <p
+              className={
+                tripPromptTooLong
+                  ? "text-xs font-semibold text-rose-700 dark:text-rose-300"
+                  : "text-xs text-slate-500 dark:text-slate-400"
+              }
+            >
+              {trimmedTripPrompt.length}/{TRIP_PROMPT_MAX_CHARS}
+            </p>
+          </div>
 
           <div className="mt-4 flex flex-wrap gap-2">
             {hardConstraintLabels(derivedIntent).map((label) => (
@@ -1006,7 +1042,12 @@ export default function TripForm({
 
             <button
               type="submit"
-              disabled={loading || !form.tripStartDate || !form.tripPrompt.trim()}
+              disabled={
+                loading ||
+                !form.tripStartDate ||
+                !trimmedTripPrompt ||
+                tripPromptTooLong
+              }
               className="inline-flex h-12 items-center justify-center rounded-2xl bg-slate-900 px-6 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-slate-100 dark:text-slate-950 dark:hover:bg-white"
             >
               {loading ? "Building your trip..." : "Build my trip"}

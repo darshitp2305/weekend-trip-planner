@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * Client page for viewing and editing a single saved trip.
+ * It loads the trip record, wires together the trip detail panels, and coordinates follow-up actions like feedback, selection changes, and exports.
+ */
+
+
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { useParams, useRouter, useSearchParams } from "next/navigation";

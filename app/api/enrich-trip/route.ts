@@ -1,3 +1,8 @@
+/**
+ * Next.js API route for 'api/enrich-trip'.
+ * This handler validates the request, delegates to the relevant planner helpers, and returns the server response shape consumed by the client.
+ */
+
 import { NextRequest } from "next/server";
 import {
   enforceRateLimit,

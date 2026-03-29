@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * Panel for follow-up trip operations once a destination has been chosen.
+ * This keeps refinement, comparison, and regeneration controls grouped in one place instead of scattering that workflow across the page.
+ */
+
+
 import { useEffect, useMemo, useState } from "react";
 import { baseTripAnalytics, trackProductEvent } from "../lib/productAnalytics";
 import {

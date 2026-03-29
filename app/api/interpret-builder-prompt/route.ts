@@ -1,3 +1,8 @@
+/**
+ * Next.js API route for 'api/interpret-builder-prompt'.
+ * This handler validates the request, delegates to the relevant planner helpers, and returns the server response shape consumed by the client.
+ */
+
 import {
   enforceRateLimit,
   enforceSameOrigin,
@@ -5,6 +10,12 @@ import {
   rejectOversizedJsonRequest,
 } from "../../../lib/apiSecurity";
 import { interpretBuilderPromptWithOpenAI } from "../../../lib/openAiBuilderPrompt";
+import {
+  BUILDER_PROMPT_MAX_CHARS,
+  getPromptLimitError,
+  isPromptTooLong,
+  normalizePromptText,
+} from "../../../lib/promptLimits";
 import { Activity, FoodSpot, HotelOption, ItineraryDayData } from "../../../lib/types";
 
 type RequestBody = {
@@ -16,10 +27,6 @@ type RequestBody = {
   foodSpots?: unknown;
   activities?: unknown;
 };
-
-function safeString(value: unknown) {
-  return typeof value === "string" ? value.trim() : "";
-}
 
 export async function POST(request: Request) {
   const sameOriginViolation = enforceSameOrigin(request);
@@ -37,9 +44,9 @@ export async function POST(request: Request) {
 
   try {
     const body = (await request.json()) as RequestBody;
-    const prompt = safeString(body.prompt);
-    const destinationLabel = safeString(body.destinationLabel);
-    const startCityLabel = safeString(body.startCityLabel);
+    const prompt = normalizePromptText(body.prompt);
+    const destinationLabel = normalizePromptText(body.destinationLabel);
+    const startCityLabel = normalizePromptText(body.startCityLabel);
     const days = Array.isArray(body.days) ? (body.days as ItineraryDayData[]) : [];
     const hotels = Array.isArray(body.hotels) ? (body.hotels as HotelOption[]) : [];
     const foodSpots = Array.isArray(body.foodSpots) ? (body.foodSpots as FoodSpot[]) : [];
@@ -50,6 +57,16 @@ export async function POST(request: Request) {
         {
           success: false,
           error: "Missing builder prompt.",
+        },
+        { status: 400 }
+      );
+    }
+
+    if (isPromptTooLong(prompt, BUILDER_PROMPT_MAX_CHARS)) {
+      return jsonNoStore(
+        {
+          success: false,
+          error: getPromptLimitError("Builder prompt", BUILDER_PROMPT_MAX_CHARS),
         },
         { status: 400 }
       );

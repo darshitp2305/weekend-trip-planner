@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * Reusable UI component for the finalize trip panel section of the planner.
+ * Keeping this logic in its own component makes the page-level containers easier to scan and keeps related rendering and state updates together.
+ */
+
+
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { TripPlan, TripSelectionState } from "../lib/types";

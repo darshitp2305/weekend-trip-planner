@@ -1,3 +1,8 @@
+/**
+ * Next.js API route for 'api/rank-trips'.
+ * This handler validates the request, delegates to the relevant planner helpers, and returns the server response shape consumed by the client.
+ */
+
 import {
   enforceRateLimit,
   enforceSameOrigin,
@@ -5,6 +10,12 @@ import {
   rejectOversizedJsonRequest,
 } from "../../../lib/apiSecurity";
 import { enrichTripInputWithOpenAI } from "../../../lib/openAiPromptParameters";
+import {
+  getPromptLimitError,
+  isPromptTooLong,
+  normalizePromptText,
+  TRIP_PROMPT_MAX_CHARS,
+} from "../../../lib/promptLimits";
 import { isStartCity } from "../../../lib/startCities";
 import { deriveTripEndDate, getTodayIsoDate, isIsoDate } from "../../../lib/tripDates";
 import { extractPromptDepartureTime } from "../../../lib/tripIntent";
@@ -92,10 +103,7 @@ function normalizeInput(raw: unknown): TripInput | null {
     ? candidateInput.tripStartDate
     : undefined;
   const tripLengthDays = Number(candidateInput.tripLengthDays);
-  const tripPrompt =
-    typeof candidateInput.tripPrompt === "string"
-      ? candidateInput.tripPrompt.trim() || undefined
-      : undefined;
+  const tripPrompt = normalizePromptText(candidateInput.tripPrompt) || undefined;
   const departureTime =
     normalizeDepartureTime(candidateInput.departureTime) ??
     extractPromptDepartureTime(tripPrompt) ??
@@ -133,6 +141,12 @@ function normalizeInput(raw: unknown): TripInput | null {
   return candidate;
 }
 
+function hasOversizedTripPrompt(input: TripInput | null) {
+  return Boolean(
+    input?.tripPrompt && isPromptTooLong(input.tripPrompt, TRIP_PROMPT_MAX_CHARS)
+  );
+}
+
 function normalizeExcludedDestinationNames(value: unknown): string[] {
   if (!Array.isArray(value)) {
     return [];
@@ -168,6 +182,13 @@ export async function POST(req: Request) {
     if (!input) {
       return jsonNoStore(
         { error: "Invalid TripInput payload." },
+        { status: 400 }
+      );
+    }
+
+    if (hasOversizedTripPrompt(input)) {
+      return jsonNoStore(
+        { error: getPromptLimitError("Trip prompt", TRIP_PROMPT_MAX_CHARS) },
         { status: 400 }
       );
     }

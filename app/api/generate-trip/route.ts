@@ -1,3 +1,8 @@
+/**
+ * API route that validates planner input and returns generated trip results.
+ * It accepts raw request data, normalizes prompt-derived fields, runs destination ranking, and responds with the result format the client expects.
+ */
+
 import {
   enforceRateLimit,
   enforceSameOrigin,
@@ -6,6 +11,12 @@ import {
 } from "../../../lib/apiSecurity";
 import { enrichTripInputWithOpenAI } from "../../../lib/openAiPromptParameters";
 import { generateTripCopyWithOpenAI } from "../../../lib/openAiTripCopy";
+import {
+  getPromptLimitError,
+  isPromptTooLong,
+  normalizePromptText,
+  TRIP_PROMPT_MAX_CHARS,
+} from "../../../lib/promptLimits";
 import { recalculateConfidence } from "../../../lib/generateRankedTrips";
 import { isStartCity } from "../../../lib/startCities";
 import { deriveTripEndDate, getTodayIsoDate, isIsoDate } from "../../../lib/tripDates";
@@ -111,10 +122,7 @@ function normalizeInput(raw: unknown): TripInput | null {
     ? candidateInput.tripStartDate
     : undefined;
   const tripLengthDays = Number(candidateInput.tripLengthDays);
-  const tripPrompt =
-    typeof candidateInput.tripPrompt === "string"
-      ? candidateInput.tripPrompt.trim() || undefined
-      : undefined;
+  const tripPrompt = normalizePromptText(candidateInput.tripPrompt) || undefined;
   const departureTime =
     normalizeDepartureTime(candidateInput.departureTime) ??
     extractPromptDepartureTime(tripPrompt) ??
@@ -150,6 +158,12 @@ function normalizeInput(raw: unknown): TripInput | null {
 
   if (!isTripInput(candidate)) return null;
   return candidate;
+}
+
+function hasOversizedTripPrompt(input: TripInput | null) {
+  return Boolean(
+    input?.tripPrompt && isPromptTooLong(input.tripPrompt, TRIP_PROMPT_MAX_CHARS)
+  );
 }
 
 function extractInputFromBody(
@@ -296,6 +310,13 @@ export async function POST(req: Request) {
     if (!input) {
       return jsonNoStore(
         { error: "Invalid request body. Could not extract a valid TripInput." },
+        { status: 400 }
+      );
+    }
+
+    if (hasOversizedTripPrompt(input)) {
+      return jsonNoStore(
+        { error: getPromptLimitError("Trip prompt", TRIP_PROMPT_MAX_CHARS) },
         { status: 400 }
       );
     }

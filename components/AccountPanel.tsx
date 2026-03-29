@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * Account sidebar for authentication-aware planner features.
+ * It handles saved trips, account analytics, and other user-specific actions that sit beside the main trip-building experience.
+ */
+
+
 import Link from "next/link";
 import { useEffect, useEffectEvent, useMemo, useState } from "react";
 import {

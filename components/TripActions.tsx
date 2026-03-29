@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * Action surface for a chosen trip.
+ * It brings together save, share, compare, export, and other operations so the main pages can keep the surrounding layout simple.
+ */
+
+
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import {

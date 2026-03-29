@@ -1,3 +1,8 @@
+/*
+ * Global styles shared across the entire Next.js app.
+ * This file defines the visual baseline that page- and component-level styles build on top of.
+ */
+
 @import "tailwindcss";
 @custom-variant dark (&:where(.dark, .dark *));
 

@@ -1,3 +1,8 @@
+/**
+ * Enriches a ranked trip with live place details and supporting context.
+ * It is responsible for filling in hotels, food, photos, and itinerary details after the first-pass ranking has already picked a destination.
+ */
+
 import {
   HotelOption,
   RankedDestination,

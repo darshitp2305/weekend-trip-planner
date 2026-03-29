@@ -1,3 +1,8 @@
+/**
+ * Next.js API route for 'api/auth/logout'.
+ * This handler validates the request, delegates to the relevant planner helpers, and returns the server response shape consumed by the client.
+ */
+
 import {
   enforceRateLimit,
   enforceSameOrigin,

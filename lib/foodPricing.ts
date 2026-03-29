@@ -1,3 +1,8 @@
+/**
+ * Helper module for food pricing concerns in the trip planner.
+ * These utilities centralize shared business logic so routes, pages, and components can reuse the same behavior instead of re-implementing it.
+ */
+
 import type { FoodSpot } from "./types";
 
 type FoodPricingInput = Pick<FoodSpot, "category" | "tags" | "name" | "estimatedCost"> & {

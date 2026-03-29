@@ -1,3 +1,8 @@
+/**
+ * Core destination-ranking engine for the planner.
+ * It scores candidate trips against drive limits, budget, preferences, and trust signals, then returns presentation-ready results for the UI and APIs.
+ */
+
 import rawDestinations from "../data/destinations.json";
 import {
   ActivityFocus,

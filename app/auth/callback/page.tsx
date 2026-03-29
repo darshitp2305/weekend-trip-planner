@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * Next.js page that renders the page flow.
+ * It assembles the relevant data loading and UI components for this route so the rest of the app can keep most logic in reusable helpers.
+ */
+
+
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import BrandLogo from "../../../components/BrandLogo";

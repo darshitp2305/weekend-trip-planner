@@ -1,3 +1,8 @@
+/**
+ * Helper module for open ai trip copy concerns in the trip planner.
+ * These utilities centralize shared business logic so routes, pages, and components can reuse the same behavior instead of re-implementing it.
+ */
+
 import { ProviderOutcome, RankedDestination, TripInput } from "./types";
 import { reportProviderEvent } from "./providerTelemetry";
 import { deriveTripIntentFromPrompt } from "./tripIntent";

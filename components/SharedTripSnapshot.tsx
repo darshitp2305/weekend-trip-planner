@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * Reusable UI component for the shared trip snapshot section of the planner.
+ * Keeping this logic in its own component makes the page-level containers easier to scan and keeps related rendering and state updates together.
+ */
+
+
 import { preferredHotelBookingUrl } from "../lib/expediaLinks";
 import { TripPlan, TripSelectionState } from "../lib/types";
 import {

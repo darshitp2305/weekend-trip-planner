@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * Interactive itinerary builder for a selected trip.
+ * This component resolves hotels, food, and activities into day-by-day stop choices, keeps the selection state in sync, and exposes the links a traveler can act on.
+ */
+
+
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import { applyItineraryPrompt, extractDesiredText } from "../lib/itineraryPrompt";
@@ -28,6 +34,10 @@ import {
   hotelAvailabilityPriorityFor,
   hotelAvailabilityTone,
 } from "../lib/hotelAvailability";
+import {
+  BUILDER_PROMPT_MAX_CHARS,
+  getPromptLimitError,
+} from "../lib/promptLimits";
 import { sanitizeExternalNavigationUrl } from "../lib/urlSafety";
 
 type Props = {
@@ -773,6 +783,9 @@ export default function InteractiveItinerary({
     issues: string[];
   } | null>(null);
   const [builderPromptPending, setBuilderPromptPending] = useState(false);
+  const trimmedBuilderPrompt = builderPrompt.trim();
+  const builderPromptTooLong =
+    trimmedBuilderPrompt.length > BUILDER_PROMPT_MAX_CHARS;
 
   useEffect(() => {
     onSelectionChange?.(selection);
@@ -1497,8 +1510,7 @@ export default function InteractiveItinerary({
   async function handleBuilderPromptApply(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    const trimmedPrompt = builderPrompt.trim();
-    if (!trimmedPrompt) {
+    if (!trimmedBuilderPrompt) {
       setBuilderPromptFeedback({
         tone: "warning",
         title: "Add a trip edit first",
@@ -1510,16 +1522,27 @@ export default function InteractiveItinerary({
       return;
     }
 
+    if (builderPromptTooLong) {
+      setBuilderPromptFeedback({
+        tone: "warning",
+        title: "Builder prompt is too long",
+        detail: getPromptLimitError("Builder prompt", BUILDER_PROMPT_MAX_CHARS),
+        interpretedPrompt: undefined,
+        issues: [],
+      });
+      return;
+    }
+
     setBuilderPromptPending(true);
     try {
-      let promptForApply = trimmedPrompt;
+      let promptForApply = trimmedBuilderPrompt;
       try {
-        promptForApply = await interpretBuilderPrompt(trimmedPrompt);
+        promptForApply = await interpretBuilderPrompt(trimmedBuilderPrompt);
       } catch {
-        promptForApply = trimmedPrompt;
+        promptForApply = trimmedBuilderPrompt;
       }
       const interpretedPrompt =
-        promptForApply.trim() !== trimmedPrompt ? promptForApply : undefined;
+        promptForApply.trim() !== trimmedBuilderPrompt ? promptForApply : undefined;
 
       let result = applyItineraryPrompt({
         prompt: promptForApply,
@@ -1652,9 +1675,33 @@ export default function InteractiveItinerary({
         <textarea
           value={builderPrompt}
           onChange={(event) => setBuilderPrompt(event.target.value)}
+          maxLength={BUILDER_PROMPT_MAX_CHARS}
           placeholder="Examples: Day 2 lunch to Wild Flour Bakery. Add a coffee stop on day 3 before we leave for Edmonton. Change day 1 activity to a quiet lakeside walk."
           className="mt-4 min-h-[132px] w-full rounded-[1.25rem] border border-slate-200 bg-white px-4 py-4 text-sm leading-6 text-slate-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-emerald-500/20"
         />
+
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+          <p
+            className={
+              builderPromptTooLong
+                ? "text-xs font-medium text-rose-700 dark:text-rose-300"
+                : "text-xs text-slate-500 dark:text-slate-400"
+            }
+          >
+            {builderPromptTooLong
+              ? getPromptLimitError("Builder prompt", BUILDER_PROMPT_MAX_CHARS)
+              : "Short, explicit edits are easier for the builder to apply reliably."}
+          </p>
+          <p
+            className={
+              builderPromptTooLong
+                ? "text-xs font-semibold text-rose-700 dark:text-rose-300"
+                : "text-xs text-slate-500 dark:text-slate-400"
+            }
+          >
+            {trimmedBuilderPrompt.length}/{BUILDER_PROMPT_MAX_CHARS}
+          </p>
+        </div>
 
         <div className="mt-4 flex flex-wrap gap-2">
           <BuilderPromptPill>Day 2 lunch to Wild Flour Bakery</BuilderPromptPill>
@@ -1672,7 +1719,11 @@ export default function InteractiveItinerary({
 
           <button
             type="submit"
-            disabled={builderPromptPending}
+            disabled={
+              builderPromptPending ||
+              !trimmedBuilderPrompt ||
+              builderPromptTooLong
+            }
             className="inline-flex h-11 items-center justify-center rounded-2xl bg-slate-950 px-5 text-sm font-semibold text-white transition hover:bg-slate-800 dark:bg-emerald-400 dark:text-slate-950 dark:hover:bg-emerald-300"
           >
             {builderPromptPending ? "Applying..." : "Apply changes"}

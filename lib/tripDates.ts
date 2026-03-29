@@ -1,3 +1,8 @@
+/**
+ * Helper module for trip dates concerns in the trip planner.
+ * These utilities centralize shared business logic so routes, pages, and components can reuse the same behavior instead of re-implementing it.
+ */
+
 export function isIsoDate(value?: string): value is string {
   return Boolean(value && /^\d{4}-\d{2}-\d{2}$/.test(value));
 }

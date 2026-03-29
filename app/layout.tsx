@@ -1,3 +1,8 @@
+/**
+ * Root app layout used by every route.
+ * It establishes the shared HTML shell, metadata, and top-level wrappers that the rest of the application renders inside.
+ */
+
 import type { Metadata } from "next";
 import ThemeToggle from "../components/ThemeToggle";
 import "./globals.css";

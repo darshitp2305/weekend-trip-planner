@@ -1,3 +1,8 @@
+/**
+ * Helper module for trip store concerns in the trip planner.
+ * These utilities centralize shared business logic so routes, pages, and components can reuse the same behavior instead of re-implementing it.
+ */
+
 import type { TripPlan } from "./types";
 import { getBrowserSupabaseAccessToken } from "./supabaseBrowserAuth";
 

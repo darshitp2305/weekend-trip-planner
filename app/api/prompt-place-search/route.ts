@@ -1,9 +1,20 @@
+/**
+ * Next.js API route for 'api/prompt-place-search'.
+ * This handler validates the request, delegates to the relevant planner helpers, and returns the server response shape consumed by the client.
+ */
+
 import {
   enforceRateLimit,
   enforceSameOrigin,
   jsonNoStore,
   rejectOversizedJsonRequest,
 } from "../../../lib/apiSecurity";
+import {
+  getPromptLimitError,
+  isPromptTooLong,
+  normalizePromptText,
+  PROMPT_PLACE_SEARCH_MAX_CHARS,
+} from "../../../lib/promptLimits";
 import {
   searchActivitiesByPreference,
   searchRestaurantsByPreference,
@@ -73,10 +84,8 @@ export async function POST(request: Request) {
 
   try {
     const body = (await request.json()) as RequestBody;
-    const desiredText =
-      typeof body.desiredText === "string" ? body.desiredText.trim() : "";
-    const destination =
-      typeof body.destination === "string" ? body.destination.trim() : "";
+    const desiredText = normalizePromptText(body.desiredText);
+    const destination = normalizePromptText(body.destination);
     const kind = isSearchKind(body.kind) ? body.kind : null;
     const latitude =
       typeof body.latitude === "number" && Number.isFinite(body.latitude)
@@ -96,6 +105,19 @@ export async function POST(request: Request) {
         {
           success: false,
           error: "Missing desiredText, destination, or supported kind.",
+        },
+        { status: 400 }
+      );
+    }
+
+    if (isPromptTooLong(desiredText, PROMPT_PLACE_SEARCH_MAX_CHARS)) {
+      return jsonNoStore(
+        {
+          success: false,
+          error: getPromptLimitError(
+            "Prompt search text",
+            PROMPT_PLACE_SEARCH_MAX_CHARS
+          ),
         },
         { status: 400 }
       );

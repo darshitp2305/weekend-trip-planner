@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * Reusable UI component for the trip feedback panel section of the planner.
+ * Keeping this logic in its own component makes the page-level containers easier to scan and keeps related rendering and state updates together.
+ */
+
+
 import { useEffect, useMemo, useRef, useState } from "react";
 import { preferredHotelBookingUrl } from "../lib/expediaLinks";
 import { baseTripAnalytics, trackProductEvent } from "../lib/productAnalytics";

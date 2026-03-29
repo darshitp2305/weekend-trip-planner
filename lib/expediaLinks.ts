@@ -1,3 +1,8 @@
+/**
+ * Helper module for expedia links concerns in the trip planner.
+ * These utilities centralize shared business logic so routes, pages, and components can reuse the same behavior instead of re-implementing it.
+ */
+
 import { isIsoDate } from "./tripDates";
 import { HotelOption } from "./types";
 import { sanitizeExternalNavigationUrl } from "./urlSafety";

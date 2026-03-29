@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * Main client entry point for the planner.
+ * This page owns form state, result fetching, session persistence, and the handoff from search results into a selected trip.
+ */
+
+
 import { useCallback, useEffect, useState } from "react";
 import AccountPanel from "../components/AccountPanel";
 import BrandLogo from "../components/BrandLogo";

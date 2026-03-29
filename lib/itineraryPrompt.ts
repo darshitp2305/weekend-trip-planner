@@ -1,3 +1,8 @@
+/**
+ * Parses natural-language itinerary edit requests into structured planner changes.
+ * The helpers here let the app apply free-form user instructions without forcing every caller to understand the prompt grammar in detail.
+ */
+
 import { estimateFoodCostForGroup } from "./foodPricing";
 import { START_CITY_OPTIONS } from "./startCities";
 import {

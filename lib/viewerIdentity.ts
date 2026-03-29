@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * Helper module for viewer identity concerns in the trip planner.
+ * These utilities centralize shared business logic so routes, pages, and components can reuse the same behavior instead of re-implementing it.
+ */
+
+
 import { useEffect, useMemo, useState } from "react";
 
 const VISITOR_STORAGE_KEY = "trippify-share-visitor-id";

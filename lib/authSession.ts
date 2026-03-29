@@ -1,3 +1,8 @@
+/**
+ * Helper module for auth session concerns in the trip planner.
+ * These utilities centralize shared business logic so routes, pages, and components can reuse the same behavior instead of re-implementing it.
+ */
+
 import { cookies } from "next/headers";
 import { createHmac, timingSafeEqual } from "crypto";
 import { NextResponse } from "next/server";
