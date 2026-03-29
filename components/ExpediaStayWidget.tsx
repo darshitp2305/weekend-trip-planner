@@ -213,7 +213,7 @@ export default function ExpediaStayWidget({
     return (
       <section className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <div className="flex flex-col gap-1">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-violet-600 dark:text-violet-300">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#04b887] dark:text-[#7decc7]">
             Stay booking
           </div>
           <h2 className="text-xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">
@@ -258,7 +258,7 @@ export default function ExpediaStayWidget({
                 type="button"
                 onClick={handleOpenSearch}
                 disabled={!canSearch}
-                className="inline-flex h-12 items-center justify-center rounded-xl bg-slate-950 px-5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-violet-500 dark:text-slate-950 dark:hover:bg-violet-400"
+                className="inline-flex h-12 items-center justify-center rounded-xl bg-slate-950 px-5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-[#06d8a0] dark:text-slate-950 dark:hover:bg-[#3be0ab]"
               >
                 {actionLabel}
               </button>
@@ -287,7 +287,7 @@ export default function ExpediaStayWidget({
   return (
     <section className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
       <div className="flex flex-col gap-1">
-        <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-violet-600 dark:text-violet-300">
+        <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#04b887] dark:text-[#7decc7]">
           Stay booking
         </div>
         <h2 className="text-xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">
@@ -337,7 +337,7 @@ export default function ExpediaStayWidget({
                 value={searchQuery}
                 onChange={(event) => setSearchQuery(event.target.value)}
                 placeholder="Enter hotel or destination"
-                className="h-12 rounded-xl border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-violet-500/20"
+                className="h-12 rounded-xl border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-[#3be0ab] focus:ring-2 focus:ring-[#d7fcef] dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-[#06d8a0]/20"
               />
             </label>
 
@@ -349,7 +349,7 @@ export default function ExpediaStayWidget({
                 type="date"
                 value={checkInDate}
                 onChange={(event) => setCheckInDate(event.target.value)}
-                className="date-input-fix h-12 rounded-xl border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-violet-500/20 dark:[&::-webkit-calendar-picker-indicator]:invert"
+                className="date-input-fix h-12 rounded-xl border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-[#3be0ab] focus:ring-2 focus:ring-[#d7fcef] dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-[#06d8a0]/20 dark:[&::-webkit-calendar-picker-indicator]:invert"
               />
             </label>
 
@@ -361,7 +361,7 @@ export default function ExpediaStayWidget({
                 type="date"
                 value={checkOutDate}
                 onChange={(event) => setCheckOutDate(event.target.value)}
-                className="date-input-fix h-12 rounded-xl border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-violet-500/20 dark:[&::-webkit-calendar-picker-indicator]:invert"
+                className="date-input-fix h-12 rounded-xl border border-slate-300 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-[#3be0ab] focus:ring-2 focus:ring-[#d7fcef] dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-[#06d8a0]/20 dark:[&::-webkit-calendar-picker-indicator]:invert"
               />
             </label>
 
@@ -369,7 +369,7 @@ export default function ExpediaStayWidget({
               type="button"
               onClick={handleOpenSearch}
               disabled={!canSearch}
-              className="inline-flex h-12 items-center justify-center rounded-xl bg-slate-950 px-5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-violet-500 dark:text-slate-950 dark:hover:bg-violet-400"
+              className="inline-flex h-12 items-center justify-center rounded-xl bg-slate-950 px-5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-[#06d8a0] dark:text-slate-950 dark:hover:bg-[#3be0ab]"
             >
               {actionLabel}
             </button>

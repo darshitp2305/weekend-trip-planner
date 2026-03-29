@@ -408,7 +408,7 @@ function OptionPill({
       : tone === "rose"
         ? "border border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-200"
       : tone === "violet"
-        ? "border border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-violet-200"
+        ? "border border-[#b2f6df] bg-[#effff8] text-[#048f69] dark:border-[#06d8a0]/30 dark:bg-[#06d8a0]/10 dark:text-[#b2f6df]"
         : "border border-slate-200 bg-slate-100 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200";
 
   return (
@@ -504,7 +504,7 @@ function SelectorCard({
     <div
       className={
         selected
-          ? "group rounded-[1rem] border border-violet-300 bg-violet-50 p-3.5 text-left shadow-[inset_0_0_0_1px_rgba(139,92,246,0.06)] dark:border-violet-500/40 dark:bg-violet-500/10"
+          ? "group rounded-[1rem] border border-[#7decc7] bg-[#effff8] p-3.5 text-left shadow-[inset_0_0_0_1px_rgba(139,92,246,0.06)] dark:border-[#06d8a0]/40 dark:bg-[#06d8a0]/10"
           : "group rounded-[1rem] border border-slate-200 bg-white p-3.5 text-left hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800"
       }
     >
@@ -582,7 +582,7 @@ function SelectorCard({
           onClick={onSelect}
           className={
             selected
-              ? "inline-flex h-10 items-center justify-center rounded-full bg-violet-600 px-4 text-sm font-semibold text-white transition hover:bg-violet-500 dark:bg-violet-500 dark:text-slate-950 dark:hover:bg-violet-400"
+              ? "inline-flex h-10 items-center justify-center rounded-full bg-[#04b887] px-4 text-sm font-semibold text-white transition hover:bg-[#06d8a0] dark:bg-[#06d8a0] dark:text-slate-950 dark:hover:bg-[#3be0ab]"
               : "inline-flex h-10 items-center justify-center rounded-full bg-slate-950 px-4 text-sm font-semibold text-white transition hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-950 dark:hover:bg-slate-200"
           }
         >
@@ -1469,7 +1469,7 @@ export default function InteractiveItinerary({
         tone: "warning",
         title: "Add a trip edit first",
         detail:
-          "Try a sentence like “Day 2 lunch to Wild Flour Bakery”, “Add a coffee stop on day 3 before we leave”, or “Switch the stay to Rimrock Resort Hotel.”",
+          'Try a sentence like "Day 2 lunch to Wild Flour Bakery", "Add a coffee stop on day 3 before we leave", or "Switch the stay to Rimrock Resort Hotel."',
         issues: [],
       });
       return;
@@ -1538,7 +1538,7 @@ export default function InteractiveItinerary({
               ? `${change.targetLabel}: ${change.selectedName}`
               : `${change.targetLabel} -> ${change.selectedName}`
           )
-          .join(" · "),
+          .join(" | "),
         issues: result.issues,
       });
       return;

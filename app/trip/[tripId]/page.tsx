@@ -1138,7 +1138,7 @@ export default function TripPage() {
           </p>
           <button
             onClick={() => router.push("/")}
-            className="mt-6 rounded-2xl bg-slate-950 px-5 py-3 text-white transition hover:bg-slate-800 dark:bg-violet-500 dark:text-slate-950 dark:hover:bg-violet-400"
+            className="mt-6 rounded-2xl bg-slate-950 px-5 py-3 text-white transition hover:bg-slate-800 dark:bg-[#06d8a0] dark:text-slate-950 dark:hover:bg-[#3be0ab]"
           >
             Back to planner
           </button>
@@ -1170,7 +1170,7 @@ export default function TripPage() {
               onClick={handleBackButtonClick}
               className="inline-flex h-11 items-center gap-2 rounded-2xl border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
             >
-              <span aria-hidden="true">←</span>
+              <span aria-hidden="true">&larr;</span>
               <span>Back</span>
             </button>
             <BrandLogo variant="horizontal" href="/" className="h-10 w-auto sm:h-11" />
@@ -1257,7 +1257,7 @@ export default function TripPage() {
           <aside className="xl:sticky xl:top-5">
             <div className="overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
               <div className="border-b border-slate-200 bg-slate-50/80 px-5 py-4 dark:border-slate-800 dark:bg-slate-900/80">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-violet-600 dark:text-violet-300">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#04b887] dark:text-[#7decc7]">
                   Trip essentials
                 </div>
                 <h2 className="mt-1 text-xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">
@@ -1307,8 +1307,8 @@ export default function TripPage() {
                       </div>
                     </div>
 
-                    <div className="rounded-xl border border-violet-200 bg-violet-50 p-3 dark:border-violet-500/30 dark:bg-violet-500/10">
-                      <div className="text-[10px] font-medium uppercase tracking-[0.1em] text-violet-700 dark:text-violet-300">
+                    <div className="rounded-xl border border-[#b2f6df] bg-[#effff8] p-3 dark:border-[#06d8a0]/30 dark:bg-[#06d8a0]/10">
+                      <div className="text-[10px] font-medium uppercase tracking-[0.1em] text-[#048f69] dark:text-[#7decc7]">
                         {stayPriceIsVerified ? "Selected each" : "Estimated each"}
                       </div>
                       <div className="mt-1 text-base font-semibold text-slate-950 dark:text-slate-100">
@@ -1316,8 +1316,8 @@ export default function TripPage() {
                       </div>
                     </div>
 
-                    <div className="rounded-xl border border-violet-200 bg-violet-50 p-3 dark:border-violet-500/30 dark:bg-violet-500/10">
-                      <div className="text-[10px] font-medium uppercase tracking-[0.1em] text-violet-700 dark:text-violet-300">
+                    <div className="rounded-xl border border-[#b2f6df] bg-[#effff8] p-3 dark:border-[#06d8a0]/30 dark:bg-[#06d8a0]/10">
+                      <div className="text-[10px] font-medium uppercase tracking-[0.1em] text-[#048f69] dark:text-[#7decc7]">
                         {stayPriceIsVerified ? "Selected total" : "Estimated total"}
                       </div>
                       <div className="mt-1 text-base font-semibold text-slate-950 dark:text-slate-100">
@@ -1364,7 +1364,7 @@ export default function TripPage() {
               {!showDraftBuilderMode ? (
                 <section className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
                   <div className="flex flex-col gap-1">
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-violet-600 dark:text-violet-300">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#04b887] dark:text-[#7decc7]">
                       Trip at a glance
                     </div>
                     <h2 className="text-xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">
@@ -1415,8 +1415,8 @@ export default function TripPage() {
                       </p>
                     </div>
 
-                    <div className="rounded-[1rem] border border-violet-200 bg-violet-50 p-4 dark:border-violet-500/30 dark:bg-violet-500/10">
-                      <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-violet-700 dark:text-violet-300">
+                    <div className="rounded-[1rem] border border-[#b2f6df] bg-[#effff8] p-4 dark:border-[#06d8a0]/30 dark:bg-[#06d8a0]/10">
+                      <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#048f69] dark:text-[#7decc7]">
                         Budget fit
                       </div>
                       <div className="mt-1 text-base font-semibold text-slate-950 dark:text-slate-100">
@@ -1448,7 +1448,7 @@ export default function TripPage() {
                   </p>
                   {trip.tripPrompt ? (
                     <p className="text-sm leading-6 text-slate-600 dark:text-slate-300">
-                      Original brief: “{trip.tripPrompt}”
+                      Original brief: &quot;{trip.tripPrompt}&quot;
                     </p>
                   ) : null}
                   {constraintFitSummary ? (

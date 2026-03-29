@@ -68,14 +68,14 @@ function TotalCard({
     <div
       className={
         featured
-          ? "rounded-[1rem] border border-violet-200 bg-violet-50 px-4 py-3.5 dark:border-violet-500/30 dark:bg-violet-500/10"
+          ? "rounded-[1rem] border border-[#b2f6df] bg-[#effff8] px-4 py-3.5 dark:border-[#06d8a0]/30 dark:bg-[#06d8a0]/10"
           : "rounded-[1rem] border border-slate-200 bg-white px-4 py-3.5 dark:border-slate-700 dark:bg-slate-900"
       }
     >
       <div
         className={
           featured
-            ? "text-[11px] font-semibold uppercase tracking-[0.1em] text-violet-700 dark:text-violet-300"
+            ? "text-[11px] font-semibold uppercase tracking-[0.1em] text-[#048f69] dark:text-[#7decc7]"
             : "text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500 dark:text-slate-400"
         }
       >

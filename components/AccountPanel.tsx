@@ -116,7 +116,7 @@ function SavedTripMeta({ trip }: { trip: TripPlan }) {
       </div>
       <div className="mt-3 h-2 rounded-full bg-slate-200 dark:bg-slate-900">
         <div
-          className="h-2 rounded-full bg-slate-950 dark:bg-violet-400"
+          className="h-2 rounded-full bg-slate-950 dark:bg-[#3be0ab]"
           style={{ width: `${Math.max(8, readiness.score)}%` }}
         />
       </div>
@@ -216,7 +216,7 @@ function SectionHeader({
 }) {
   return (
     <div>
-      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-violet-600 dark:text-violet-300">
+      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#04b887] dark:text-[#7decc7]">
         {eyebrow}
       </div>
       <div className="mt-1 text-lg font-semibold text-slate-950 dark:text-slate-100">{title}</div>
@@ -253,13 +253,13 @@ function SavedTripCard({
   const imageUrl = trip.imageUrl?.trim() || getFallbackImageUrl(getTripTitle(trip));
   const badgeClass =
     tone === "violet"
-      ? "border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-violet-200"
+      ? "border-[#b2f6df] bg-[#effff8] text-[#048f69] dark:border-[#06d8a0]/30 dark:bg-[#06d8a0]/10 dark:text-[#b2f6df]"
       : "border-slate-200 bg-slate-100 text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300";
 
   return (
     <article
       tabIndex={0}
-      className="group overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-sm outline-none transition hover:-translate-y-0.5 hover:border-violet-300 hover:shadow-md focus-visible:border-violet-400 focus-visible:ring-2 focus-visible:ring-violet-200 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-violet-500/50 dark:focus-visible:ring-violet-500/20"
+      className="group overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-sm outline-none transition hover:-translate-y-0.5 hover:border-[#7decc7] hover:shadow-md focus-visible:border-[#3be0ab] focus-visible:ring-2 focus-visible:ring-[#d7fcef] dark:border-slate-800 dark:bg-slate-900 dark:hover:border-[#06d8a0]/50 dark:focus-visible:ring-[#06d8a0]/20"
     >
       <div className="flex items-start justify-between gap-3 px-4 py-4">
         <div className="min-w-0 flex-1">
@@ -294,7 +294,7 @@ function SavedTripCard({
           <div className="mt-4 flex flex-wrap gap-2">
             <Link
               href={`/trip/${trip.id}`}
-              className="inline-flex h-10 items-center justify-center rounded-xl bg-slate-950 px-4 text-sm font-medium text-white transition hover:bg-slate-800 dark:bg-violet-500 dark:text-slate-950 dark:hover:bg-violet-400"
+              className="inline-flex h-10 items-center justify-center rounded-xl bg-slate-950 px-4 text-sm font-medium text-white transition hover:bg-slate-800 dark:bg-[#06d8a0] dark:text-slate-950 dark:hover:bg-[#3be0ab]"
             >
               See details
             </Link>
@@ -322,14 +322,14 @@ function SavedTripCard({
                 value={renameValue}
                 onChange={(event) => onRenameValueChange?.(event.target.value)}
                 placeholder="Trip in Canmore"
-                className="mt-2 h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-violet-500/20"
+                className="mt-2 h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-[#3be0ab] focus:ring-2 focus:ring-[#d7fcef] dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-[#06d8a0]/20"
               />
               <div className="mt-3 flex flex-wrap gap-2">
                 <button
                   type="button"
                   onClick={onSubmitRename}
                   disabled={renameBusy}
-                  className="inline-flex h-10 items-center justify-center rounded-xl bg-slate-950 px-4 text-sm font-medium text-white transition hover:bg-slate-800 disabled:opacity-60 dark:bg-violet-500 dark:text-slate-950 dark:hover:bg-violet-400"
+                  className="inline-flex h-10 items-center justify-center rounded-xl bg-slate-950 px-4 text-sm font-medium text-white transition hover:bg-slate-800 disabled:opacity-60 dark:bg-[#06d8a0] dark:text-slate-950 dark:hover:bg-[#3be0ab]"
                 >
                   {renameBusy ? "Saving..." : "Save name"}
                 </button>
@@ -765,7 +765,7 @@ export default function AccountPanel({
       >
         <div className="flex items-center justify-between border-b border-slate-200 px-5 py-5 dark:border-slate-800">
           <div>
-            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-violet-600 dark:text-violet-300">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#04b887] dark:text-[#7decc7]">
               Saved trips
             </div>
             <div className="mt-1 text-xl font-semibold text-slate-950 dark:text-slate-100">
@@ -795,7 +795,7 @@ export default function AccountPanel({
             />
             {user ? (
               <div className="mt-4 flex flex-wrap gap-2">
-                <span className="inline-flex h-10 items-center justify-center rounded-full border border-violet-200 bg-violet-50 px-4 text-xs font-semibold text-violet-700 dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-violet-200">
+                <span className="inline-flex h-10 items-center justify-center rounded-full border border-[#b2f6df] bg-[#effff8] px-4 text-xs font-semibold text-[#048f69] dark:border-[#06d8a0]/30 dark:bg-[#06d8a0]/10 dark:text-[#b2f6df]">
                   Account connected
                 </span>
                 <button
@@ -814,21 +814,21 @@ export default function AccountPanel({
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="Email"
-                  className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-violet-500/20"
+                  className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-[#3be0ab] focus:ring-2 focus:ring-[#d7fcef] dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-[#06d8a0]/20"
                 />
                 <input
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Password"
-                  className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-violet-500/20"
+                  className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-[#3be0ab] focus:ring-2 focus:ring-[#d7fcef] dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-[#06d8a0]/20"
                 />
                 <div className="flex flex-wrap gap-2">
                   <button
                     type="button"
                     onClick={() => handleAuth("/api/auth/login")}
                     disabled={loading}
-                    className="inline-flex h-10 items-center justify-center rounded-xl bg-slate-950 px-4 text-sm font-medium text-white transition hover:bg-slate-800 disabled:opacity-60 dark:bg-violet-500 dark:text-slate-950 dark:hover:bg-violet-400"
+                    className="inline-flex h-10 items-center justify-center rounded-xl bg-slate-950 px-4 text-sm font-medium text-white transition hover:bg-slate-800 disabled:opacity-60 dark:bg-[#06d8a0] dark:text-slate-950 dark:hover:bg-[#3be0ab]"
                   >
                     Log in
                   </button>
@@ -860,7 +860,7 @@ export default function AccountPanel({
                 value={tripQuery}
                 onChange={(event) => setTripQuery(event.target.value)}
                 placeholder="Search trips, destinations, or status"
-                className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:ring-violet-500/20"
+                className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-[#3be0ab] focus:ring-2 focus:ring-[#d7fcef] dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:ring-[#06d8a0]/20"
               />
             </div>
             <div className="mt-3 flex gap-2">
@@ -869,7 +869,7 @@ export default function AccountPanel({
                 onClick={() => setActiveCategory("saved")}
                 className={`inline-flex h-10 items-center justify-center rounded-xl px-4 text-sm font-medium transition ${
                   activeCategory === "saved"
-                    ? "bg-slate-950 text-white dark:bg-violet-500 dark:text-slate-950"
+                    ? "bg-slate-950 text-white dark:bg-[#06d8a0] dark:text-slate-950"
                     : "border border-slate-300 bg-white text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
                 }`}
               >
@@ -880,7 +880,7 @@ export default function AccountPanel({
                 onClick={() => setActiveCategory("shared")}
                 className={`inline-flex h-10 items-center justify-center rounded-xl px-4 text-sm font-medium transition ${
                   activeCategory === "shared"
-                    ? "bg-slate-950 text-white dark:bg-violet-500 dark:text-slate-950"
+                    ? "bg-slate-950 text-white dark:bg-[#06d8a0] dark:text-slate-950"
                     : "border border-slate-300 bg-white text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
                 }`}
               >

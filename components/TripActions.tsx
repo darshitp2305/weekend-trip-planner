@@ -152,7 +152,7 @@ function actionRailNudge(trip: TripPlan) {
           ? `${responseCount} people have reacted or commented, but nobody has pushed this to approved or needs changes yet.`
           : "The trip is finalized but still waiting on the first partner response.",
       tone:
-        "border-violet-200 bg-violet-50 text-violet-900 dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-violet-100",
+        "border-[#b2f6df] bg-[#effff8] text-[#0c5a44] dark:border-[#06d8a0]/30 dark:bg-[#06d8a0]/10 dark:text-[#d7fcef]",
     };
   }
 
@@ -716,8 +716,8 @@ export default function TripActions({
           </div>
         ) : null}
 
-        <div className="mt-4 rounded-[1.25rem] border border-violet-200 bg-violet-50 p-4 dark:border-violet-500/30 dark:bg-violet-500/10">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-violet-700 dark:text-violet-300">
+        <div className="mt-4 rounded-[1.25rem] border border-[#b2f6df] bg-[#effff8] p-4 dark:border-[#06d8a0]/30 dark:bg-[#06d8a0]/10">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#048f69] dark:text-[#7decc7]">
             Next step
           </div>
           <div className="mt-1 text-base font-semibold text-slate-950 dark:text-slate-100">
@@ -737,7 +737,7 @@ export default function TripActions({
               type="button"
               onClick={() => void handleSave()}
               disabled={saving}
-              className="inline-flex min-h-10 items-center justify-center rounded-xl bg-slate-950 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800 disabled:opacity-70 dark:bg-violet-500 dark:text-slate-950 dark:hover:bg-violet-400"
+              className="inline-flex min-h-10 items-center justify-center rounded-xl bg-slate-950 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800 disabled:opacity-70 dark:bg-[#06d8a0] dark:text-slate-950 dark:hover:bg-[#3be0ab]"
             >
               {saving ? "Saving..." : "Save draft"}
             </button>
@@ -786,8 +786,8 @@ export default function TripActions({
           </div>
         ) : null}
 
-        <div className="mt-4 rounded-[1.25rem] border border-violet-200 bg-violet-50 p-4 dark:border-violet-500/30 dark:bg-violet-500/10">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-violet-700 dark:text-violet-300">
+        <div className="mt-4 rounded-[1.25rem] border border-[#b2f6df] bg-[#effff8] p-4 dark:border-[#06d8a0]/30 dark:bg-[#06d8a0]/10">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#048f69] dark:text-[#7decc7]">
             Next step
           </div>
           <div className="mt-1 text-base font-semibold text-slate-950 dark:text-slate-100">
@@ -800,7 +800,7 @@ export default function TripActions({
             <button
               type="button"
               onClick={() => void handleCopyLink()}
-              className="inline-flex min-h-10 items-center justify-center rounded-xl bg-slate-950 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800 dark:bg-violet-500 dark:text-slate-950 dark:hover:bg-violet-400"
+              className="inline-flex min-h-10 items-center justify-center rounded-xl bg-slate-950 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800 dark:bg-[#06d8a0] dark:text-slate-950 dark:hover:bg-[#3be0ab]"
             >
               {copied ? "Share link copied" : "Copy share link"}
             </button>
@@ -885,8 +885,8 @@ export default function TripActions({
         </div>
       ) : null}
 
-      <div className="mt-4 rounded-[1.25rem] border border-violet-200 bg-violet-50 p-4 dark:border-violet-500/30 dark:bg-violet-500/10">
-        <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-violet-700 dark:text-violet-300">
+      <div className="mt-4 rounded-[1.25rem] border border-[#b2f6df] bg-[#effff8] p-4 dark:border-[#06d8a0]/30 dark:bg-[#06d8a0]/10">
+        <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#048f69] dark:text-[#7decc7]">
           Next step
         </div>
         <div className="mt-1 text-base font-semibold text-slate-950 dark:text-slate-100">
@@ -900,7 +900,7 @@ export default function TripActions({
           <button
             type="button"
             onClick={() => void primaryAction.onClick()}
-            className="inline-flex h-11 items-center justify-center rounded-2xl bg-slate-950 px-5 text-sm font-semibold text-white transition hover:bg-slate-800 dark:bg-violet-400 dark:text-slate-950 dark:hover:bg-violet-300"
+            className="inline-flex h-11 items-center justify-center rounded-2xl bg-slate-950 px-5 text-sm font-semibold text-white transition hover:bg-slate-800 dark:bg-[#3be0ab] dark:text-slate-950 dark:hover:bg-[#7decc7]"
           >
             {primaryAction.label}
           </button>
@@ -995,7 +995,7 @@ export default function TripActions({
                 }
                 router.push(followUpAction.href);
               }}
-              className="inline-flex min-h-10 items-center justify-center rounded-xl bg-slate-950 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800 dark:bg-violet-500 dark:text-slate-950 dark:hover:bg-violet-400"
+              className="inline-flex min-h-10 items-center justify-center rounded-xl bg-slate-950 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800 dark:bg-[#06d8a0] dark:text-slate-950 dark:hover:bg-[#3be0ab]"
             >
               {trip.decisionStatus === "approved" && firstHotelSite
                 ? "Open booking flow"
@@ -1027,7 +1027,7 @@ export default function TripActions({
               ? `Last copied ${formatShortDateTime(followUpRecord.lastCopiedAt) ?? "recently"}`
               : "No reminder copied yet"}
             {followUpRecord.lastOpenedAt
-              ? ` • Last opened ${formatShortDateTime(followUpRecord.lastOpenedAt) ?? "recently"}`
+              ? ` | Last opened ${formatShortDateTime(followUpRecord.lastOpenedAt) ?? "recently"}`
               : ""}
           </p>
         ) : null}
@@ -1117,7 +1117,7 @@ export default function TripActions({
               </div>
               <ul className="mt-2 space-y-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
                 {readinessBlockers.slice(0, 3).map((blocker) => (
-                  <li key={blocker}>• {blocker}</li>
+                  <li key={blocker}>- {blocker}</li>
                 ))}
               </ul>
             </div>
@@ -1142,7 +1142,7 @@ export default function TripActions({
                 key={label}
                 className={
                   active
-                    ? "min-w-[88px] flex-1 rounded-xl border border-violet-200 bg-white px-3 py-2 text-center text-xs font-semibold text-violet-700 dark:border-violet-500/30 dark:bg-slate-900 dark:text-violet-300"
+                    ? "min-w-[88px] flex-1 rounded-xl border border-[#b2f6df] bg-white px-3 py-2 text-center text-xs font-semibold text-[#048f69] dark:border-[#06d8a0]/30 dark:bg-slate-900 dark:text-[#7decc7]"
                     : "min-w-[88px] flex-1 rounded-xl border border-slate-200 bg-white/70 px-3 py-2 text-center text-xs font-semibold text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400"
                 }
               >
@@ -1154,10 +1154,10 @@ export default function TripActions({
       </div>
 
       {isOwner && (trip.decisionStatus === "approved" || trip.decisionStatus === "booked") ? (
-        <div className="mt-4 rounded-[1.25rem] border border-violet-200 bg-violet-50 p-4 dark:border-violet-500/30 dark:bg-violet-500/10">
+        <div className="mt-4 rounded-[1.25rem] border border-[#b2f6df] bg-[#effff8] p-4 dark:border-[#06d8a0]/30 dark:bg-[#06d8a0]/10">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-violet-700 dark:text-violet-300">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#048f69] dark:text-[#7decc7]">
                 Booking checklist
               </div>
               <div className="mt-1 text-base font-semibold text-slate-950 dark:text-slate-100">
@@ -1191,7 +1191,7 @@ export default function TripActions({
                   checked={bookingChecklist[item.key].done}
                   onChange={() => void handleChecklistToggle(item.key)}
                   disabled={updatingChecklistKey === item.key}
-                  className="mt-1 h-4 w-4 rounded border-slate-300 text-violet-600 focus:ring-violet-500"
+                  className="mt-1 h-4 w-4 rounded border-slate-300 text-[#04b887] focus:ring-[#06d8a0]"
                 />
               </label>
             ))}
@@ -1239,7 +1239,7 @@ export default function TripActions({
                   disabled={action.disabled}
                   className={
                     action.tone === "primary"
-                      ? "inline-flex min-h-10 items-center justify-center rounded-xl bg-slate-950 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-70 dark:bg-violet-500 dark:text-slate-950 dark:hover:bg-violet-400"
+                      ? "inline-flex min-h-10 items-center justify-center rounded-xl bg-slate-950 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-70 dark:bg-[#06d8a0] dark:text-slate-950 dark:hover:bg-[#3be0ab]"
                       : "inline-flex min-h-10 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-70 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
                   }
                 >

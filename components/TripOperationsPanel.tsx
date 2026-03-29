@@ -348,7 +348,7 @@ export default function TripOperationsPanel({
   return (
     <section className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
       <div className="flex flex-col gap-1">
-        <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-violet-600 dark:text-violet-300">
+        <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#04b887] dark:text-[#7decc7]">
           Organizer tools
         </div>
         <h2 className="text-2xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">
@@ -389,7 +389,7 @@ export default function TripOperationsPanel({
         <button
           type="button"
           onClick={() => void copyDepartureBrief()}
-          className="inline-flex h-10 items-center justify-center rounded-xl bg-slate-950 px-4 text-sm font-medium text-white transition hover:bg-slate-800 dark:bg-violet-500 dark:text-slate-950 dark:hover:bg-violet-400"
+          className="inline-flex h-10 items-center justify-center rounded-xl bg-slate-950 px-4 text-sm font-medium text-white transition hover:bg-slate-800 dark:bg-[#06d8a0] dark:text-slate-950 dark:hover:bg-[#3be0ab]"
         >
           Copy departure brief
         </button>
@@ -414,7 +414,7 @@ export default function TripOperationsPanel({
             </div>
 
             {canSelfConfirm && !isOwner ? (
-              <div className="mt-4 rounded-[1rem] border border-violet-200 bg-white p-4 dark:border-violet-500/30 dark:bg-slate-900">
+              <div className="mt-4 rounded-[1rem] border border-[#b2f6df] bg-white p-4 dark:border-[#06d8a0]/30 dark:bg-slate-900">
                 <div className="text-sm font-semibold text-slate-950 dark:text-slate-100">Respond for yourself</div>
                 <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">
                   Mark whether you are in or whether the owner still needs a response from you.
@@ -424,7 +424,7 @@ export default function TripOperationsPanel({
                     type="button"
                     onClick={() => void handleViewerConfirmation("confirmed")}
                     disabled={savingTravelerId === "viewer-self"}
-                    className="inline-flex h-10 items-center justify-center rounded-xl bg-slate-950 px-4 text-sm font-medium text-white transition hover:bg-slate-800 disabled:opacity-60 dark:bg-violet-500 dark:text-slate-950 dark:hover:bg-violet-400"
+                    className="inline-flex h-10 items-center justify-center rounded-xl bg-slate-950 px-4 text-sm font-medium text-white transition hover:bg-slate-800 disabled:opacity-60 dark:bg-[#06d8a0] dark:text-slate-950 dark:hover:bg-[#3be0ab]"
                   >
                     I am going
                   </button>
@@ -470,7 +470,7 @@ export default function TripOperationsPanel({
                             onClick={() => void handleTravelerStatus(traveler.id, option)}
                             className={
                               traveler.status === option
-                                ? "inline-flex h-9 items-center justify-center rounded-full bg-slate-950 px-3 text-xs font-medium text-white dark:bg-violet-500 dark:text-slate-950"
+                                ? "inline-flex h-9 items-center justify-center rounded-full bg-slate-950 px-3 text-xs font-medium text-white dark:bg-[#06d8a0] dark:text-slate-950"
                                 : "inline-flex h-9 items-center justify-center rounded-full border border-slate-300 bg-white px-3 text-xs font-medium text-slate-700 transition hover:bg-slate-100 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
                             }
                           >
@@ -504,8 +504,8 @@ export default function TripOperationsPanel({
                     {task.dueAt ? (
                       <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                         Due {formatDate(task.dueAt) ?? task.dueAt}
-                        {nextDeadline?.task.id === task.id && nextDeadline.isOverdue ? " • overdue" : ""}
-                        {nextDeadline?.task.id === task.id && nextDeadline.isToday ? " • today" : ""}
+                        {nextDeadline?.task.id === task.id && nextDeadline.isOverdue ? " | overdue" : ""}
+                        {nextDeadline?.task.id === task.id && nextDeadline.isToday ? " | today" : ""}
                       </div>
                     ) : null}
                   </div>
@@ -514,7 +514,7 @@ export default function TripOperationsPanel({
                     checked={task.done}
                     disabled={!canEditOperations || savingTaskId === task.id}
                     onChange={() => void handleTaskToggle(task.id)}
-                    className="mt-1 h-4 w-4 rounded border-slate-300 text-violet-600 focus:ring-violet-500"
+                    className="mt-1 h-4 w-4 rounded border-slate-300 text-[#04b887] focus:ring-[#06d8a0]"
                   />
                 </label>
               ))}
@@ -545,7 +545,7 @@ export default function TripOperationsPanel({
               onChange={(event) => setPaymentNote(event.target.value)}
               disabled={!canEditOperations}
               placeholder="Example: Alex paid hotel, settle gas after the trip."
-              className="mt-4 min-h-[96px] w-full rounded-[1rem] border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100 disabled:cursor-not-allowed disabled:opacity-70 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:ring-violet-500/20"
+              className="mt-4 min-h-[96px] w-full rounded-[1rem] border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-[#3be0ab] focus:ring-2 focus:ring-[#d7fcef] disabled:cursor-not-allowed disabled:opacity-70 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:ring-[#06d8a0]/20"
             />
             {canEditOperations ? (
               <div className="mt-3 flex flex-wrap gap-2">
@@ -561,7 +561,7 @@ export default function TripOperationsPanel({
                   type="button"
                   disabled={savingMeta}
                   onClick={() => void handleSavePayments(true)}
-                  className="inline-flex h-10 items-center justify-center rounded-xl bg-slate-950 px-4 text-sm font-medium text-white transition hover:bg-slate-800 disabled:opacity-60 dark:bg-violet-500 dark:text-slate-950 dark:hover:bg-violet-400"
+                  className="inline-flex h-10 items-center justify-center rounded-xl bg-slate-950 px-4 text-sm font-medium text-white transition hover:bg-slate-800 disabled:opacity-60 dark:bg-[#06d8a0] dark:text-slate-950 dark:hover:bg-[#3be0ab]"
                 >
                   Mark settled
                 </button>
@@ -579,7 +579,7 @@ export default function TripOperationsPanel({
                 onChange={(event) => setMeetupLocation(event.target.value)}
                 disabled={!canEditOperations}
                 placeholder="Meetup location"
-                className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100 disabled:cursor-not-allowed disabled:opacity-70 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:ring-violet-500/20"
+                className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-[#3be0ab] focus:ring-2 focus:ring-[#d7fcef] disabled:cursor-not-allowed disabled:opacity-70 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:ring-[#06d8a0]/20"
               />
               <input
                 type="text"
@@ -587,21 +587,21 @@ export default function TripOperationsPanel({
                 onChange={(event) => setMeetupTime(event.target.value)}
                 disabled={!canEditOperations}
                 placeholder="Meetup time"
-                className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100 disabled:cursor-not-allowed disabled:opacity-70 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:ring-violet-500/20"
+                className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-[#3be0ab] focus:ring-2 focus:ring-[#d7fcef] disabled:cursor-not-allowed disabled:opacity-70 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:ring-[#06d8a0]/20"
               />
               <textarea
                 value={transportNote}
                 onChange={(event) => setTransportNote(event.target.value)}
                 disabled={!canEditOperations}
                 placeholder="Transport plan, driver, parking, fuel, or route notes"
-                className="min-h-[88px] w-full rounded-[1rem] border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100 disabled:cursor-not-allowed disabled:opacity-70 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:ring-violet-500/20"
+                className="min-h-[88px] w-full rounded-[1rem] border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-[#3be0ab] focus:ring-2 focus:ring-[#d7fcef] disabled:cursor-not-allowed disabled:opacity-70 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:ring-[#06d8a0]/20"
               />
               <textarea
                 value={packingNote}
                 onChange={(event) => setPackingNote(event.target.value)}
                 disabled={!canEditOperations}
                 placeholder="Packing reminders, weather gear, or must-bring items"
-                className="min-h-[88px] w-full rounded-[1rem] border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100 disabled:cursor-not-allowed disabled:opacity-70 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:ring-violet-500/20"
+                className="min-h-[88px] w-full rounded-[1rem] border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-[#3be0ab] focus:ring-2 focus:ring-[#d7fcef] disabled:cursor-not-allowed disabled:opacity-70 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:ring-[#06d8a0]/20"
               />
             </div>
             {canEditOperations ? (
@@ -610,7 +610,7 @@ export default function TripOperationsPanel({
                   type="button"
                   disabled={savingMeta}
                   onClick={() => void handleSaveDeparturePlan()}
-                  className="inline-flex h-10 items-center justify-center rounded-xl bg-slate-950 px-4 text-sm font-medium text-white transition hover:bg-slate-800 disabled:opacity-60 dark:bg-violet-500 dark:text-slate-950 dark:hover:bg-violet-400"
+                  className="inline-flex h-10 items-center justify-center rounded-xl bg-slate-950 px-4 text-sm font-medium text-white transition hover:bg-slate-800 disabled:opacity-60 dark:bg-[#06d8a0] dark:text-slate-950 dark:hover:bg-[#3be0ab]"
                 >
                   Save departure plan
                 </button>
@@ -638,7 +638,7 @@ export default function TripOperationsPanel({
                       onClick={() => setNoteKind(kind)}
                       className={
                         noteKind === kind
-                          ? "inline-flex h-9 items-center justify-center rounded-full bg-slate-950 px-3 text-xs font-medium text-white dark:bg-violet-500 dark:text-slate-950"
+                          ? "inline-flex h-9 items-center justify-center rounded-full bg-slate-950 px-3 text-xs font-medium text-white dark:bg-[#06d8a0] dark:text-slate-950"
                           : "inline-flex h-9 items-center justify-center rounded-full border border-slate-300 bg-white px-3 text-xs font-medium text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
                       }
                     >
@@ -650,14 +650,14 @@ export default function TripOperationsPanel({
                   value={noteMessage}
                   onChange={(event) => setNoteMessage(event.target.value)}
                   placeholder="Add a note for the group or the owner."
-                  className="mt-3 min-h-[96px] w-full rounded-[1rem] border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-violet-500/20"
+                  className="mt-3 min-h-[96px] w-full rounded-[1rem] border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-[#3be0ab] focus:ring-2 focus:ring-[#d7fcef] dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-[#06d8a0]/20"
                 />
                 <div className="mt-3">
                   <button
                     type="button"
                     disabled={savingMeta || !noteMessage.trim()}
                     onClick={() => void handleAddNote()}
-                    className="inline-flex h-10 items-center justify-center rounded-xl bg-slate-950 px-4 text-sm font-medium text-white transition hover:bg-slate-800 disabled:opacity-60 dark:bg-violet-500 dark:text-slate-950 dark:hover:bg-violet-400"
+                    className="inline-flex h-10 items-center justify-center rounded-xl bg-slate-950 px-4 text-sm font-medium text-white transition hover:bg-slate-800 disabled:opacity-60 dark:bg-[#06d8a0] dark:text-slate-950 dark:hover:bg-[#3be0ab]"
                   >
                     Add note
                   </button>

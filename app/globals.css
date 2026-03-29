@@ -5,6 +5,16 @@
   --background: #ffffff;
   --foreground: #171717;
   --date-input-foreground: #0f172a;
+  --brand-accent-50: #effff8;
+  --brand-accent-100: #d7fcef;
+  --brand-accent-200: #b2f6df;
+  --brand-accent-300: #7decc7;
+  --brand-accent-400: #3be0ab;
+  --brand-accent-500: #06d8a0;
+  --brand-accent-600: #04b887;
+  --brand-accent-700: #048f69;
+  --brand-accent-800: #0a7053;
+  --brand-accent-900: #0c5a44;
   --font-geist-sans: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
   --font-geist-mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo,
     monospace;

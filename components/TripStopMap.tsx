@@ -474,7 +474,7 @@ export default function TripStopMap({
 
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div className="max-w-3xl">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-violet-600 dark:text-violet-300">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#04b887] dark:text-[#7decc7]">
             Trip map
           </div>
           <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">

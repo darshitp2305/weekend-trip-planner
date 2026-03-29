@@ -449,7 +449,7 @@ export default function TripFeedbackPanel({
   return (
     <section className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
       <div className="flex flex-col gap-1">
-        <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-violet-600 dark:text-violet-300">
+        <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#04b887] dark:text-[#7decc7]">
           Decision
         </div>
         <h2 className="text-2xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">
@@ -469,10 +469,10 @@ export default function TripFeedbackPanel({
           ) : null}
       </div>
 
-      <div className="mt-5 rounded-[1.25rem] border border-violet-200 bg-violet-50 p-4 dark:border-violet-500/30 dark:bg-violet-500/10">
+      <div className="mt-5 rounded-[1.25rem] border border-[#b2f6df] bg-[#effff8] p-4 dark:border-[#06d8a0]/30 dark:bg-[#06d8a0]/10">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-2xl">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-violet-700 dark:text-violet-300">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#048f69] dark:text-[#7decc7]">
               Next step
             </div>
             <div className="mt-1 text-lg font-semibold text-slate-950 dark:text-slate-100">
@@ -495,8 +495,8 @@ export default function TripFeedbackPanel({
               onClick={() => void handleDecisionStatus("approved")}
               className={
                 currentDecisionStatus === "approved"
-                  ? "inline-flex h-11 items-center justify-center rounded-2xl bg-slate-950 px-5 text-sm font-semibold text-white transition hover:bg-slate-800 dark:bg-violet-400 dark:text-slate-950 dark:hover:bg-violet-300"
-                  : "inline-flex h-11 items-center justify-center rounded-2xl bg-slate-950 px-5 text-sm font-semibold text-white transition hover:bg-slate-800 dark:bg-violet-500 dark:text-slate-950 dark:hover:bg-violet-400"
+                  ? "inline-flex h-11 items-center justify-center rounded-2xl bg-slate-950 px-5 text-sm font-semibold text-white transition hover:bg-slate-800 dark:bg-[#3be0ab] dark:text-slate-950 dark:hover:bg-[#7decc7]"
+                  : "inline-flex h-11 items-center justify-center rounded-2xl bg-slate-950 px-5 text-sm font-semibold text-white transition hover:bg-slate-800 dark:bg-[#06d8a0] dark:text-slate-950 dark:hover:bg-[#3be0ab]"
               }
             >
               Approve trip
@@ -506,7 +506,7 @@ export default function TripFeedbackPanel({
               onClick={() => void handleDecisionStatus("needs_changes")}
               className={
                 currentDecisionStatus === "needs_changes"
-                  ? "inline-flex h-11 items-center justify-center rounded-2xl border border-slate-950 bg-slate-950 px-5 text-sm font-semibold text-white transition hover:bg-slate-800 dark:border-violet-400 dark:bg-violet-400 dark:text-slate-950 dark:hover:bg-violet-300"
+                  ? "inline-flex h-11 items-center justify-center rounded-2xl border border-slate-950 bg-slate-950 px-5 text-sm font-semibold text-white transition hover:bg-slate-800 dark:border-[#3be0ab] dark:bg-[#3be0ab] dark:text-slate-950 dark:hover:bg-[#7decc7]"
                   : "inline-flex h-11 items-center justify-center rounded-2xl border border-slate-300 bg-white px-5 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
               }
             >
@@ -615,7 +615,7 @@ export default function TripFeedbackPanel({
               <button
                 type="button"
                 onClick={handleOpenFollowUpAction}
-                className="inline-flex h-10 items-center justify-center rounded-xl bg-slate-950 px-4 text-sm font-medium text-white transition hover:bg-slate-800 dark:bg-violet-500 dark:text-slate-950 dark:hover:bg-violet-400"
+                className="inline-flex h-10 items-center justify-center rounded-xl bg-slate-950 px-4 text-sm font-medium text-white transition hover:bg-slate-800 dark:bg-[#06d8a0] dark:text-slate-950 dark:hover:bg-[#3be0ab]"
               >
                 {followUpAction.target === "booking" && bookingUrl
                   ? "Open booking flow"
@@ -645,7 +645,7 @@ export default function TripFeedbackPanel({
                 ? `Last copied ${formatShortDateTime(followUpRecord.lastCopiedAt) ?? "recently"}`
                 : "No reminder copied yet"}
               {followUpRecord.lastOpenedAt
-                ? ` • Last opened ${formatShortDateTime(followUpRecord.lastOpenedAt) ?? "recently"}`
+                ? ` | Last opened ${formatShortDateTime(followUpRecord.lastOpenedAt) ?? "recently"}`
                 : ""}
             </p>
           ) : null}
@@ -670,7 +670,7 @@ export default function TripFeedbackPanel({
                     disabled={savingReaction !== null}
                     className={
                       active
-                        ? "inline-flex h-11 items-center justify-center rounded-2xl bg-slate-950 px-4 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60 dark:bg-violet-500 dark:text-slate-950 dark:hover:bg-violet-400"
+                        ? "inline-flex h-11 items-center justify-center rounded-2xl bg-slate-950 px-4 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60 dark:bg-[#06d8a0] dark:text-slate-950 dark:hover:bg-[#3be0ab]"
                         : "inline-flex h-11 items-center justify-center rounded-2xl border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
                     }
                   >
@@ -693,7 +693,7 @@ export default function TripFeedbackPanel({
               value={author}
               onChange={(event) => setAuthor(event.target.value)}
               placeholder="Optional name"
-              className="mt-2 h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-violet-500/20"
+              className="mt-2 h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none transition focus:border-[#3be0ab] focus:ring-2 focus:ring-[#d7fcef] dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-[#06d8a0]/20"
             />
           </div>
 
@@ -711,14 +711,14 @@ export default function TripFeedbackPanel({
               onChange={(event) => setMessage(event.target.value)}
               placeholder="What do you think about this plan?"
               rows={4}
-              className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-violet-500/20"
+              className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-[#3be0ab] focus:ring-2 focus:ring-[#d7fcef] dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-[#06d8a0]/20"
             />
             <div className="mt-3 flex items-center gap-3">
               <button
                 type="button"
                 onClick={() => void handleAddComment()}
                 disabled={savingComment || message.trim().length === 0}
-                className="inline-flex h-11 items-center justify-center rounded-2xl bg-slate-950 px-5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-violet-500 dark:text-slate-950 dark:hover:bg-violet-400"
+                className="inline-flex h-11 items-center justify-center rounded-2xl bg-slate-950 px-5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-[#06d8a0] dark:text-slate-950 dark:hover:bg-[#3be0ab]"
               >
                 {savingComment ? "Saving..." : "Add comment"}
               </button>
