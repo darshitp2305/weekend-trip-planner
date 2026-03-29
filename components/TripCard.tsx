@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   RankedDestination,
@@ -22,6 +22,7 @@ import {
   getRecommendationContextLabel,
 } from "../lib/tripSpecificity";
 import { trackProductEvent } from "../lib/productAnalytics";
+import { getFallbackImageUrl, normalizeTripImageUrl } from "../lib/tripImages";
 import {
   tripConfidenceLabel,
   tripSourceLabel,
@@ -253,7 +254,9 @@ export default function TripCard({
   );
   const tripPrompt = previewPlan.safeInput.tripPrompt;
   const displayTitle = previewPlan.recommendedTitle;
-  const heroImageUrl = previewTrip.imageUrl || trip.imageUrl;
+  const [heroImageUrl, setHeroImageUrl] = useState(
+    normalizeTripImageUrl(previewTrip.imageUrl || trip.imageUrl, displayTitle)
+  );
   const displaySummary = getPromptAwareTripSummary({
     summary: previewTrip.aiSummary ?? previewTrip.summary,
     tripPrompt,
@@ -273,6 +276,12 @@ export default function TripCard({
     },
     displayTitle
   );
+
+  useEffect(() => {
+    setHeroImageUrl(
+      normalizeTripImageUrl(previewTrip.imageUrl || trip.imageUrl, displayTitle)
+    );
+  }, [displayTitle, previewTrip.imageUrl, trip.imageUrl]);
 
   async function handleSaveTrip() {
     try {
@@ -334,6 +343,7 @@ export default function TripCard({
             height={900}
             unoptimized
             className="h-full w-full object-cover"
+            onError={() => setHeroImageUrl(getFallbackImageUrl(displayTitle))}
           />
         </div>
       ) : null}

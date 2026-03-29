@@ -5,6 +5,7 @@ import DestinationShowcase from "./DestinationShowcase";
 import {
   deriveTripIntentFromPrompt,
   extractPromptBudget,
+  extractPromptTravelerCount,
 } from "../lib/tripIntent";
 import { isStartCity, START_CITY_OPTIONS, type StartCity } from "../lib/startCities";
 import {
@@ -360,6 +361,27 @@ function buildFormState(
   initialInput?: Partial<TripInput>,
   minimumDate = getTodayIsoDate()
 ): FormState {
+  const promptTravelerCount =
+    extractPromptTravelerCount(initialInput?.tripPrompt ?? "") ?? undefined;
+  const initialPromptBudget = extractPromptBudget(initialInput?.tripPrompt ?? "");
+  const promptDerivedBudgetPerTraveler =
+    initialPromptBudget?.scope === "per_traveler"
+      ? initialPromptBudget.amount
+      : initialPromptBudget?.scope === "group_total" &&
+          typeof (promptTravelerCount ?? initialInput?.travelerCount) === "number" &&
+          (promptTravelerCount ?? initialInput?.travelerCount)! > 0
+        ? clampNumber(
+            Math.max(
+              1,
+              Math.round(
+                initialPromptBudget.amount /
+                  (promptTravelerCount ?? initialInput?.travelerCount ?? 2)
+              )
+            ),
+            50,
+            5000
+          )
+        : undefined;
   const tripStartDate = clampTripStartDate(
     initialInput?.tripStartDate,
     minimumDate
@@ -375,9 +397,10 @@ function buildFormState(
     startCity: isStartCity(initialInput?.startCity)
       ? initialInput.startCity
       : DEFAULT_FORM.startCity,
-    travelerCount: String(initialInput?.travelerCount ?? 2),
+    travelerCount: String(promptTravelerCount ?? initialInput?.travelerCount ?? 2),
     budgetPerTraveler:
-      typeof initialInput?.budgetPerTraveler === "number"
+      typeof initialInput?.budgetPerTraveler === "number" &&
+      initialInput.budgetPerTraveler !== promptDerivedBudgetPerTraveler
         ? String(initialInput.budgetPerTraveler)
         : "",
     maxDriveHours:
@@ -563,6 +586,7 @@ export default function TripForm({
     buildFormState(initialInput, minTripStartDate)
   );
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const lastPromptTravelerCountRef = useRef<number | null>(null);
 
   const derivedIntent = useMemo(
     () => deriveTripIntentFromPrompt(form.tripPrompt),
@@ -572,6 +596,37 @@ export default function TripForm({
     () => extractPromptBudget(form.tripPrompt),
     [form.tripPrompt]
   );
+  const promptTravelerCount = derivedIntent.suggestedTravelerCount;
+
+  useEffect(() => {
+    const previousPromptTravelerCount = lastPromptTravelerCountRef.current;
+
+    if (
+      typeof promptTravelerCount === "number" &&
+      promptTravelerCount !== previousPromptTravelerCount &&
+      form.travelerCount !== String(promptTravelerCount)
+    ) {
+      setForm((prev) => ({
+        ...prev,
+        travelerCount: String(promptTravelerCount),
+      }));
+    }
+
+    if (previousPromptTravelerCount !== null && promptTravelerCount === undefined) {
+      setForm((prev) => {
+        if (prev.travelerCount !== String(previousPromptTravelerCount)) {
+          return prev;
+        }
+
+        return {
+          ...prev,
+          travelerCount: DEFAULT_FORM.travelerCount,
+        };
+      });
+    }
+
+    lastPromptTravelerCountRef.current = promptTravelerCount ?? null;
+  }, [form.travelerCount, promptTravelerCount]);
 
   const resolvedTravelerCount = clampNumber(
     parsePositiveInt(form.travelerCount, 2),

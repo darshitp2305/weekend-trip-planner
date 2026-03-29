@@ -1400,5 +1400,75 @@
         "description": "Straightforward local meal stops that fit a scenery-first weekend."
       }
     ]
+  },
+  {
+    "id": "crowsnest_pass_ab",
+    "name": "Crowsnest Pass",
+    "region": "Alberta",
+    "home_base_city": "Blairmore / Coleman",
+    "is_staycation": false,
+    "image_url": "https://upload.wikimedia.org/wikipedia/commons/d/d3/Crowsnest_Mountain_-_August_2011.JPG",
+    "drive_time_hours_from": { "edmonton": 4.75, "calgary": 2.5 },
+    "distance_km_from": { "edmonton": 455, "calgary": 220 },
+    "cost_level": "low",
+    "vibes": ["nature", "adventure", "scenic", "food", "hidden"],
+    "best_seasons": ["spring", "summer", "fall"],
+    "avoid_seasons": ["winter"],
+    "style_scores": {
+      "chill": 1,
+      "outdoors": 3,
+      "foodie": 1,
+      "solo reset": 2,
+      "adventure": 3
+    },
+    "anchor_experiences": [
+      {
+        "title": "Table Mountain summit hike",
+        "type": "adventure",
+        "description": "A real mountain summit-hike anchor with a scenic payoff from the top when conditions cooperate.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Table+Mountain+Blairmore"
+      },
+      {
+        "title": "Crowsnest Mountain viewpoints and ridge scenery",
+        "type": "scenic",
+        "description": "Strong mountain-view signal if you want the trip to feel clearly alpine rather than just outdoorsy.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Crowsnest+Mountain+viewpoint"
+      },
+      {
+        "title": "Frank Slide and Blairmore recovery stop",
+        "type": "relax",
+        "description": "Useful lighter-day option around the main hike so the trip can recover after the summit effort.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Frank+Slide+Blairmore"
+      }
+    ],
+    "neighborhoods": [
+      {
+        "name": "Blairmore / Coleman base",
+        "reason": "Best low-cost base for quick access to summit hikes, cafes, and the highway back north",
+        "link": "https://www.google.com/maps/search/?api=1&query=Blairmore+Alberta"
+      }
+    ],
+    "hotel_options": [
+      {
+        "name": "Crowsnest Pass motel or inn base",
+        "price_per_night": 105,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Hotels+in+Crowsnest+Pass",
+        "description": "Lower-cost overnight base that keeps a mountain hike trip realistic for a bigger group."
+      }
+    ],
+    "food_spots": [
+      {
+        "name": "Blairmore cafes and bakeries",
+        "tags": ["cafe", "bakery", "vegetarian-friendly", "coffee"],
+        "link": "https://www.google.com/maps/search/?api=1&query=Blairmore+cafe",
+        "description": "Best breakfast and recovery-food cluster if part of the group needs vegetarian-friendly options."
+      },
+      {
+        "name": "Crowsnest casual dinner spots",
+        "tags": ["restaurant", "mixed group", "shared meals", "mountain town"],
+        "link": "https://www.google.com/maps/search/?api=1&query=Crowsnest+Pass+restaurants",
+        "description": "Straightforward dinner options that still work for a vegetarian plus non-vegetarian group."
+      }
+    ]
   }
 ]

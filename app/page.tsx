@@ -2,9 +2,11 @@
 
 import { useCallback, useEffect, useState } from "react";
 import AccountPanel from "../components/AccountPanel";
+import BrandLogo from "../components/BrandLogo";
 import TripCard from "../components/TripCard";
 import TripForm from "../components/TripForm";
 import { trackProductEvent } from "../lib/productAnalytics";
+import { normalizeTripImageUrl } from "../lib/tripImages";
 import { RankedDestination, TripInput } from "../lib/types";
 
 type RankTripsResponse = {
@@ -42,21 +44,10 @@ type StoredPageState = {
 const LAST_INPUT_STORAGE_KEY = "weekend-trip-last-input";
 const PAGE_STATE_STORAGE_KEY = "weekend-trip-page-state";
 
-function getFallbackImageUrl(name?: string) {
-  const seed = encodeURIComponent((name ?? "trippify").trim().toLowerCase());
-  return `https://picsum.photos/seed/${seed}/1400/900`;
-}
-
 function ensureTripImage(trip: RankedDestination): RankedDestination {
-  const rawImage = typeof trip.imageUrl === "string" ? trip.imageUrl.trim() : "";
-
-  if (rawImage) {
-    return trip;
-  }
-
   return {
     ...trip,
-    imageUrl: getFallbackImageUrl(trip.name),
+    imageUrl: normalizeTripImageUrl(trip.imageUrl, trip.name),
   };
 }
 
@@ -594,9 +585,12 @@ export default function HomePage() {
         <section className="relative mb-8">
           <div className="relative">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="inline-flex items-center rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold uppercase tracking-[0.22em] text-slate-600 shadow-sm dark:border-slate-700/80 dark:bg-slate-900 dark:text-slate-200">
-                Alberta trip planner
-              </div>
+              <BrandLogo
+                variant="horizontal"
+                href="/"
+                priority
+                className="h-12 w-auto sm:h-14"
+              />
 
               <button
                 type="button"

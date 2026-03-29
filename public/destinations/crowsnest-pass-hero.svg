@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" role="img" aria-label="Crowsnest Pass mountain landscape">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#9cc7eb"/>
+      <stop offset="55%" stop-color="#cfe6f8"/>
+      <stop offset="100%" stop-color="#f5eee2"/>
+    </linearGradient>
+    <linearGradient id="peakFar" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#93a6a5"/>
+      <stop offset="100%" stop-color="#708385"/>
+    </linearGradient>
+    <linearGradient id="peakMid" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#60737a"/>
+      <stop offset="100%" stop-color="#43555f"/>
+    </linearGradient>
+    <linearGradient id="peakNear" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#33454f"/>
+      <stop offset="100%" stop-color="#23323b"/>
+    </linearGradient>
+    <linearGradient id="valley" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#68836f"/>
+      <stop offset="100%" stop-color="#4c624f"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1600" height="900" fill="url(#sky)"/>
+  <circle cx="1245" cy="145" r="86" fill="#fff0b8" opacity="0.92"/>
+
+  <path d="M0 560 L210 330 L370 470 L555 250 L760 490 L960 210 L1185 455 L1410 265 L1600 445 L1600 900 L0 900 Z" fill="url(#peakFar)" opacity="0.92"/>
+  <path d="M0 650 L160 470 L345 610 L610 320 L860 670 L1115 395 L1355 650 L1600 470 L1600 900 L0 900 Z" fill="url(#peakMid)"/>
+  <path d="M0 720 L185 560 L420 760 L715 395 L980 790 L1265 475 L1600 760 L1600 900 L0 900 Z" fill="url(#peakNear)"/>
+
+  <path d="M0 780 C180 740 310 760 430 800 C560 842 705 852 860 816 C1030 777 1175 752 1325 785 C1450 812 1525 824 1600 812 L1600 900 L0 900 Z" fill="url(#valley)"/>
+  <path d="M0 790 C220 760 420 790 630 840 C860 894 1100 878 1315 826 C1435 797 1515 790 1600 804" fill="none" stroke="#d8dfc7" stroke-width="18" stroke-linecap="round" opacity="0.55"/>
+
+  <rect x="86" y="80" width="650" height="132" rx="28" fill="rgba(255,255,255,0.2)" stroke="rgba(255,255,255,0.3)"/>
+  <text x="120" y="136" font-family="Georgia, serif" font-size="44" fill="#10202c" opacity="0.82">Weekend Trip</text>
+  <text x="120" y="192" font-family="Arial, sans-serif" font-size="58" font-weight="700" fill="#10202c">Crowsnest Pass</text>
+</svg>

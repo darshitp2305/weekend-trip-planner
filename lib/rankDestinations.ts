@@ -351,6 +351,38 @@ function getMountainHikeSignal(destination: MappedDestination): number {
   );
 }
 
+function getSummitSpecificSignal(destination: MappedDestination): number {
+  return countMatches(getJoinedSignals(destination), [
+    "summit",
+    "peak",
+    "ridge",
+    "scramble",
+    "alpine",
+    "mountain",
+    "mountains",
+    "rockies",
+    "foothills",
+  ]);
+}
+
+function hasConvincingSummitHikeAnchor(destination: MappedDestination): boolean {
+  const text = getJoinedSignals(destination);
+  const summitSpecificSignal = getSummitSpecificSignal(destination);
+  const mountainHikeSignal = getMountainHikeSignal(destination);
+  const scenicSignal = getScenicSignal(destination);
+  const hasTrailOnlySignal =
+    countMatches(text, ["trailhead", "viewpoint"]) >= 1 &&
+    summitSpecificSignal < 2;
+
+  if (hasTrailOnlySignal) return false;
+
+  return (
+    summitSpecificSignal >= 2 &&
+    mountainHikeSignal >= 4 &&
+    scenicSignal >= 2
+  );
+}
+
 function getVegetarianFoodSignal(destination: MappedDestination): number {
   if (destination.veganFriendly) return 4;
 
@@ -381,6 +413,8 @@ function passesHardFilters(
   input: TripInput,
   estimatedCost: number
 ): { passed: boolean; reason?: string } {
+  const promptIntent = deriveTripIntentFromPrompt(input.tripPrompt);
+
   if (destination.driveHoursFromStart > input.maxDriveHours) {
     return { passed: false, reason: "Drive time exceeds your max limit" };
   }
@@ -399,6 +433,16 @@ function passesHardFilters(
       reason: `Exceeds your strict budget by about ${formatMoney(
         estimatedCost - input.budget
       )}`,
+    };
+  }
+
+  if (
+    promptIntent.hardConstraints.activityAnchor === "summit_hike" &&
+    !hasConvincingSummitHikeAnchor(destination)
+  ) {
+    return {
+      passed: false,
+      reason: "Does not show a convincing mountain summit-hike anchor",
     };
   }
 
@@ -502,6 +546,7 @@ export function getNoMatchDiagnostics(
   input: TripInput,
   options?: { excludedDestinationNames?: string[] }
 ): NoMatchDiagnostics {
+  const promptIntent = deriveTripIntentFromPrompt(input.tripPrompt);
   const excludedDestinationNames = new Set(
     (options?.excludedDestinationNames ?? [])
       .map((name) => name.trim().toLowerCase())
@@ -549,6 +594,11 @@ export function getNoMatchDiagnostics(
   const allowedStaycations = allWithCosts.filter(
     ({ destination }) => input.includeStaycations || !destination.isStaycation
   );
+  const summitHikeMatches = allWithCosts.filter(
+    ({ destination }) =>
+      promptIntent.hardConstraints.activityAnchor !== "summit_hike" ||
+      hasConvincingSummitHikeAnchor(destination)
+  );
 
   const blockers: string[] = [];
 
@@ -566,6 +616,50 @@ export function getNoMatchDiagnostics(
 
   if (!input.includeStaycations && allowedStaycations.length === 0) {
     blockers.push("the remaining options are staycations, but staycations are turned off");
+  }
+
+  if (
+    promptIntent.hardConstraints.activityAnchor === "summit_hike" &&
+    summitHikeMatches.length === 0
+  ) {
+    blockers.push(
+      "none of the available destinations show a convincing mountain summit-hike anchor for this brief"
+    );
+  }
+
+  if (
+    promptIntent.hardConstraints.activityAnchor === "summit_hike" &&
+    summitHikeMatches.length === 0
+  ) {
+    const summitSuggestionParts: string[] = [];
+
+    if (input.budget <= 700) {
+      summitSuggestionParts.push(
+        "increase the total budget or lower the traveler count"
+      );
+    }
+
+    if (input.maxDriveHours <= 5) {
+      summitSuggestionParts.push("allow a longer drive");
+    }
+
+    if (promptIntent.hardConstraints.hikeDistanceKmTarget) {
+      summitSuggestionParts.push(
+        "relax the exact hike-length requirement"
+      );
+    }
+
+    summitSuggestionParts.push(
+      "or keep the budget and switch to a scenic non-summit hiking trip"
+    );
+
+    return {
+      headline:
+        "Trippify could not find a convincing mountain summit-hike match for the current filters.",
+      reasons: [
+        `Try one of these next: ${joinReasons(summitSuggestionParts)}.`,
+      ],
+    };
   }
 
   if (blockers.length === 0) {
@@ -753,6 +847,7 @@ function calculatePromptConstraintScore(
   let promptConstraintStrength = 0;
 
   const mountainHikeSignal = getMountainHikeSignal(destination);
+  const summitSpecificSignal = getSummitSpecificSignal(destination);
   const scenicSignal = getScenicSignal(destination);
   const vegetarianSignal = getVegetarianFoodSignal(destination);
   const foodieSignal = getFoodieSignal(destination);
@@ -761,7 +856,7 @@ function calculatePromptConstraintScore(
   if (promptIntent.hardConstraints.activityAnchor === "summit_hike") {
     hardConstraintCount += 1;
 
-    if (mountainHikeSignal >= 6) {
+    if (hasConvincingSummitHikeAnchor(destination) && mountainHikeSignal >= 6) {
       score += 18;
       promptConstraintStrength += 6;
       matchReasons.push("Matches the summit-hike brief better");
@@ -769,7 +864,7 @@ function calculatePromptConstraintScore(
         label: "Better fit for a summit-style hike",
         impact: "positive",
       });
-    } else if (mountainHikeSignal >= 4) {
+    } else if (hasConvincingSummitHikeAnchor(destination) && mountainHikeSignal >= 4) {
       score += 10;
       promptConstraintStrength += 4;
       matchReasons.push("Promising mountain-hike signal");
@@ -777,7 +872,7 @@ function calculatePromptConstraintScore(
         label: "Promising fit for a summit-oriented hike",
         impact: "positive",
       });
-    } else if (mountainHikeSignal >= 2) {
+    } else if (mountainHikeSignal >= 2 || summitSpecificSignal >= 1) {
       score -= 4;
       promptConstraintStrength += 2;
       warnings.push("Hiking signal exists, but summit specificity is thinner");

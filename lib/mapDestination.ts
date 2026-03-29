@@ -1,5 +1,6 @@
 import { Destination, RawDestination, StyleScores, TripInput, TripStyle } from "./types";
 import { formatDisplayText } from "./displayText";
+import { normalizeTripImageUrl } from "./tripImages";
 import { getPlanningHubForStartCity } from "./startCities";
 
 function getHiddenGemSignal(raw: RawDestination): number {
@@ -119,7 +120,9 @@ function estimateActivityCost(type: string): number {
 
 function getImageUrl(raw: RawDestination): string | undefined {
   const value = (raw as RawDestination & { image_url?: string }).image_url;
-  return typeof value === "string" && value.trim().length > 0 ? value : undefined;
+  return typeof value === "string" && value.trim().length > 0
+    ? normalizeTripImageUrl(value, raw.name)
+    : undefined;
 }
 
 function getLatitude(raw: RawDestination): number | undefined {

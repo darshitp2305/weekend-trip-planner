@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import BrandLogo from "../../../components/BrandLogo";
 import {
   getBrowserSupabaseAccessToken,
   supabaseBrowserAuth,
@@ -104,6 +105,9 @@ function CallbackContent() {
 export default function GoogleAuthCallbackPage() {
   return (
     <main className="min-h-screen bg-[#f8fafc] px-6 py-10 text-slate-900">
+      <div className="mx-auto mb-6 flex max-w-xl justify-center">
+        <BrandLogo variant="stacked" href="/" priority className="h-28 w-auto" />
+      </div>
       <Suspense
         fallback={
           <div className="mx-auto max-w-xl rounded-[2rem] border border-slate-200 bg-white p-8 shadow-sm">

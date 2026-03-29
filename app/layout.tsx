@@ -7,9 +7,12 @@ export const metadata: Metadata = {
   description:
     "Trippify helps you find ranked trips based on budget, drive time, dates, and travel style.",
   icons: {
-    icon: "/trippify-icon.svg",
-    shortcut: "/trippify-icon.svg",
-    apple: "/trippify-icon.svg",
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/branding/trippify-icon-white.png", type: "image/png" },
+    ],
+    shortcut: "/favicon.ico",
+    apple: "/apple-icon.png",
   },
 };
 

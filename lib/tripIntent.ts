@@ -34,6 +34,7 @@ export type DerivedTripIntent = {
   veganFriendly: boolean;
   includeStaycations: boolean;
   strictBudget: boolean;
+  suggestedTravelerCount?: number;
   suggestedBudgetPerTraveler?: number;
   suggestedMaxDriveHours?: number;
   hardConstraints: PromptHardConstraints;
@@ -55,9 +56,17 @@ const APPROXIMATE_PER_TRAVELER_BUDGET_PATTERN =
 const EXACT_PER_TRAVELER_BUDGET_PATTERN =
   /(?:budget(?:\s+of|\s+is)?\s*)?\$?\s*(\d{2,5})\s*(?:cad|dollars?)?\s*(?:each|per person|per traveler|per traveller|pp)\b/i;
 const APPROXIMATE_GROUP_BUDGET_PATTERN =
-  /(?:our|total|overall|trip|weekend|all[\s-]?in)?\s*budget(?:\s+of|\s+is)?\s*(?:around|about|roughly|approx(?:imately)?)\s*\$?\s*(\d{2,5})\s*(?:cad|dollars?)?\s*(?:total|overall|for the trip|for this trip|for the weekend|all in|between us|for us|for both of us|for all of us)?\b/i;
+  /(?:our\s+)?(?:total|overall|trip|weekend|all[\s-]?in)?\s*budget(?:\s+of|\s+is)?\s*(?:around|about|roughly|approx(?:imately)?)\s*\$?\s*(\d{2,5})\s*(?:cad|dollars?)?(?=\b|[.!?,]|$)(?:\s*(?:total|overall|for the trip|for this trip|for the weekend|all in|between us|for us|for both of us|for all of us)\b)?/i;
 const EXACT_GROUP_BUDGET_PATTERN =
-  /(?:our|total|overall|trip|weekend|all[\s-]?in)?\s*budget(?:\s+of|\s+is)?\s*\$?\s*(\d{2,5})\s*(?:cad|dollars?)?\s*(?:total|overall|for the trip|for this trip|for the weekend|all in|between us|for us|for both of us|for all of us)\b/i;
+  /(?:our\s+)?(?:total|overall|trip|weekend|all[\s-]?in)?\s*budget(?:\s+of|\s+is)?\s*\$?\s*(\d{2,5})\s*(?:cad|dollars?)?(?=\b|[.!?,]|$)(?:\s*(?:total|overall|for the trip|for this trip|for the weekend|all in|between us|for us|for both of us|for all of us)\b)?/i;
+const TRAVELER_COUNT_PATTERNS = [
+  /\bwe(?:'re|\s+are)?\s+(\d{1,2})\s+(?:people|travellers|travelers)\b/i,
+  /\b(\d{1,2})\s+of\s+us\b/i,
+  /\bthere\s+(?:are|will be)\s+(\d{1,2})\s+of\s+us\b/i,
+  /\bgroup\s+of\s+(\d{1,2})\b/i,
+  /\bfor\s+(\d{1,2})\s+(?:people|travellers|travelers)\b/i,
+  /\b(\d{1,2})\s+(?:people|travellers|travelers)\b/i,
+];
 const HIKE_DISTANCE_PATTERN =
   /(?:about|around|roughly|approx(?:imately)?)?\s*(\d{1,2}(?:\.\d)?)\s*(?:km|kilometers?|kilometres?)(?:\s*(?:long)?)?(?:\s*(?:for the )?(?:round trip|return|there and back|total))?/i;
 
@@ -97,20 +106,30 @@ function inferPreferredDestination(prompt: string): string | undefined {
   const options = (rawDestinations as RawDestination[])
     .map((destination) => ({
       destinationName: destination.name?.trim(),
-      matchText: normalizeText(
-        [destination.name, destination.home_base_city].filter(Boolean).join(" ")
-      ),
+      matchTexts: [destination.name, destination.home_base_city]
+        .map((value) => normalizeText(value))
+        .filter(Boolean),
     }))
     .filter(
-      (
-        destination
-      ): destination is { destinationName: string; matchText: string } =>
-        Boolean(destination.destinationName && destination.matchText)
+      (destination): destination is {
+        destinationName: string;
+        matchTexts: string[];
+      } => Boolean(destination.destinationName && destination.matchTexts.length > 0)
     )
-    .sort((a, b) => b.matchText.length - a.matchText.length);
+    .sort((a, b) => {
+      const longestA = Math.max(...a.matchTexts.map((value) => value.length));
+      const longestB = Math.max(...b.matchTexts.map((value) => value.length));
+      return longestB - longestA;
+    });
 
   for (const option of options) {
-    if (normalizedPrompt.includes(option.matchText)) {
+    if (
+      option.matchTexts.some(
+        (matchText) =>
+          normalizedPrompt === matchText ||
+          normalizedPrompt.includes(matchText)
+      )
+    ) {
       return option.destinationName;
     }
   }
@@ -362,6 +381,20 @@ export function extractPromptBudget(prompt: string): PromptBudgetMatch | null {
         scope: "group_total",
         approximate: false,
       };
+    }
+  }
+
+  return null;
+}
+
+export function extractPromptTravelerCount(prompt: string): number | null {
+  for (const pattern of TRAVELER_COUNT_PATTERNS) {
+    const match = prompt.match(pattern);
+    if (!match) continue;
+
+    const travelerCount = Number.parseInt(match[1] ?? "", 10);
+    if (Number.isFinite(travelerCount) && travelerCount >= 1 && travelerCount <= 12) {
+      return travelerCount;
     }
   }
 
@@ -632,6 +665,7 @@ export function deriveTripIntentFromPrompt(prompt?: string): DerivedTripIntent {
   const normalizedPrompt = normalizeText(rawPrompt);
   const activityFocus = inferActivityFocus(normalizedPrompt);
   const budget = inferBudget(rawPrompt, normalizedPrompt);
+  const suggestedTravelerCount = extractPromptTravelerCount(rawPrompt) ?? undefined;
 
   const includeStaycations =
     countMatches(normalizedPrompt, [
@@ -652,6 +686,7 @@ export function deriveTripIntentFromPrompt(prompt?: string): DerivedTripIntent {
     veganFriendly: Boolean(hardConstraints.dietaryPreference),
     includeStaycations,
     strictBudget: budget.strictBudget,
+    suggestedTravelerCount,
     suggestedBudgetPerTraveler: budget.suggestedBudgetPerTraveler,
     suggestedMaxDriveHours: inferDriveTolerance(normalizedPrompt),
     hardConstraints,

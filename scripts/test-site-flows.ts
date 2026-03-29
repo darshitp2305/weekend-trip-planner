@@ -15,6 +15,7 @@ import { RankedDestination, TripInput, TripPlan, TripStyle } from "../lib/types"
 import {
   deriveTripIntentFromPrompt,
   extractPromptBudget,
+  extractPromptTravelerCount,
 } from "../lib/tripIntent";
 
 loadEnvConfig(process.cwd());
@@ -202,6 +203,18 @@ async function runPromptInterpretationTests(): Promise<TestResult[]> {
   const totalBudgetPrompt =
     "We want a weekend in Canmore. Our total budget is $600 for the trip, and there are 2 of us.";
   const totalBudgetMatch = extractPromptBudget(totalBudgetPrompt);
+  const totalBudgetTravelerCount = extractPromptTravelerCount(totalBudgetPrompt);
+  const fourTravelerPrompt =
+    "We are 4 people and our total budget is $600. We want one real summit hike and vegetarian-friendly food.";
+  const fourTravelerIntent = deriveTripIntentFromPrompt(fourTravelerPrompt);
+  const fourTravelerBudgetMatch = extractPromptBudget(fourTravelerPrompt);
+  const fourTravelerPromptDerivedBudgetPerTraveler =
+    fourTravelerBudgetMatch?.scope === "group_total" &&
+    typeof fourTravelerIntent.suggestedTravelerCount === "number"
+      ? Math.round(
+          fourTravelerBudgetMatch.amount / fourTravelerIntent.suggestedTravelerCount
+        )
+      : null;
   const recoveryInput = makeInput({
     style: "outdoors",
     activityFocus: "hiking",
@@ -328,6 +341,23 @@ async function runPromptInterpretationTests(): Promise<TestResult[]> {
     recoveryInput,
     "static-ranking"
   );
+  const strictSummitBudgetPrompt =
+    "I want to go on a hike with my friends up a mountain, where there should be scenic views from the top, and the hike should be about 15km long. On the other days I want to relax and eat good food. I'm a vegetarian, but my friends are not. Our total budget is $600 for the trip.";
+  const strictSummitBudgetInput = makeInput({
+    style: "outdoors",
+    activityFocus: "hiking",
+    travelerCount: 4,
+    budgetPerTraveler: 150,
+    budget: 600,
+    tripLengthDays: 2,
+    maxDriveHours: 5,
+    veganFriendly: true,
+    tripPrompt: strictSummitBudgetPrompt,
+  });
+  const strictSummitBudgetTopResult = rankDestinations(strictSummitBudgetInput, 1)[0];
+  const strictSummitBudgetPlan = strictSummitBudgetTopResult
+    ? buildTripPlan(strictSummitBudgetTopResult, strictSummitBudgetInput, "static-ranking")
+    : null;
   const recoveryActivityCounts = recoveryPlan
     ? recoveryPlan.itineraryDays.map(
         (day) => day.stops.filter((stop) => stop.kind === "activity").length
@@ -400,8 +430,12 @@ async function runPromptInterpretationTests(): Promise<TestResult[]> {
       passed:
         totalBudgetMatch?.scope === "group_total" &&
         totalBudgetMatch?.amount === 600 &&
-        totalBudgetMatch?.approximate === false,
-      details: JSON.stringify(totalBudgetMatch),
+        totalBudgetMatch?.approximate === false &&
+        totalBudgetTravelerCount === 2,
+      details: JSON.stringify({
+        budget: totalBudgetMatch,
+        travelerCount: totalBudgetTravelerCount,
+      }),
     },
     {
       id: "I27",
@@ -421,6 +455,20 @@ async function runPromptInterpretationTests(): Promise<TestResult[]> {
       }),
     },
     {
+      id: "I31",
+      area: "prompt-travelers",
+      passed:
+        fourTravelerIntent.suggestedTravelerCount === 4 &&
+        fourTravelerBudgetMatch?.scope === "group_total" &&
+        fourTravelerBudgetMatch.amount === 600 &&
+        fourTravelerPromptDerivedBudgetPerTraveler === 150,
+      details: JSON.stringify({
+        suggestedTravelerCount: fourTravelerIntent.suggestedTravelerCount,
+        budgetMatch: fourTravelerBudgetMatch,
+        promptDerivedBudgetPerTraveler: fourTravelerPromptDerivedBudgetPerTraveler,
+      }),
+    },
+    {
       id: "I28",
       area: "builder-shape",
       passed:
@@ -429,7 +477,9 @@ async function runPromptInterpretationTests(): Promise<TestResult[]> {
         recoveryActivityCounts[0] === 0 &&
         (recoveryActivityCounts[1] ?? 0) <= 1 &&
         (recoveryActivityCounts[2] ?? 0) <= 1 &&
-        dayTwoActivityTitles.includes((recoveryPlan?.title ?? "").toLowerCase()),
+        dayTwoActivityTitles.some((title) =>
+          /ha ling|summit|peak|ridge|table mountain/i.test(title)
+        ),
       details: recoveryPlan
         ? JSON.stringify({
             title: recoveryPlan.title,
@@ -437,6 +487,54 @@ async function runPromptInterpretationTests(): Promise<TestResult[]> {
             dayTwoActivityTitles,
           })
         : "No recovery-hike plan built",
+    },
+    {
+      id: "I29",
+      area: "ranked-summit-filter",
+      passed:
+        !/elk island|hayburger/i.test(strictSummitBudgetTopResult?.name ?? "") &&
+        (
+          !strictSummitBudgetTopResult ||
+          /ha ling|canmore|banff|kananaskis|jasper|grande cache|crowsnest/i.test(
+            [
+              strictSummitBudgetTopResult.name,
+              strictSummitBudgetTopResult.summary,
+              strictSummitBudgetTopResult.homeBaseCity,
+            ]
+              .filter(Boolean)
+              .join(" ")
+          )
+        ),
+      details: strictSummitBudgetTopResult
+        ? JSON.stringify({
+            name: strictSummitBudgetTopResult.name,
+            homeBaseCity: strictSummitBudgetTopResult.homeBaseCity,
+            summary: strictSummitBudgetTopResult.summary,
+          })
+        : "No ranked summit result, which is acceptable if no mountain match fits",
+    },
+    {
+      id: "I30",
+      area: "summit-title-quality",
+      passed:
+        !strictSummitBudgetPlan ||
+        !/^lookout point$/i.test(strictSummitBudgetPlan.title ?? "") ||
+        /crowsnest|blairmore|coleman|table mountain|ha ling|peak|summit/i.test(
+          [
+            strictSummitBudgetPlan.title,
+            strictSummitBudgetPlan.destinationName,
+            strictSummitBudgetTopResult?.homeBaseCity,
+          ]
+            .filter(Boolean)
+            .join(" ")
+        ),
+      details: strictSummitBudgetPlan
+        ? JSON.stringify({
+            title: strictSummitBudgetPlan.title,
+            destinationName: strictSummitBudgetPlan.destinationName,
+            homeBaseCity: strictSummitBudgetTopResult?.homeBaseCity,
+          })
+        : "No summit plan built, which is acceptable if no match fits",
     },
   ];
 }

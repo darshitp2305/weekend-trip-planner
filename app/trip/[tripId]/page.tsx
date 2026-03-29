@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
+import BrandLogo from "../../../components/BrandLogo";
 import {
   clearPendingTripSyncRecord,
   getPendingTripSyncRecord,
@@ -1163,7 +1164,7 @@ export default function TripPage() {
     <main className="min-h-screen bg-[#f6f8fb] px-4 py-6 text-slate-900 dark:bg-slate-950 dark:text-slate-100 sm:px-6">
       <div className={`mx-auto space-y-5 ${isShareView ? "max-w-6xl" : "max-w-[1400px]"}`}>
         {!isShareView ? (
-          <div>
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <button
               type="button"
               onClick={handleBackButtonClick}
@@ -1172,6 +1173,7 @@ export default function TripPage() {
               <span aria-hidden="true">←</span>
               <span>Back</span>
             </button>
+            <BrandLogo variant="horizontal" href="/" className="h-10 w-auto sm:h-11" />
           </div>
         ) : null}
 

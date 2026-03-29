@@ -15,6 +15,7 @@ import {
 } from "./tripSelections";
 import {
   getRecommendedTripTitle,
+  isGenericActivityDisplayName,
   normalizePlaceDisplayName,
   refineTripStayRecommendation,
 } from "./tripSpecificity";
@@ -396,7 +397,11 @@ function displayActivityName(activity?: Pick<ActivitySpot, "name"> | string) {
     typeof activity === "string"
       ? activity
       : activity?.name;
-  return normalizePlaceDisplayName(name) || name || "Activity";
+  const normalizedName = normalizePlaceDisplayName(name);
+  if (normalizedName && !isGenericActivityDisplayName(normalizedName)) {
+    return normalizedName;
+  }
+  return normalizedName || name || "Activity";
 }
 
 function isDemandingHikeActivity(activity?: ActivitySpot) {
@@ -485,6 +490,10 @@ function promptActivityConstraintScore(
   const promptIntent = deriveTripIntentFromPrompt(input.tripPrompt);
   let score = 0;
 
+  if (isGenericActivityDisplayName(activity?.name)) {
+    score -= 28;
+  }
+
   if (promptIntent.hardConstraints.activityAnchor === "summit_hike") {
     const strongSummitSignal =
       ["summit", "peak", "ridge", "scramble", "alpine", "mountain"].filter(
@@ -499,14 +508,25 @@ function promptActivityConstraintScore(
         text.includes(term)
       ).length;
 
-    if (strongSummitSignal >= 1) {
-      score += 16;
+    const namedRouteSignal =
+      ["table mountain", "ha ling", "tent ridge", "eeor", "ridgewalk", "summit trail"].filter(
+        (term) => text.includes(term)
+      ).length;
+
+    if (strongSummitSignal >= 1 && hikeSignal >= 1) {
+      score += 28;
+    } else if (strongSummitSignal >= 1) {
+      score += 4;
     } else if (hikeSignal >= 2 && scenicSignal >= 1) {
       score += 9;
     } else if (hikeSignal >= 1) {
       score -= 2;
     } else {
       score -= 12;
+    }
+
+    if (namedRouteSignal >= 1) {
+      score += 22;
     }
 
     if (promptIntent.hardConstraints.requiresScenicView) {
@@ -533,6 +553,14 @@ function promptActivityConstraintScore(
 
     if (text.includes("viewpoint") && strongSummitSignal === 0) {
       score -= 8;
+    }
+
+    if (scenicSignal >= 2 && hikeSignal === 0) {
+      score -= 18;
+    }
+
+    if (text.includes("ridge") && hikeSignal === 0 && !text.includes("scramble")) {
+      score -= 10;
     }
 
     if (
@@ -841,6 +869,22 @@ function foodScoreForFinalLightStop(food?: FoodSpot) {
 function activityAnchorScore(activity?: ActivitySpot) {
   const text = normalizedActivitySignals(activity);
   let score = 0;
+  const summitSignal =
+    ["summit", "peak", "ridge", "scramble", "alpine", "mountain"].filter((term) =>
+      text.includes(term)
+    ).length;
+  const hikeSignal =
+    ["trail", "hike", "loop", "backcountry", "scramble"].filter((term) =>
+      text.includes(term)
+    ).length;
+  const scenicSignal =
+    ["view", "viewpoint", "lookout", "scenic", "panorama"].filter((term) =>
+      text.includes(term)
+    ).length;
+
+  if (isGenericActivityDisplayName(activity?.name)) {
+    score -= 30;
+  }
 
   if (
     text.includes("national park") ||
@@ -866,6 +910,10 @@ function activityAnchorScore(activity?: ActivitySpot) {
 
   if (text.includes("trailhead")) score -= 3;
   if (text.includes("viewpoint")) score -= 2;
+  if (summitSignal >= 1 && hikeSignal >= 1) score += 32;
+  if (text.includes("table mountain")) score += 26;
+  if (scenicSignal >= 2 && hikeSignal === 0) score -= 18;
+  if (text.includes("ridge") && hikeSignal === 0 && !text.includes("scramble")) score -= 12;
 
   if (text.includes("red chair") || text.includes("totem pole")) {
     score -= 2;
@@ -881,6 +929,10 @@ function activityAnchorScore(activity?: ActivitySpot) {
 function activitySecondaryScore(activity?: ActivitySpot) {
   const text = normalizedActivitySignals(activity);
   let score = 0;
+
+  if (isGenericActivityDisplayName(activity?.name)) {
+    score -= 14;
+  }
 
   if (
     text.includes("museum") ||
@@ -911,6 +963,10 @@ function activitySecondaryScore(activity?: ActivitySpot) {
 function activityFinalLightScore(activity?: ActivitySpot) {
   const text = normalizedActivitySignals(activity);
   let score = 0;
+
+  if (isGenericActivityDisplayName(activity?.name)) {
+    score -= 14;
+  }
 
   if (
     text.includes("viewpoint") ||
@@ -1882,11 +1938,11 @@ function buildGetawayFinalDay(
 
   return {
     title: isTwoDaySummitCompromise
-      ? "Compromise summit day and drive back"
+      ? "Main hike day and drive back"
       : "Final half-day and drive back",
     summary:
       isTwoDaySummitCompromise
-        ? `This is the compromise version of the brief: use the morning for the main hike, then drive back to ${input.startCity} the same day.`
+        ? `Use the morning for the main hike, then drive back to ${input.startCity} the same day so the trip still lands as a mountain weekend.`
         : recoveryDays && !useFinalDayAsPrimaryAnchor
         ? `Keep the final day lighter with a slower meal and, at most, one scenic stop before the return to ${input.startCity}.`
         : input.style === "hidden gems"

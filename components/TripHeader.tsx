@@ -1,6 +1,8 @@
 import Image from "next/image";
+import { useEffect, useState } from "react";
 import { formatDisplayTag, formatDisplayText } from "../lib/displayText";
 import { getTripMomentumSummary, getTripUrgencyLevel } from "../lib/tripMomentum";
+import { getFallbackImageUrl, normalizeTripImageUrl } from "../lib/tripImages";
 import {
   HotelOption,
   LiveDataSummary,
@@ -11,7 +13,6 @@ import {
 import {
   getPromptAwareTripSummary,
   getRecommendationContextLabel,
-  getPromptConstraintFitSummary,
   getRecommendedTripTitle,
 } from "../lib/tripSpecificity";
 import {
@@ -307,22 +308,29 @@ export default function TripHeader({ trip, shareMode = false }: TripHeaderProps)
     homeBaseCity: trip.homeBaseCity,
     name: trip.name,
   });
-  const promptConstraintSummary = getPromptConstraintFitSummary(trip, trip);
+  const [heroImageUrl, setHeroImageUrl] = useState(
+    normalizeTripImageUrl(trip.imageUrl, title)
+  );
+
+  useEffect(() => {
+    setHeroImageUrl(normalizeTripImageUrl(trip.imageUrl, title));
+  }, [trip.imageUrl, title]);
 
   const finalizedDateLabel = formatFinalizedAt(trip.finalizedAt);
   const tripDecisionLabel = decisionLabel(trip.decisionStatus);
 
   return (
     <section className="overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
-      {trip.imageUrl ? (
+      {heroImageUrl ? (
         <div className="aspect-[16/4.5] w-full overflow-hidden bg-slate-100 dark:bg-slate-800">
           <Image
-            src={trip.imageUrl}
+            src={heroImageUrl}
             alt={title}
             width={1600}
             height={450}
             unoptimized
             className="h-full w-full object-cover"
+            onError={() => setHeroImageUrl(getFallbackImageUrl(title))}
           />
         </div>
       ) : null}
@@ -359,12 +367,6 @@ export default function TripHeader({ trip, shareMode = false }: TripHeaderProps)
             <p className="mt-2.5 max-w-4xl text-[15px] leading-7 text-slate-600 dark:text-slate-300">
               {formatDisplayText(summaryText)}
             </p>
-          ) : null}
-          {promptConstraintSummary &&
-          promptConstraintSummary.toLowerCase().includes("approximate fit") ? (
-            <div className="mt-3 max-w-4xl rounded-[1rem] border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-100">
-              Best-fit draft, not a hard match: the requested hike length is still approximate and should be verified before booking around it.
-            </div>
           ) : null}
 
           {trip.status === "finalized" && finalizedDateLabel ? (

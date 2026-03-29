@@ -814,6 +814,25 @@ export default function InteractiveItinerary({
     return shiftTimeLabel(stop.time, addedStopsBefore(dayIndex, stopIndex).length);
   }
 
+  function displayTimeForAddedStop(dayIndex: number, addedStop: TripCustomStop) {
+    const insertAfterStopIndex = addedStop.insertAfterStopIndex ?? -1;
+    const dayStops = days[dayIndex]?.stops ?? [];
+    const nextStop = dayStops[insertAfterStopIndex + 1];
+
+    if (nextStop?.time) {
+      return nextStop.time;
+    }
+
+    if (insertAfterStopIndex >= 0) {
+      const previousStop = dayStops[insertAfterStopIndex];
+      if (previousStop?.time) {
+        return shiftTimeLabel(previousStop.time, 1) ?? previousStop.time;
+      }
+    }
+
+    return addedStop.time;
+  }
+
   function setCatalogSelection(
     kind: "food" | "activity",
     key: string,
@@ -847,7 +866,11 @@ export default function InteractiveItinerary({
     });
   }
 
-  function renderAddedStopCard(dayIndex: number, addedStop: TripCustomStop) {
+  function renderAddedStopCard(
+    dayIndex: number,
+    addedStop: TripCustomStop,
+    previousStop?: StopCoordinate
+  ) {
     const addedChoice = customStopChoice(addedStop);
     const estimatedCost =
       addedStop.kind === "food"
@@ -859,6 +882,11 @@ export default function InteractiveItinerary({
       addedStop.websiteUrl
     );
     const safeAddedStopMapsUrl = sanitizeExternalNavigationUrl(addedStop.mapsUrl);
+    const distanceFromPrevious = formatDistanceFromPrevious(
+      previousStop,
+      addedStopCoordinate(addedStop)
+    );
+    const displayedTime = displayTimeForAddedStop(dayIndex, addedStop);
 
     return (
       <div
@@ -868,16 +896,21 @@ export default function InteractiveItinerary({
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-700 dark:text-emerald-300">
-              {addedStop.time ?? "Added stop"}
+              {displayedTime ?? addedStop.time ?? "Added stop"}
             </div>
-            {timeWindowLabel(addedStop.time) ? (
+            {timeWindowLabel(displayedTime ?? addedStop.time) ? (
               <div className="mt-1 text-[12px] font-medium leading-5 text-emerald-700/80 dark:text-emerald-200/80">
-                {timeWindowLabel(addedStop.time)}
+                {timeWindowLabel(displayedTime ?? addedStop.time)}
               </div>
             ) : null}
             <h4 className="mt-1 text-sm font-semibold text-slate-950 dark:text-slate-100">
               {addedStop.title}
             </h4>
+            {distanceFromPrevious ? (
+              <div className="mt-1.5 text-[12px] font-medium leading-5 text-slate-500 dark:text-slate-400">
+                {distanceFromPrevious}
+              </div>
+            ) : null}
             {addedStop.description ? (
               <p className="mt-1.5 text-[13px] leading-5 text-slate-700 dark:text-slate-200">
                 {addedStop.description}
@@ -955,9 +988,13 @@ export default function InteractiveItinerary({
     );
   }
 
-  function renderInsertedStops(dayIndex: number, insertAfterStopIndex: number) {
+  function renderInsertedStops(
+    dayIndex: number,
+    insertAfterStopIndex: number,
+    previousStop?: StopCoordinate
+  ) {
     return addedStopsInsertedAfter(dayIndex, insertAfterStopIndex).map((addedStop) =>
-      renderAddedStopCard(dayIndex, addedStop)
+      renderAddedStopCard(dayIndex, addedStop, previousStop)
     );
   }
 
@@ -1837,12 +1874,12 @@ export default function InteractiveItinerary({
                 </div>
 
                 <div className="space-y-3">
-                  {renderInsertedStops(dayIndex, -1)}
-                  {dayStops.map((stop, stopIndex) => {
-                    const key = stopKey(dayIndex, stopIndex);
-                    const priorStop = previousStopCoordinate(
-                      dayIndex,
-                      stopIndex,
+                    {renderInsertedStops(dayIndex, -1)}
+                    {dayStops.map((stop, stopIndex) => {
+                      const key = stopKey(dayIndex, stopIndex);
+                      const priorStop = previousStopCoordinate(
+                        dayIndex,
+                        stopIndex,
                       stop.kind
                     );
                     const displayedStopTime = displayTimeForStop(dayIndex, stopIndex, stop);
@@ -1977,7 +2014,11 @@ export default function InteractiveItinerary({
                               </div>
                             ) : null}
                           </div>
-                          {renderInsertedStops(dayIndex, stopIndex)}
+                          {renderInsertedStops(
+                            dayIndex,
+                            stopIndex,
+                            selectedCoordinateForStop(dayIndex, stopIndex)
+                          )}
                         </div>
                       );
                     }

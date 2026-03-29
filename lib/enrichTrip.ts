@@ -17,6 +17,7 @@ import { fetchPlacesProviderData } from "./placesProvider";
 import { reportProviderEvent } from "./providerTelemetry";
 import { searchHotelsWithSerpApi } from "./serpApiHotels";
 import { deriveTripIntentFromPrompt } from "./tripIntent";
+import { isGenericActivityDisplayName } from "./tripSpecificity";
 
 const ENRICH_CACHE_TTL_MS = 1000 * 60 * 20;
 
@@ -61,6 +62,14 @@ function normalizeName(value?: string) {
 
 function normalizeText(value?: string) {
   return (value ?? "").trim().toLowerCase();
+}
+
+function mergeNamedPlaces<T extends { name?: string }>(
+  preferred: T[],
+  fallback: T[],
+  limit: number
+) {
+  return dedupeByName([...preferred, ...fallback]).slice(0, limit);
 }
 
 function normalizeLocationText(value?: string) {
@@ -197,6 +206,12 @@ function placeSearchText(place: GooglePlace) {
 
 function placeDisplayName(place: GooglePlace) {
   return (place.displayName?.text ?? "").trim();
+}
+
+function hasStrongSummitIdentity(text: string) {
+  return ["summit", "peak", "ridge", "scramble", "alpine"].some((term) =>
+    text.includes(term)
+  );
 }
 
 function isNumericOnlyPlaceName(value?: string) {
@@ -440,6 +455,14 @@ function shouldRejectPlace(
     ) {
       return true;
     }
+
+    if (
+      promptIntent.hardConstraints.activityAnchor === "summit_hike" &&
+      isGenericActivityDisplayName(displayName) &&
+      !hasStrongSummitIdentity(text)
+    ) {
+      return true;
+    }
   }
 
   if (!hasStrongLocationMatch(text, destinationLocationContext(trip))) {
@@ -512,6 +535,10 @@ function placeRelevanceScore(
 
     if (styleSignals.some((term) => text.includes(term))) {
       score += 12;
+    }
+
+    if (isGenericActivityDisplayName(placeDisplayName(place))) {
+      score -= 36;
     }
 
     score += promptActivitySignal(text, input);
@@ -1119,7 +1146,14 @@ export async function enrichRankedTrip(
 
     const mergedActivities =
       liveActivities.length > 0
-        ? liveActivities.slice(0, 12)
+        ? deriveTripIntentFromPrompt(input.tripPrompt).hardConstraints.activityAnchor ===
+          "summit_hike"
+          ? mergeNamedPlaces(
+              liveActivities,
+              (trip.topActivities ?? []).filter(hasName),
+              12
+            )
+          : liveActivities.slice(0, 12)
         : trip.topActivities;
 
     const mergedHotels =

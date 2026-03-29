@@ -400,6 +400,14 @@ function hasFoodIntent(text: string) {
 }
 
 function hasStayIntent(text: string) {
+  if (
+    /\b(?:near|close to|by|around)\s+(?:the\s+)?(?:hotel|stay|lodging|accommodation|resort)\b/i.test(
+      text
+    )
+  ) {
+    return false;
+  }
+
   return /\b(hotel|stay|lodging|accommodation|check in|resort)\b/i.test(text);
 }
 
@@ -458,6 +466,34 @@ function cleanDesiredText(value: string) {
     .replace(/[?!.,]+$/g, "")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function stripPlacementContext(value: string) {
+  return value
+    .replace(
+      /\bon\s+day\s+(?:\d+|one|two|three|four|five|six|seven|first|second|third|fourth|fifth|sixth|seventh)\b/gi,
+      ""
+    )
+    .replace(
+      /\b(?:before|after)\s+.+$/i,
+      ""
+    )
+    .replace(
+      /\b(?:near|close to|by|around)\s+(?:the\s+)?(?:stay|hotel|lodging|accommodation|resort|lodge|inn)\b/gi,
+      ""
+    )
+    .replace(
+      /\bin\s+(?:jasper|banff|canmore|edmonton|calgary|crowsnest pass|crowsnest|blairmore|coleman)\b/gi,
+      ""
+    )
+    .replace(/\bstop\b/gi, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function searchableDesiredText(value: string) {
+  const stripped = stripPlacementContext(value);
+  return stripped || value.trim();
 }
 
 export function extractDesiredText(instruction: string) {
@@ -651,9 +687,9 @@ function inferInstructionKind(
   activities: Activity[],
   fallbackKind?: EditableKind
 ): EditableKind | null {
-  if (hasStayIntent(instruction)) return "stay";
   if (hasFoodIntent(instruction)) return "food";
   if (hasActivityIntent(instruction)) return "activity";
+  if (hasStayIntent(instruction)) return "stay";
 
   const match = findBestCatalogMatch({
     query: desiredText,
@@ -682,6 +718,13 @@ function collectStopsForKind(
       key: stopKey(dayIndex, stopIndex),
     }))
     .filter(({ stop }) => stop.kind === kind);
+}
+
+function collectStopsForKindAcrossDays(
+  days: ItineraryDayData[],
+  kind: EditableKind
+) {
+  return days.flatMap((day, dayIndex) => collectStopsForKind(days, dayIndex, kind));
 }
 
 function firstStayTarget(days: ItineraryDayData[]) {
@@ -744,6 +787,33 @@ function resolvePromptTargetStop(options: {
   }
 
   if (typeof dayIndex !== "number") {
+    const editableStops = collectStopsForKindAcrossDays(days, kind);
+    if (editableStops.length === 0) {
+      return null;
+    }
+
+    if (editableStops.length === 1) {
+      return editableStops[0];
+    }
+
+    const scored = editableStops
+      .map((stopTarget) => ({
+        stopTarget,
+        score: instructionStopScore(instruction, stopTarget.stop),
+      }))
+      .sort((a, b) => b.score - a.score);
+
+    const best = scored[0];
+    const next = scored[1];
+
+    if (!best) {
+      return null;
+    }
+
+    if (best.score > 0 && (!next || best.score > next.score)) {
+      return best.stopTarget;
+    }
+
     return null;
   }
 
@@ -783,6 +853,18 @@ function extractAfterAnchorText(instruction: string) {
   );
 
   return match?.[1]?.trim();
+}
+
+function extractBeforeAnchorText(instruction: string) {
+  const match = instruction.match(
+    /\bbefore\s+(.+?)(?=(?:,|\bafter\b|\bthen\b|\band\b|\bi want\b|\bwe want\b|$))/i
+  );
+
+  return match?.[1]?.trim();
+}
+
+function extractAnchorText(instruction: string) {
+  return extractBeforeAnchorText(instruction) ?? extractAfterAnchorText(instruction);
 }
 
 function stopLabelForReference(
@@ -874,13 +956,185 @@ function resolveAnchorStopReference(options: {
   foodSpots: FoodSpot[];
   activities: Activity[];
 }) {
-  const anchorText = extractAfterAnchorText(options.instruction);
+  return resolveAnchorStopReferenceAcrossDays({
+    ...options,
+    dayIndexes: [options.dayIndex],
+  });
+}
+
+function resolveAnchorStopReferenceAcrossDays(options: {
+  instruction: string;
+  days: ItineraryDayData[];
+  selection: TripSelectionState;
+  foodSpots: FoodSpot[];
+  activities: Activity[];
+  dayIndexes?: number[];
+}) {
+  const anchorText = extractAnchorText(options.instruction);
   if (!anchorText) return null;
 
-  const stops = options.days[options.dayIndex]?.stops ?? [];
+  const dayIndexes =
+    options.dayIndexes ??
+    options.days.map((_, dayIndex) => dayIndex);
   const candidates: Array<{ ref: StopReference; score: number }> = [];
 
-  stops.forEach((stop, stopIndex) => {
+  dayIndexes.forEach((dayIndex) => {
+    const stops = options.days[dayIndex]?.stops ?? [];
+    stops.forEach((stop, stopIndex) => {
+      const label = stopLabelForReference(
+        dayIndex,
+        stopIndex,
+        stop,
+        options.selection,
+        options.foodSpots,
+        options.activities
+      );
+      const coordinate = stopCoordinateForReference(
+        dayIndex,
+        stopIndex,
+        stop,
+        options.selection,
+        options.foodSpots,
+        options.activities
+      );
+
+      candidates.push({
+        ref: {
+          dayIndex,
+          stopIndex,
+          stop,
+          label,
+          latitude: coordinate.latitude,
+          longitude: coordinate.longitude,
+        },
+        score: scoreCandidateMatch(
+          anchorText,
+          label,
+          [label, stop.description].filter(Boolean).join(" ")
+        ),
+      });
+    });
+  });
+
+  candidates.sort((a, b) => b.score - a.score);
+  const best = candidates[0];
+  const next = candidates[1];
+
+  if (!best || best.score < 120) {
+    return null;
+  }
+
+  if (
+    next &&
+    best.score < 1000 &&
+    best.score - next.score < (dayIndexes.length > 1 ? 35 : 1)
+  ) {
+    return null;
+  }
+
+  return best.ref;
+}
+
+function foodSemanticScore(desiredText: string, food: FoodSpot) {
+  const loweredDesiredText = normalized(desiredText);
+  const searchText = normalized(
+    [
+      food.name,
+      food.category,
+      food.shortDescription,
+      ...(food.tags ?? []),
+      food.priceLevel,
+    ]
+      .filter(Boolean)
+      .join(" ")
+  );
+  let score = 0;
+
+  if (
+    /\b(coffee|cafe)\b/.test(loweredDesiredText) &&
+    /\b(coffee|cafe|espresso|latte)\b/.test(searchText)
+  ) {
+    score += 260;
+  }
+
+  if (
+    /\b(breakfast|brunch)\b/.test(loweredDesiredText) &&
+    /\b(breakfast|brunch|cafe|coffee|bakery|pastry)\b/.test(searchText)
+  ) {
+    score += 220;
+  }
+
+  if (
+    /\b(lunch)\b/.test(loweredDesiredText) &&
+    /\b(lunch|sandwich|deli|bakery|cafe|bistro|soup)\b/.test(searchText)
+  ) {
+    score += 210;
+  }
+
+  if (
+    /\b(dinner|evening|night)\b/.test(loweredDesiredText) &&
+    /\b(dinner|restaurant|grill|kitchen|bistro|bar|pub)\b/.test(searchText)
+  ) {
+    score += 210;
+  }
+
+  if (
+    /\b(vegetarian|vegan|plant based|plant-based)\b/.test(loweredDesiredText) &&
+    /\b(vegetarian|vegan|plant based|plant-based)\b/.test(searchText)
+  ) {
+    score += 260;
+  }
+
+  if (
+    /\b(bakery)\b/.test(loweredDesiredText) &&
+    /\b(bakery|pastry|bread)\b/.test(searchText)
+  ) {
+    score += 220;
+  }
+
+  if (/\b(cheap|affordable|budget|inexpensive)\b/.test(loweredDesiredText)) {
+    if (
+      food.priceLevel === "$" ||
+      /\b(cheap|affordable|budget|counter service|counter-service|casual)\b/.test(
+        searchText
+      )
+    ) {
+      score += 160;
+    }
+
+    if (
+      food.priceLevel === "$$$" ||
+      /\b(upscale|fine dining|prix fixe)\b/.test(searchText)
+    ) {
+      score -= 90;
+    }
+  }
+
+  if (
+    /\b(quick|fast|grab and go|grab-and-go)\b/.test(loweredDesiredText) &&
+    /\b(quick|counter service|counter-service|grab and go|grab-and-go|takeout|casual)\b/.test(
+      searchText
+    )
+  ) {
+    score += 110;
+  }
+
+  return score;
+}
+
+function dayAlreadyIncludesStop(options: {
+  dayIndex: number;
+  days: ItineraryDayData[];
+  selection: TripSelectionState;
+  foodSpots: FoodSpot[];
+  activities: Activity[];
+  kind: EditableKind;
+  title: string;
+}) {
+  const existingNames = new Set<string>();
+
+  (options.days[options.dayIndex]?.stops ?? []).forEach((stop, stopIndex) => {
+    if (stop.kind !== options.kind) return;
     const label = stopLabelForReference(
       options.dayIndex,
       stopIndex,
@@ -889,30 +1143,17 @@ function resolveAnchorStopReference(options: {
       options.foodSpots,
       options.activities
     );
-    const coordinate = stopCoordinateForReference(
-      options.dayIndex,
-      stopIndex,
-      stop,
-      options.selection,
-      options.foodSpots,
-      options.activities
-    );
-
-    candidates.push({
-      ref: {
-        dayIndex: options.dayIndex,
-        stopIndex,
-        stop,
-        label,
-        latitude: coordinate.latitude,
-        longitude: coordinate.longitude,
-      },
-      score: scoreCandidateMatch(anchorText, label, [label, stop.description].filter(Boolean).join(" ")),
-    });
+    if (label) {
+      existingNames.add(normalized(label));
+    }
   });
 
-  candidates.sort((a, b) => b.score - a.score);
-  return candidates[0] && candidates[0].score >= 120 ? candidates[0].ref : null;
+  (options.selection.addedStops?.[dayKey(options.dayIndex)] ?? []).forEach((stop) => {
+    if (stop.kind !== options.kind) return;
+    existingNames.add(normalized(stop.title));
+  });
+
+  return existingNames.has(normalized(options.title));
 }
 
 function haversineDistanceKm(
@@ -945,9 +1186,11 @@ function proximityScore(distanceKm?: number) {
 }
 
 function isGenericFoodRequest(desiredText: string) {
+  const normalizedDesiredText = searchableDesiredText(desiredText);
+
   if (
     /\b(?:eat|grab|get|have|find|pick)\s+(?:somewhere|something)\b/i.test(
-      desiredText
+      normalizedDesiredText
     )
   ) {
     return true;
@@ -955,13 +1198,13 @@ function isGenericFoodRequest(desiredText: string) {
 
   if (
     /\b(?:meal|food|restaurant|lunch|dinner|breakfast|brunch|coffee)\b.*\bbefore\s+(?:going|heading|driving|leaving|returning|getting)\b/i.test(
-      desiredText
+      normalizedDesiredText
     )
   ) {
     return true;
   }
 
-  const filtered = tokenize(desiredText).filter(
+  const filtered = tokenize(normalizedDesiredText).filter(
     (token) => !GENERIC_FOOD_REQUEST_TOKENS.has(token)
   );
 
@@ -969,11 +1212,24 @@ function isGenericFoodRequest(desiredText: string) {
 }
 
 function isFoodPreferenceRequest(desiredText: string) {
-  if (isGenericFoodRequest(desiredText)) {
+  const normalizedDesiredText = searchableDesiredText(desiredText);
+
+  if (isGenericFoodRequest(normalizedDesiredText)) {
     return true;
   }
 
-  const tokens = tokenize(desiredText, true);
+  const tokens = tokenize(normalizedDesiredText, true);
+  if (tokens.length === 0) {
+    return true;
+  }
+
+  return tokens.every((token) => FOOD_PREFERENCE_TOKENS.has(token));
+}
+
+function isBroadFoodCategoryRequest(desiredText: string) {
+  const normalizedDesiredText = searchableDesiredText(desiredText);
+  const tokens = tokenize(normalizedDesiredText, true);
+
   if (tokens.length === 0) {
     return true;
   }
@@ -1227,13 +1483,19 @@ function chooseContextualFoodMatch(options: {
           .filter(Boolean)
           .join(" ")
       );
+      const semanticScore = foodSemanticScore(options.desiredText, spot);
 
       return {
         spot,
         sourceScope,
         distanceKm,
         textScore,
-        score: textScore + proximityScore(distanceKm) + (spot.rating ?? 0) * 8,
+        semanticScore,
+        score:
+          textScore +
+          semanticScore +
+          proximityScore(distanceKm) +
+          (spot.rating ?? 0) * 8,
       };
     })
     .filter(
@@ -1249,7 +1511,10 @@ function chooseContextualFoodMatch(options: {
     return null;
   }
 
-  if (options.requireSemanticMatch && best.textScore < 110) {
+  if (
+    options.requireSemanticMatch &&
+    best.textScore + best.semanticScore < 110
+  ) {
     return null;
   }
 
@@ -1642,6 +1907,10 @@ function resolveInsertAfterStopIndex(
   const firstTravelIndex = stops.findIndex((stop) => stop.kind === "travel");
 
   if (typeof anchorStopIndex === "number") {
+    if (/\bbefore\s+/.test(lowered)) {
+      return anchorStopIndex - 1;
+    }
+
     return anchorStopIndex;
   }
 
@@ -1816,12 +2085,8 @@ export function applyItineraryPrompt({
       return;
     }
 
-    if (typeof explicitDayIndex === "number") {
-      inheritedDayIndex = explicitDayIndex;
-    }
-
-    const dayIndex = explicitDayIndex ?? inheritedDayIndex;
     const desiredText = extractDesiredText(instruction);
+    const desiredSearchText = searchableDesiredText(desiredText);
     const shouldReusePreviousSelection = refersToPreviousSelection(instruction);
     const kind = inferInstructionKind(
       instruction,
@@ -1839,13 +2104,24 @@ export function applyItineraryPrompt({
       return;
     }
 
-    if ((kind === "food" || kind === "activity") && typeof dayIndex !== "number") {
-      issues.push(`Mention a day for "${instruction}" so I know where to place it.`);
-      return;
+    const action = inferAction(instruction);
+    let dayIndex = explicitDayIndex ?? inheritedDayIndex;
+
+    if (typeof dayIndex !== "number" && (kind === "food" || kind === "activity")) {
+      const inferredAnchorRef = resolveAnchorStopReferenceAcrossDays({
+        instruction,
+        days,
+        selection: nextSelection,
+        foodSpots,
+        activities,
+      });
+
+      if (typeof inferredAnchorRef?.dayIndex === "number") {
+        dayIndex = inferredAnchorRef.dayIndex;
+      }
     }
 
-    const action = inferAction(instruction);
-    const targetStop: PromptTargetStop | null =
+    let targetStop: PromptTargetStop | null =
       (action === "replace"
         ? shouldReusePreviousSelection &&
           inheritedTargetStop &&
@@ -1862,9 +2138,27 @@ export function applyItineraryPrompt({
             dayIndex,
           }) ?? null;
 
+    if (typeof dayIndex !== "number" && typeof targetStop?.dayIndex === "number") {
+      dayIndex = targetStop.dayIndex;
+      if (action === "add") {
+        targetStop = {
+          dayIndex,
+        };
+      }
+    }
+
+    if (typeof dayIndex === "number") {
+      inheritedDayIndex = dayIndex;
+    }
+
     inheritedKind = kind;
     if (action === "replace" && targetStop) {
       inheritedTargetStop = targetStop;
+    }
+
+    if ((kind === "food" || kind === "activity") && typeof dayIndex !== "number") {
+      issues.push(`Mention a day for "${instruction}" so I know where to place it.`);
+      return;
     }
 
     if (action === "replace" && !targetStop) {
@@ -1882,7 +2176,7 @@ export function applyItineraryPrompt({
     }
 
     const catalogMatch = findBestCatalogMatch({
-      query: desiredText,
+      query: desiredSearchText,
       hotels,
       foodSpots,
       externalFoodSpots,
@@ -1902,9 +2196,9 @@ export function applyItineraryPrompt({
           })
         : null;
     const contextualFoodMatch =
-      kind === "food" && typeof dayIndex === "number" && isFoodPreferenceRequest(desiredText)
+      kind === "food" && typeof dayIndex === "number" && isFoodPreferenceRequest(desiredSearchText)
         ? chooseContextualFoodMatch({
-            desiredText,
+            desiredText: desiredSearchText,
             instruction,
             dayIndex,
             days,
@@ -1915,15 +2209,15 @@ export function applyItineraryPrompt({
             activities,
             targetStop,
             excludeSelectedNames: action === "add",
-            requireSemanticMatch: !isGenericFoodRequest(desiredText),
+            requireSemanticMatch: !isGenericFoodRequest(desiredSearchText),
           })
         : null;
     const contextualActivityMatch =
       kind === "activity" &&
       typeof dayIndex === "number" &&
-      isActivityPreferenceRequest(desiredText)
+      isActivityPreferenceRequest(desiredSearchText)
         ? chooseContextualActivityMatch({
-            desiredText,
+            desiredText: desiredSearchText,
             instruction,
             dayIndex,
             days,
@@ -1934,7 +2228,7 @@ export function applyItineraryPrompt({
             externalActivities,
             targetStop,
             excludeSelectedNames: action === "add",
-            requireSemanticMatch: !isGenericActivityRequest(desiredText),
+            requireSemanticMatch: !isGenericActivityRequest(desiredSearchText),
           })
         : null;
 
@@ -1976,7 +2270,7 @@ export function applyItineraryPrompt({
       const key = targetStop.key;
       const catalogFoodMatch =
         kind === "food"
-          ? isFoodPreferenceRequest(desiredText)
+          ? isFoodPreferenceRequest(desiredSearchText)
             ? contextualFoodMatch
             : catalogMatch?.kind === "food"
               ? catalogMatch
@@ -1984,7 +2278,7 @@ export function applyItineraryPrompt({
           : null;
       const catalogActivityMatch =
         kind === "activity"
-          ? isActivityPreferenceRequest(desiredText)
+          ? isActivityPreferenceRequest(desiredSearchText)
             ? contextualActivityMatch
             : catalogMatch?.kind === "activity"
               ? catalogMatch
@@ -2083,14 +2377,14 @@ export function applyItineraryPrompt({
         return;
       }
 
-      if (kind === "food" && isFoodPreferenceRequest(desiredText)) {
+      if (kind === "food" && isFoodPreferenceRequest(desiredSearchText)) {
         issues.push(
           `Couldn't find a real food option matching "${desiredText}" in this trip yet.`
         );
         return;
       }
 
-      if (kind === "activity" && isActivityPreferenceRequest(desiredText)) {
+      if (kind === "activity" && isActivityPreferenceRequest(desiredSearchText)) {
         issues.push(
           `Couldn't find a real activity option matching "${desiredText}" in this trip yet.`
         );
@@ -2141,27 +2435,51 @@ export function applyItineraryPrompt({
 
     const addCatalogMatch =
       kind === "food"
-        ? isFoodPreferenceRequest(desiredText)
+        ? isFoodPreferenceRequest(desiredSearchText)
           ? contextualFoodMatch
           : catalogMatch?.kind === "food"
             ? catalogMatch
             : contextualFoodMatch
         : kind === "activity"
-          ? isActivityPreferenceRequest(desiredText)
+          ? isActivityPreferenceRequest(desiredSearchText)
             ? contextualActivityMatch
             : catalogMatch?.kind === "activity"
               ? catalogMatch
               : contextualActivityMatch
           : null;
 
-    if (kind === "food" && isFoodPreferenceRequest(desiredText) && !addCatalogMatch) {
+    const fallbackGenericFoodMatch =
+      !addCatalogMatch &&
+      kind === "food" &&
+      typeof dayIndex === "number" &&
+      (isGenericFoodRequest(desiredSearchText) ||
+        isBroadFoodCategoryRequest(desiredSearchText))
+        ? chooseContextualFoodMatch({
+            desiredText: desiredSearchText,
+            instruction,
+            dayIndex,
+            days,
+            selection: nextSelection,
+            hotels,
+            foodSpots,
+            externalFoodSpots,
+            activities,
+            targetStop,
+            excludeSelectedNames: false,
+            requireSemanticMatch: false,
+          })
+        : null;
+
+    const resolvedAddCatalogMatch = addCatalogMatch ?? fallbackGenericFoodMatch;
+
+    if (kind === "food" && isFoodPreferenceRequest(desiredSearchText) && !resolvedAddCatalogMatch) {
       issues.push(
         `Couldn't find a real food option matching "${desiredText}" in this trip yet.`
       );
       return;
     }
 
-    if (kind === "activity" && isActivityPreferenceRequest(desiredText) && !addCatalogMatch) {
+    if (kind === "activity" && isActivityPreferenceRequest(desiredSearchText) && !addCatalogMatch) {
       issues.push(
         `Couldn't find a real activity option matching "${desiredText}" in this trip yet.`
       );
@@ -2169,8 +2487,8 @@ export function applyItineraryPrompt({
     }
 
     const customAddedStop =
-      addCatalogMatch
-        ? buildCustomStopFromCatalog(addCatalogMatch, {
+      resolvedAddCatalogMatch
+        ? buildCustomStopFromCatalog(resolvedAddCatalogMatch, {
             instruction,
             day: days[dayIndex],
             travelerCount,
@@ -2190,6 +2508,21 @@ export function applyItineraryPrompt({
       return;
     }
 
+    if (
+      dayAlreadyIncludesStop({
+        dayIndex,
+        days,
+        selection: nextSelection,
+        foodSpots,
+        activities,
+        kind,
+        title: customAddedStop.title,
+      })
+    ) {
+      issues.push(`"${customAddedStop.title}" is already in day ${dayIndex + 1}.`);
+      return;
+    }
+
     customAddedStop.insertAfterStopIndex = resolveInsertAfterStopIndex(
       days[dayIndex],
       instruction,
@@ -2204,14 +2537,14 @@ export function applyItineraryPrompt({
       ],
     };
 
-    appliedChanges.push({
-      kind,
-      dayIndex,
-      selectedName: customAddedStop.title,
-      targetLabel: targetLabel(kind, { dayIndex }, "add"),
-      mode: "added",
-      source: addCatalogMatch ? "catalog" : "custom",
-    });
+      appliedChanges.push({
+        kind,
+        dayIndex,
+        selectedName: customAddedStop.title,
+        targetLabel: targetLabel(kind, { dayIndex }, "add"),
+        mode: "added",
+        source: resolvedAddCatalogMatch ? "catalog" : "custom",
+      });
   });
 
   return {
