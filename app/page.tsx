@@ -634,6 +634,9 @@ export default function HomePage() {
 
             <div className="mt-8">
               <div className="max-w-4xl">
+                <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-emerald-700 dark:text-emerald-300">
+                  Alberta Trip Planner
+                </div>
                 <h1 className="max-w-4xl text-[2.4rem] font-semibold tracking-[-0.035em] text-slate-950 dark:text-white sm:text-[3rem] sm:leading-[1.04] xl:text-[3.45rem] xl:max-w-5xl">
                   Find a trip that actually fits.
                 </h1>
