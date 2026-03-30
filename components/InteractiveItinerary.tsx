@@ -224,6 +224,39 @@ function timeWindowLabel(time?: string) {
   }
 }
 
+function timeIcon(time?: string) {
+  switch (normalized(time)) {
+    case "morning":
+    case "late morning":
+    case "late morning to afternoon":
+      return "☀️";
+    case "afternoon":
+    case "late afternoon":
+      return "🌤️";
+    case "evening":
+      return "🌙";
+    case "night":
+      return "✨";
+    default:
+      return "•";
+  }
+}
+
+function stopNarrativeLabel(kind: ItineraryDayData["stops"][number]["kind"]) {
+  switch (kind) {
+    case "stay":
+      return "Stay";
+    case "food":
+      return "Meal";
+    case "activity":
+      return "Activity";
+    case "travel":
+      return "Transfer";
+    default:
+      return "Plan";
+  }
+}
+
 function shiftTimeLabel(time?: string, steps = 0) {
   if (!time || steps <= 0) return time;
 
@@ -314,17 +347,6 @@ function activityPrimaryLink(choice: {
     url: choice.websiteUrl || choice.bookingLink,
     label: "Activity site",
   };
-}
-
-function isDemandingHikeStop(
-  stop: { title?: string; description?: string },
-  activity?: Pick<Activity, "name" | "type" | "shortDescription"> | ResolvedStopChoice
-) {
-  return isDemandingHikeText(
-    [stop.title, stop.description, activity?.name, activity?.type, activity?.shortDescription]
-      .filter(Boolean)
-      .join(" ")
-  );
 }
 
 function activityPlannerLabel(
@@ -559,7 +581,7 @@ function CampfireBadge() {
 
 function BuilderPromptPill({ children }: { children: React.ReactNode }) {
   return (
-    <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
+    <span className="inline-flex items-center rounded-full border border-white/12 bg-white/[0.04] px-3 py-1 text-xs font-medium text-slate-200">
       {children}
     </span>
   );
@@ -611,17 +633,17 @@ function SelectorCard({
     <div
       className={
         selected
-          ? "group rounded-[1rem] border border-[#7decc7] bg-[#effff8] p-3.5 text-left shadow-[inset_0_0_0_1px_rgba(139,92,246,0.06)] dark:border-[#06d8a0]/40 dark:bg-[#06d8a0]/10"
-          : "group rounded-[1rem] border border-slate-200 bg-white p-3.5 text-left hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:hover:bg-slate-800"
+          ? "group rounded-[1.15rem] border border-cyan-300/35 bg-cyan-300/[0.08] p-3.5 text-left shadow-[0_16px_34px_rgba(8,145,178,0.08)]"
+          : "group rounded-[1.15rem] border border-white/10 bg-white/[0.035] p-3.5 text-left transition hover:bg-white/[0.06]"
       }
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="text-sm font-semibold leading-6 text-slate-950 dark:text-slate-100">
+          <div className="text-sm font-semibold leading-6 text-white">
             {option.name}
           </div>
           {option.subtitle ? (
-            <div className="mt-1 text-[13px] leading-5 text-slate-600 dark:text-slate-300">
+            <div className="mt-1 text-[13px] leading-5 text-slate-300">
               {option.subtitle}
             </div>
           ) : null}
@@ -662,7 +684,7 @@ function SelectorCard({
       </div>
 
       {distanceFromPrevious ? (
-        <div className="mt-2 text-[12px] font-medium leading-5 text-slate-500 dark:text-slate-400">
+        <div className="mt-2 text-[12px] font-medium leading-5 text-slate-400">
           {distanceFromPrevious}
         </div>
       ) : null}
@@ -684,16 +706,16 @@ function SelectorCard({
       ) : null}
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          onClick={onSelect}
-          className={
-            selected
-              ? "inline-flex h-10 items-center justify-center rounded-full bg-[#04b887] px-4 text-sm font-semibold text-white transition hover:bg-[#06d8a0] dark:bg-[#06d8a0] dark:text-slate-950 dark:hover:bg-[#3be0ab]"
-              : "inline-flex h-10 items-center justify-center rounded-full bg-slate-950 px-4 text-sm font-semibold text-white transition hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-950 dark:hover:bg-slate-200"
-          }
-        >
-          {selected ? "Selected" : "Choose this"}
+          <button
+            type="button"
+            onClick={onSelect}
+            className={
+              selected
+                ? "inline-flex h-10 items-center justify-center rounded-full bg-cyan-300 px-4 text-sm font-semibold text-slate-950 transition hover:bg-cyan-200"
+                : "inline-flex h-10 items-center justify-center rounded-full bg-white px-4 text-sm font-semibold text-slate-950 transition hover:bg-slate-100"
+            }
+          >
+            {selected ? "Selected" : "Choose this"}
         </button>
 
         {safePrimaryUrl && !safeAllTrailsUrl ? (
@@ -701,7 +723,7 @@ function SelectorCard({
             href={safePrimaryUrl}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex h-10 items-center justify-center rounded-full border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-800 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+            className="inline-flex h-10 items-center justify-center rounded-full border border-white/14 bg-white/[0.04] px-4 text-sm font-semibold text-slate-200 transition hover:bg-white/[0.08]"
           >
             {option.primaryLabel ?? "Visit site"}
           </a>
@@ -712,7 +734,7 @@ function SelectorCard({
             href={safeAllTrailsUrl}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex h-10 items-center justify-center rounded-full border border-[#7decc7] bg-[#effff8] px-4 text-sm font-semibold text-[#048f69] transition hover:bg-[#d7fcef] dark:border-[#06d8a0]/40 dark:bg-[#06d8a0]/10 dark:text-[#b2f6df] dark:hover:bg-[#06d8a0]/18"
+            className="inline-flex h-10 items-center justify-center rounded-full border border-emerald-300/35 bg-emerald-300/[0.08] px-4 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-300/[0.14]"
           >
             Open on AllTrails
           </a>
@@ -723,7 +745,7 @@ function SelectorCard({
             href={safeMapsUrl}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex h-10 items-center justify-center rounded-full border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-800 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+            className="inline-flex h-10 items-center justify-center rounded-full border border-white/14 bg-white/[0.04] px-4 text-sm font-semibold text-slate-200 transition hover:bg-white/[0.08]"
           >
             Open map
           </a>
@@ -774,17 +796,17 @@ function CompactSelectionCard({
   const safeMapsUrl = sanitizeExternalNavigationUrl(mapsUrl);
 
   return (
-    <div className="group rounded-[1rem] border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/70">
+    <div className="group rounded-[1.15rem] border border-white/10 bg-white/[0.035] p-3.5">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+          <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-200/75">
             {label}
           </div>
-          <div className="mt-1 text-sm font-semibold text-slate-950 dark:text-slate-100">
+          <div className="mt-1 text-base font-semibold text-white">
             {title}
           </div>
           {subtitle ? (
-            <p className="mt-1 text-[13px] leading-5 text-slate-600 dark:text-slate-300">
+            <p className="mt-1 text-[13px] leading-5 text-slate-300">
               {subtitle}
             </p>
           ) : null}
@@ -793,7 +815,7 @@ function CompactSelectionCard({
         <button
           type="button"
           onClick={onToggleEditing}
-          className="inline-flex h-9 shrink-0 items-center justify-center rounded-full border border-slate-300 bg-white px-3.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+          className="inline-flex h-9 shrink-0 items-center justify-center rounded-full border border-white/14 bg-white/[0.04] px-3.5 text-xs font-semibold text-slate-100 transition hover:bg-white/[0.08]"
         >
           {editing ? "Hide options" : "Change"}
         </button>
@@ -817,33 +839,33 @@ function CompactSelectionCard({
         <div className="mt-3 flex flex-wrap gap-2">
           {safePrimaryUrl && !safeAllTrailsUrl ? (
             <a
-              href={safePrimaryUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex h-9 items-center justify-center rounded-full border border-slate-300 bg-white px-3.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
-            >
-              {primaryLabel ?? "Visit site"}
-            </a>
+            href={safePrimaryUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex h-9 items-center justify-center rounded-full border border-white/14 bg-white/[0.04] px-3.5 text-xs font-semibold text-slate-100 transition hover:bg-white/[0.08]"
+          >
+            {primaryLabel ?? "Visit site"}
+          </a>
           ) : null}
           {safeAllTrailsUrl ? (
             <a
-              href={safeAllTrailsUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex h-9 items-center justify-center rounded-full border border-[#7decc7] bg-[#effff8] px-3.5 text-xs font-semibold text-[#048f69] transition hover:bg-[#d7fcef] dark:border-[#06d8a0]/40 dark:bg-[#06d8a0]/10 dark:text-[#b2f6df] dark:hover:bg-[#06d8a0]/18"
-            >
-              Open on AllTrails
-            </a>
+            href={safeAllTrailsUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex h-9 items-center justify-center rounded-full border border-emerald-300/35 bg-emerald-300/[0.08] px-3.5 text-xs font-semibold text-emerald-100 transition hover:bg-emerald-300/[0.14]"
+          >
+            Open on AllTrails
+          </a>
           ) : null}
           {safeMapsUrl ? (
             <a
-              href={safeMapsUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex h-9 items-center justify-center rounded-full border border-slate-300 bg-white px-3.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
-            >
-              Open map
-            </a>
+            href={safeMapsUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex h-9 items-center justify-center rounded-full border border-white/14 bg-white/[0.04] px-3.5 text-xs font-semibold text-slate-100 transition hover:bg-white/[0.08]"
+          >
+            Open map
+          </a>
           ) : null}
         </div>
       ) : null}
@@ -1039,28 +1061,32 @@ export default function InteractiveItinerary({
     return (
       <div
         key={addedStop.id}
-        className="group rounded-[1.1rem] border border-emerald-200 bg-emerald-50/70 p-3.5 dark:border-emerald-500/30 dark:bg-emerald-500/10"
+        className="group rounded-[1.2rem] border border-emerald-300/25 bg-emerald-300/[0.08] p-4 shadow-[0_16px_38px_rgba(16,185,129,0.08)]"
       >
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-700 dark:text-emerald-300">
-              {displayedTime ?? addedStop.time ?? "Added stop"}
+            <div className="flex flex-wrap items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-100/85">
+              <span>{timeIcon(displayedTime ?? addedStop.time)}</span>
+              <span>{displayedTime ?? addedStop.time ?? "Added stop"}</span>
+              <span className="text-emerald-100/55">
+                {stopNarrativeLabel(addedStop.kind)}
+              </span>
             </div>
             {timeWindowLabel(displayedTime ?? addedStop.time) ? (
-              <div className="mt-1 text-[12px] font-medium leading-5 text-emerald-700/80 dark:text-emerald-200/80">
+              <div className="mt-1 text-[12px] font-medium leading-5 text-emerald-100/70">
                 {timeWindowLabel(displayedTime ?? addedStop.time)}
               </div>
             ) : null}
-            <h4 className="mt-1 text-sm font-semibold text-slate-950 dark:text-slate-100">
+            <h4 className="mt-2 text-base font-semibold text-white">
               {addedStop.title}
             </h4>
             {distanceFromPrevious ? (
-              <div className="mt-1.5 text-[12px] font-medium leading-5 text-slate-500 dark:text-slate-400">
+              <div className="mt-2 text-[12px] font-medium leading-5 text-slate-300">
                 {distanceFromPrevious}
               </div>
             ) : null}
             {addedStop.description ? (
-              <p className="mt-1.5 text-[13px] leading-5 text-slate-700 dark:text-slate-200">
+              <p className="mt-2 text-[14px] leading-6 text-slate-200">
                 {addedStop.description}
               </p>
             ) : null}
@@ -1069,13 +1095,13 @@ export default function InteractiveItinerary({
           <button
             type="button"
             onClick={() => removeAddedStop(dayIndex, addedStop.id)}
-            className="inline-flex h-9 shrink-0 items-center justify-center rounded-full border border-emerald-300 bg-white px-3.5 text-xs font-semibold text-emerald-800 transition hover:bg-emerald-100 dark:border-emerald-500/30 dark:bg-slate-900 dark:text-emerald-200 dark:hover:bg-slate-800"
+            className="inline-flex h-9 shrink-0 items-center justify-center rounded-full border border-white/14 bg-white/[0.04] px-3.5 text-xs font-semibold text-slate-100 transition hover:bg-white/[0.08]"
           >
             Remove
           </button>
         </div>
 
-        <div className="mt-2 flex flex-wrap gap-1.5">
+        <div className="mt-3 flex flex-wrap gap-1.5">
           <OptionPill tone="green">
             {addedStop.kind === "food" ? "Added food stop" : "Added activity"}
           </OptionPill>
@@ -1099,7 +1125,7 @@ export default function InteractiveItinerary({
                 href={safeAddedStopWebsiteUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex h-9 items-center justify-center rounded-full border border-slate-300 bg-white px-3.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                className="inline-flex h-9 items-center justify-center rounded-full border border-white/14 bg-white/[0.04] px-3.5 text-xs font-semibold text-slate-100 transition hover:bg-white/[0.08]"
               >
                 {addedStop.kind === "food" ? "Restaurant site" : "Activity site"}
               </a>
@@ -1109,7 +1135,7 @@ export default function InteractiveItinerary({
                 href={safeAddedStopAllTrailsUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex h-9 items-center justify-center rounded-full border border-[#7decc7] bg-[#effff8] px-3.5 text-xs font-semibold text-[#048f69] transition hover:bg-[#d7fcef] dark:border-[#06d8a0]/40 dark:bg-[#06d8a0]/10 dark:text-[#b2f6df] dark:hover:bg-[#06d8a0]/18"
+                className="inline-flex h-9 items-center justify-center rounded-full border border-emerald-300/35 bg-emerald-300/[0.08] px-3.5 text-xs font-semibold text-emerald-100 transition hover:bg-emerald-300/[0.14]"
               >
                 Open on AllTrails
               </a>
@@ -1119,7 +1145,7 @@ export default function InteractiveItinerary({
                 href={safeAddedStopMapsUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex h-9 items-center justify-center rounded-full border border-slate-300 bg-white px-3.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                className="inline-flex h-9 items-center justify-center rounded-full border border-white/14 bg-white/[0.04] px-3.5 text-xs font-semibold text-slate-100 transition hover:bg-white/[0.08]"
               >
                 Open map
               </a>
@@ -1129,7 +1155,7 @@ export default function InteractiveItinerary({
 
         {previewImageUrl ? (
           <div className="max-h-0 overflow-hidden opacity-0 transition-all duration-200 ease-out group-hover:mt-3 group-hover:max-h-40 group-hover:opacity-100 group-focus-within:mt-3 group-focus-within:max-h-40 group-focus-within:opacity-100">
-            <div className="overflow-hidden rounded-[0.9rem] border border-emerald-200/70 bg-white/80 dark:border-emerald-500/20 dark:bg-slate-900/70">
+            <div className="overflow-hidden rounded-[0.95rem] border border-white/10 bg-white/[0.03]">
               <Image
                 src={previewImageUrl}
                 alt={addedStop.title}
@@ -1780,159 +1806,8 @@ export default function InteractiveItinerary({
   }
 
   return (
-    <section className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-      <div className="flex flex-col gap-1">
-        <h2 className="text-xl font-semibold text-slate-950 dark:text-slate-100">
-          Edit the itinerary
-        </h2>
-        <p className="max-w-3xl text-sm leading-5 text-slate-600 dark:text-slate-300">
-          Start from the recommended plan, then open any stay, food stop, or
-          activity to change a day or fit something else into the trip. Your
-          budget follows the selections.
-        </p>
-      </div>
-
-      <form
-        onSubmit={handleBuilderPromptApply}
-        className="mt-5 rounded-[1.5rem] border border-slate-200 bg-[linear-gradient(135deg,#f0fdf4,#ecfeff)] p-4 dark:border-slate-700 dark:bg-[linear-gradient(135deg,rgba(6,78,59,0.22),rgba(15,23,42,0.92))]"
-      >
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700 dark:text-emerald-300">
-              Builder prompt
-            </div>
-            <h3 className="mt-2 text-lg font-semibold tracking-tight text-slate-950 dark:text-slate-100">
-              Describe the itinerary change in plain English
-            </h3>
-            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-700 dark:text-slate-200">
-              Use one change per sentence. Mention the day for food or
-              activity edits, and say whether you want to swap a stop or add a
-              new one. I can use existing picks or create a traveler-requested
-              stop when the exact place is not already in the builder.
-            </p>
-          </div>
-
-          <BuilderPromptPill>Auto-saves with the rest of the builder</BuilderPromptPill>
-        </div>
-
-        <textarea
-          value={builderPrompt}
-          onChange={(event) => setBuilderPrompt(event.target.value)}
-          maxLength={BUILDER_PROMPT_MAX_CHARS}
-          placeholder="Examples: Day 2 lunch to Wild Flour Bakery. Add a coffee stop on day 3 before we leave for Edmonton. Change day 1 activity to a quiet lakeside walk."
-          className="mt-4 min-h-[132px] w-full rounded-[1.25rem] border border-slate-200 bg-white px-4 py-4 text-sm leading-6 text-slate-900 outline-none transition focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-emerald-500/20"
-        />
-
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-          <p
-            className={
-              builderPromptTooLong
-                ? "text-xs font-medium text-rose-700 dark:text-rose-300"
-                : "text-xs text-slate-500 dark:text-slate-400"
-            }
-          >
-            {builderPromptTooLong
-              ? getPromptLimitError("Builder prompt", BUILDER_PROMPT_MAX_CHARS)
-              : "Short, explicit edits are easier for the builder to apply reliably."}
-          </p>
-          <p
-            className={
-              builderPromptTooLong
-                ? "text-xs font-semibold text-rose-700 dark:text-rose-300"
-                : "text-xs text-slate-500 dark:text-slate-400"
-            }
-          >
-            {trimmedBuilderPrompt.length}/{BUILDER_PROMPT_MAX_CHARS}
-          </p>
-        </div>
-
-        <div className="mt-4 flex flex-wrap gap-2">
-          <BuilderPromptPill>Day 2 lunch to Wild Flour Bakery</BuilderPromptPill>
-          <BuilderPromptPill>Add a coffee stop on day 3 before we leave</BuilderPromptPill>
-          <BuilderPromptPill>Day 3 activity to Johnston Canyon</BuilderPromptPill>
-          <BuilderPromptPill>Switch the stay to Rimrock Resort Hotel</BuilderPromptPill>
-        </div>
-
-        <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <p className="max-w-3xl text-xs leading-5 text-slate-500 dark:text-slate-400">
-            Best for traveler-led changes like swapping a stop, adding a meal,
-            or introducing a custom activity. The manual cards below are still
-            there when you want to fine-tune specific picks.
-          </p>
-
-          <button
-            type="submit"
-            disabled={
-              builderPromptPending ||
-              !trimmedBuilderPrompt ||
-              builderPromptTooLong
-            }
-            className="inline-flex h-11 items-center justify-center rounded-2xl bg-slate-950 px-5 text-sm font-semibold text-white transition hover:bg-slate-800 dark:bg-emerald-400 dark:text-slate-950 dark:hover:bg-emerald-300"
-          >
-            {builderPromptPending ? "Applying..." : "Apply changes"}
-          </button>
-        </div>
-
-        {builderPromptFeedback ? (
-          <div
-            className={
-              builderPromptFeedback.tone === "success"
-                ? "mt-4 rounded-[1.1rem] border border-emerald-200 bg-emerald-50 px-4 py-3 dark:border-emerald-500/30 dark:bg-emerald-500/10"
-                : "mt-4 rounded-[1.1rem] border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-500/30 dark:bg-amber-500/10"
-            }
-          >
-            <div
-              className={
-                builderPromptFeedback.tone === "success"
-                  ? "text-sm font-semibold text-emerald-800 dark:text-emerald-200"
-                  : "text-sm font-semibold text-amber-800 dark:text-amber-200"
-              }
-            >
-              {builderPromptFeedback.title}
-            </div>
-            {builderPromptFeedback.detail ? (
-              <p
-                className={
-                  builderPromptFeedback.tone === "success"
-                    ? "mt-1 text-sm leading-6 text-emerald-900 dark:text-emerald-100"
-                    : "mt-1 text-sm leading-6 text-amber-900 dark:text-amber-100"
-                }
-              >
-                {builderPromptFeedback.detail}
-              </p>
-            ) : null}
-            {builderPromptFeedback.interpretedPrompt ? (
-              <p
-                className={
-                  builderPromptFeedback.tone === "success"
-                    ? "mt-2 text-xs leading-5 text-emerald-800/90 dark:text-emerald-100/85"
-                    : "mt-2 text-xs leading-5 text-amber-800/90 dark:text-amber-100/85"
-                }
-              >
-                Interpreted as: {builderPromptFeedback.interpretedPrompt}
-              </p>
-            ) : null}
-            {builderPromptFeedback.issues.length > 0 ? (
-              <div className="mt-2 space-y-1">
-                {builderPromptFeedback.issues.map((issue) => (
-                  <p
-                    key={issue}
-                    className={
-                      builderPromptFeedback.tone === "success"
-                        ? "text-xs leading-5 text-emerald-800/90 dark:text-emerald-100/85"
-                        : "text-xs leading-5 text-amber-800/90 dark:text-amber-100/85"
-                    }
-                  >
-                    {issue}
-                  </p>
-                ))}
-              </div>
-            ) : null}
-          </div>
-        ) : null}
-      </form>
-
-      <div className="mt-5 space-y-4">
+    <section className="space-y-4">
+      <div className="space-y-3">
         {days.map((day, dayIndex) => (
           (() => {
             const hotelCoordinate = selectedHotelCoordinate();
@@ -1942,200 +1817,25 @@ export default function InteractiveItinerary({
                 ? haversineDistanceKm(lastStopOfDay, hotelCoordinate)
                 : undefined;
             const dayStops = day.stops ?? [];
-            const dayOrderedStops = [
-              ...addedStopsInsertedAfter(dayIndex, -1).map((addedStop) => ({
-                type: "added" as const,
-                addedStop,
-              })),
-              ...dayStops.flatMap((stop, stopIndex) => [
-                {
-                  type: "base" as const,
-                  stop,
-                  stopIndex,
-                },
-                ...addedStopsInsertedAfter(dayIndex, stopIndex).map((addedStop) => ({
-                  type: "added" as const,
-                  addedStop,
-                })),
-              ]),
-            ];
-            const anchorNames: string[] = [];
-            let editableStopCount = 0;
-            let driveSegmentCount = 0;
-            let daySpendEstimate = 0;
-            let hasDemandingHike = false;
-
-            dayOrderedStops.forEach((entry) => {
-              if (entry.type === "added") {
-                editableStopCount += 1;
-
-                if (entry.addedStop.kind === "food") {
-                  const choice = customStopChoice(entry.addedStop);
-                  daySpendEstimate += resolvedFoodCost(choice, travelerCount);
-                  if (!anchorNames.includes(choice.name)) {
-                    anchorNames.push(choice.name);
-                  }
-                  return;
-                }
-
-                if (entry.addedStop.kind === "activity") {
-                  const choice = customStopChoice(entry.addedStop);
-                  daySpendEstimate += resolvedActivityCost(choice, travelerCount);
-                  if (isDemandingHikeStop(entry.addedStop, choice)) {
-                    hasDemandingHike = true;
-                  }
-                  if (!anchorNames.includes(choice.name)) {
-                    anchorNames.push(choice.name);
-                  }
-                }
-
-                return;
-              }
-
-              const { stop, stopIndex } = entry;
-              const key = stopKey(dayIndex, stopIndex);
-              const priorStop = previousStopCoordinate(dayIndex, stopIndex, stop.kind);
-
-              if (stop.kind === "travel") {
-                driveSegmentCount += 1;
-                return;
-              }
-
-              if (stop.kind === "stay") {
-                editableStopCount += 1;
-                const selectedHotel =
-                  hotels.find((hotel) => hotel.name === selection.hotelName) ??
-                  rankedHotelOptions(stop.title)[0];
-
-                if (selectedHotel?.name && !anchorNames.includes(selectedHotel.name)) {
-                  anchorNames.push(selectedHotel.name);
-                }
-                return;
-              }
-
-              if (stop.kind === "food") {
-                editableStopCount += 1;
-                const selectedSpot = selectedFoodForKey(key, stop.title, priorStop);
-                if (selectedSpot) {
-                  daySpendEstimate += resolvedFoodCost(selectedSpot, travelerCount);
-                  if (!anchorNames.includes(selectedSpot.name)) {
-                    anchorNames.push(selectedSpot.name);
-                  }
-                }
-                return;
-              }
-
-              if (stop.kind === "activity") {
-                editableStopCount += 1;
-                const selectedActivity = selectedActivityForKey(
-                  key,
-                  stop.title,
-                  priorStop
-                );
-                if (selectedActivity) {
-                  daySpendEstimate += resolvedActivityCost(
-                    selectedActivity,
-                    travelerCount
-                  );
-                  if (isDemandingHikeStop(stop, selectedActivity)) {
-                    hasDemandingHike = true;
-                  }
-                  const activityLabel = activityPlannerLabel(stop, selectedActivity);
-                  if (!anchorNames.includes(activityLabel)) {
-                    anchorNames.push(activityLabel);
-                  }
-                }
-              }
-            });
-
-            const tempoLabel =
-              hasDemandingHike
-                ? "Hard hike day"
-                : editableStopCount <= 2
-                ? "Easy pace"
-                : editableStopCount <= 4
-                  ? "Balanced pace"
-                  : "Full day";
-            const routeShape =
-              anchorNames.length > 0
-                ? anchorNames.slice(0, 3).join(" -> ")
-                : "Travel-only day";
 
             return (
               <section
                 key={`day-${dayIndex}`}
-                className="rounded-[1.25rem] border border-slate-200 bg-slate-50/90 p-4 dark:border-slate-700 dark:bg-slate-800/70"
+                className="rounded-[1.5rem] border border-white/10 bg-[linear-gradient(180deg,rgba(14,22,37,0.94),rgba(11,18,31,0.92))] p-4 shadow-[0_18px_50px_rgba(2,6,23,0.18)]"
               >
-                <div className="mb-3">
-                  <h3 className="text-lg font-semibold tracking-tight text-slate-950 dark:text-slate-100">
+                <div className="mb-4 border-b border-white/10 pb-3">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-200/75">
+                    Day {dayIndex + 1}
+                  </div>
+                  <h3 className="mt-2 text-[1.55rem] font-semibold tracking-tight text-white">
                     Day {dayIndex + 1}
                     {day.title ? ` - ${day.title}` : ""}
                   </h3>
                   {day.summary ? (
-                    <p className="mt-1 text-sm leading-5 text-slate-600 dark:text-slate-300">
+                    <p className="mt-2 max-w-3xl text-[1rem] italic leading-7 text-slate-300">
                       {day.summary}
                     </p>
                   ) : null}
-                </div>
-
-                <div className="mb-3 grid gap-2.5 md:grid-cols-2 xl:grid-cols-4">
-                  <div className="rounded-[0.95rem] border border-slate-200 bg-white px-3.5 py-3 dark:border-slate-700 dark:bg-slate-900">
-                    <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
-                      Tempo
-                    </div>
-                    <div className="mt-1 text-sm font-semibold text-slate-950 dark:text-slate-100">
-                      {tempoLabel}
-                    </div>
-                    <p className="mt-1 text-[12px] leading-5 text-slate-600 dark:text-slate-300">
-                      {hasDemandingHike
-                        ? "Treat the summit hike as the main effort and keep the rest of the day light."
-                        : `${editableStopCount} decision stop${editableStopCount === 1 ? "" : "s"} and ${driveSegmentCount} travel leg${driveSegmentCount === 1 ? "" : "s"}.`}
-                    </p>
-                  </div>
-
-                  <div className="rounded-[0.95rem] border border-slate-200 bg-white px-3.5 py-3 dark:border-slate-700 dark:bg-slate-900">
-                    <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
-                      Day flow
-                    </div>
-                    <div className="mt-1 text-sm font-semibold text-slate-950 dark:text-slate-100">
-                      {routeShape}
-                    </div>
-                    <p className="mt-1 text-[12px] leading-5 text-slate-600 dark:text-slate-300">
-                      Current selected anchors for this day.
-                    </p>
-                  </div>
-
-                  <div className="rounded-[0.95rem] border border-slate-200 bg-white px-3.5 py-3 dark:border-slate-700 dark:bg-slate-900">
-                    <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
-                      Day spend picks
-                    </div>
-                    <div className="mt-1 text-sm font-semibold text-slate-950 dark:text-slate-100">
-                      {daySpendEstimate > 0 ? formatMoney(daySpendEstimate) : "Mostly free"}
-                    </div>
-                    <p className="mt-1 text-[12px] leading-5 text-slate-600 dark:text-slate-300">
-                      Food and activity selections only. Stay costs remain in the trip budget rail.
-                    </p>
-                  </div>
-
-                  <div className="rounded-[0.95rem] border border-slate-200 bg-white px-3.5 py-3 dark:border-slate-700 dark:bg-slate-900">
-                    <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
-                      Route note
-                    </div>
-                    <div className="mt-1 text-sm font-semibold text-slate-950 dark:text-slate-100">
-                      {hasDemandingHike
-                        ? "Main effort is the summit hike"
-                        : driveBackDistance !== undefined
-                        ? `${formatTransferMinutes(
-                            estimateTransferMinutes(driveBackDistance)
-                          )} back to stay`
-                        : dayIndex === 0 && startCityLabel
-                          ? `Leaves from ${startCityLabel}`
-                          : "Follow selected stop order"}
-                    </div>
-                    <p className="mt-1 text-[12px] leading-5 text-slate-600 dark:text-slate-300">
-                      Built from the current stay and stop choices.
-                    </p>
-                  </div>
                 </div>
 
                 <div className="space-y-3">
@@ -2158,71 +1858,75 @@ export default function InteractiveItinerary({
 
                       return (
                         <div key={`group-${key}`} className="space-y-3">
-                          <div className="rounded-[1.1rem] border border-slate-200 bg-white p-3.5 dark:border-slate-700 dark:bg-slate-900">
-                            <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
-                              {displayedStopTime ?? "Stay"}
+                          <div className="rounded-[1.2rem] border border-white/10 bg-white/[0.035] p-4">
+                            <div className="flex flex-wrap items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-200/75">
+                              <span>{timeIcon(displayedStopTime)}</span>
+                              <span>{displayedStopTime ?? "Stay"}</span>
+                              <span className="text-cyan-200/45">
+                                {stopNarrativeLabel(stop.kind)}
+                              </span>
                             </div>
                             {timeWindowLabel(displayedStopTime) ? (
-                              <div className="mt-1 text-[12px] font-medium leading-5 text-slate-500 dark:text-slate-400">
+                              <div className="mt-1 text-[12px] font-medium leading-5 text-slate-400">
                                 {timeWindowLabel(displayedStopTime)}
                               </div>
                             ) : null}
-                          <h4 className="mt-1 text-sm font-semibold text-slate-950 dark:text-slate-100">
-                            Pick where to stay
-                          </h4>
-                          {stop.description ? (
-                            <p className="mt-1.5 text-[13px] leading-5 text-slate-600 dark:text-slate-300">
-                              {stop.description}
-                            </p>
-                          ) : null}
+                            <h4 className="mt-2 text-base font-semibold text-white">
+                              Pick where to stay
+                            </h4>
+                            {stop.description ? (
+                              <p className="mt-2 text-[14px] leading-6 text-slate-300">
+                                {stop.description}
+                              </p>
+                            ) : null}
 
-                          {selectedHotel ? (
-                            <div className="mt-3">
-                              <CompactSelectionCard
-                                label="Current stay"
-                                title={selectedHotel.name}
-                                subtitle={
-                                  formatDistanceFromPrevious(
-                                    priorStop,
-                                    toStopCoordinate(
-                                      selectedHotel.name,
-                                      selectedHotel.latitude,
-                                      selectedHotel.longitude
-                                    )
-                                  ) ?? selectedHotel.shortDescription
-                                }
-                                pills={[
-                                  hotelAvailabilityLabel(
-                                    selectedHotel,
-                                    Boolean(tripStartDate && tripEndDate)
-                                  ),
-                                  ...(typeof selectedHotel.rating === "number"
-                                    ? [`Rating ${selectedHotel.rating}`]
-                                    : []),
-                                  ...(typeof selectedHotel.pricePerNight === "number"
-                                    ? [`$${selectedHotel.pricePerNight}/night`]
-                                    : []),
-                                  ...(typeof selectedHotel.totalStayPrice === "number"
-                                    ? [`Total $${selectedHotel.totalStayPrice}`]
-                                    : []),
-                                ]}
-                                primaryUrl={preferredHotelBookingUrl({
-                                  hotel: selectedHotel,
-                                  destination: destinationLabel,
-                                  tripStartDate,
-                                  tripEndDate,
-                                  travelerCount,
-                                })}
-                                primaryLabel="Stay site"
-                                mapsUrl={selectedHotel.mapsUrl}
-                                photoRef={selectedHotel.photoRef}
-                                photoUrl={selectedHotel.photoUrl}
-                                fallbackPhotoUrl={destinationImageUrl}
-                                editing={isEditing}
-                                onToggleEditing={() => toggleEditing(key)}
-                              />
-                            </div>
-                          ) : null}
+                            {selectedHotel ? (
+                              <div className="mt-3">
+                                <CompactSelectionCard
+                                  label="Selected stay"
+                                  title={selectedHotel.name}
+                                  subtitle={
+                                    formatDistanceFromPrevious(
+                                      priorStop,
+                                      toStopCoordinate(
+                                        selectedHotel.name,
+                                        selectedHotel.latitude,
+                                        selectedHotel.longitude
+                                      )
+                                    ) ?? selectedHotel.shortDescription
+                                  }
+                                  pills={[
+                                    hotelAvailabilityLabel(
+                                      selectedHotel,
+                                      Boolean(tripStartDate && tripEndDate)
+                                    ),
+                                    ...(typeof selectedHotel.rating === "number"
+                                      ? [`Rating ${selectedHotel.rating}`]
+                                      : []),
+                                    ...(typeof selectedHotel.pricePerNight === "number"
+                                      ? [`$${selectedHotel.pricePerNight}/night`]
+                                      : []),
+                                    ...(typeof selectedHotel.totalStayPrice === "number"
+                                      ? [`Total $${selectedHotel.totalStayPrice}`]
+                                      : []),
+                                  ]}
+                                  primaryUrl={preferredHotelBookingUrl({
+                                    hotel: selectedHotel,
+                                    destination: destinationLabel,
+                                    tripStartDate,
+                                    tripEndDate,
+                                    travelerCount,
+                                  })}
+                                  primaryLabel="Stay site"
+                                  mapsUrl={selectedHotel.mapsUrl}
+                                  photoRef={selectedHotel.photoRef}
+                                  photoUrl={selectedHotel.photoUrl}
+                                  fallbackPhotoUrl={destinationImageUrl}
+                                  editing={isEditing}
+                                  onToggleEditing={() => toggleEditing(key)}
+                                />
+                              </div>
+                            ) : null}
 
                             {isEditing ? (
                               <div className="mt-3 grid gap-2.5 lg:grid-cols-2">
@@ -2315,70 +2019,74 @@ export default function InteractiveItinerary({
 
                       return (
                         <div key={`group-${key}`} className="space-y-3">
-                          <div className="rounded-[1.1rem] border border-slate-200 bg-white p-3.5 dark:border-slate-700 dark:bg-slate-900">
-                            <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
-                              {displayedStopTime ?? "Food"}
+                          <div className="rounded-[1.2rem] border border-white/10 bg-white/[0.035] p-4">
+                            <div className="flex flex-wrap items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-200/75">
+                              <span>{timeIcon(displayedStopTime)}</span>
+                              <span>{displayedStopTime ?? "Food"}</span>
+                              <span className="text-cyan-200/45">
+                                {stopNarrativeLabel(stop.kind)}
+                              </span>
                             </div>
                             {timeWindowLabel(displayedStopTime) ? (
-                              <div className="mt-1 text-[12px] font-medium leading-5 text-slate-500 dark:text-slate-400">
+                              <div className="mt-1 text-[12px] font-medium leading-5 text-slate-400">
                                 {timeWindowLabel(displayedStopTime)}
                               </div>
                             ) : null}
-                          <h4 className="mt-1 text-sm font-semibold text-slate-950 dark:text-slate-100">
-                            Pick a food stop
-                          </h4>
-                          {stop.description ? (
-                            <p className="mt-1.5 text-[13px] leading-5 text-slate-600 dark:text-slate-300">
-                              {stop.description}
-                            </p>
-                          ) : null}
-
-                          {selectedSpot ? (
-                            <div className="mt-3">
-                              <CompactSelectionCard
-                                label="Current food stop"
-                                title={selectedSpot.name}
-                                subtitle={
-                                  formatDistanceFromPrevious(
-                                    priorStop,
-                                    choiceCoordinate(selectedSpot)
-                                  ) ?? selectedSpot.shortDescription
-                                }
-                                pills={[
-                                  ...(selectedSpot.category ? [selectedSpot.category] : []),
-                                  ...(customChoiceLabel(selectedSpot)
-                                    ? [customChoiceLabel(selectedSpot) as string]
-                                    : []),
-                                  ...(typeof selectedSpot.rating === "number"
-                                    ? [`Rating ${selectedSpot.rating}`]
-                                    : []),
-                                  ...(selectedSpotRange
-                                    ? [
-                                        `Est. group spend ${formatMoney(selectedSpotRange.low)}-${formatMoney(selectedSpotRange.high)}`,
-                                      ]
-                                    : []),
-                                ]}
-                                primaryUrl={selectedSpot.websiteUrl}
-                                primaryLabel="Restaurant site"
-                                mapsUrl={selectedSpot.mapsUrl}
-                                photoRef={selectedSpot.photoRef}
-                                photoUrl={selectedSpot.photoUrl}
-                                editing={isEditing}
-                                onToggleEditing={() => toggleEditing(key)}
-                              />
-                              <p className="mt-2 text-[12px] leading-5 text-slate-500 dark:text-slate-400">
-                                {selectedSpot.source === "catalog"
-                                  ? foodPricingSourceLabel({
-                                      name: selectedSpot.name,
-                                      tags: [],
-                                      category: selectedSpot.category,
-                                      estimatedCost: selectedSpot.estimatedCost,
-                                    })
-                                  : customChoiceLabel(selectedSpot) ??
-                                    "Matched from your builder prompt."}
+                            <h4 className="mt-2 text-base font-semibold text-white">
+                              Pick a food stop
+                            </h4>
+                            {stop.description ? (
+                              <p className="mt-2 text-[14px] leading-6 text-slate-300">
+                                {stop.description}
                               </p>
-                            </div>
-                          ) : null}
+                            ) : null}
+
+                            {selectedSpot ? (
+                              <div className="mt-3">
+                                <CompactSelectionCard
+                                  label="Selected meal"
+                                  title={selectedSpot.name}
+                                  subtitle={
+                                    formatDistanceFromPrevious(
+                                      priorStop,
+                                      choiceCoordinate(selectedSpot)
+                                    ) ?? selectedSpot.shortDescription
+                                  }
+                                  pills={[
+                                    ...(selectedSpot.category ? [selectedSpot.category] : []),
+                                    ...(customChoiceLabel(selectedSpot)
+                                      ? [customChoiceLabel(selectedSpot) as string]
+                                      : []),
+                                    ...(typeof selectedSpot.rating === "number"
+                                      ? [`Rating ${selectedSpot.rating}`]
+                                      : []),
+                                    ...(selectedSpotRange
+                                      ? [
+                                          `Est. group spend ${formatMoney(selectedSpotRange.low)}-${formatMoney(selectedSpotRange.high)}`,
+                                        ]
+                                      : []),
+                                  ]}
+                                  primaryUrl={selectedSpot.websiteUrl}
+                                  primaryLabel="Restaurant site"
+                                  mapsUrl={selectedSpot.mapsUrl}
+                                  photoRef={selectedSpot.photoRef}
+                                  photoUrl={selectedSpot.photoUrl}
+                                  editing={isEditing}
+                                  onToggleEditing={() => toggleEditing(key)}
+                                />
+                                <p className="mt-2 text-[12px] leading-5 text-slate-400">
+                                  {selectedSpot.source === "catalog"
+                                    ? foodPricingSourceLabel({
+                                        name: selectedSpot.name,
+                                        tags: [],
+                                        category: selectedSpot.category,
+                                        estimatedCost: selectedSpot.estimatedCost,
+                                      })
+                                    : customChoiceLabel(selectedSpot) ??
+                                      "Matched from your builder prompt."}
+                                </p>
+                              </div>
+                            ) : null}
 
                             {isEditing ? (
                               <div className="mt-3 grid gap-2.5 lg:grid-cols-2">
@@ -2462,64 +2170,68 @@ export default function InteractiveItinerary({
 
                       return (
                         <div key={`group-${key}`} className="space-y-3">
-                          <div className="rounded-[1.1rem] border border-slate-200 bg-white p-3.5 dark:border-slate-700 dark:bg-slate-900">
-                            <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
-                              {displayedStopTime ?? "Activity"}
+                          <div className="rounded-[1.2rem] border border-white/10 bg-white/[0.035] p-4">
+                            <div className="flex flex-wrap items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-200/75">
+                              <span>{timeIcon(displayedStopTime)}</span>
+                              <span>{displayedStopTime ?? "Activity"}</span>
+                              <span className="text-cyan-200/45">
+                                {stopNarrativeLabel(stop.kind)}
+                              </span>
                             </div>
                             {timeWindowLabel(displayedStopTime) ? (
-                              <div className="mt-1 text-[12px] font-medium leading-5 text-slate-500 dark:text-slate-400">
+                              <div className="mt-1 text-[12px] font-medium leading-5 text-slate-400">
                                 {timeWindowLabel(displayedStopTime)}
                               </div>
                             ) : null}
-                          <h4 className="mt-1 text-sm font-semibold text-slate-950 dark:text-slate-100">
-                            Pick an activity
-                          </h4>
-                          {stop.description ? (
-                            <p className="mt-1.5 text-[13px] leading-5 text-slate-600 dark:text-slate-300">
-                              {stop.description}
-                            </p>
-                          ) : null}
+                            <h4 className="mt-2 text-base font-semibold text-white">
+                              Pick an activity
+                            </h4>
+                            {stop.description ? (
+                              <p className="mt-2 text-[14px] leading-6 text-slate-300">
+                                {stop.description}
+                              </p>
+                            ) : null}
 
-                          {selectedActivity ? (
-                            <div className="mt-3">
-                              <CompactSelectionCard
-                                label="Current activity"
-                                title={activityPlannerLabel(stop, selectedActivity)}
-                                subtitle={
-                                  formatDistanceFromPrevious(
-                                    priorStop,
-                                    choiceCoordinate(selectedActivity)
-                                  ) ?? selectedActivity.shortDescription
-                                }
-                                pills={[
-                                  ...(selectedActivity.type ? [selectedActivity.type] : []),
-                                  ...(customChoiceLabel(selectedActivity)
-                                    ? [customChoiceLabel(selectedActivity) as string]
-                                    : []),
-                                  ...(typeof selectedActivity.rating === "number"
-                                    ? [`Rating ${selectedActivity.rating}`]
-                                    : []),
-                                  ...(resolvedActivityCost(selectedActivity, travelerCount) > 0
-                                    ? [
-                                        `Est. group spend ${formatMoney(
-                                          resolvedActivityCost(
-                                            selectedActivity,
-                                            travelerCount
-                                          )
-                                        )}`,
-                                      ]
-                                    : ["Free"]),
-                                ]}
-                                primaryUrl={selectedActivityLink?.url}
-                                primaryLabel={selectedActivityLink?.label}
-                                mapsUrl={selectedActivity.mapsUrl}
-                                photoRef={selectedActivity.photoRef}
-                                photoUrl={selectedActivity.photoUrl}
-                                editing={isEditing}
-                                onToggleEditing={() => toggleEditing(key)}
-                              />
-                            </div>
-                          ) : null}
+                            {selectedActivity ? (
+                              <div className="mt-3">
+                                <CompactSelectionCard
+                                  label="Selected activity"
+                                  title={activityPlannerLabel(stop, selectedActivity)}
+                                  subtitle={
+                                    formatDistanceFromPrevious(
+                                      priorStop,
+                                      choiceCoordinate(selectedActivity)
+                                    ) ?? selectedActivity.shortDescription
+                                  }
+                                  pills={[
+                                    ...(selectedActivity.type ? [selectedActivity.type] : []),
+                                    ...(customChoiceLabel(selectedActivity)
+                                      ? [customChoiceLabel(selectedActivity) as string]
+                                      : []),
+                                    ...(typeof selectedActivity.rating === "number"
+                                      ? [`Rating ${selectedActivity.rating}`]
+                                      : []),
+                                    ...(resolvedActivityCost(selectedActivity, travelerCount) > 0
+                                      ? [
+                                          `Est. group spend ${formatMoney(
+                                            resolvedActivityCost(
+                                              selectedActivity,
+                                              travelerCount
+                                            )
+                                          )}`,
+                                        ]
+                                      : ["Free"]),
+                                  ]}
+                                  primaryUrl={selectedActivityLink?.url}
+                                  primaryLabel={selectedActivityLink?.label}
+                                  mapsUrl={selectedActivity.mapsUrl}
+                                  photoRef={selectedActivity.photoRef}
+                                  photoUrl={selectedActivity.photoUrl}
+                                  editing={isEditing}
+                                  onToggleEditing={() => toggleEditing(key)}
+                                />
+                              </div>
+                            ) : null}
 
                             {isEditing ? (
                               <div className="mt-3 grid gap-2.5 lg:grid-cols-2">
@@ -2592,31 +2304,35 @@ export default function InteractiveItinerary({
 
                     return (
                       <div key={`group-${key}`} className="space-y-3">
-                        <div className="rounded-[1.1rem] border border-slate-200 bg-white p-3.5 dark:border-slate-700 dark:bg-slate-900">
+                        <div className="rounded-[1.2rem] border border-white/10 bg-white/[0.035] p-4">
                           {displayedStopTime ? (
-                            <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
-                              {displayedStopTime}
+                            <div className="flex flex-wrap items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-200/75">
+                              <span>{timeIcon(displayedStopTime)}</span>
+                              <span>{displayedStopTime}</span>
+                              <span className="text-cyan-200/45">
+                                {stopNarrativeLabel(stop.kind)}
+                              </span>
                             </div>
                           ) : null}
                           {timeWindowLabel(displayedStopTime) ? (
-                            <div className="mt-1 text-[12px] font-medium leading-5 text-slate-500 dark:text-slate-400">
+                            <div className="mt-1 text-[12px] font-medium leading-5 text-slate-400">
                               {timeWindowLabel(displayedStopTime)}
                             </div>
                           ) : null}
-                          <h4 className="mt-1 text-sm font-semibold text-slate-950 dark:text-slate-100">
+                          <h4 className="mt-2 text-base font-semibold text-white">
                             {stop.title}
                           </h4>
                           {stop.description ? (
-                            <p className="mt-1.5 text-[13px] leading-5 text-slate-600 dark:text-slate-300">
+                            <p className="mt-2 text-[14px] leading-6 text-slate-300">
                               {stop.description}
                             </p>
                           ) : null}
                           {stop.kind === "travel" &&
                           stopIndex === (day.stops?.length ?? 0) - 1 &&
                           dayIndex === days.length - 1 &&
-                          priorStop &&
-                          startCityCoordinate ? (
-                            <div className="mt-2 text-[12px] font-medium leading-5 text-slate-500 dark:text-slate-400">
+                            priorStop &&
+                            startCityCoordinate ? (
+                            <div className="mt-2 text-[12px] font-medium leading-5 text-slate-400">
                               {(() => {
                                 const distanceKm = haversineDistanceKm(priorStop, {
                                   label: startCityLabel ?? "start city",
@@ -2641,17 +2357,19 @@ export default function InteractiveItinerary({
                   hotelCoordinate &&
                   lastStopOfDay &&
                   driveBackDistance !== undefined ? (
-                    <div className="rounded-[1.1rem] border border-slate-200 bg-white p-3.5 dark:border-slate-700 dark:bg-slate-900">
-                      <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
-                        Night
+                    <div className="rounded-[1.2rem] border border-white/10 bg-white/[0.035] p-4">
+                      <div className="flex flex-wrap items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-200/75">
+                        <span>{timeIcon("night")}</span>
+                        <span>Night</span>
+                        <span className="text-cyan-200/45">Transfer</span>
                       </div>
-                      <h4 className="mt-1 text-sm font-semibold text-slate-950 dark:text-slate-100">
+                      <h4 className="mt-2 text-base font-semibold text-white">
                         Drive back to {hotelCoordinate.label}
                       </h4>
-                      <p className="mt-1.5 text-[13px] leading-5 text-slate-600 dark:text-slate-300">
+                      <p className="mt-2 text-[14px] leading-6 text-slate-300">
                         Wrap up the day and head back to your hotel from {lastStopOfDay.label}.
                       </p>
-                      <div className="mt-2 text-[12px] font-medium leading-5 text-slate-500 dark:text-slate-400">
+                      <div className="mt-2 text-[12px] font-medium leading-5 text-slate-400">
                         {formatTransferMinutes(
                           estimateTransferMinutes(driveBackDistance)
                         )}{" "}
@@ -2665,6 +2383,143 @@ export default function InteractiveItinerary({
           })()
         ))}
       </div>
+
+      <form
+        onSubmit={handleBuilderPromptApply}
+        className="rounded-[1.5rem] border border-white/10 bg-[linear-gradient(180deg,rgba(14,22,37,0.96),rgba(11,18,31,0.94))] p-4 shadow-[0_18px_50px_rgba(2,6,23,0.18)]"
+      >
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-200/75">
+              Ask for a change
+            </div>
+            <h3 className="mt-2 text-xl font-semibold tracking-tight text-white">
+              Adjust the trip in plain English
+            </h3>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">
+              Keep it short and specific. Mention the day and what you want swapped,
+              added, or softened.
+            </p>
+          </div>
+
+          <BuilderPromptPill>Auto-saves with the builder</BuilderPromptPill>
+        </div>
+
+        <div className="mt-4 flex flex-wrap gap-2">
+          <BuilderPromptPill>Day 2 lunch to Wild Flour Bakery</BuilderPromptPill>
+          <BuilderPromptPill>Add a coffee stop on day 3 before we leave</BuilderPromptPill>
+          <BuilderPromptPill>Day 3 activity to Johnston Canyon</BuilderPromptPill>
+          <BuilderPromptPill>Switch the stay to Rimrock Resort Hotel</BuilderPromptPill>
+        </div>
+
+        <textarea
+          value={builderPrompt}
+          onChange={(event) => setBuilderPrompt(event.target.value)}
+          maxLength={BUILDER_PROMPT_MAX_CHARS}
+          placeholder="Example: Day 2 lunch to Wild Flour Bakery. Add a coffee stop on day 3 before we leave for Edmonton."
+          className="mt-4 min-h-[116px] w-full rounded-[1.25rem] border border-white/10 bg-white/[0.04] px-4 py-4 text-sm leading-6 text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-300/40 focus:bg-white/[0.06]"
+        />
+
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+          <p
+            className={
+              builderPromptTooLong
+                ? "text-xs font-medium text-rose-300"
+                : "text-xs text-slate-400"
+            }
+          >
+            {builderPromptTooLong
+              ? getPromptLimitError("Builder prompt", BUILDER_PROMPT_MAX_CHARS)
+              : "Short, explicit edits are easiest for the builder to apply cleanly."}
+          </p>
+          <p
+            className={
+              builderPromptTooLong
+                ? "text-xs font-semibold text-rose-300"
+                : "text-xs text-slate-400"
+            }
+          >
+            {trimmedBuilderPrompt.length}/{BUILDER_PROMPT_MAX_CHARS}
+          </p>
+        </div>
+
+        <div className="mt-4 flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+          <p className="max-w-3xl text-xs leading-5 text-slate-400">
+            Use this when you want to guide the itinerary directly instead of opening
+            a specific stay, food stop, or activity card.
+          </p>
+
+          <button
+            type="submit"
+            disabled={
+              builderPromptPending ||
+              !trimmedBuilderPrompt ||
+              builderPromptTooLong
+            }
+            className="inline-flex h-11 items-center justify-center rounded-full bg-white px-5 text-sm font-semibold text-slate-950 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {builderPromptPending ? "Applying..." : "Apply changes"}
+          </button>
+        </div>
+
+        {builderPromptFeedback ? (
+          <div
+            className={
+              builderPromptFeedback.tone === "success"
+                ? "mt-4 rounded-[1.1rem] border border-emerald-300/25 bg-emerald-300/[0.08] px-4 py-3"
+                : "mt-4 rounded-[1.1rem] border border-amber-300/25 bg-amber-300/[0.08] px-4 py-3"
+            }
+          >
+            <div
+              className={
+                builderPromptFeedback.tone === "success"
+                  ? "text-sm font-semibold text-emerald-100"
+                  : "text-sm font-semibold text-amber-100"
+              }
+            >
+              {builderPromptFeedback.title}
+            </div>
+            {builderPromptFeedback.detail ? (
+              <p
+                className={
+                  builderPromptFeedback.tone === "success"
+                    ? "mt-1 text-sm leading-6 text-emerald-50/95"
+                    : "mt-1 text-sm leading-6 text-amber-50/95"
+                }
+              >
+                {builderPromptFeedback.detail}
+              </p>
+            ) : null}
+            {builderPromptFeedback.interpretedPrompt ? (
+              <p
+                className={
+                  builderPromptFeedback.tone === "success"
+                    ? "mt-2 text-xs leading-5 text-emerald-100/80"
+                    : "mt-2 text-xs leading-5 text-amber-100/80"
+                }
+              >
+                Interpreted as: {builderPromptFeedback.interpretedPrompt}
+              </p>
+            ) : null}
+            {builderPromptFeedback.issues.length > 0 ? (
+              <div className="mt-2 space-y-1">
+                {builderPromptFeedback.issues.map((issue) => (
+                  <p
+                    key={issue}
+                    className={
+                      builderPromptFeedback.tone === "success"
+                        ? "text-xs leading-5 text-emerald-100/80"
+                        : "text-xs leading-5 text-amber-100/80"
+                    }
+                  >
+                    {issue}
+                  </p>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+      </form>
     </section>
   );
 }

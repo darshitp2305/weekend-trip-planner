@@ -74,6 +74,26 @@ const TRAVELER_COUNT_PATTERNS = [
   /\bfor\s+(\d{1,2})\s+(?:people|travellers|travelers)\b/i,
   /\b(\d{1,2})\s+(?:people|travellers|travelers)\b/i,
 ];
+const COMPANION_COUNT_PATTERNS: Array<{
+  pattern: RegExp;
+  additionalTravelers: number;
+}> = [
+  {
+    pattern:
+      /\b(?:me|i)\s+(?:and|with)\s+(?:my\s+)?(\d{1,2})\s+(?:friends|buddies|pals|siblings|cousins|coworkers|co-workers|kids|children)\b/i,
+    additionalTravelers: 1,
+  },
+  {
+    pattern:
+      /\bwith\s+my\s+(\d{1,2})\s+(?:friends|buddies|pals|siblings|cousins|coworkers|co-workers|kids|children)\b/i,
+    additionalTravelers: 1,
+  },
+  {
+    pattern:
+      /\b(\d{1,2})\s+(?:friends|buddies|pals|siblings|cousins|coworkers|co-workers|kids|children)\s+and\s+(?:me|i)\b/i,
+    additionalTravelers: 1,
+  },
+];
 const START_CITY_PATTERNS = START_CITY_OPTIONS.map((city) => ({
   city,
   pattern: new RegExp(
@@ -196,42 +216,49 @@ function normalizeDepartureTimeMatch(
 function inferPreferredDestination(prompt: string): string | undefined {
   const normalizedPrompt = normalizeText(prompt);
   if (!normalizedPrompt) return undefined;
-  const normalizedStartCities = new Set(
-    START_CITY_OPTIONS.map((city) => normalizeText(city))
-  );
 
   const options = (rawDestinations as RawDestination[])
     .map((destination) => ({
       destinationName: destination.name?.trim(),
-      matchTexts: [
-        destination.name,
-        normalizedStartCities.has(normalizeText(destination.home_base_city))
-          ? undefined
-          : destination.home_base_city,
-      ]
-        .map((value) => normalizeText(value))
-        .filter(Boolean),
+      destinationMatchText: normalizeText(destination.name),
+      homeBaseMatchText: normalizeText(destination.home_base_city),
     }))
     .filter(
       (destination): destination is {
         destinationName: string;
-        matchTexts: string[];
-      } => Boolean(destination.destinationName && destination.matchTexts.length > 0)
+        destinationMatchText: string;
+        homeBaseMatchText: string;
+      } =>
+        Boolean(
+          destination.destinationName &&
+            (destination.destinationMatchText || destination.homeBaseMatchText)
+        )
     )
     .sort((a, b) => {
-      const longestA = Math.max(...a.matchTexts.map((value) => value.length));
-      const longestB = Math.max(...b.matchTexts.map((value) => value.length));
+      const longestA = Math.max(
+        a.destinationMatchText.length,
+        a.homeBaseMatchText.length
+      );
+      const longestB = Math.max(
+        b.destinationMatchText.length,
+        b.homeBaseMatchText.length
+      );
       return longestB - longestA;
     });
 
   for (const option of options) {
-    if (
-      option.matchTexts.some(
-        (matchText) =>
-          normalizedPrompt === matchText ||
-          normalizedPrompt.includes(matchText)
-      )
-    ) {
+    const matchesDestinationName =
+      Boolean(option.destinationMatchText) &&
+      (normalizedPrompt === option.destinationMatchText ||
+        normalizedPrompt.includes(option.destinationMatchText));
+    const matchesHomeBase =
+      Boolean(option.homeBaseMatchText) &&
+      (normalizedPrompt.includes(`to ${option.homeBaseMatchText}`) ||
+        normalizedPrompt.includes(`in ${option.homeBaseMatchText}`) ||
+        normalizedPrompt.includes(`around ${option.homeBaseMatchText}`) ||
+        normalizedPrompt.includes(`near ${option.homeBaseMatchText}`));
+
+    if (matchesDestinationName || matchesHomeBase) {
       return option.destinationName;
     }
   }
@@ -659,6 +686,17 @@ export function extractPromptDepartureTime(prompt?: string): string | undefined 
 }
 
 export function extractPromptTravelerCount(prompt: string): number | null {
+  for (const option of COMPANION_COUNT_PATTERNS) {
+    const match = prompt.match(option.pattern);
+    if (!match) continue;
+
+    const companionCount = Number.parseInt(match[1] ?? "", 10);
+    const travelerCount = companionCount + option.additionalTravelers;
+    if (Number.isFinite(travelerCount) && travelerCount >= 1 && travelerCount <= 12) {
+      return travelerCount;
+    }
+  }
+
   for (const pattern of TRAVELER_COUNT_PATTERNS) {
     const match = prompt.match(pattern);
     if (!match) continue;

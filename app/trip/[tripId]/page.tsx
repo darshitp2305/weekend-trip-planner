@@ -114,6 +114,13 @@ type TripSyncSaveMessages = {
   localOnly: string;
 };
 
+type BuilderWorkspaceTab =
+  | "itinerary"
+  | "map"
+  | "booking"
+  | "finalize"
+  | "coordination";
+
 function buildSyncStateFromSaveResult(
   result: Pick<SaveTripPlanResult, "remoteSaved" | "accountSaved">,
   lastSavedAt: string,
@@ -267,7 +274,8 @@ export default function TripPage() {
     phase: "idle",
     message: "Waiting for edits.",
   });
-  const [showBuilderModeBanner, setShowBuilderModeBanner] = useState(true);
+  const [activeWorkspaceTab, setActiveWorkspaceTab] =
+    useState<BuilderWorkspaceTab>("itinerary");
 
   useEffect(() => {
     let cancelled = false;
@@ -313,7 +321,7 @@ export default function TripPage() {
   }, [params?.tripId]);
 
   useEffect(() => {
-    setShowBuilderModeBanner(true);
+    setActiveWorkspaceTab("itinerary");
   }, [trip?.id]);
 
   useEffect(() => {
@@ -525,40 +533,6 @@ export default function TripPage() {
 
     return notes;
   }, [stayPriceIsVerified]);
-
-  const itineraryOverview = useMemo(() => {
-    const editableStops = itineraryDays.reduce((sum, day, dayIndex) => {
-      const addedStops = getAddedStopsForDay(activeSelectionState, dayIndex);
-      return (
-        sum +
-        (day.stops ?? []).filter((stop) =>
-          stop.kind === "stay" || stop.kind === "food" || stop.kind === "activity"
-        ).length +
-        addedStops.length
-      );
-    }, 0);
-
-    const foodStops = itineraryDays.reduce(
-      (sum, day, dayIndex) =>
-        sum +
-        (day.stops ?? []).filter((stop) => stop.kind === "food").length +
-        getAddedStopsForDay(activeSelectionState, dayIndex).filter(
-          (stop) => stop.kind === "food"
-        ).length,
-      0
-    );
-    const activityStops = itineraryDays.reduce(
-      (sum, day, dayIndex) =>
-        sum +
-        (day.stops ?? []).filter((stop) => stop.kind === "activity").length +
-        getAddedStopsForDay(activeSelectionState, dayIndex).filter(
-          (stop) => stop.kind === "activity"
-        ).length,
-      0
-    );
-
-    return { editableStops, foodStops, activityStops };
-  }, [activeSelectionState, itineraryDays]);
 
   const tripMapData = useMemo(() => {
     if (!trip) {
@@ -866,6 +840,52 @@ export default function TripPage() {
   const isShareView =
     trip?.status === "finalized" &&
     (requestedShareView || (viewer.ready && !isOwner));
+  const showDraftBuilderMode = trip?.status !== "finalized";
+  const showOperationsPanel =
+    trip?.decisionStatus === "approved" ||
+    trip?.decisionStatus === "booked";
+  const workspaceTabs = useMemo(
+    () =>
+      [
+        {
+          id: "itinerary" as const,
+          label: "Itinerary",
+          description: "Edit the day-by-day plan",
+        },
+        {
+          id: "map" as const,
+          label: "Map",
+          description: "See routes and chosen stops",
+        },
+        {
+          id: "booking" as const,
+          label: "Stay booking",
+          description: "Confirm the hotel search",
+        },
+        {
+          id: "finalize" as const,
+          label: trip?.status === "finalized" ? "Review" : "Finalize",
+          description:
+            trip?.status === "finalized"
+              ? "Review the locked version"
+              : "Lock the version you will share",
+        },
+        {
+          id: "coordination" as const,
+          label: showOperationsPanel ? "Share and ops" : "Actions",
+          description: showOperationsPanel
+            ? "Sharing, exports, and group coordination"
+            : "Sharing, exports, and next steps",
+        },
+      ] satisfies Array<{
+        id: BuilderWorkspaceTab;
+        label: string;
+        description: string;
+      }>,
+    [showOperationsPanel, trip?.status]
+  );
+  const activeWorkspaceMeta =
+    workspaceTabs.find((tab) => tab.id === activeWorkspaceTab) ?? workspaceTabs[0];
 
   useEffect(() => {
     if (!trip || !isShareView || !viewer.ready) return;
@@ -1028,6 +1048,7 @@ export default function TripPage() {
             ? "Finalized trip saved to the shared trip."
             : "Finalized trip saved locally."
       );
+      setActiveWorkspaceTab("finalize");
       trackProductEvent("trip_finalized", {
         ...baseTripAnalytics(result.trip ?? finalizedTrip),
         metadata: {
@@ -1127,8 +1148,8 @@ export default function TripPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-[#f8fafc] px-6 py-10 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
-        <div className="mx-auto max-w-7xl rounded-[2rem] border border-slate-200 bg-white p-8 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <main className="dark min-h-screen bg-[radial-gradient(circle_at_top,_rgba(21,94,117,0.22),_transparent_28%),linear-gradient(180deg,#06101d_0%,#0b1424_55%,#101b2d_100%)] px-6 py-10 text-slate-100">
+        <div className="mx-auto max-w-7xl rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(12,18,30,0.98),rgba(10,16,27,0.94))] p-8 shadow-[0_28px_80px_rgba(0,0,0,0.32)]">
           Loading trip...
         </div>
       </main>
@@ -1137,15 +1158,15 @@ export default function TripPage() {
 
   if (!trip) {
     return (
-      <main className="min-h-screen bg-[#f8fafc] px-6 py-10 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
-        <div className="mx-auto max-w-3xl rounded-[2rem] border border-slate-200 bg-white p-8 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-          <h1 className="text-2xl font-semibold text-slate-950 dark:text-slate-100">Trip not found</h1>
-          <p className="mt-3 text-slate-600 dark:text-slate-300">
+      <main className="dark min-h-screen bg-[radial-gradient(circle_at_top,_rgba(21,94,117,0.22),_transparent_28%),linear-gradient(180deg,#06101d_0%,#0b1424_55%,#101b2d_100%)] px-6 py-10 text-slate-100">
+        <div className="mx-auto max-w-3xl rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(12,18,30,0.98),rgba(10,16,27,0.94))] p-8 shadow-[0_28px_80px_rgba(0,0,0,0.32)]">
+          <h1 className="text-2xl font-semibold text-white">Trip not found</h1>
+          <p className="mt-3 text-slate-300">
             This trip could not be found locally or in the shared trip database.
           </p>
           <button
             onClick={() => router.push("/")}
-            className="mt-6 rounded-2xl bg-slate-950 px-5 py-3 text-white transition hover:bg-slate-800 dark:bg-[#06d8a0] dark:text-slate-950 dark:hover:bg-[#3be0ab]"
+            className="mt-6 rounded-2xl bg-white px-5 py-3 text-slate-950 transition hover:bg-[#f5efe5]"
           >
             Back to planner
           </button>
@@ -1154,10 +1175,6 @@ export default function TripPage() {
     );
   }
 
-  const showDraftBuilderMode = trip.status !== "finalized";
-  const showOperationsPanel =
-    trip.decisionStatus === "approved" ||
-    trip.decisionStatus === "booked";
   const handleBackButtonClick = () => {
     if (window.history.length > 1) {
       router.back();
@@ -1168,7 +1185,13 @@ export default function TripPage() {
   };
 
   return (
-    <main className="min-h-screen bg-[#f6f8fb] px-4 py-6 text-slate-900 dark:bg-slate-950 dark:text-slate-100 sm:px-6">
+    <main
+      className={`min-h-screen px-4 py-6 sm:px-6 ${
+        isShareView
+          ? "bg-[#f6f8fb] text-slate-900 dark:bg-slate-950 dark:text-slate-100"
+          : "dark bg-[radial-gradient(circle_at_top,_rgba(21,94,117,0.22),_transparent_28%),linear-gradient(180deg,#06101d_0%,#0b1424_55%,#101b2d_100%)] text-slate-100"
+      }`}
+    >
       <div className={`mx-auto space-y-5 ${isShareView ? "max-w-6xl" : "max-w-[1400px]"}`}>
         {!isShareView ? (
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -1261,285 +1284,362 @@ export default function TripPage() {
           </div>
         ) : (
         <div className="grid gap-5 xl:grid-cols-[320px_minmax(0,1fr)] xl:items-start">
-          <aside className="xl:sticky xl:top-5">
-            <div className="overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
-              <div className="border-b border-slate-200 bg-slate-50/80 px-5 py-4 dark:border-slate-800 dark:bg-slate-900/80">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#04b887] dark:text-[#7decc7]">
-                  Trip essentials
+          <aside className="space-y-5 xl:sticky xl:top-5">
+            <section className="overflow-hidden rounded-[1.75rem] border border-white/10 bg-[linear-gradient(180deg,rgba(15,23,42,0.96),rgba(9,15,28,0.92))] shadow-[0_24px_70px_rgba(2,6,23,0.35)]">
+              <div className="border-b border-white/10 px-5 py-4">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-cyan-200/75">
+                  Builder workspace
                 </div>
-                <h2 className="mt-1 text-xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">
-                  {showDraftBuilderMode ? "Budget and builder" : "Budget and actions"}
+                <h2 className="mt-1 text-[1.45rem] font-semibold tracking-tight text-white">
+                  Plan with fewer moving parts
                 </h2>
+                <p className="mt-2 text-sm leading-6 text-slate-300">
+                  Keep the trip brief, budget rail, and current stay visible while you work one planning surface at a time.
+                </p>
               </div>
 
               <div className="space-y-5 p-5">
-                <section>
-                  <div className="mb-4">
-                    <h3 className="text-lg font-semibold text-slate-950 dark:text-slate-100">Budget</h3>
-                    <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
-                  This updates as you swap stays, activities, and food stops.
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="rounded-[1.1rem] border border-white/10 bg-white/5 p-3">
+                    <div className="text-[10px] font-medium uppercase tracking-[0.12em] text-slate-400">
+                      Trip length
+                    </div>
+                    <div className="mt-1 text-base font-semibold text-white">
+                      {deriveTripLengthDays(trip)} day{deriveTripLengthDays(trip) === 1 ? "" : "s"}
+                    </div>
+                  </div>
+
+                  <div className="rounded-[1.1rem] border border-white/10 bg-white/5 p-3">
+                    <div className="text-[10px] font-medium uppercase tracking-[0.12em] text-slate-400">
+                      Travel window
+                    </div>
+                    <div className="mt-1 text-base font-semibold text-white">
+                      {tripDateRange ?? "Dates flexible"}
+                    </div>
+                  </div>
+
+                  <div className="rounded-[1.1rem] border border-white/10 bg-white/5 p-3">
+                    <div className="text-[10px] font-medium uppercase tracking-[0.12em] text-slate-400">
+                      Selected stay
+                    </div>
+                    <div className="mt-1 text-base font-semibold text-white">
+                      {selectedHotel?.name ?? trip.homeBaseCity ?? trip.destinationName}
+                    </div>
+                  </div>
+
+                  <div className="rounded-[1.1rem] border border-emerald-400/20 bg-emerald-400/10 p-3">
+                    <div className="text-[10px] font-medium uppercase tracking-[0.12em] text-emerald-200">
+                      Budget fit
+                    </div>
+                    <div className="mt-1 text-base font-semibold text-white">
+                      {budgetStatus?.label ?? "Estimated spend"}
+                    </div>
+                  </div>
+                </div>
+
+                {trip.tripPrompt ? (
+                  <div className="rounded-[1.25rem] border border-white/10 bg-slate-950/40 p-4">
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                      Original brief
+                    </div>
+                    <p className="mt-2 text-sm leading-6 text-slate-300">
+                      &quot;{trip.tripPrompt}&quot;
                     </p>
-                    {tripDateRange ? (
-                      <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                        Travel dates: {tripDateRange}
-                      </p>
-                    ) : null}
                   </div>
+                ) : null}
 
-                  <div className="mb-4 grid grid-cols-2 gap-2">
-                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/80">
-                      <div className="text-[10px] font-medium uppercase tracking-[0.1em] text-slate-500 dark:text-slate-400">
-                        Travelers
-                      </div>
-                      <div className="mt-1 text-base font-semibold text-slate-900 dark:text-slate-100">
-                        {travelerCount}
-                      </div>
+                {constraintFitSummary ? (
+                  <div className="rounded-[1.25rem] border border-cyan-400/20 bg-cyan-400/10 p-4">
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-cyan-200">
+                      Constraint check
                     </div>
+                    <p className="mt-2 text-sm leading-6 text-slate-200">
+                      {constraintFitSummary}
+                    </p>
+                  </div>
+                ) : null}
 
-                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/80">
-                      <div className="text-[10px] font-medium uppercase tracking-[0.1em] text-slate-500 dark:text-slate-400">
-                        Budget each
-                      </div>
-                      <div className="mt-1 text-base font-semibold text-slate-900 dark:text-slate-100">
-                        {formatMoney(budgetPerTraveler)}
-                      </div>
+                <div className="rounded-[1.25rem] border border-white/10 bg-white/5 p-4">
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                    Sync state
+                  </div>
+                  <p className="mt-2 text-sm leading-6 text-slate-300">
+                    {syncState.message}
+                  </p>
+                  {syncState.lastSavedAt ? (
+                    <p className="mt-2 text-xs text-slate-500">
+                      Last saved {new Date(syncState.lastSavedAt).toLocaleString("en-CA")}
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+            </section>
+
+            <section className="overflow-hidden rounded-[1.75rem] border border-white/10 bg-[linear-gradient(180deg,rgba(15,23,42,0.92),rgba(7,12,23,0.92))] shadow-[0_24px_70px_rgba(2,6,23,0.28)]">
+              <div className="border-b border-white/10 px-5 py-4">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-200/75">
+                  Budget rail
+                </div>
+                <h2 className="mt-1 text-[1.45rem] font-semibold tracking-tight text-white">
+                  Keep spend in view
+                </h2>
+              </div>
+
+              <div className="space-y-4 p-5">
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="rounded-[1rem] border border-white/10 bg-white/5 p-3">
+                    <div className="text-[10px] font-medium uppercase tracking-[0.1em] text-slate-400">
+                      Travelers
                     </div>
-
-                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/80">
-                      <div className="text-[10px] font-medium uppercase tracking-[0.1em] text-slate-500 dark:text-slate-400">
-                        Target total
-                      </div>
-                      <div className="mt-1 text-base font-semibold text-slate-900 dark:text-slate-100">
-                        {formatMoney(targetTotalBudget)}
-                      </div>
-                    </div>
-
-                    <div className="rounded-xl border border-[#b2f6df] bg-[#effff8] p-3 dark:border-[#06d8a0]/30 dark:bg-[#06d8a0]/10">
-                      <div className="text-[10px] font-medium uppercase tracking-[0.1em] text-[#048f69] dark:text-[#7decc7]">
-                        {stayPriceIsVerified ? "Selected each" : "Estimated each"}
-                      </div>
-                      <div className="mt-1 text-base font-semibold text-slate-950 dark:text-slate-100">
-                        {formatMoney(estimatedBudgetPerTraveler)}
-                      </div>
-                    </div>
-
-                    <div className="rounded-xl border border-[#b2f6df] bg-[#effff8] p-3 dark:border-[#06d8a0]/30 dark:bg-[#06d8a0]/10">
-                      <div className="text-[10px] font-medium uppercase tracking-[0.1em] text-[#048f69] dark:text-[#7decc7]">
-                        {stayPriceIsVerified ? "Selected total" : "Estimated total"}
-                      </div>
-                      <div className="mt-1 text-base font-semibold text-slate-950 dark:text-slate-100">
-                        {formatMoney(estimatedTotalCost)}
-                      </div>
+                    <div className="mt-1 text-base font-semibold text-white">
+                      {travelerCount}
                     </div>
                   </div>
 
-                  <BudgetBreakdown
-                    breakdown={selectedBudget ?? trip.budgetBreakdown}
-                    notes={budgetNotes}
-                  />
-                </section>
+                  <div className="rounded-[1rem] border border-white/10 bg-white/5 p-3">
+                    <div className="text-[10px] font-medium uppercase tracking-[0.1em] text-slate-400">
+                      Budget each
+                    </div>
+                    <div className="mt-1 text-base font-semibold text-white">
+                      {formatMoney(budgetPerTraveler)}
+                    </div>
+                  </div>
 
-                <div className="border-t border-slate-200 dark:border-slate-800" />
+                  <div className="rounded-[1rem] border border-white/10 bg-white/5 p-3">
+                    <div className="text-[10px] font-medium uppercase tracking-[0.1em] text-slate-400">
+                      Target total
+                    </div>
+                    <div className="mt-1 text-base font-semibold text-white">
+                      {formatMoney(targetTotalBudget)}
+                    </div>
+                  </div>
 
-                <TripActions
-                  trip={persistedTrip ?? trip}
-                  onTripUpdated={handleTripUpdated}
-                  isOwner={isOwner}
-                  syncState={syncState}
+                  <div className="rounded-[1rem] border border-emerald-400/20 bg-emerald-400/10 p-3">
+                    <div className="text-[10px] font-medium uppercase tracking-[0.1em] text-emerald-200">
+                      {stayPriceIsVerified ? "Selected each" : "Estimated each"}
+                    </div>
+                    <div className="mt-1 text-base font-semibold text-white">
+                      {formatMoney(estimatedBudgetPerTraveler)}
+                    </div>
+                  </div>
+
+                  <div className="col-span-2 rounded-[1rem] border border-emerald-400/20 bg-emerald-400/10 p-3">
+                    <div className="text-[10px] font-medium uppercase tracking-[0.1em] text-emerald-200">
+                      {stayPriceIsVerified ? "Selected total" : "Estimated total"}
+                    </div>
+                    <div className="mt-1 text-lg font-semibold text-white">
+                      {formatMoney(estimatedTotalCost)}
+                    </div>
+                  </div>
+                </div>
+
+                <BudgetBreakdown
+                  breakdown={selectedBudget ?? trip.budgetBreakdown}
+                  notes={budgetNotes}
                 />
               </div>
-            </div>
+            </section>
           </aside>
 
           {itineraryDays.length > 0 ? (
             <div className="space-y-5">
-              {!showDraftBuilderMode ? (
-                <div ref={finalizedPanelRef}>
-                  <FinalizeTripPanel
-                    trip={persistedTrip ?? trip}
-                    selection={activeSelectionState}
-                    estimatedTotalCost={estimatedTotalCost}
-                    budgetDelta={budgetDelta}
-                    routeSummary={routeSummaryLabel}
-                    onFinalize={handleFinalizeTrip}
-                    finalizing={finalizing}
-                    statusMessage={finalizeStatus}
+              <section className="sticky top-4 z-30 overflow-hidden rounded-[1.8rem] border border-white/10 bg-[linear-gradient(180deg,rgba(14,22,37,0.88),rgba(11,18,31,0.78))] px-5 py-4 shadow-[0_26px_80px_rgba(2,6,23,0.3)] backdrop-blur-2xl">
+                <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+                  <div className="min-w-0">
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-cyan-200/70">
+                      Trip workspace
+                    </div>
+                    <p className="mt-2 text-sm text-slate-400">
+                      {activeWorkspaceMeta.description}
+                    </p>
+                  </div>
+
+                  <div className="-mx-1 overflow-x-auto px-1 pb-1 xl:max-w-[62%]">
+                    <div className="flex min-w-max items-center gap-2">
+                      {workspaceTabs.map((tab) => {
+                        const isActive = activeWorkspaceTab === tab.id;
+
+                        return (
+                          <button
+                            key={tab.id}
+                            type="button"
+                            onClick={() => setActiveWorkspaceTab(tab.id)}
+                            className={`inline-flex h-11 items-center rounded-full border px-4 text-sm font-medium transition ${
+                              isActive
+                                ? "border-[#d9b57c]/45 bg-[#d9b57c]/16 text-[#fff4de] shadow-[0_0_0_1px_rgba(217,181,124,0.16)]"
+                                : "border-white/10 bg-white/5 text-slate-300 hover:border-white/18 hover:bg-white/8 hover:text-white"
+                            }`}
+                          >
+                            {tab.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              {activeWorkspaceTab === "itinerary" ? (
+                <div>
+                  <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start xl:grid-cols-[minmax(0,1fr)_430px]">
+                    <InteractiveItinerary
+                      key={`${trip.id}:${JSON.stringify(trip.savedSelectionState ?? emptySelectionState())}`}
+                      days={itineraryDays}
+                      hotels={hotelOptions}
+                      foodSpots={trip.foodSpots ?? []}
+                      activities={trip.topActivities ?? []}
+                      travelerCount={travelerCount}
+                      initialSelection={trip.savedSelectionState}
+                      destinationImageUrl={trip.imageUrl}
+                      destinationLabel={getDestinationLabel(trip)}
+                      tripStartDate={trip.tripStartDate}
+                      tripEndDate={trip.tripEndDate}
+                      startCityLabel={trip.startCity ?? undefined}
+                      startCityCoordinate={
+                        typeof trip.routeSummary?.origin?.lat === "number" &&
+                        typeof trip.routeSummary?.origin?.lon === "number"
+                          ? {
+                              latitude: trip.routeSummary.origin.lat,
+                              longitude: trip.routeSummary.origin.lon,
+                            }
+                          : undefined
+                      }
+                      onSelectionChange={handleSelectionChange}
+                    />
+
+                    <div className="lg:sticky lg:top-28">
+                      <TripStopMap
+                        pins={tripMapData.pins}
+                        routePaths={tripMapData.routePaths}
+                        missingLocationCount={tripMapData.missingLocationCount}
+                        variant="compact"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+
+              {activeWorkspaceTab === "map" ? (
+                <div className="space-y-5">
+                  <section className="rounded-[1.75rem] border border-white/10 bg-[linear-gradient(180deg,rgba(15,23,42,0.96),rgba(9,15,28,0.92))] p-5 shadow-[0_24px_70px_rgba(2,6,23,0.35)]">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-cyan-200/75">
+                      Map workspace
+                    </div>
+                    <h2 className="mt-1 text-xl font-semibold tracking-tight text-white">
+                      Read the route before you edit the details
+                    </h2>
+                    <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">
+                      Modern planners keep the route close to the itinerary. Use this view to confirm whether the chosen stay and stop order still make sense before you keep editing.
+                    </p>
+                  </section>
+
+                  <TripStopMap
+                    pins={tripMapData.pins}
+                    routePaths={tripMapData.routePaths}
+                    missingLocationCount={tripMapData.missingLocationCount}
                   />
                 </div>
               ) : null}
 
-              {!showDraftBuilderMode ? (
-                <section className="rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-                  <div className="flex flex-col gap-1">
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#04b887] dark:text-[#7decc7]">
-                      Trip at a glance
+              {activeWorkspaceTab === "booking" ? (
+                <div className="space-y-5">
+                  <section className="rounded-[1.75rem] border border-white/10 bg-[linear-gradient(180deg,rgba(15,23,42,0.96),rgba(9,15,28,0.92))] p-5 shadow-[0_24px_70px_rgba(2,6,23,0.35)]">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-cyan-200/75">
+                      Stay booking
                     </div>
-                    <h2 className="text-xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">
-                      Ready-to-go snapshot
+                    <h2 className="mt-1 text-xl font-semibold tracking-tight text-white">
+                      Keep hotel decisions in their own lane
                     </h2>
-                    <p className="max-w-3xl text-sm leading-5 text-slate-600 dark:text-slate-300">
-                      Scan the trip shape first, then fine-tune stops below. Food and budget numbers are shown as estimates, not live checkout prices.
+                    <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">
+                      Instead of mixing booking controls into the itinerary, this view keeps the stay search separate so you can confirm the lodging without losing your place in the trip.
                     </p>
-                  </div>
+                  </section>
 
-                  <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                    <div className="rounded-[1rem] border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/70">
-                      <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
-                        Trip shape
-                      </div>
-                      <div className="mt-1 text-base font-semibold text-slate-950 dark:text-slate-100">
-                        {deriveTripLengthDays(trip)} day{deriveTripLengthDays(trip) === 1 ? "" : "s"}
-                      </div>
-                      <p className="mt-1 text-sm leading-5 text-slate-600 dark:text-slate-300">
-                        {itineraryOverview.editableStops} editable stops, {itineraryOverview.foodStops} food pick{itineraryOverview.foodStops === 1 ? "" : "s"}, {itineraryOverview.activityStops} activity pick{itineraryOverview.activityStops === 1 ? "" : "s"}.
-                      </p>
-                    </div>
-
-                    <div className="rounded-[1rem] border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/70">
-                      <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
-                        Route reality
-                      </div>
-                      <div className="mt-1 text-base font-semibold text-slate-950 dark:text-slate-100">
-                        {formatDurationSeconds(trip.routeSummary?.durationSeconds) ?? trip.driveTimeText}
-                      </div>
-                      <p className="mt-1 text-sm leading-5 text-slate-600 dark:text-slate-300">
-                        {formatDistanceMeters(trip.routeSummary?.distanceMeters)
-                          ? `${formatDistanceMeters(trip.routeSummary?.distanceMeters)} from ${getStartCityLabel(trip)} to ${getDestinationLabel(trip)}.`
-                          : `${getStartCityLabel(trip)} to ${getDestinationLabel(trip)}.`}
-                      </p>
-                    </div>
-
-                    <div className="rounded-[1rem] border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/70">
-                      <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
-                        Stay plan
-                      </div>
-                      <div className="mt-1 text-base font-semibold text-slate-950 dark:text-slate-100">
-                        {selectedHotel?.name ?? trip.homeBaseCity ?? trip.destinationName}
-                      </div>
-                      <p className="mt-1 text-sm leading-5 text-slate-600 dark:text-slate-300">
-                        {selectedHotel?.shortDescription ??
-                          "Your current stay choice acts as the anchor for route and nearby-stop suggestions."}
-                      </p>
-                    </div>
-
-                    <div className="rounded-[1rem] border border-[#b2f6df] bg-[#effff8] p-4 dark:border-[#06d8a0]/30 dark:bg-[#06d8a0]/10">
-                      <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#048f69] dark:text-[#7decc7]">
-                        Budget fit
-                      </div>
-                      <div className="mt-1 text-base font-semibold text-slate-950 dark:text-slate-100">
-                        {budgetStatus?.label ?? "Estimated spend"}
-                      </div>
-                      <p className="mt-1 text-sm leading-5 text-slate-700 dark:text-slate-200">
-                        {budgetStatus?.detail ??
-                          `${formatMoney(estimatedTotalCost)} total estimated spend for ${travelerCount} traveler${travelerCount === 1 ? "" : "s"}.`}
-                      </p>
-                    </div>
-                  </div>
-                </section>
+                  <ExpediaStayWidget
+                    destinationLabel={getDestinationLabel(trip)}
+                    selectedHotel={selectedHotel}
+                    tripStartDate={trip.tripStartDate}
+                    tripEndDate={trip.tripEndDate}
+                  />
+                </div>
               ) : null}
 
-              {showBuilderModeBanner ? (
-                <section className="rounded-[1.5rem] border border-emerald-200 bg-emerald-50 p-5 shadow-sm dark:border-emerald-500/30 dark:bg-emerald-500/10">
-                  <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                    <div className="flex flex-col gap-1">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-700 dark:text-emerald-300">
-                    Builder mode
-                  </div>
-                  <h2 className="text-xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">
-                    Change a day instead of restarting the trip
-                  </h2>
-                  <p className="max-w-3xl text-sm leading-6 text-slate-700 dark:text-slate-200">
-                    This plan already starts with a recommended shape. Open any
-                    stay, food stop, or activity below if you want to change a
-                    specific day or fit something else into the itinerary.
-                  </p>
-                  {trip.tripPrompt ? (
-                    <p className="text-sm leading-6 text-slate-600 dark:text-slate-300">
-                      Original brief: &quot;{trip.tripPrompt}&quot;
+              {activeWorkspaceTab === "finalize" ? (
+                <div className="space-y-5">
+                  <section className="rounded-[1.75rem] border border-white/10 bg-[linear-gradient(180deg,rgba(15,23,42,0.96),rgba(9,15,28,0.92))] p-5 shadow-[0_24px_70px_rgba(2,6,23,0.35)]">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-cyan-200/75">
+                      Review and finalize
+                    </div>
+                    <h2 className="mt-1 text-xl font-semibold tracking-tight text-white">
+                      {showDraftBuilderMode ? "Lock the version you want people to react to" : "Review the locked version before sharing or booking"}
+                    </h2>
+                    <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">
+                      Keep the editing workflow separate from the commitment moment. When the route, stay, and budget feel coherent, finalize here instead of inside the itinerary itself.
                     </p>
-                  ) : null}
-                  {constraintFitSummary ? (
-                    <p className="text-sm leading-6 text-slate-600 dark:text-slate-300">
-                      Constraint check: {constraintFitSummary}
-                    </p>
-                  ) : null}
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setShowBuilderModeBanner(false)}
-                      className="inline-flex h-10 shrink-0 items-center justify-center rounded-full border border-emerald-300 bg-white/80 px-4 text-sm font-semibold text-emerald-800 transition hover:bg-white dark:border-emerald-400/30 dark:bg-slate-950/30 dark:text-emerald-200 dark:hover:bg-slate-950/50"
-                    >
-                      Hide
-                    </button>
+                  </section>
+
+                  <div ref={finalizedPanelRef}>
+                    <FinalizeTripPanel
+                      trip={persistedTrip ?? trip}
+                      selection={activeSelectionState}
+                      estimatedTotalCost={estimatedTotalCost}
+                      budgetDelta={budgetDelta}
+                      routeSummary={routeSummaryLabel}
+                      onFinalize={handleFinalizeTrip}
+                      finalizing={finalizing}
+                      statusMessage={finalizeStatus}
+                    />
                   </div>
-                </section>
+                </div>
               ) : null}
 
-              {showDraftBuilderMode ? (
-                <ExpediaStayWidget
-                  destinationLabel={getDestinationLabel(trip)}
-                  selectedHotel={selectedHotel}
-                  tripStartDate={trip.tripStartDate}
-                  tripEndDate={trip.tripEndDate}
-                />
-              ) : null}
+              {activeWorkspaceTab === "coordination" ? (
+                <div className="space-y-5">
+                  <section className="rounded-[1.75rem] border border-white/10 bg-[linear-gradient(180deg,rgba(15,23,42,0.96),rgba(9,15,28,0.92))] p-5 shadow-[0_24px_70px_rgba(2,6,23,0.35)]">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-cyan-200/75">
+                      Share and operations
+                    </div>
+                    <h2 className="mt-1 text-xl font-semibold tracking-tight text-white">
+                      Keep exports, sharing, and logistics out of the editing lane
+                    </h2>
+                    <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">
+                      This is where collaboration and operational follow-through belong, instead of being stacked in the middle of the itinerary builder.
+                    </p>
+                  </section>
 
-              <InteractiveItinerary
-                key={`${trip.id}:${JSON.stringify(trip.savedSelectionState ?? emptySelectionState())}`}
-                days={itineraryDays}
-                hotels={hotelOptions}
-                foodSpots={trip.foodSpots ?? []}
-                activities={trip.topActivities ?? []}
-                travelerCount={travelerCount}
-                initialSelection={trip.savedSelectionState}
-                destinationImageUrl={trip.imageUrl}
-                destinationLabel={getDestinationLabel(trip)}
-                tripStartDate={trip.tripStartDate}
-                tripEndDate={trip.tripEndDate}
-                startCityLabel={trip.startCity ?? undefined}
-                startCityCoordinate={
-                  typeof trip.routeSummary?.origin?.lat === "number" &&
-                  typeof trip.routeSummary?.origin?.lon === "number"
-                    ? {
-                        latitude: trip.routeSummary.origin.lat,
-                        longitude: trip.routeSummary.origin.lon,
-                      }
-                    : undefined
-                }
-                onSelectionChange={handleSelectionChange}
-              />
+                  <TripActions
+                    trip={persistedTrip ?? trip}
+                    onTripUpdated={handleTripUpdated}
+                    isOwner={isOwner}
+                    syncState={syncState}
+                  />
 
-              <TripStopMap
-                pins={tripMapData.pins}
-                routePaths={tripMapData.routePaths}
-                missingLocationCount={tripMapData.missingLocationCount}
-              />
-
-              {showDraftBuilderMode ? (
-                <FinalizeTripPanel
-                  trip={persistedTrip ?? trip}
-                  selection={activeSelectionState}
-                  estimatedTotalCost={estimatedTotalCost}
-                  budgetDelta={budgetDelta}
-                  routeSummary={routeSummaryLabel}
-                  onFinalize={handleFinalizeTrip}
-                  finalizing={finalizing}
-                  statusMessage={finalizeStatus}
-                />
-              ) : null}
-
-              {showOperationsPanel ? (
-                <TripOperationsPanel
-                  trip={persistedTrip ?? trip}
-                  onTripUpdated={handleTripUpdated}
-                  isOwner={isOwner}
-                />
+                  {showOperationsPanel ? (
+                    <TripOperationsPanel
+                      trip={persistedTrip ?? trip}
+                      onTripUpdated={handleTripUpdated}
+                      isOwner={isOwner}
+                    />
+                  ) : (
+                    <section className="rounded-[1.5rem] border border-white/10 bg-[linear-gradient(180deg,rgba(15,23,42,0.96),rgba(9,15,28,0.92))] p-5 shadow-[0_24px_70px_rgba(2,6,23,0.28)]">
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-200/75">
+                        Next steps
+                      </div>
+                      <h2 className="mt-1 text-xl font-semibold tracking-tight text-white">
+                        Operations unlock once the trip is approved or booked
+                      </h2>
+                      <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">
+                        Right now this trip is still in planning mode. Share it, collect reactions, and once the group is aligned this tab will grow into the logistics workspace.
+                      </p>
+                    </section>
+                  )}
+                </div>
               ) : null}
             </div>
           ) : (
-            <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-              <h2 className="text-2xl font-semibold text-slate-950 dark:text-slate-100">Itinerary</h2>
-              <p className="mt-4 text-slate-600 dark:text-slate-300">No itinerary generated yet.</p>
+            <section className="rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(15,23,42,0.96),rgba(9,15,28,0.92))] p-6 shadow-[0_24px_70px_rgba(2,6,23,0.35)]">
+              <h2 className="text-2xl font-semibold text-white">Itinerary</h2>
+              <p className="mt-4 text-slate-300">No itinerary generated yet.</p>
             </section>
           )}
         </div>

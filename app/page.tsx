@@ -1,19 +1,14 @@
 "use client";
 
-/**
- * Main client entry point for the planner.
- * This page owns form state, result fetching, session persistence, and the handoff from search results into a selected trip.
- */
-
-
 import { useCallback, useEffect, useState } from "react";
 import AccountPanel from "../components/AccountPanel";
 import BrandLogo from "../components/BrandLogo";
 import TripCard from "../components/TripCard";
 import TripForm from "../components/TripForm";
+import rawDestinations from "../data/destinations.json";
 import { trackProductEvent } from "../lib/productAnalytics";
 import { normalizeTripImageUrl } from "../lib/tripImages";
-import { ProviderOutcome, RankedDestination, TripInput } from "../lib/types";
+import { ProviderOutcome, RankedDestination, RawDestination, TripInput } from "../lib/types";
 
 type RankTripsResponse = {
   success?: boolean;
@@ -51,6 +46,14 @@ type StoredPageState = {
   aiStatusMessage?: string;
 };
 
+type FeaturedHero = {
+  name: string;
+  imageUrl: string;
+  eyebrow: string;
+  caption: string;
+  detail: string;
+};
+
 const LAST_INPUT_STORAGE_KEY = "weekend-trip-last-input";
 const PAGE_STATE_STORAGE_KEY = "weekend-trip-page-state";
 
@@ -73,6 +76,72 @@ function extractResults(
   if (Array.isArray(payload?.destinations)) return payload.destinations;
   if (Array.isArray(payload?.rankings)) return payload.rankings;
   return null;
+}
+
+function joinLabels(labels: string[]) {
+  if (labels.length === 0) return "";
+  if (labels.length === 1) return labels[0];
+  if (labels.length === 2) return `${labels[0]} and ${labels[1]}`;
+  return `${labels.slice(0, -1).join(", ")}, and ${labels[labels.length - 1]}`;
+}
+
+function buildHeroCandidates() {
+  return (rawDestinations as RawDestination[])
+    .filter(
+      (destination) =>
+        Boolean(destination.image_url) &&
+        !destination.is_staycation &&
+        destination.vibes.some((vibe) =>
+          ["nature", "adventure", "relax", "winter_fun"].includes(vibe)
+        )
+    )
+    .map((destination) => {
+      const caption =
+        destination.anchor_experiences[0]?.description?.trim() ||
+        `Built around ${joinLabels(destination.vibes.slice(0, 3))} energy in ${destination.name}.`;
+
+      const detail = destination.anchor_experiences
+        .slice(0, 2)
+        .map((experience) => experience.title)
+        .filter(Boolean)
+        .join(" · ");
+
+      return {
+        name: destination.name,
+        imageUrl: normalizeTripImageUrl(destination.image_url, destination.name),
+        eyebrow: destination.region,
+        caption,
+        detail: detail || destination.home_base_city,
+      };
+    });
+}
+
+const HERO_CANDIDATES = buildHeroCandidates();
+const DEFAULT_HERO: FeaturedHero = HERO_CANDIDATES[0] ?? {
+  name: "Alberta",
+  imageUrl: normalizeTripImageUrl(undefined, "Alberta"),
+  eyebrow: "Daily Alberta feature",
+  caption: "A cinematic Alberta escape, refreshed each day.",
+  detail: "Curated for the planner",
+};
+
+function getFeaturedHeroForDate(referenceDate = new Date()) {
+  if (HERO_CANDIDATES.length === 0) {
+    return DEFAULT_HERO;
+  }
+
+  const key = Number(
+    new Intl.DateTimeFormat("en-CA", {
+      timeZone: "America/Edmonton",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    })
+      .format(referenceDate)
+      .replaceAll("-", "")
+  );
+
+  return HERO_CANDIDATES[key % HERO_CANDIDATES.length] ?? DEFAULT_HERO;
 }
 
 async function enrichSelectedTrip(
@@ -120,48 +189,22 @@ async function enrichSelectedTrip(
 
 function SkeletonTripCard() {
   return (
-    <div className="animate-pulse overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
-      <div className="h-72 w-full bg-slate-100 dark:bg-slate-800" />
+    <div className="animate-pulse overflow-hidden rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(12,18,30,0.98),rgba(10,16,27,0.94))] shadow-[0_28px_80px_rgba(0,0,0,0.3)]">
+      <div className="h-72 w-full bg-white/8" />
       <div className="space-y-4 p-6">
-        <div className="h-8 w-72 rounded bg-slate-200 dark:bg-slate-700" />
-        <div className="h-5 w-48 rounded bg-slate-200 dark:bg-slate-700" />
+        <div className="h-8 w-72 rounded bg-white/10" />
+        <div className="h-5 w-48 rounded bg-white/8" />
         <div className="space-y-2">
-          <div className="h-4 w-full rounded bg-slate-200 dark:bg-slate-700" />
-          <div className="h-4 w-11/12 rounded bg-slate-200 dark:bg-slate-700" />
-          <div className="h-4 w-8/12 rounded bg-slate-200 dark:bg-slate-700" />
+          <div className="h-4 w-full rounded bg-white/8" />
+          <div className="h-4 w-11/12 rounded bg-white/8" />
+          <div className="h-4 w-8/12 rounded bg-white/8" />
         </div>
         <div className="grid gap-3 sm:grid-cols-3">
-          <div className="h-20 rounded-2xl bg-slate-100 dark:bg-slate-800" />
-          <div className="h-20 rounded-2xl bg-slate-100 dark:bg-slate-800" />
-          <div className="h-20 rounded-2xl bg-slate-100 dark:bg-slate-800" />
+          <div className="h-20 rounded-2xl bg-white/6" />
+          <div className="h-20 rounded-2xl bg-white/6" />
+          <div className="h-20 rounded-2xl bg-white/6" />
         </div>
       </div>
-    </div>
-  );
-}
-
-function StepCard({
-  step,
-  title,
-  detail,
-}: {
-  step: string;
-  title: string;
-  detail: string;
-}) {
-  return (
-    <div className="group rounded-[1.5rem] bg-white/90 px-6 py-4 shadow-[0_18px_40px_rgba(15,23,42,0.12)] transition-colors dark:bg-slate-900/72">
-      <div>
-        <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-emerald-700 dark:text-emerald-300">
-          {step}
-        </div>
-        <div className="mt-2 text-lg font-semibold tracking-tight text-slate-950 dark:text-slate-100">
-          {title}
-        </div>
-      </div>
-      <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
-        {detail}
-      </p>
     </div>
   );
 }
@@ -173,7 +216,7 @@ function recommendationHeading(confidence?: RankedDestination["confidence"]) {
     case "medium":
       return "Best-fit recommendation";
     case "low":
-      return "Best available recommendation";
+      return "Closest strong option";
     default:
       return "Trip recommendation";
   }
@@ -182,13 +225,13 @@ function recommendationHeading(confidence?: RankedDestination["confidence"]) {
 function recommendationDescription(confidence?: RankedDestination["confidence"]) {
   switch (confidence) {
     case "high":
-      return "This is the single trip Trippify thinks best fits the brief. If it is close but not perfect, build it and adjust the days instead of starting over.";
+      return "This is the trip that best matches the brief. If it is close but not perfect, open it and tune the days instead of starting over.";
     case "medium":
-      return "This is the single trip that best fits the brief right now. Some details may still need builder edits or live verification before you lock it in.";
+      return "This is the best current fit. A few details may still need builder edits or live verification before you lock it in.";
     case "low":
-      return "This is the closest trip shape available right now. Expect to swap stops, adjust pacing, or tighten the plan in the builder before you finalize it.";
+      return "This is the closest trip shape available right now. Expect to swap stops, tighten the pacing, or refine the plan in the builder.";
     default:
-      return "This is the single trip Trippify thinks best fits the brief. If it is close but not perfect, build it and adjust the days instead of starting over.";
+      return "This is the trip that best fits the brief right now, with room to tune the details inside the builder.";
   }
 }
 
@@ -207,6 +250,7 @@ export default function HomePage() {
   const [waitingForTripText, setWaitingForTripText] = useState(false);
   const [restored, setRestored] = useState(false);
   const [savedTripsOpen, setSavedTripsOpen] = useState(false);
+  const [featuredHero, setFeaturedHero] = useState<FeaturedHero>(DEFAULT_HERO);
 
   const persistPageState = useCallback(
     (nextState: StoredPageState) => {
@@ -229,6 +273,10 @@ export default function HomePage() {
     },
     [aiStatusMessage, currentTrip, lastInput, shownDestinationNames]
   );
+
+  useEffect(() => {
+    setFeaturedHero(getFeaturedHeroForDate());
+  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -571,7 +619,7 @@ export default function HomePage() {
   }
 
   return (
-    <main className="min-h-screen bg-[linear-gradient(180deg,#f8fafc_0%,#f7fafc_28%,#ffffff_72%)] text-slate-900 dark:bg-[linear-gradient(180deg,#020617_0%,#0f172a_42%,#111827_100%)] dark:text-slate-100">
+    <main className="min-h-screen bg-[#08111a] text-white">
       <AccountPanel open={savedTripsOpen} onClose={() => setSavedTripsOpen(false)} />
 
       {destinationConstraintModal ? (
@@ -580,20 +628,20 @@ export default function HomePage() {
             type="button"
             aria-label="Close destination constraint dialog"
             onClick={() => setDestinationConstraintModal(null)}
-            className="absolute inset-0 bg-slate-950/45 backdrop-blur-[2px]"
+            className="absolute inset-0 bg-slate-950/60 backdrop-blur-[4px]"
           />
-          <div className="relative z-10 w-full max-w-lg rounded-[2rem] border border-emerald-200 bg-white p-6 shadow-2xl dark:border-emerald-500/30 dark:bg-slate-900">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700 dark:text-emerald-300">
+          <div className="relative z-10 w-full max-w-lg rounded-[2rem] border border-white/10 bg-[#0f1722] p-6 shadow-2xl">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#d9b57c]">
               Destination blocked
             </div>
-            <h2 className="mt-3 text-2xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">
+            <h2 className="mt-3 text-2xl font-semibold tracking-tight text-white">
               {destinationConstraintModal.title}
             </h2>
             <div className="mt-4 space-y-2">
               {destinationConstraintModal.reasons.map((reason) => (
                 <div
                   key={reason}
-                  className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                  className="rounded-2xl border border-white/10 bg-white/6 px-4 py-3 text-sm font-medium text-white/82"
                 >
                   {reason}
                 </div>
@@ -603,7 +651,7 @@ export default function HomePage() {
               <button
                 type="button"
                 onClick={() => setDestinationConstraintModal(null)}
-                className="inline-flex h-11 items-center justify-center rounded-2xl border border-slate-300 bg-white px-5 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                className="inline-flex h-11 items-center justify-center rounded-full border border-white/12 bg-white px-5 text-sm font-semibold text-slate-950 transition hover:bg-[#f5efe5]"
               >
                 Close
               </button>
@@ -612,117 +660,144 @@ export default function HomePage() {
         </div>
       ) : null}
 
-      <div className="mx-auto max-w-6xl px-6 py-8 sm:px-8 lg:px-10">
-        <section className="relative mb-8">
-          <div className="relative">
-            <div className="flex flex-wrap items-center justify-between gap-3">
+      <section className="relative isolate min-h-screen overflow-hidden">
+        <div className="absolute inset-0">
+          <div
+            className="absolute inset-0 bg-cover bg-center"
+            style={{ backgroundImage: `url("${featuredHero.imageUrl}")` }}
+          />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.2),transparent_34%),linear-gradient(180deg,rgba(5,11,17,0.2)_0%,rgba(7,13,21,0.48)_42%,rgba(8,14,23,0.92)_100%)]" />
+          <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(5,10,16,0.72)_0%,rgba(5,10,16,0.34)_40%,rgba(5,10,16,0.64)_100%)]" />
+        </div>
+
+        <div className="relative z-10 mx-auto flex min-h-screen max-w-7xl flex-col px-5 py-6 sm:px-8 lg:px-10">
+          <header className="flex items-center justify-between gap-4">
+            <div className="inline-flex rounded-full border border-white/12 bg-white/88 px-4 py-2 shadow-[0_14px_40px_rgba(0,0,0,0.12)]">
               <BrandLogo
                 variant="horizontal"
                 href="/"
                 priority
-                className="h-12 w-auto sm:h-14"
+                className="h-8 w-auto sm:h-9"
               />
-
-              <button
-                type="button"
-                onClick={() => setSavedTripsOpen(true)}
-                className="inline-flex h-11 items-center justify-center rounded-full border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-800 shadow-sm transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
-              >
-                Saved trips
-              </button>
             </div>
 
-            <div className="mt-8">
-              <div className="max-w-4xl">
-                <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-emerald-700 dark:text-emerald-300">
-                  Alberta Trip Planner
-                </div>
-                <h1 className="max-w-4xl text-[2.4rem] font-semibold tracking-[-0.035em] text-slate-950 dark:text-white sm:text-[3rem] sm:leading-[1.04] xl:text-[3.45rem] xl:max-w-5xl">
-                  Find a trip that actually fits.
-                </h1>
-              </div>
-            </div>
-          </div>
+            <button
+              type="button"
+              onClick={() => setSavedTripsOpen(true)}
+              className="inline-flex h-11 items-center justify-center rounded-full border border-white/16 bg-white/10 px-5 text-sm font-semibold text-white shadow-[0_18px_50px_rgba(0,0,0,0.18)] backdrop-blur-sm transition hover:bg-white/16"
+            >
+              Saved trips
+            </button>
+          </header>
 
-          <div className="relative mt-8 grid gap-4 md:grid-cols-3">
-            <StepCard
-              step="Step 1"
-              title="Set the basics"
-              detail="Choose the date range and how many people are actually going."
-            />
-            <StepCard
-              step="Step 2"
-              title="Describe the trip"
-              detail="Write the brief in plain language instead of filling out a bunch of filters."
-            />
-            <StepCard
-              step="Step 3"
-              title="Edit the days"
-              detail="Open the trip builder to swap a day, fit in an activity, or change the stay."
-            />
-          </div>
-        </section>
-
-        <section className="relative overflow-hidden rounded-[2.2rem] border border-slate-200/80 bg-white p-[1px] shadow-[0_16px_42px_rgba(15,23,42,0.05)] dark:border-slate-700/80 dark:bg-slate-900/90">
-          <div className="relative rounded-[calc(2.2rem-1px)] bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(248,250,252,0.96))] p-5 dark:bg-[linear-gradient(180deg,rgba(2,6,23,0.95),rgba(15,23,42,0.92))] sm:p-7">
-            <TripForm
-              key={lastInput ? JSON.stringify(lastInput) : "new-trip"}
-              onGenerate={handleGenerate}
-              loading={loading}
-              initialInput={lastInput ?? undefined}
-            />
-          </div>
-        </section>
-
-        {aiStatusMessage ? (
-          <div className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm text-emerald-900 dark:border-emerald-500/40 dark:bg-emerald-500/10 dark:text-emerald-100">
-            {aiStatusMessage}
-          </div>
-        ) : null}
-
-        {(waitingForTripText || currentTrip) ? (
-          <section className="mt-10">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div className="flex flex-1 items-center py-10 lg:py-14">
+            <div className="grid w-full gap-10 lg:grid-cols-[1.05fr_0.95fr] lg:items-end">
               <div className="max-w-3xl">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700 dark:text-emerald-300">
-                  Your trip
+                <div className="text-[11px] font-semibold uppercase tracking-[0.26em] text-[#e7c99c]">
+                  Alberta weekend concierge
                 </div>
-                <h2 className="mt-2 text-3xl font-semibold tracking-tight text-slate-950 dark:text-white">
-                  {recommendationHeading(currentTrip?.confidence)}
-                </h2>
-                <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
-                  {recommendationDescription(currentTrip?.confidence)}
+                <h1 className="mt-5 max-w-4xl font-serif text-[3rem] leading-[0.98] tracking-[-0.045em] text-white sm:text-[4rem] lg:text-[4.7rem]">
+                  Describe the trip you want.
+                  <span className="block text-white/84">
+                    I&apos;ll fill in the gaps.
+                  </span>
+                </h1>
+                <p className="mt-5 max-w-2xl text-base leading-8 text-white/76 sm:text-lg">
+                  One good prompt is enough to start. Tell Trippify the Alberta
+                  weekend you want, and if anything essential is missing, it will
+                  ask one focused follow-up before building the plan.
                 </p>
+
+                <div className="mt-8 max-w-xl rounded-[1.8rem] border border-white/12 bg-white/10 p-5 shadow-[0_28px_80px_rgba(0,0,0,0.24)] backdrop-blur-sm">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/56">
+                    Daily feature
+                  </div>
+                  <div className="mt-3 text-2xl font-semibold tracking-[-0.03em] text-white">
+                    {featuredHero.name}
+                  </div>
+                  <p className="mt-3 text-sm leading-7 text-white/74">
+                    {featuredHero.caption}
+                  </p>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <span className="inline-flex items-center rounded-full border border-white/12 bg-white/8 px-3 py-1.5 text-xs font-medium text-white/82">
+                      {featuredHero.eyebrow}
+                    </span>
+                    <span className="inline-flex items-center rounded-full border border-white/12 bg-white/8 px-3 py-1.5 text-xs font-medium text-white/82">
+                      {featuredHero.detail}
+                    </span>
+                  </div>
+                </div>
               </div>
 
-              {!waitingForTripText && !lastInput?.preferredDestination ? (
-                <button
-                  type="button"
-                  onClick={handleRegenerate}
-                  disabled={loading}
-                  className="inline-flex h-11 items-center justify-center rounded-full border border-slate-300 bg-white px-5 text-sm font-semibold text-slate-800 shadow-sm transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:bg-slate-800"
-                >
-                  Try a different trip
-                </button>
-              ) : null}
+              <TripForm
+                key={lastInput ? JSON.stringify(lastInput) : "new-trip"}
+                onGenerate={handleGenerate}
+                loading={loading}
+                initialInput={lastInput ?? undefined}
+              />
             </div>
+          </div>
+        </div>
+      </section>
 
-            <div className="mt-6">
-              {waitingForTripText ? (
-                <div className="space-y-4">
-                  <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm text-slate-600 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
-                    Trippify is building your trip recommendation and actable
-                    day plan...
+      {(aiStatusMessage || waitingForTripText || currentTrip) ? (
+        <section className="relative z-20 -mt-12 px-5 pb-20 sm:px-8 lg:px-10">
+          <div className="mx-auto max-w-6xl rounded-[2.6rem] border border-white/10 bg-[linear-gradient(180deg,rgba(8,14,23,0.94)_0%,rgba(10,17,28,0.98)_100%)] p-6 text-white shadow-[0_35px_90px_rgba(0,0,0,0.32)] backdrop-blur-sm sm:p-8">
+            {aiStatusMessage ? (
+              <div className="rounded-2xl border border-white/10 bg-white/6 px-5 py-4 text-sm text-white/76">
+                {aiStatusMessage}
+              </div>
+            ) : null}
+
+            {(waitingForTripText || currentTrip) ? (
+              <div className={aiStatusMessage ? "mt-8" : ""}>
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                  <div className="max-w-3xl">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#d9b57c]">
+                      Your trip
+                    </div>
+                    <h2 className="mt-2 text-3xl font-semibold tracking-tight text-white">
+                      {recommendationHeading(currentTrip?.confidence)}
+                    </h2>
+                    <p className="mt-2 text-sm leading-6 text-white/64">
+                      {recommendationDescription(currentTrip?.confidence)}
+                    </p>
                   </div>
-                  <SkeletonTripCard />
+
+                  {!waitingForTripText && !lastInput?.preferredDestination ? (
+                    <button
+                      type="button"
+                      onClick={handleRegenerate}
+                      disabled={loading}
+                      className="inline-flex h-11 items-center justify-center rounded-full border border-white/12 bg-white/8 px-5 text-sm font-semibold text-white shadow-sm backdrop-blur-sm transition hover:bg-white/14 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      Try a different trip
+                    </button>
+                  ) : null}
                 </div>
-              ) : currentTrip ? (
-                <TripCard trip={currentTrip} input={lastInput ?? undefined} />
-              ) : null}
-            </div>
-          </section>
-        ) : null}
-      </div>
+
+                <div className="mt-6">
+                  {waitingForTripText ? (
+                    <div className="space-y-4">
+                      <div className="rounded-2xl border border-white/10 bg-white/6 px-5 py-4 text-sm text-white/72 shadow-sm">
+                        Trippify is shaping your trip and pulling the strongest
+                        Alberta fit for the brief.
+                      </div>
+                      <SkeletonTripCard />
+                    </div>
+                  ) : currentTrip ? (
+                    <TripCard
+                      key={`${currentTrip.name}-${lastInput?.tripPrompt ?? ""}`}
+                      trip={currentTrip}
+                      input={lastInput ?? undefined}
+                    />
+                  ) : null}
+                </div>
+              </div>
+            ) : null}
+          </div>
+        </section>
+      ) : null}
     </main>
   );
 }

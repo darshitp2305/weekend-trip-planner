@@ -7,8 +7,8 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #08111a;
+  --foreground: #f8fafc;
   --date-input-foreground: #0f172a;
   --brand-accent-50: #effff8;
   --brand-accent-100: #d7fcef;
@@ -20,9 +20,11 @@
   --brand-accent-700: #048f69;
   --brand-accent-800: #0a7053;
   --brand-accent-900: #0c5a44;
-  --font-geist-sans: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --font-geist-sans: "Aptos", "Segoe UI", "Helvetica Neue", sans-serif;
   --font-geist-mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo,
     monospace;
+  --font-display: "Iowan Old Style", "Palatino Linotype", "Book Antiqua",
+    "Baskerville", Georgia, serif;
 }
 
 .dark {
@@ -41,7 +43,12 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), "Segoe UI", sans-serif;
+  text-rendering: optimizeLegibility;
+}
+
+.font-serif {
+  font-family: var(--font-display);
 }
 
 .date-input-fix {

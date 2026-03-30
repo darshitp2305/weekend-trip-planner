@@ -1,19 +1,9 @@
 "use client";
 
-/**
- * Reusable UI component for the trip card section of the planner.
- * Keeping this logic in its own component makes the page-level containers easier to scan and keeps related rendering and state updates together.
- */
-
-
 import Image from "next/image";
-import { type ReactNode, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  RankedDestination,
-  TripDataSource,
-  TripInput,
-} from "../lib/types";
+import { type ReactNode, useState } from "react";
+import { RankedDestination, TripDataSource, TripInput } from "../lib/types";
 import { buildTripPlan, buildTripPlanPreview } from "../lib/buildTripPlan";
 import { formatDisplayText } from "../lib/displayText";
 import { isStartCity } from "../lib/startCities";
@@ -64,14 +54,14 @@ function budgetFitDetail(total: number, budget?: number) {
   }
 
   if (total <= budget * 0.7) {
-    return `Estimated total sits comfortably under your $${Math.round(budget)} group budget.`;
+    return `Comfortably under your $${Math.round(budget)} group budget.`;
   }
 
   if (total <= budget) {
-    return `Estimated total stays within your $${Math.round(budget)} group budget.`;
+    return `Currently within your $${Math.round(budget)} group budget.`;
   }
 
-  return `Estimated total is currently above your $${Math.round(budget)} group budget.`;
+  return `Currently above your $${Math.round(budget)} group budget.`;
 }
 
 function cleanItineraryLine(line: string) {
@@ -172,23 +162,23 @@ function getStoredLastInput(): TripInput | undefined {
   }
 }
 
-function Badge({
+function Pill({
   children,
-  tone = "slate",
+  tone = "neutral",
 }: {
   children: ReactNode;
-  tone?: "slate" | "green" | "emerald";
+  tone?: "neutral" | "positive" | "accent";
 }) {
   const toneClass =
-    tone === "green"
-      ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200"
-      : tone === "emerald"
-        ? "border-lime-200 bg-lime-50 text-lime-700 dark:border-lime-500/30 dark:bg-lime-500/10 dark:text-lime-200"
-        : "border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200";
+    tone === "positive"
+      ? "border-emerald-300/24 bg-emerald-400/10 text-emerald-100"
+      : tone === "accent"
+        ? "border-[#d9b57c]/28 bg-[#d9b57c]/12 text-[#f6e1be]"
+        : "border-white/12 bg-white/8 text-white/82";
 
   return (
     <span
-      className={`inline-flex items-center whitespace-nowrap rounded-full border px-3 py-1 text-xs font-medium ${toneClass}`}
+      className={`inline-flex items-center rounded-full border px-3 py-1.5 text-xs font-medium backdrop-blur-sm ${toneClass}`}
     >
       {children}
     </span>
@@ -205,24 +195,22 @@ function Stat({
   detail?: string;
 }) {
   return (
-    <div className="rounded-[1.2rem] border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/70">
-      <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+    <div className="rounded-[1.45rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.03))] p-5 backdrop-blur-sm">
+      <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/48">
         {label}
       </div>
-      <div className="mt-1 text-lg font-semibold text-slate-950 dark:text-slate-100">
+      <div className="mt-3 text-[1.9rem] font-semibold tracking-[-0.04em] text-white">
         {value}
       </div>
       {detail ? (
-        <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">
-          {detail}
-        </p>
+        <p className="mt-2 text-sm leading-6 text-white/64">{detail}</p>
       ) : null}
     </div>
   );
 }
 
 function confidenceTone(confidence?: RankedDestination["confidence"]) {
-  return confidence === "high" ? "green" : "slate";
+  return confidence === "high" ? "positive" : "neutral";
 }
 
 export default function TripCard({
@@ -234,6 +222,7 @@ export default function TripCard({
 }: Props) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
+  const [imageFailed, setImageFailed] = useState(false);
 
   const normalizedInput = normalizeTripInput(input);
   const previewPlan = buildTripPlanPreview(trip, normalizedInput);
@@ -263,9 +252,13 @@ export default function TripCard({
   );
   const tripPrompt = previewPlan.safeInput.tripPrompt;
   const displayTitle = previewPlan.recommendedTitle;
-  const [heroImageUrl, setHeroImageUrl] = useState(
-    normalizeTripImageUrl(previewTrip.imageUrl || trip.imageUrl, displayTitle)
+  const primaryHeroImageUrl = normalizeTripImageUrl(
+    previewTrip.imageUrl || trip.imageUrl,
+    displayTitle
   );
+  const heroImageUrl = imageFailed
+    ? getFallbackImageUrl(displayTitle)
+    : primaryHeroImageUrl;
   const displaySummary = getPromptAwareTripSummary({
     summary: previewTrip.aiSummary ?? previewTrip.summary,
     tripPrompt,
@@ -286,12 +279,6 @@ export default function TripCard({
     },
     displayTitle
   );
-
-  useEffect(() => {
-    setHeroImageUrl(
-      normalizeTripImageUrl(previewTrip.imageUrl || trip.imageUrl, displayTitle)
-    );
-  }, [displayTitle, previewTrip.imageUrl, trip.imageUrl]);
 
   async function handleSaveTrip() {
     try {
@@ -343,59 +330,55 @@ export default function TripCard({
   }
 
   return (
-    <article className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
-      {heroImageUrl ? (
-        <div className="aspect-[16/8.5] w-full overflow-hidden bg-slate-100 dark:bg-slate-800">
-          <Image
-            src={heroImageUrl}
-            alt={displayTitle}
-            width={1600}
-            height={900}
-            unoptimized
-            className="h-full w-full object-cover"
-            onError={() => setHeroImageUrl(getFallbackImageUrl(displayTitle))}
-          />
+    <article className="overflow-hidden rounded-[2.2rem] border border-white/10 bg-[#0b1420] text-white shadow-[0_32px_90px_rgba(0,0,0,0.28)]">
+      <div className="relative aspect-[16/8.6] overflow-hidden bg-[#121c29]">
+        <Image
+          key={heroImageUrl}
+          src={heroImageUrl}
+          alt={displayTitle}
+          width={1600}
+          height={900}
+          unoptimized
+          className="h-full w-full object-cover"
+          onError={() => setImageFailed(true)}
+        />
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(4,8,14,0.06)_0%,rgba(5,10,16,0.28)_42%,rgba(5,10,16,0.88)_100%)]" />
+
+        <div className="absolute left-0 right-0 top-0 flex flex-wrap gap-2 p-5 sm:p-6">
+          <Pill tone={confidenceTone(previewTrip.confidence)}>
+            {tripConfidenceLabel(previewTrip.confidence)}
+          </Pill>
+          <Pill tone="accent">
+            {previewTrip.isStaycation
+              ? "Staycation"
+              : `${previewTrip.province} getaway`}
+          </Pill>
+          <Pill tone={tripSourceTone(previewTrip) === "green" ? "positive" : "neutral"}>
+            {tripSourceLabel(previewTrip)}
+          </Pill>
         </div>
-      ) : null}
 
-      <div className="space-y-6 p-6 sm:p-7">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div className="max-w-3xl">
-            <div className="flex flex-wrap gap-2">
-              <Badge tone={confidenceTone(previewTrip.confidence)}>
-                {tripConfidenceLabel(previewTrip.confidence)}
-              </Badge>
-              <Badge>
-                {previewTrip.isStaycation
-                  ? "Staycation"
-                  : `${previewTrip.province} getaway`}
-              </Badge>
-              <Badge
-                tone={
-                  tripSourceTone(previewTrip) === "green" ? "green" : "slate"
-                }
-              >
-                {tripSourceLabel(previewTrip)}
-              </Badge>
-            </div>
-
-            <h3 className="mt-4 text-3xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">
+        <div className="absolute inset-x-0 bottom-0 p-6 sm:p-7">
+          <div className="max-w-4xl">
+            {titleContext ? (
+              <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#e6c895]">
+                {titleContext}
+              </div>
+            ) : null}
+            <h3 className="mt-3 font-serif text-[2.5rem] leading-[0.96] tracking-[-0.05em] text-white sm:text-[3.3rem]">
               {displayTitle}
             </h3>
-            {titleContext ? (
-              <p className="mt-2 text-sm font-medium uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
-                {titleContext}
-              </p>
-            ) : null}
-            <p className="mt-2 text-base leading-7 text-slate-600 dark:text-slate-300">
+            <p className="mt-4 max-w-3xl text-base leading-7 text-white/78">
               {formatDisplayText(
                 displaySummary ?? previewTrip.aiSummary ?? previewTrip.summary
               )}
             </p>
           </div>
         </div>
+      </div>
 
-        <div className="grid gap-3 md:grid-cols-3">
+      <div className="space-y-6 p-6 sm:p-7">
+        <div className="grid gap-4 md:grid-cols-3">
           <Stat
             label="Estimated total"
             value={`$${Math.round(displayCost)}`}
@@ -414,20 +397,20 @@ export default function TripCard({
         </div>
 
         {itineraryPreviewItems.length > 0 ? (
-          <section className="rounded-[1.25rem] border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/70">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+          <section className="rounded-[1.6rem] border border-white/10 bg-white/4 p-5">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/46">
               Trip shape
             </div>
-            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
               {itineraryPreviewItems.map((item) => (
                 <div
                   key={`${item.label}-${item.text}`}
-                  className="rounded-[1rem] bg-white px-4 py-3 dark:bg-slate-900"
+                  className="rounded-[1.25rem] border border-white/8 bg-[#121c29] px-4 py-4"
                 >
-                  <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#d9b57c]">
                     {item.label}
                   </div>
-                  <p className="mt-1 text-sm leading-6 text-slate-700 dark:text-slate-200">
+                  <p className="mt-2 text-sm leading-6 text-white/76">
                     {item.text}
                   </p>
                 </div>
@@ -437,17 +420,17 @@ export default function TripCard({
         ) : null}
 
         {tripPrompt ? (
-          <div className="rounded-[1.25rem] border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-800/70 dark:text-slate-300">
-            Built around your brief so you can open the builder and adjust the days from there.
+          <div className="rounded-[1.35rem] border border-white/10 bg-[linear-gradient(180deg,rgba(217,181,124,0.09),rgba(255,255,255,0.03))] px-4 py-3 text-sm leading-6 text-white/74">
+            Built around your brief so you can open the builder and refine the days from there.
           </div>
         ) : null}
 
-        <div className="flex flex-wrap gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row">
           {isSaved ? (
             <button
               type="button"
               onClick={() => onRemoveSaved?.(trip.name)}
-              className="inline-flex h-12 items-center justify-center rounded-2xl border border-rose-200 bg-rose-50 px-5 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-200 dark:hover:bg-rose-500/20"
+              className="inline-flex h-12 items-center justify-center rounded-full border border-rose-300/24 bg-rose-400/10 px-5 text-sm font-semibold text-rose-100 transition hover:bg-rose-400/16"
             >
               Remove saved trip
             </button>
@@ -456,14 +439,14 @@ export default function TripCard({
               type="button"
               onClick={handleSaveTrip}
               disabled={saving}
-              className="inline-flex h-12 items-center justify-center rounded-2xl bg-slate-950 px-6 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60 dark:bg-emerald-400 dark:text-slate-950 dark:hover:bg-emerald-300"
+              className="inline-flex h-12 items-center justify-center rounded-full bg-white px-6 text-sm font-semibold text-slate-950 transition hover:bg-[#f5efe5] disabled:opacity-60"
             >
               {saving ? "Opening builder..." : "Build this trip"}
             </button>
           )}
 
-          <div className="inline-flex min-h-12 items-center rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
-            Open the builder for day-by-day details and edits.
+          <div className="inline-flex min-h-12 items-center rounded-full border border-white/10 bg-white/6 px-4 py-2 text-sm text-white/66">
+            Open the builder for day-by-day details, swaps, and final planning.
           </div>
         </div>
       </div>
