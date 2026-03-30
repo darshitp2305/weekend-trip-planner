@@ -96,6 +96,8 @@ function buildSummary(raw: RawDestination): string {
 
 function estimateActivityCost(type: string): number {
   switch (type) {
+    case "skiing":
+      return 120;
     case "gondola":
       return 70;
     case "hot_springs":

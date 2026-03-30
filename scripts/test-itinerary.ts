@@ -274,13 +274,137 @@ function evaluatePromptDrivenCanmoreRegression(): RegressionCheck {
   };
 }
 
+function evaluateRequestedActivityRegression(): RegressionCheck {
+  const tripPrompt =
+    "We're 2 people in Calgary and want a Banff overnight with one scenic hike as the main activity. Make Johnston Canyon the signature hike, keep the rest of the trip easy, and suggest a cozy trip with minimal planning friction.";
+
+  const input: TripInput = {
+    ...makeInput({
+      style: "chill",
+      startCity: "Calgary",
+      travelerCount: 2,
+      budgetPerTraveler: 300,
+      budget: 600,
+      tripLengthDays: 2,
+      maxDriveHours: 5,
+      preferredDestination: "Banff",
+    }),
+    tripPrompt,
+  };
+
+  const winner = rankDestinations(input, 1)[0];
+  if (!winner) {
+    return {
+      id: "R02",
+      passed: false,
+      notes: ["No destination matched the Johnston Canyon regression case."],
+    };
+  }
+
+  const plan = buildTripPlan(winner, input, "static-ranking");
+  const itineraryText = joinedItineraryText(plan);
+  const notes: string[] = [];
+
+  if (!winner.name.toLowerCase().includes("banff")) {
+    notes.push(`Expected Banff to win, got ${winner.name}.`);
+  }
+
+  if (!itineraryText.includes("johnston canyon")) {
+    notes.push("Expected the itinerary to keep Johnston Canyon as the requested hike.");
+  }
+
+  return {
+    id: "R02",
+    passed:
+      winner.name.toLowerCase().includes("banff") &&
+      itineraryText.includes("johnston canyon"),
+    notes,
+  };
+}
+
+function evaluateSkiTripRegression(): RegressionCheck {
+  const tripPrompt =
+    "We're 2 people in Calgary and want a Banff overnight built around one ski day. Make skiing the main event on day 2, keep the arrival night easy with a cozy dinner, and avoid anything that makes the trip feel hectic or overplanned.";
+
+  const input: TripInput = {
+    ...makeInput({
+      style: "adventure",
+      startCity: "Calgary",
+      travelerCount: 2,
+      budgetPerTraveler: 300,
+      budget: 600,
+      tripLengthDays: 2,
+      maxDriveHours: 5,
+      preferredDestination: "Banff",
+    }),
+    tripPrompt,
+  };
+
+  const winner = rankDestinations(input, 1)[0];
+  if (!winner) {
+    return {
+      id: "R03",
+      passed: false,
+      notes: ["No destination matched the ski regression case."],
+    };
+  }
+
+  const plan = buildTripPlan(winner, input, "static-ranking");
+  const activityStops = plan.itineraryDays.flatMap((day) =>
+    day.stops.filter((stop) => stop.kind === "activity")
+  );
+  const activityText = activityStops
+    .flatMap((stop) => [stop.title, stop.description ?? ""])
+    .join(" ")
+    .toLowerCase();
+  const notes: string[] = [];
+
+  if (!winner.name.toLowerCase().includes("banff")) {
+    notes.push(`Expected Banff to win, got ${winner.name}.`);
+  }
+
+  if (
+    ![
+      "ski",
+      "skiing",
+      "sunshine village",
+      "lake louise ski resort",
+      "norquay",
+      "chairlift",
+      "snowboard",
+    ].some((term) => activityText.includes(term))
+  ) {
+    notes.push("Expected the itinerary to keep a ski-day activity as the main day-2 anchor.");
+  }
+
+  return {
+    id: "R03",
+    passed:
+      winner.name.toLowerCase().includes("banff") &&
+      [
+        "ski",
+        "skiing",
+        "sunshine village",
+        "lake louise ski resort",
+        "norquay",
+        "chairlift",
+        "snowboard",
+      ].some((term) => activityText.includes(term)),
+    notes,
+  };
+}
+
 function main() {
   const cases = buildCases();
   const evaluations = cases.map((testCase) => {
     const result = evaluateCase(testCase);
     return { testCase, result };
   });
-  const regressionChecks = [evaluatePromptDrivenCanmoreRegression()];
+  const regressionChecks = [
+    evaluatePromptDrivenCanmoreRegression(),
+    evaluateRequestedActivityRegression(),
+    evaluateSkiTripRegression(),
+  ];
 
   const passCount = evaluations.filter(
     ({ result }) => result.stylePassed && result.budgetPassed && result.lengthPassed

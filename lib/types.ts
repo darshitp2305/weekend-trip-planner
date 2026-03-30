@@ -45,6 +45,7 @@ export interface Activity {
   type: string;
   costEstimate: number;
   bookingLink?: string;
+  allTrailsUrl?: string;
   shortDescription?: string;
   rating?: number;
   estimatedCost?: number;
@@ -250,6 +251,7 @@ export interface ItineraryStop {
   description?: string;
   mapsUrl?: string;
   websiteUrl?: string;
+  allTrailsUrl?: string;
   estimatedCost?: number;
   kind?: "travel" | "stay" | "food" | "activity";
 }

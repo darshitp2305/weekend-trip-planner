@@ -129,6 +129,7 @@ type ActivitySearchOptions = {
   activityFocus?: "skiing" | "hiking" | "camping";
   hardConstraints?: PromptHardConstraints;
   softPreferences?: PromptSoftPreferences;
+  requestedActivityName?: string;
 };
 
 const FIELD_MASK = [
@@ -189,6 +190,13 @@ function cleanPreferenceText(value: string) {
     .trim()
     .replace(/[?!.,]+$/g, "")
     .replace(/\b(?:instead|please)\b/gi, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function cleanRequestedActivityText(value?: string) {
+  return cleanPreferenceText(value ?? "")
+    .replace(/\b(the|main activity|signature hike|signature trail)\b/gi, "")
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -364,7 +372,18 @@ export function buildActivityTextQuery(
   const activityFocus = options?.activityFocus;
   const hardConstraints = options?.hardConstraints;
   const softPreferences = options?.softPreferences;
+  const requestedActivityName = cleanRequestedActivityText(
+    options?.requestedActivityName
+  );
   const normalizedStyle = style.trim().toLowerCase();
+
+  if (requestedActivityName) {
+    if (activityFocus === "hiking" || hardConstraints?.activityAnchor === "summit_hike") {
+      return `${requestedActivityName} hiking trail in ${destination}`;
+    }
+
+    return `${requestedActivityName} in ${destination}`;
+  }
 
   if (activityFocus === "hiking" && hardConstraints?.activityAnchor === "summit_hike") {
     const distanceContext = hardConstraints.hikeDistanceKmTarget
@@ -387,7 +406,7 @@ export function buildActivityTextQuery(
 
   const activityFocusQuery =
     activityFocus === "skiing"
-      ? "ski hills, ski resorts, nordic skiing, winter lookouts"
+      ? "ski resorts, ski hills, lift-access skiing, chairlifts, gondolas, and nordic skiing"
       : activityFocus === "hiking"
         ? hardConstraints?.requiresScenicView
           ? "scenic hiking trails, lookouts, mountain walks, lakes, and canyons"

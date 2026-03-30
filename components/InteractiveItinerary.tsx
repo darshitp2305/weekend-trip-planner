@@ -67,6 +67,7 @@ type StopOption = {
   estimatedCostLabel?: string;
   primaryUrl?: string;
   primaryLabel?: string;
+  allTrailsUrl?: string;
   mapsUrl?: string;
   websiteUrl?: string;
   category?: string;
@@ -94,6 +95,7 @@ type ResolvedStopChoice = {
   estimatedCost?: number;
   category?: string;
   type?: string;
+  allTrailsUrl?: string;
   websiteUrl?: string;
   mapsUrl?: string;
   bookingLink?: string;
@@ -108,6 +110,56 @@ type ResolvedStopChoice = {
 function buildPhotoUrl(photoRef?: string) {
   if (!photoRef) return undefined;
   return `/api/place-photo?ref=${encodeURIComponent(photoRef)}`;
+}
+
+const KNOWN_ALLTRAILS_TRAIL_LINKS: Record<string, string> = {
+  "table mountain summit hike":
+    "https://www.alltrails.com/trail/canada/alberta/table-mountain--2",
+  "table mountain":
+    "https://www.alltrails.com/trail/canada/alberta/table-mountain--2",
+  "bear's hump hike":
+    "https://www.alltrails.com/trail/canada/alberta/bears-hump",
+  "bear's hump":
+    "https://www.alltrails.com/trail/canada/alberta/bears-hump",
+  "bears hump hike":
+    "https://www.alltrails.com/trail/canada/alberta/bears-hump",
+  "bears hump":
+    "https://www.alltrails.com/trail/canada/alberta/bears-hump",
+  "johnston canyon":
+    "https://www.alltrails.com/trail/canada/alberta/johnston-canyon-to-upper-falls",
+  "grassi lakes":
+    "https://www.alltrails.com/trail/canada/alberta/grassi-lakes-interpretive-loop",
+};
+
+function normalizedTrailKey(value?: string) {
+  return (value ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s*trailhead$/i, "")
+    .replace(/\s+/g, " ");
+}
+
+function isAllTrailsUrl(value?: string) {
+  if (!value) return false;
+
+  try {
+    return new URL(value).hostname.toLowerCase().includes("alltrails.com");
+  } catch {
+    return false;
+  }
+}
+
+function knownAllTrailsUrlFor(value?: string) {
+  const normalized = normalizedTrailKey(value);
+  if (!normalized) return undefined;
+
+  if (KNOWN_ALLTRAILS_TRAIL_LINKS[normalized]) {
+    return KNOWN_ALLTRAILS_TRAIL_LINKS[normalized];
+  }
+
+  return Object.entries(KNOWN_ALLTRAILS_TRAIL_LINKS).find(([key]) =>
+    normalized.includes(key) || key.includes(normalized)
+  )?.[1];
 }
 
 function normalized(value?: string) {
@@ -222,6 +274,48 @@ function isDemandingHikeText(value?: string) {
   return text.includes("signature summit-style hike") || (summitSignal && hikeSignal);
 }
 
+function isHikeLikeActivity(value: {
+  name?: string;
+  type?: string;
+  shortDescription?: string;
+}) {
+  const text = [value.name, value.type, value.shortDescription]
+    .filter(Boolean)
+    .join(" ");
+
+  return isDemandingHikeText(text) || /\btrail\b|\bhike\b|\bloop\b|\btrek\b/i.test(text);
+}
+
+function activityPrimaryLink(choice: {
+  name?: string;
+  type?: string;
+  shortDescription?: string;
+  allTrailsUrl?: string;
+  websiteUrl?: string;
+  bookingLink?: string;
+}) {
+  const allTrailsUrl =
+    choice.allTrailsUrl ||
+    knownAllTrailsUrlFor(choice.name) ||
+    (isAllTrailsUrl(choice.websiteUrl)
+      ? choice.websiteUrl
+      : isAllTrailsUrl(choice.bookingLink)
+        ? choice.bookingLink
+        : undefined);
+
+  if (allTrailsUrl && isHikeLikeActivity(choice)) {
+    return {
+      url: allTrailsUrl,
+      label: "Open on AllTrails",
+    };
+  }
+
+  return {
+    url: choice.websiteUrl || choice.bookingLink,
+    label: "Activity site",
+  };
+}
+
 function isDemandingHikeStop(
   stop: { title?: string; description?: string },
   activity?: Pick<Activity, "name" | "type" | "shortDescription"> | ResolvedStopChoice
@@ -266,6 +360,7 @@ function customStopChoice(stop: TripCustomStop): ResolvedStopChoice {
     rating: stop.rating,
     estimatedCost: stop.estimatedCost,
     category: stop.category,
+    allTrailsUrl: stop.allTrailsUrl,
     websiteUrl: stop.websiteUrl,
     mapsUrl: stop.mapsUrl,
     photoRef: stop.photoRef,
@@ -314,6 +409,7 @@ function activityChoice(activity: Activity): ResolvedStopChoice {
     estimatedCost: activity.costEstimate ?? activity.estimatedCost ?? 0,
     type: activity.type,
     category: activity.type,
+    allTrailsUrl: activity.allTrailsUrl,
     websiteUrl: activity.websiteUrl,
     mapsUrl: activity.mapsUrl,
     bookingLink: activity.bookingLink,
@@ -508,6 +604,7 @@ function SelectorCard({
     buildPhotoUrl(option.photoRef) ?? option.photoUrl ?? option.fallbackPhotoUrl;
   const showCampingBadge = isCampingOnlyLikeOption(option);
   const safePrimaryUrl = sanitizeExternalNavigationUrl(option.primaryUrl);
+  const safeAllTrailsUrl = sanitizeExternalNavigationUrl(option.allTrailsUrl);
   const safeMapsUrl = sanitizeExternalNavigationUrl(option.mapsUrl);
 
   return (
@@ -599,7 +696,7 @@ function SelectorCard({
           {selected ? "Selected" : "Choose this"}
         </button>
 
-        {safePrimaryUrl ? (
+        {safePrimaryUrl && !safeAllTrailsUrl ? (
           <a
             href={safePrimaryUrl}
             target="_blank"
@@ -607,6 +704,17 @@ function SelectorCard({
             className="inline-flex h-10 items-center justify-center rounded-full border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-800 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
           >
             {option.primaryLabel ?? "Visit site"}
+          </a>
+        ) : null}
+
+        {safeAllTrailsUrl ? (
+          <a
+            href={safeAllTrailsUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex h-10 items-center justify-center rounded-full border border-[#7decc7] bg-[#effff8] px-4 text-sm font-semibold text-[#048f69] transition hover:bg-[#d7fcef] dark:border-[#06d8a0]/40 dark:bg-[#06d8a0]/10 dark:text-[#b2f6df] dark:hover:bg-[#06d8a0]/18"
+          >
+            Open on AllTrails
           </a>
         ) : null}
 
@@ -660,6 +768,9 @@ function CompactSelectionCard({
     category: pills?.[0],
   });
   const safePrimaryUrl = sanitizeExternalNavigationUrl(primaryUrl);
+  const safeAllTrailsUrl = sanitizeExternalNavigationUrl(
+    (primaryLabel === "Open on AllTrails" ? primaryUrl : undefined)
+  );
   const safeMapsUrl = sanitizeExternalNavigationUrl(mapsUrl);
 
   return (
@@ -702,9 +813,9 @@ function CompactSelectionCard({
         </div>
       ) : null}
 
-      {(safePrimaryUrl || safeMapsUrl) ? (
+      {(safePrimaryUrl || safeAllTrailsUrl || safeMapsUrl) ? (
         <div className="mt-3 flex flex-wrap gap-2">
-          {safePrimaryUrl ? (
+          {safePrimaryUrl && !safeAllTrailsUrl ? (
             <a
               href={safePrimaryUrl}
               target="_blank"
@@ -712,6 +823,16 @@ function CompactSelectionCard({
               className="inline-flex h-9 items-center justify-center rounded-full border border-slate-300 bg-white px-3.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
             >
               {primaryLabel ?? "Visit site"}
+            </a>
+          ) : null}
+          {safeAllTrailsUrl ? (
+            <a
+              href={safeAllTrailsUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex h-9 items-center justify-center rounded-full border border-[#7decc7] bg-[#effff8] px-3.5 text-xs font-semibold text-[#048f69] transition hover:bg-[#d7fcef] dark:border-[#06d8a0]/40 dark:bg-[#06d8a0]/10 dark:text-[#b2f6df] dark:hover:bg-[#06d8a0]/18"
+            >
+              Open on AllTrails
             </a>
           ) : null}
           {safeMapsUrl ? (
@@ -893,8 +1014,20 @@ export default function InteractiveItinerary({
         : resolvedActivityCost(addedChoice, travelerCount);
     const previewImageUrl =
       buildPhotoUrl(addedStop.photoRef) ?? addedStop.photoUrl ?? destinationImageUrl;
+    const addedStopActivityLink =
+      addedStop.kind === "activity" ? activityPrimaryLink(addedChoice) : null;
     const safeAddedStopWebsiteUrl = sanitizeExternalNavigationUrl(
-      addedStop.websiteUrl
+      addedStop.kind === "activity"
+        ? addedStopActivityLink?.label === "Open on AllTrails"
+          ? undefined
+          : addedStopActivityLink?.url
+        : addedStop.websiteUrl
+    );
+    const safeAddedStopAllTrailsUrl = sanitizeExternalNavigationUrl(
+      addedStop.kind === "activity" &&
+        addedStopActivityLink?.label === "Open on AllTrails"
+        ? addedStopActivityLink.url
+        : undefined
     );
     const safeAddedStopMapsUrl = sanitizeExternalNavigationUrl(addedStop.mapsUrl);
     const distanceFromPrevious = formatDistanceFromPrevious(
@@ -959,7 +1092,7 @@ export default function InteractiveItinerary({
           )}
         </div>
 
-        {safeAddedStopWebsiteUrl || safeAddedStopMapsUrl ? (
+        {safeAddedStopWebsiteUrl || safeAddedStopAllTrailsUrl || safeAddedStopMapsUrl ? (
           <div className="mt-3 flex flex-wrap gap-2">
             {safeAddedStopWebsiteUrl ? (
               <a
@@ -969,6 +1102,16 @@ export default function InteractiveItinerary({
                 className="inline-flex h-9 items-center justify-center rounded-full border border-slate-300 bg-white px-3.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
               >
                 {addedStop.kind === "food" ? "Restaurant site" : "Activity site"}
+              </a>
+            ) : null}
+            {safeAddedStopAllTrailsUrl ? (
+              <a
+                href={safeAddedStopAllTrailsUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex h-9 items-center justify-center rounded-full border border-[#7decc7] bg-[#effff8] px-3.5 text-xs font-semibold text-[#048f69] transition hover:bg-[#d7fcef] dark:border-[#06d8a0]/40 dark:bg-[#06d8a0]/10 dark:text-[#b2f6df] dark:hover:bg-[#06d8a0]/18"
+              >
+                Open on AllTrails
               </a>
             ) : null}
             {safeAddedStopMapsUrl ? (
@@ -2312,6 +2455,9 @@ export default function InteractiveItinerary({
                         stop.title,
                         priorStop
                       );
+                      const selectedActivityLink = selectedActivity
+                        ? activityPrimaryLink(selectedActivity)
+                        : null;
                       const isEditing = editingStopKey === key;
 
                       return (
@@ -2364,10 +2510,8 @@ export default function InteractiveItinerary({
                                       ]
                                     : ["Free"]),
                                 ]}
-                                primaryUrl={
-                                  selectedActivity.websiteUrl || selectedActivity.bookingLink
-                                }
-                                primaryLabel="Activity site"
+                                primaryUrl={selectedActivityLink?.url}
+                                primaryLabel={selectedActivityLink?.label}
                                 mapsUrl={selectedActivity.mapsUrl}
                                 photoRef={selectedActivity.photoRef}
                                 photoUrl={selectedActivity.photoUrl}
@@ -2385,6 +2529,8 @@ export default function InteractiveItinerary({
                                     travelerCount
                                   );
 
+                                  const activityLink = activityPrimaryLink(activity);
+
                                   return (
                                     <SelectorCard
                                       key={activity.name}
@@ -2398,9 +2544,12 @@ export default function InteractiveItinerary({
                                             ? `Est. group spend ${formatMoney(estimatedCost)}`
                                             : "Free",
                                         category: activity.type,
-                                        primaryUrl:
-                                          activity.websiteUrl || activity.bookingLink,
-                                        primaryLabel: "Activity site",
+                                        primaryUrl: activityLink.url,
+                                        primaryLabel: activityLink.label,
+                                        allTrailsUrl:
+                                          activityLink.label === "Open on AllTrails"
+                                            ? activityLink.url
+                                            : undefined,
                                         mapsUrl: activity.mapsUrl,
                                         photoRef: activity.photoRef,
                                         photoUrl: activity.photoUrl,

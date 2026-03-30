@@ -50,6 +50,7 @@ export async function fetchPlacesProviderData(options: {
         activityFocus: options.activityFocus,
         hardConstraints: promptIntent.hardConstraints,
         softPreferences: promptIntent.softPreferences,
+        requestedActivityName: promptIntent.requestedActivityName,
       }),
       searchHotels(options.destination, {
         tripStartDate: options.tripStartDate,

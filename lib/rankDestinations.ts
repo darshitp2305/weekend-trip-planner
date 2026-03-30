@@ -14,7 +14,9 @@ import {
 } from "./types";
 import { estimateBudgetBreakdown } from "./budgetEstimator";
 import { mapRawDestination } from "./mapDestination";
-import { deriveTripIntentFromPrompt } from "./tripIntent";
+import {
+  deriveTripIntentFromPrompt,
+} from "./tripIntent";
 
 type ReasonCandidate = RankingReason & {
   priority: number;
@@ -175,6 +177,33 @@ function getCalmSignal(destination: ReturnType<typeof mapRawDestination>): numbe
   const weakKeywords = ["nightlife", "party", "crowd", "adventure"];
 
   return countMatches(text, strongKeywords) - 0.5 * countMatches(text, weakKeywords);
+}
+
+function normalizeActivityName(value?: string): string {
+  return (value ?? "")
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function destinationHasRequestedActivity(
+  destination: MappedDestination,
+  requestedActivityName?: string
+): boolean {
+  const normalizedRequestedActivity = normalizeActivityName(
+    requestedActivityName
+  );
+  if (!normalizedRequestedActivity) return false;
+
+  return (destination.topActivities ?? []).some((activity) => {
+    const normalizedActivity = normalizeActivityName(activity.name);
+    return (
+      normalizedActivity === normalizedRequestedActivity ||
+      normalizedActivity.includes(normalizedRequestedActivity) ||
+      normalizedRequestedActivity.includes(normalizedActivity)
+    );
+  });
 }
 
 function getHiddenGemSignal(destination: ReturnType<typeof mapRawDestination>): number {
@@ -857,6 +886,36 @@ function calculatePromptConstraintScore(
   const vegetarianSignal = getVegetarianFoodSignal(destination);
   const foodieSignal = getFoodieSignal(destination);
   const getawaySignal = getGetawaySignal(destination);
+  const hasRequestedActivity = destinationHasRequestedActivity(
+    destination,
+    promptIntent.requestedActivityName
+  );
+
+  if (promptIntent.requestedActivityName) {
+    hardConstraintCount += 1;
+
+    if (hasRequestedActivity) {
+      score += 20;
+      promptConstraintStrength += 7;
+      matchReasons.push(
+        `Includes ${promptIntent.requestedActivityName} in the static activity set`
+      );
+      rankingReasons.push({
+        label: `Preserves the requested ${promptIntent.requestedActivityName} activity`,
+        impact: "positive",
+      });
+    } else {
+      score -= 18;
+      hardConstraintMisses += 1;
+      warnings.push(
+        `Does not explicitly include ${promptIntent.requestedActivityName} in static activity data`
+      );
+      rankingReasons.push({
+        label: `Misses the requested ${promptIntent.requestedActivityName} activity`,
+        impact: "negative",
+      });
+    }
+  }
 
   if (promptIntent.hardConstraints.activityAnchor === "summit_hike") {
     hardConstraintCount += 1;

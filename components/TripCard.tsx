@@ -274,6 +274,7 @@ export default function TripCard({
     destination: previewTrip.name,
     homeBaseCity: previewTrip.homeBaseCity,
     name: previewTrip.name,
+    topActivities: previewTrip.topActivities,
   });
   const titleContext = getRecommendationContextLabel(
     {

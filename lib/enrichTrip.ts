@@ -69,6 +69,34 @@ function normalizeText(value?: string) {
   return (value ?? "").trim().toLowerCase();
 }
 
+function normalizeActivityName(value?: string) {
+  return (value ?? "")
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function activityMatchesRequestedName(
+  activityName: string | undefined,
+  requestedActivityName?: string
+) {
+  const normalizedActivity = normalizeActivityName(activityName);
+  const normalizedRequestedActivity = normalizeActivityName(
+    requestedActivityName
+  );
+
+  if (!normalizedActivity || !normalizedRequestedActivity) {
+    return false;
+  }
+
+  return (
+    normalizedActivity === normalizedRequestedActivity ||
+    normalizedActivity.includes(normalizedRequestedActivity) ||
+    normalizedRequestedActivity.includes(normalizedActivity)
+  );
+}
+
 function mergeNamedPlaces<T extends { name?: string }>(
   preferred: T[],
   fallback: T[],
@@ -263,6 +291,14 @@ function promptActivitySignal(text: string, input: TripInput) {
   ]);
 
   let score = 0;
+
+  if (promptIntent.requestedActivityName) {
+    if (activityMatchesRequestedName(text, promptIntent.requestedActivityName)) {
+      score += 80;
+    } else {
+      score -= 12;
+    }
+  }
 
   if (promptIntent.hardConstraints.activityAnchor === "summit_hike") {
     if (strongSummitSignal >= 1) {
@@ -1149,10 +1185,11 @@ export async function enrichRankedTrip(
         ? balancedFoodSpots.slice(0, 12)
         : trip.foodSpots;
 
+    const promptIntent = deriveTripIntentFromPrompt(input.tripPrompt);
     const mergedActivities =
       liveActivities.length > 0
-        ? deriveTripIntentFromPrompt(input.tripPrompt).hardConstraints.activityAnchor ===
-          "summit_hike"
+        ? promptIntent.hardConstraints.activityAnchor === "summit_hike" ||
+          Boolean(promptIntent.requestedActivityName)
           ? mergeNamedPlaces(
               liveActivities,
               (trip.topActivities ?? []).filter(hasName),

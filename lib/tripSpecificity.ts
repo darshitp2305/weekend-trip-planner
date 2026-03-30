@@ -37,7 +37,7 @@ type PromptFitTripLike = Pick<RecommendationTripLike, "topActivities"> & {
 
 type PromptSummaryTripLike = Pick<
   RecommendationTripLike,
-  "destination" | "destinationName" | "homeBaseCity" | "name"
+  "destination" | "destinationName" | "homeBaseCity" | "name" | "topActivities"
 > & {
   summary?: string;
   tripPrompt?: string;
@@ -412,10 +412,6 @@ export function getPromptAwareTripSummary(trip: PromptSummaryTripLike) {
   if (!trip.tripPrompt) return trip.summary;
 
   const promptIntent = deriveTripIntentFromPrompt(trip.tripPrompt);
-  if (promptIntent.hardConstraints.activityAnchor !== "summit_hike") {
-    return trip.summary;
-  }
-
   const baseName =
     trip.homeBaseCity?.trim() ??
     trip.destinationName?.trim() ??
@@ -428,6 +424,62 @@ export function getPromptAwareTripSummary(trip: PromptSummaryTripLike) {
     promptIntent.hardConstraints.hikeDistanceKmTarget;
   const isTwoDayCompromise =
     typeof trip.tripLengthDays === "number" && trip.tripLengthDays <= 2;
+  const requestedActivityName = promptIntent.requestedActivityName?.trim();
+  const requestedAnchor = requestedActivityName
+    ? (trip.topActivities ?? []).find((activity) => {
+        const activityName = normalized(normalizePlaceDisplayName(activity.name));
+        const requestedName = normalized(requestedActivityName);
+
+        return (
+          activityName === requestedName ||
+          activityName.includes(requestedName) ||
+          requestedName.includes(activityName)
+        );
+      })
+    : undefined;
+
+  if (requestedActivityName) {
+    const anchorName = normalizePlaceDisplayName(
+      requestedAnchor?.name ?? requestedActivityName
+    );
+    const mealClause = hasVegetarianNeed
+      ? "vegetarian-friendly shared meals around it"
+      : "lighter food stops around it";
+    const distanceClause = hikeDistanceTarget
+      ? ` The requested ~${hikeDistanceTarget} km hike length still needs trail-specific verification.`
+      : "";
+
+    return isTwoDayCompromise
+      ? `${baseName} now centers the trip around ${anchorName} as the main hike, with an easy arrival night, a lighter final-day flow, and ${mealClause}.${distanceClause}`
+      : `${baseName} now uses ${anchorName} as the main hike anchor, with recovery-friendly pacing and ${mealClause}.${distanceClause}`;
+  }
+
+  if (promptIntent.activityFocus === "skiing") {
+    const skiAnchor = (trip.topActivities ?? []).find((activity) => {
+      const activityText = normalized(
+        [activity.name, activity.type, activity.shortDescription ?? ""].join(" ")
+      );
+
+      return (
+        activityText.includes("ski") ||
+        activityText.includes("snowboard") ||
+        activityText.includes("lift") ||
+        activityText.includes("chairlift") ||
+        activityText.includes("resort")
+      );
+    });
+    const anchorName = normalizePlaceDisplayName(
+      skiAnchor?.name ?? `${baseName} ski day`
+    );
+
+    return isTwoDayCompromise
+      ? `${baseName} now frames the trip around ${anchorName} as the main ski day, with an easy arrival night and a lighter drive-back finish.`
+      : `${baseName} now uses ${anchorName} as the main ski anchor, with the rest of the trip paced around one clear winter-sports day.`;
+  }
+
+  if (promptIntent.hardConstraints.activityAnchor !== "summit_hike") {
+    return trip.summary;
+  }
 
   const mealClause = hasVegetarianNeed
     ? "shared meal options that can still work for a vegetarian plus non-vegetarian group"

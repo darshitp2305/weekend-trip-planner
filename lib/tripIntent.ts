@@ -37,6 +37,7 @@ export type DerivedTripIntent = {
   style: TripStyle;
   activityFocus?: ActivityFocus;
   preferredDestination?: string;
+  requestedActivityName?: string;
   veganFriendly: boolean;
   includeStaycations: boolean;
   strictBudget: boolean;
@@ -232,6 +233,89 @@ function inferPreferredDestination(prompt: string): string | undefined {
       )
     ) {
       return option.destinationName;
+    }
+  }
+
+  return undefined;
+}
+
+type NamedActivityCandidate = {
+  name: string;
+  normalizedName: string;
+  searchPhrases: string[];
+};
+
+function buildActivitySearchPhrases(name: string) {
+  const normalizedName = normalizeText(name);
+  const phrases = new Set<string>();
+
+  const addPhrase = (value?: string) => {
+    const normalizedValue = normalizeText(value);
+    if (!normalizedValue || normalizedValue.length < 6) return;
+    phrases.add(normalizedValue);
+  };
+
+  addPhrase(normalizedName);
+  addPhrase(normalizedName.replace(/\bto\s+upper\s+falls\b/g, ""));
+  addPhrase(normalizedName.replace(/\bto\s+lower\s+falls\b/g, ""));
+  addPhrase(normalizedName.replace(/\bto\s+falls\b/g, ""));
+  addPhrase(normalizedName.replace(/\binterpretive\s+loop\b/g, ""));
+  addPhrase(normalizedName.replace(/\bsummit\s+hike\b/g, ""));
+  addPhrase(normalizedName.replace(/\bhike\b/g, ""));
+  addPhrase(normalizedName.replace(/\btrail\b/g, ""));
+  addPhrase(normalizedName.replace(/\bviewpoint\b/g, ""));
+  addPhrase(normalizedName.replace(/\blookout\b/g, ""));
+  addPhrase(normalizedName.replace(/\bgondola\b/g, ""));
+  addPhrase(normalizedName.replace(/\bstroll\b/g, ""));
+  addPhrase(normalizedName.replace(/\bshops\b/g, ""));
+  addPhrase(normalizedName.replace(/\bseasonal\b/g, ""));
+
+  const splitPhrases = normalizedName.split(/\s+\/\s+|\s+\+\s+|\s+and\s+/);
+  for (const phrase of splitPhrases) {
+    addPhrase(phrase);
+  }
+
+  return Array.from(phrases).sort((a, b) => b.length - a.length);
+}
+
+function getNamedActivityCandidates(): NamedActivityCandidate[] {
+  const seen = new Set<string>();
+  const candidates: NamedActivityCandidate[] = [];
+
+  for (const destination of rawDestinations as RawDestination[]) {
+    for (const experience of destination.anchor_experiences ?? []) {
+      const name = experience.title?.trim();
+      const normalizedName = normalizeText(name);
+      if (!name || !normalizedName || seen.has(normalizedName)) continue;
+
+      seen.add(normalizedName);
+      candidates.push({
+        name,
+        normalizedName,
+        searchPhrases: buildActivitySearchPhrases(name),
+      });
+    }
+  }
+
+  return candidates.sort(
+    (a, b) => b.normalizedName.length - a.normalizedName.length
+  );
+}
+
+const NAMED_ACTIVITY_CANDIDATES = getNamedActivityCandidates();
+
+export function extractRequestedActivityName(prompt?: string): string | undefined {
+  const normalizedPrompt = normalizeText(prompt);
+  if (!normalizedPrompt) return undefined;
+
+  for (const candidate of NAMED_ACTIVITY_CANDIDATES) {
+    if (
+      candidate.searchPhrases.some(
+        (phrase) =>
+          normalizedPrompt === phrase || normalizedPrompt.includes(phrase)
+      )
+    ) {
+      return candidate.name;
     }
   }
 
@@ -879,6 +963,7 @@ export function deriveTripIntentFromPrompt(prompt?: string): DerivedTripIntent {
     style: inferStyle(normalizedPrompt, activityFocus),
     activityFocus,
     preferredDestination: inferPreferredDestination(rawPrompt),
+    requestedActivityName: extractRequestedActivityName(rawPrompt),
     veganFriendly: Boolean(hardConstraints.dietaryPreference),
     includeStaycations,
     strictBudget: budget.strictBudget,

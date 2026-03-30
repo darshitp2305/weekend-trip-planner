@@ -177,11 +177,35 @@
         "description": "Premium scenic anchor with obvious payoff.",
         "link": "https://www.google.com/maps/search/?api=1&query=Banff+Gondola"
       },
-      {
-        "title": "Upper Hot Springs soak",
-        "type": "hot_springs",
-        "description": "Classic relaxation stop that rounds out the trip.",
-        "link": "https://www.google.com/maps/search/?api=1&query=Banff+Upper+Hot+Springs"
+        {
+          "title": "Johnston Canyon to Upper Falls",
+          "type": "nature",
+          "description": "Signature Banff-area canyon hike with an easy-to-understand trail objective and strong scenic payoff.",
+          "link": "https://www.google.com/maps/search/?api=1&query=Johnston+Canyon+to+Upper+Falls"
+        },
+        {
+          "title": "Banff Sunshine Village ski day",
+          "type": "skiing",
+          "description": "Full ski-resort anchor with lifts, terrain variety, and a clear winter-trip payoff.",
+          "link": "https://www.google.com/maps/search/?api=1&query=Banff+Sunshine+Village"
+        },
+        {
+          "title": "Lake Louise Ski Resort day",
+          "type": "skiing",
+          "description": "Big-mountain ski day with the strongest destination-level skiing signal near Banff.",
+          "link": "https://www.google.com/maps/search/?api=1&query=Lake+Louise+Ski+Resort"
+        },
+        {
+          "title": "Mt. Norquay ski day",
+          "type": "skiing",
+          "description": "Closest Banff ski hill for a lower-friction ski day that still feels like the main event.",
+          "link": "https://www.google.com/maps/search/?api=1&query=Mt+Norquay"
+        },
+        {
+          "title": "Upper Hot Springs soak",
+          "type": "hot_springs",
+          "description": "Classic relaxation stop that rounds out the trip.",
+          "link": "https://www.google.com/maps/search/?api=1&query=Banff+Upper+Hot+Springs"
       }
     ],
     "neighborhoods": [

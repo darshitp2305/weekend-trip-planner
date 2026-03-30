@@ -209,6 +209,21 @@ function buildTests(): TestResult[] {
   }
 
   {
+    const prompt =
+      "We're 2 people in Calgary and want a Banff overnight with one scenic hike as the main activity. Make Johnston Canyon the signature hike, keep the rest of the trip easy, and suggest a cozy trip with minimal planning friction.";
+    const intent = deriveTripIntentFromPrompt(prompt);
+
+    tests.push({
+      id: "PI10C",
+      passed:
+        intent.preferredDestination === "Banff" &&
+        intent.requestedActivityName === "Johnston Canyon to Upper Falls" &&
+        intent.style === "chill",
+      details: `destination=${intent.preferredDestination ?? "none"} requestedActivity=${intent.requestedActivityName ?? "none"} style=${intent.style}`,
+    });
+  }
+
+  {
     const merged = mergePromptParametersIntoTripInput(
       makeInput({
         tripPrompt:
