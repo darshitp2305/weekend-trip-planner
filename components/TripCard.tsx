@@ -18,7 +18,10 @@ import {
   getRecommendationContextLabel,
 } from "../lib/tripSpecificity";
 import { trackProductEvent } from "../lib/productAnalytics";
-import { getFallbackImageUrl, normalizeTripImageUrl } from "../lib/tripImages";
+import {
+  getFallbackImageUrl,
+  normalizeTripImageSet,
+} from "../lib/tripImages";
 import {
   tripConfidenceLabel,
   tripSourceLabel,
@@ -171,10 +174,10 @@ function Pill({
 }) {
   const toneClass =
     tone === "positive"
-      ? "border-emerald-300/24 bg-emerald-400/10 text-emerald-100"
+      ? "border-emerald-200 bg-emerald-50/78 text-emerald-700 dark:border-emerald-300/24 dark:bg-emerald-400/10 dark:text-emerald-100"
       : tone === "accent"
-        ? "border-[#d9b57c]/28 bg-[#d9b57c]/12 text-[#f6e1be]"
-        : "border-white/12 bg-white/8 text-white/82";
+        ? "border-[#ecd7b7] bg-[#fff8ee]/78 text-[#8a5b18] dark:border-[#d9b57c]/28 dark:bg-[#d9b57c]/12 dark:text-[#f6e1be]"
+        : "border-slate-200/80 bg-[#fbf7ef]/62 text-slate-700 dark:border-white/12 dark:bg-white/8 dark:text-white/82";
 
   return (
     <span
@@ -195,15 +198,15 @@ function Stat({
   detail?: string;
 }) {
   return (
-    <div className="rounded-[1.45rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.03))] p-5 backdrop-blur-sm">
-      <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/48">
+    <div className="rounded-[1.45rem] border border-slate-200/80 bg-[linear-gradient(180deg,rgba(249,245,238,0.74),rgba(240,244,248,0.72))] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.62)] backdrop-blur-sm dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.03))] dark:shadow-none">
+      <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-white/48">
         {label}
       </div>
-      <div className="mt-3 text-[1.9rem] font-semibold tracking-[-0.04em] text-white">
+      <div className="mt-3 text-[1.9rem] font-semibold tracking-[-0.04em] text-slate-950 dark:text-white">
         {value}
       </div>
       {detail ? (
-        <p className="mt-2 text-sm leading-6 text-white/64">{detail}</p>
+        <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-white/64">{detail}</p>
       ) : null}
     </div>
   );
@@ -222,7 +225,10 @@ export default function TripCard({
 }: Props) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
-  const [imageFailed, setImageFailed] = useState(false);
+  const [imageFailures, setImageFailures] = useState({
+    light: false,
+    dark: false,
+  });
 
   const normalizedInput = normalizeTripInput(input);
   const previewPlan = buildTripPlanPreview(trip, normalizedInput);
@@ -252,13 +258,30 @@ export default function TripCard({
   );
   const tripPrompt = previewPlan.safeInput.tripPrompt;
   const displayTitle = previewPlan.recommendedTitle;
-  const primaryHeroImageUrl = normalizeTripImageUrl(
-    previewTrip.imageUrl || trip.imageUrl,
+  const heroImageSet = normalizeTripImageSet(
+    {
+      imageUrl: previewTrip.imageUrl || trip.imageUrl,
+      imageUrlLight:
+        previewTrip.imageUrlLight ||
+        trip.imageUrlLight ||
+        previewTrip.imageUrl ||
+        trip.imageUrl,
+      imageUrlDark:
+        previewTrip.imageUrlDark ||
+        trip.imageUrlDark ||
+        previewTrip.imageUrlLight ||
+        trip.imageUrlLight ||
+        previewTrip.imageUrl ||
+        trip.imageUrl,
+    },
     displayTitle
   );
-  const heroImageUrl = imageFailed
+  const lightHeroImageUrl = imageFailures.light
     ? getFallbackImageUrl(displayTitle)
-    : primaryHeroImageUrl;
+    : heroImageSet.lightUrl;
+  const darkHeroImageUrl = imageFailures.dark
+    ? getFallbackImageUrl(displayTitle)
+    : heroImageSet.darkUrl;
   const displaySummary = getPromptAwareTripSummary({
     summary: previewTrip.aiSummary ?? previewTrip.summary,
     tripPrompt,
@@ -330,19 +353,34 @@ export default function TripCard({
   }
 
   return (
-    <article className="overflow-hidden rounded-[2.2rem] border border-white/10 bg-[#0b1420] text-white shadow-[0_32px_90px_rgba(0,0,0,0.28)]">
-      <div className="relative aspect-[16/8.6] overflow-hidden bg-[#121c29]">
+    <article className="overflow-hidden rounded-[2.2rem] border border-slate-200/80 bg-[linear-gradient(180deg,rgba(247,244,238,0.78),rgba(238,243,248,0.84))] text-slate-950 shadow-[0_32px_90px_rgba(148,163,184,0.14)] backdrop-blur-sm dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(12,18,30,0.98),rgba(9,15,27,0.95))] dark:text-white dark:shadow-[0_32px_90px_rgba(0,0,0,0.28)]">
+      <div className="relative aspect-[16/8.6] overflow-hidden bg-slate-200/70 dark:bg-[#121c29]">
         <Image
-          key={heroImageUrl}
-          src={heroImageUrl}
+          key={`light:${lightHeroImageUrl}`}
+          src={lightHeroImageUrl}
           alt={displayTitle}
           width={1600}
           height={900}
           unoptimized
-          className="h-full w-full object-cover"
-          onError={() => setImageFailed(true)}
+          className="h-full w-full object-cover dark:hidden"
+          onError={() =>
+            setImageFailures((current) => ({ ...current, light: true }))
+          }
         />
-        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(4,8,14,0.06)_0%,rgba(5,10,16,0.28)_42%,rgba(5,10,16,0.88)_100%)]" />
+        <Image
+          key={`dark:${darkHeroImageUrl}`}
+          src={darkHeroImageUrl}
+          alt={displayTitle}
+          width={1600}
+          height={900}
+          unoptimized
+          className="hidden h-full w-full object-cover dark:block"
+          onError={() =>
+            setImageFailures((current) => ({ ...current, dark: true }))
+          }
+        />
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.04)_0%,rgba(247,244,238,0.08)_36%,rgba(240,236,229,0.52)_100%)] dark:hidden" />
+        <div className="absolute inset-0 hidden bg-[linear-gradient(180deg,rgba(4,8,14,0.06)_0%,rgba(5,10,16,0.28)_42%,rgba(5,10,16,0.88)_100%)] dark:block" />
 
         <div className="absolute left-0 right-0 top-0 flex flex-wrap gap-2 p-5 sm:p-6">
           <Pill tone={confidenceTone(previewTrip.confidence)}>
@@ -361,14 +399,14 @@ export default function TripCard({
         <div className="absolute inset-x-0 bottom-0 p-6 sm:p-7">
           <div className="max-w-4xl">
             {titleContext ? (
-              <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#e6c895]">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#b9802f] dark:text-[#e6c895]">
                 {titleContext}
               </div>
             ) : null}
-            <h3 className="mt-3 font-serif text-[2.5rem] leading-[0.96] tracking-[-0.05em] text-white sm:text-[3.3rem]">
+            <h3 className="mt-3 font-serif text-[2.5rem] leading-[0.96] tracking-[-0.05em] text-slate-950 [text-shadow:0_1px_0_rgba(255,255,255,0.2)] dark:text-white sm:text-[3.3rem]">
               {displayTitle}
             </h3>
-            <p className="mt-4 max-w-3xl text-base leading-7 text-white/78">
+            <p className="mt-4 max-w-3xl text-base leading-7 text-slate-800 [text-shadow:0_1px_0_rgba(255,255,255,0.18)] dark:text-white/78">
               {formatDisplayText(
                 displaySummary ?? previewTrip.aiSummary ?? previewTrip.summary
               )}
@@ -397,20 +435,20 @@ export default function TripCard({
         </div>
 
         {itineraryPreviewItems.length > 0 ? (
-          <section className="rounded-[1.6rem] border border-white/10 bg-white/4 p-5">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/46">
+          <section className="rounded-[1.6rem] border border-slate-200/80 bg-[linear-gradient(180deg,rgba(248,244,238,0.6),rgba(240,244,248,0.66))] p-5 dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(19,28,43,0.78),rgba(11,18,31,0.74))]">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-white/46">
               Trip shape
             </div>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               {itineraryPreviewItems.map((item) => (
                 <div
                   key={`${item.label}-${item.text}`}
-                  className="rounded-[1.25rem] border border-white/8 bg-[#121c29] px-4 py-4"
+                  className="rounded-[1.25rem] border border-slate-200 bg-[#fcf8f1]/72 px-4 py-4 dark:border-white/8 dark:bg-[#121c29]"
                 >
                   <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#d9b57c]">
                     {item.label}
                   </div>
-                  <p className="mt-2 text-sm leading-6 text-white/76">
+                  <p className="mt-2 text-sm leading-6 text-slate-700 dark:text-white/76">
                     {item.text}
                   </p>
                 </div>
@@ -420,7 +458,7 @@ export default function TripCard({
         ) : null}
 
         {tripPrompt ? (
-          <div className="rounded-[1.35rem] border border-white/10 bg-[linear-gradient(180deg,rgba(217,181,124,0.09),rgba(255,255,255,0.03))] px-4 py-3 text-sm leading-6 text-white/74">
+          <div className="rounded-[1.35rem] border border-[#ecd7b7] bg-[linear-gradient(180deg,rgba(255,248,238,0.82),rgba(249,241,227,0.72))] px-4 py-3 text-sm leading-6 text-slate-700 dark:border-[#d9b57c]/18 dark:bg-[linear-gradient(180deg,rgba(39,33,25,0.68),rgba(16,20,30,0.96))] dark:text-white/74">
             Built around your brief so you can open the builder and refine the days from there.
           </div>
         ) : null}
@@ -430,7 +468,7 @@ export default function TripCard({
             <button
               type="button"
               onClick={() => onRemoveSaved?.(trip.name)}
-              className="inline-flex h-12 items-center justify-center rounded-full border border-rose-300/24 bg-rose-400/10 px-5 text-sm font-semibold text-rose-100 transition hover:bg-rose-400/16"
+              className="inline-flex h-12 items-center justify-center rounded-full border border-rose-200 bg-rose-50 px-5 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 dark:border-rose-300/24 dark:bg-rose-400/10 dark:text-rose-100 dark:hover:bg-rose-400/16"
             >
               Remove saved trip
             </button>
@@ -439,13 +477,13 @@ export default function TripCard({
               type="button"
               onClick={handleSaveTrip}
               disabled={saving}
-              className="inline-flex h-12 items-center justify-center rounded-full bg-white px-6 text-sm font-semibold text-slate-950 transition hover:bg-[#f5efe5] disabled:opacity-60"
+              className="inline-flex h-12 items-center justify-center rounded-full bg-slate-950 px-6 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60 dark:border dark:border-[#7decc7]/18 dark:bg-[linear-gradient(180deg,rgba(15,42,46,0.96),rgba(8,24,34,0.98))] dark:text-[#ebfff7] dark:hover:bg-[linear-gradient(180deg,rgba(18,50,55,0.98),rgba(10,30,41,0.98))]"
             >
               {saving ? "Opening builder..." : "Build this trip"}
             </button>
           )}
 
-          <div className="inline-flex min-h-12 items-center rounded-full border border-white/10 bg-white/6 px-4 py-2 text-sm text-white/66">
+          <div className="inline-flex min-h-12 items-center rounded-full border border-slate-200 bg-[#fbf7ef]/66 px-4 py-2 text-sm text-slate-600 dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(22,31,46,0.84),rgba(12,18,31,0.9))] dark:text-white/66">
             Open the builder for day-by-day details, swaps, and final planning.
           </div>
         </div>

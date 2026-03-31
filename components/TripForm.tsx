@@ -368,14 +368,14 @@ export default function TripForm({
   const assumptionPills = buildAssumptionPills(draft);
 
   return (
-    <section className="w-full rounded-[2rem] border border-white/12 bg-[linear-gradient(180deg,rgba(8,14,22,0.78),rgba(10,18,29,0.54))] p-5 text-white shadow-[0_32px_90px_rgba(0,0,0,0.28)] backdrop-blur-xl sm:p-7">
+    <section className="w-full rounded-[2rem] border border-slate-200/70 bg-[linear-gradient(180deg,rgba(247,244,238,0.82),rgba(241,245,249,0.76))] p-5 text-slate-950 shadow-[0_28px_70px_rgba(148,163,184,0.14)] backdrop-blur-lg sm:p-7 dark:border-white/12 dark:bg-[linear-gradient(180deg,rgba(8,14,22,0.78),rgba(10,18,29,0.54))] dark:text-white dark:shadow-[0_32px_90px_rgba(0,0,0,0.28)]">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-semibold tracking-[-0.03em] text-white sm:text-[2rem]">
+          <h2 className="text-2xl font-semibold tracking-[-0.03em] text-slate-950 dark:text-white sm:text-[2rem]">
             Tell me the trip you actually want.
           </h2>
         </div>
-        <div className="rounded-full border border-white/12 bg-white/8 px-4 py-2 text-xs font-medium text-white/72">
+        <div className="rounded-full border border-slate-200/70 bg-[#fbf7ef]/76 px-4 py-2 text-xs font-medium text-slate-700 dark:border-white/12 dark:bg-white/8 dark:text-white/72">
           I&apos;ll ask for anything important that&apos;s missing.
         </div>
       </div>
@@ -384,7 +384,7 @@ export default function TripForm({
         {assumptionPills.slice(0, 6).map((pill) => (
           <span
             key={pill}
-            className="inline-flex items-center rounded-full border border-white/12 bg-white/8 px-3 py-1.5 text-xs font-medium text-white/84"
+            className="inline-flex items-center rounded-full border border-slate-200/70 bg-[#fbf7ef]/76 px-3 py-1.5 text-xs font-medium text-slate-800 dark:border-white/12 dark:bg-white/8 dark:text-white/84"
           >
             {pill}
           </span>
@@ -392,7 +392,7 @@ export default function TripForm({
       </div>
 
       {messages.length > 0 ? (
-        <div className="mt-6 rounded-[1.6rem] border border-white/10 bg-black/12 p-4">
+        <div className="mt-6 rounded-[1.6rem] border border-slate-200/70 bg-[#fbf7ef]/72 p-4 dark:border-white/10 dark:bg-black/12">
           <div
             ref={chatViewportRef}
             className="h-[25rem] space-y-3 overflow-y-auto pr-1 sm:h-[27rem]"
@@ -407,8 +407,8 @@ export default function TripForm({
                 <div
                   className={`max-w-[92%] rounded-[1.35rem] px-4 py-3 text-sm leading-6 sm:max-w-[80%] ${
                     message.role === "user"
-                      ? "bg-white text-slate-950"
-                      : "border border-white/10 bg-white/8 text-white/88"
+                      ? "bg-slate-950 text-white dark:bg-white dark:text-slate-950"
+                      : "border border-slate-200/70 bg-[#fbf7ef]/82 text-slate-800 dark:border-white/10 dark:bg-white/8 dark:text-white/88"
                   }`}
                 >
                   {message.text}
@@ -418,7 +418,7 @@ export default function TripForm({
           </div>
         </div>
       ) : (
-        <div className="mt-6 rounded-[1.6rem] border border-white/10 bg-black/12 p-4 text-sm leading-6 text-white/74">
+        <div className="mt-6 rounded-[1.6rem] border border-slate-200/70 bg-[#fbf7ef]/72 p-4 text-sm leading-6 text-slate-700 dark:border-white/10 dark:bg-black/12 dark:text-white/74">
           Try something like: &quot;Plan a low-effort mountain trip from Edmonton
           with good coffee, one scenic hike, and enough payoff that four friends
           would actually commit.&quot;
@@ -426,37 +426,37 @@ export default function TripForm({
       )}
 
       <form onSubmit={handleSubmit} className="mt-5 space-y-4">
-        <div className="rounded-[1.7rem] border border-white/14 bg-white/10 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
+        <div className="rounded-[1.7rem] border border-slate-200/70 bg-[#f7f3eb]/82 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.72)] dark:border-white/14 dark:bg-white/10 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
           <textarea
             value={composerValue}
             onChange={(event) => setComposerValue(event.target.value)}
             onKeyDown={handleComposerKeyDown}
             placeholder={nextComposerPlaceholder(pendingField)}
             disabled={loading}
-            className={`w-full resize-none border-0 bg-transparent px-2 text-[15px] leading-7 text-white placeholder:text-white/42 focus:outline-none ${
+            className={`w-full resize-none border-0 bg-transparent px-2 text-[15px] leading-7 text-slate-950 placeholder:text-slate-500 focus:outline-none dark:text-white dark:placeholder:text-white/42 ${
               mode === "prompt" ? "min-h-[150px]" : "min-h-[88px]"
             }`}
           />
-          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/10 px-2 pt-3">
-            <div className="text-xs text-white/58">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 px-2 pt-3 dark:border-white/10">
+            <div className="text-xs text-slate-700 dark:text-white/58">
               {mode === "prompt"
                 ? "Start with the full idea. I’ll ask one follow-up at a time if I need it."
                 : "Reply naturally. Short answers are fine."}
             </div>
-            <div className="text-xs font-medium text-white/52">
+            <div className="text-xs font-medium text-slate-600 dark:text-white/52">
               {trimmedComposerValue.length}/{TRIP_PROMPT_MAX_CHARS}
             </div>
           </div>
         </div>
 
         {errorMessage ? (
-          <div className="rounded-2xl border border-rose-300/24 bg-rose-400/10 px-4 py-3 text-sm text-rose-100">
+          <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:border-rose-300/24 dark:bg-rose-400/10 dark:text-rose-100">
             {errorMessage}
           </div>
         ) : null}
 
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="text-sm leading-6 text-white/70">
+          <div className="text-sm font-medium leading-6 text-slate-700 dark:text-white/70">
             {draft.intent.preferredDestination
               ? `Destination signal detected: ${draft.intent.preferredDestination}.`
               : "The planner will infer style and driving tolerance, then ask for any missing trip facts."}
@@ -464,7 +464,7 @@ export default function TripForm({
           <button
             type="submit"
             disabled={loading || !submitHandler || tripPromptTooLong}
-            className="inline-flex h-12 items-center justify-center rounded-full bg-white px-6 text-sm font-semibold text-slate-950 transition hover:bg-[#f5efe5] disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex h-12 items-center justify-center rounded-full bg-slate-950 px-6 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-white dark:text-slate-950 dark:hover:bg-[#f5efe5]"
           >
             {loading
               ? "Building your trip..."

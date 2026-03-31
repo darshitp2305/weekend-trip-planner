@@ -545,7 +545,7 @@ export default function TripStopMap({
     <section
       className={
         variant === "compact"
-          ? "rounded-[1.75rem] border border-white/10 bg-[linear-gradient(180deg,rgba(14,22,37,0.92),rgba(11,18,31,0.88))] p-5 shadow-[0_24px_70px_rgba(2,6,23,0.28)]"
+          ? "rounded-[1.75rem] border border-slate-200/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(243,247,251,0.98))] p-5 shadow-[0_24px_70px_rgba(148,163,184,0.16)] dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(14,22,37,0.92),rgba(11,18,31,0.88))] dark:shadow-[0_24px_70px_rgba(2,6,23,0.28)]"
           : "rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900"
       }
     >
@@ -849,26 +849,26 @@ export default function TripStopMap({
         <div>
           <div className="flex items-center justify-between gap-3">
             <div>
-              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-200/75">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#0f766e] dark:text-cyan-200/75">
                 Live route map
               </div>
-              <h2 className="mt-2 text-xl font-semibold tracking-tight text-white">
+              <h2 className="mt-2 text-xl font-semibold tracking-tight text-slate-950 dark:text-white">
                 See the trip as you read it
               </h2>
             </div>
             <div className="flex flex-wrap gap-2">
-              <span className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium text-slate-200">
+              <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-200">
                 {visibleStopCount} stop{visibleStopCount === 1 ? "" : "s"}
               </span>
               {missingLocationCount > 0 ? (
-                <span className="inline-flex items-center rounded-full border border-amber-400/20 bg-amber-400/10 px-3 py-1 text-xs font-medium text-amber-200">
+                <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700 dark:border-amber-400/20 dark:bg-amber-400/10 dark:text-amber-200">
                   {missingLocationCount} without coordinates
                 </span>
               ) : null}
             </div>
           </div>
 
-          <div className="trip-stop-map-shell mt-4 h-[34rem] overflow-hidden rounded-[1.4rem] border border-white/10 bg-slate-900/70 lg:h-[42rem] xl:h-[48rem]">
+          <div className="trip-stop-map-shell mt-4 h-[34rem] overflow-hidden rounded-[1.4rem] border border-slate-200 bg-slate-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.4)] lg:h-[42rem] xl:h-[48rem] dark:border-white/10 dark:bg-slate-900/70 dark:shadow-none">
             <div ref={mapElementRef} className="h-full w-full" />
             {activePopupPin && popupLayout ? (
               <div
@@ -942,17 +942,17 @@ export default function TripStopMap({
             ) : null}
           </div>
 
-          <div className="mt-4 space-y-3 rounded-[1.2rem] border border-white/10 bg-white/5 p-4">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+          <div className="mt-4 space-y-3 rounded-[1.2rem] border border-slate-200 bg-white/80 p-4 dark:border-white/10 dark:bg-white/5">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
               Legend
             </div>
             <div className="flex flex-wrap gap-2">
               {(["stay", "food", "activity"] as const).map((type) => (
                 <span
                   key={type}
-                  className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium text-slate-200"
+                  className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-200"
                 >
-                  <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-white/90 text-slate-950">
+                  <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-slate-950 text-white dark:bg-white/90 dark:text-slate-950">
                     <span
                       className="inline-flex h-3 w-3 items-center justify-center"
                       dangerouslySetInnerHTML={{ __html: iconMarkup(type) }}
@@ -966,7 +966,7 @@ export default function TripStopMap({
               {dayList.map((day) => (
                 <span
                   key={day}
-                  className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium text-slate-200"
+                  className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-200"
                 >
                   <span
                     className="inline-flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold text-white"

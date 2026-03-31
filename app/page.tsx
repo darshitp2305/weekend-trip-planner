@@ -7,7 +7,7 @@ import TripCard from "../components/TripCard";
 import TripForm from "../components/TripForm";
 import rawDestinations from "../data/destinations.json";
 import { trackProductEvent } from "../lib/productAnalytics";
-import { normalizeTripImageUrl } from "../lib/tripImages";
+import { normalizeTripImageSet } from "../lib/tripImages";
 import { ProviderOutcome, RankedDestination, RawDestination, TripInput } from "../lib/types";
 import { displayNameFromEmail } from "../lib/viewerIdentity";
 
@@ -50,6 +50,8 @@ type StoredPageState = {
 type FeaturedHero = {
   name: string;
   imageUrl: string;
+  imageUrlLight: string;
+  imageUrlDark: string;
   eyebrow: string;
   caption: string;
   detail: string;
@@ -59,9 +61,20 @@ const LAST_INPUT_STORAGE_KEY = "weekend-trip-last-input";
 const PAGE_STATE_STORAGE_KEY = "weekend-trip-page-state";
 
 function ensureTripImage(trip: RankedDestination): RankedDestination {
+  const imageSet = normalizeTripImageSet(
+    {
+      imageUrl: trip.imageUrl,
+      imageUrlLight: trip.imageUrlLight,
+      imageUrlDark: trip.imageUrlDark,
+    },
+    trip.name
+  );
+
   return {
     ...trip,
-    imageUrl: normalizeTripImageUrl(trip.imageUrl, trip.name),
+    imageUrl: imageSet.defaultUrl,
+    imageUrlLight: imageSet.lightUrl,
+    imageUrlDark: imageSet.darkUrl,
   };
 }
 
@@ -90,13 +103,28 @@ function buildHeroCandidates() {
   return (rawDestinations as RawDestination[])
     .filter(
       (destination) =>
-        Boolean(destination.image_url) &&
+        Boolean(
+          destination.image_url ||
+            destination.image_url_light ||
+            destination.image_url_dark
+        ) &&
         !destination.is_staycation &&
         destination.vibes.some((vibe) =>
           ["nature", "adventure", "relax", "winter_fun"].includes(vibe)
         )
     )
     .map((destination) => {
+      const imageSet = normalizeTripImageSet(
+        {
+          imageUrl: destination.image_url_light ?? destination.image_url,
+          imageUrlLight: destination.image_url_light ?? destination.image_url,
+          imageUrlDark:
+            destination.image_url_dark ??
+            destination.image_url_light ??
+            destination.image_url,
+        },
+        destination.name
+      );
       const caption =
         destination.anchor_experiences[0]?.description?.trim() ||
         `Built around ${joinLabels(destination.vibes.slice(0, 3))} energy in ${destination.name}.`;
@@ -109,7 +137,9 @@ function buildHeroCandidates() {
 
       return {
         name: destination.name,
-        imageUrl: normalizeTripImageUrl(destination.image_url, destination.name),
+        imageUrl: imageSet.defaultUrl,
+        imageUrlLight: imageSet.lightUrl,
+        imageUrlDark: imageSet.darkUrl,
         eyebrow: destination.region,
         caption,
         detail: detail || destination.home_base_city,
@@ -118,9 +148,12 @@ function buildHeroCandidates() {
 }
 
 const HERO_CANDIDATES = buildHeroCandidates();
+const DEFAULT_HERO_IMAGE_SET = normalizeTripImageSet({}, "Alberta");
 const DEFAULT_HERO: FeaturedHero = HERO_CANDIDATES[0] ?? {
   name: "Alberta",
-  imageUrl: normalizeTripImageUrl(undefined, "Alberta"),
+  imageUrl: DEFAULT_HERO_IMAGE_SET.defaultUrl,
+  imageUrlLight: DEFAULT_HERO_IMAGE_SET.lightUrl,
+  imageUrlDark: DEFAULT_HERO_IMAGE_SET.darkUrl,
   eyebrow: "Daily Alberta feature",
   caption: "A cinematic Alberta escape, refreshed each day.",
   detail: "Curated for the planner",
@@ -190,20 +223,20 @@ async function enrichSelectedTrip(
 
 function SkeletonTripCard() {
   return (
-    <div className="animate-pulse overflow-hidden rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(12,18,30,0.98),rgba(10,16,27,0.94))] shadow-[0_28px_80px_rgba(0,0,0,0.3)]">
-      <div className="h-72 w-full bg-white/8" />
+    <div className="animate-pulse overflow-hidden rounded-[2rem] border border-slate-200/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(243,247,252,0.98))] shadow-[0_28px_80px_rgba(148,163,184,0.16)] dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(12,18,30,0.98),rgba(10,16,27,0.94))] dark:shadow-[0_28px_80px_rgba(0,0,0,0.3)]">
+      <div className="h-72 w-full bg-slate-200/80 dark:bg-white/8" />
       <div className="space-y-4 p-6">
-        <div className="h-8 w-72 rounded bg-white/10" />
-        <div className="h-5 w-48 rounded bg-white/8" />
+        <div className="h-8 w-72 rounded bg-slate-200 dark:bg-white/10" />
+        <div className="h-5 w-48 rounded bg-slate-200/80 dark:bg-white/8" />
         <div className="space-y-2">
-          <div className="h-4 w-full rounded bg-white/8" />
-          <div className="h-4 w-11/12 rounded bg-white/8" />
-          <div className="h-4 w-8/12 rounded bg-white/8" />
+          <div className="h-4 w-full rounded bg-slate-200/80 dark:bg-white/8" />
+          <div className="h-4 w-11/12 rounded bg-slate-200/80 dark:bg-white/8" />
+          <div className="h-4 w-8/12 rounded bg-slate-200/80 dark:bg-white/8" />
         </div>
         <div className="grid gap-3 sm:grid-cols-3">
-          <div className="h-20 rounded-2xl bg-white/6" />
-          <div className="h-20 rounded-2xl bg-white/6" />
-          <div className="h-20 rounded-2xl bg-white/6" />
+          <div className="h-20 rounded-2xl bg-slate-200/70 dark:bg-white/6" />
+          <div className="h-20 rounded-2xl bg-slate-200/70 dark:bg-white/6" />
+          <div className="h-20 rounded-2xl bg-slate-200/70 dark:bg-white/6" />
         </div>
       </div>
     </div>
@@ -624,7 +657,7 @@ export default function HomePage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#08111a] text-white">
+        <main className="min-h-screen bg-[radial-gradient(circle_at_top,rgba(125,211,252,0.1),transparent_34%),linear-gradient(180deg,#edf2f7_0%,#e4ebf3_52%,#dbe3ee_100%)] text-slate-950 dark:bg-[radial-gradient(circle_at_top,rgba(17,94,117,0.16),transparent_28%),linear-gradient(180deg,#08111a_0%,#0b1420_55%,#101927_100%)] dark:text-white">
       <AccountPanel
         open={savedTripsOpen}
         onClose={() => setSavedTripsOpen(false)}
@@ -635,7 +668,7 @@ export default function HomePage() {
         type="button"
         onClick={() => setSavedTripsOpen(true)}
         aria-label="Open account and saved trips panel"
-        className="fixed bottom-5 left-5 z-40 inline-flex items-center gap-3 rounded-full border border-white/14 bg-[linear-gradient(180deg,rgba(14,22,37,0.92),rgba(9,15,27,0.94))] px-4 py-3 text-sm font-semibold text-white shadow-[0_20px_60px_rgba(2,6,23,0.34)] backdrop-blur-xl transition hover:border-[#d9b57c]/35 hover:bg-[linear-gradient(180deg,rgba(18,28,45,0.96),rgba(11,18,31,0.96))] sm:bottom-auto sm:top-1/2 sm:-translate-y-1/2 sm:flex-col sm:rounded-[1.8rem] sm:px-3 sm:py-4"
+        className="fixed bottom-5 left-5 z-40 inline-flex items-center gap-3 rounded-full border border-slate-200/80 bg-white/82 px-4 py-3 text-sm font-semibold text-slate-800 shadow-[0_20px_60px_rgba(148,163,184,0.2)] backdrop-blur-xl transition hover:border-[#d9b57c]/35 hover:bg-white sm:bottom-auto sm:top-1/2 sm:-translate-y-1/2 sm:flex-col sm:rounded-[1.8rem] sm:px-3 sm:py-4 dark:border-white/14 dark:bg-[linear-gradient(180deg,rgba(14,22,37,0.92),rgba(9,15,27,0.94))] dark:text-white dark:shadow-[0_20px_60px_rgba(2,6,23,0.34)] dark:hover:bg-[linear-gradient(180deg,rgba(18,28,45,0.96),rgba(11,18,31,0.96))]"
       >
         <span className="inline-flex h-2.5 w-2.5 shrink-0 rounded-full bg-[#7decc7] shadow-[0_0_18px_rgba(125,236,199,0.65)]" />
         <span className="max-w-[7rem] text-left leading-5 sm:text-center">
@@ -651,18 +684,18 @@ export default function HomePage() {
             onClick={() => setDestinationConstraintModal(null)}
             className="absolute inset-0 bg-slate-950/60 backdrop-blur-[4px]"
           />
-          <div className="relative z-10 w-full max-w-lg rounded-[2rem] border border-white/10 bg-[#0f1722] p-6 shadow-2xl">
+          <div className="relative z-10 w-full max-w-lg rounded-[2rem] border border-slate-200/80 bg-white/95 p-6 shadow-[0_30px_90px_rgba(15,23,42,0.18)] dark:border-white/10 dark:bg-[#0f1722] dark:shadow-2xl">
             <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#d9b57c]">
               Destination blocked
             </div>
-            <h2 className="mt-3 text-2xl font-semibold tracking-tight text-white">
+            <h2 className="mt-3 text-2xl font-semibold tracking-tight text-slate-950 dark:text-white">
               {destinationConstraintModal.title}
             </h2>
             <div className="mt-4 space-y-2">
               {destinationConstraintModal.reasons.map((reason) => (
                 <div
                   key={reason}
-                  className="rounded-2xl border border-white/10 bg-white/6 px-4 py-3 text-sm font-medium text-white/82"
+                  className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700 dark:border-white/10 dark:bg-white/6 dark:text-white/82"
                 >
                   {reason}
                 </div>
@@ -672,7 +705,7 @@ export default function HomePage() {
               <button
                 type="button"
                 onClick={() => setDestinationConstraintModal(null)}
-                className="inline-flex h-11 items-center justify-center rounded-full border border-white/12 bg-white px-5 text-sm font-semibold text-slate-950 transition hover:bg-[#f5efe5]"
+                className="inline-flex h-11 items-center justify-center rounded-full bg-slate-950 px-5 text-sm font-semibold text-white transition hover:bg-slate-800 dark:border dark:border-white/12 dark:bg-white dark:text-slate-950 dark:hover:bg-[#f5efe5]"
               >
                 Close
               </button>
@@ -684,21 +717,27 @@ export default function HomePage() {
       <section className="relative isolate min-h-screen overflow-hidden">
         <div className="absolute inset-0">
           <div
-            className="absolute inset-0 bg-cover bg-center"
-            style={{ backgroundImage: `url("${featuredHero.imageUrl}")` }}
+            className="absolute inset-0 bg-cover bg-center dark:hidden"
+            style={{ backgroundImage: `url("${featuredHero.imageUrlLight}")` }}
           />
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.2),transparent_34%),linear-gradient(180deg,rgba(5,11,17,0.2)_0%,rgba(7,13,21,0.48)_42%,rgba(8,14,23,0.92)_100%)]" />
-          <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(5,10,16,0.72)_0%,rgba(5,10,16,0.34)_40%,rgba(5,10,16,0.64)_100%)]" />
+          <div
+            className="absolute inset-0 hidden bg-cover bg-center dark:block"
+            style={{ backgroundImage: `url("${featuredHero.imageUrlDark}")` }}
+          />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.28),rgba(255,255,255,0.05)_32%,transparent_56%),linear-gradient(180deg,rgba(248,250,252,0.04)_0%,rgba(242,245,249,0.12)_36%,rgba(227,234,241,0.42)_100%)] dark:hidden" />
+          <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(246,248,251,0.12)_0%,rgba(246,248,251,0.02)_40%,rgba(252,252,252,0.1)_100%)] dark:hidden" />
+          <div className="absolute inset-0 hidden bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.2),transparent_34%),linear-gradient(180deg,rgba(5,11,17,0.2)_0%,rgba(7,13,21,0.48)_42%,rgba(8,14,23,0.92)_100%)] dark:block" />
+          <div className="absolute inset-0 hidden bg-[linear-gradient(90deg,rgba(5,10,16,0.72)_0%,rgba(5,10,16,0.34)_40%,rgba(5,10,16,0.64)_100%)] dark:block" />
         </div>
 
         <div className="relative z-10 mx-auto flex min-h-screen max-w-7xl flex-col px-5 py-6 sm:px-8 lg:px-10">
           <header className="flex items-center">
-            <div className="inline-flex rounded-full border border-white/12 bg-[linear-gradient(180deg,rgba(13,20,33,0.82),rgba(8,14,24,0.92))] px-4 py-2.5 shadow-[0_14px_40px_rgba(0,0,0,0.22)] backdrop-blur-xl">
+            <div className="inline-flex rounded-full border border-slate-200/70 bg-[#f6f1e8]/66 px-4 py-2.5 shadow-[0_14px_40px_rgba(148,163,184,0.12)] backdrop-blur-xl dark:border-white/12 dark:bg-[linear-gradient(180deg,rgba(13,20,33,0.82),rgba(8,14,24,0.92))] dark:shadow-[0_14px_40px_rgba(0,0,0,0.22)]">
               <BrandLogo
                 variant="horizontal"
                 href="/"
                 priority
-                tone="dark"
+                tone="auto"
                 className="h-8 w-auto sm:h-9"
               />
             </div>
@@ -707,36 +746,41 @@ export default function HomePage() {
           <div className="flex flex-1 items-center py-10 lg:py-14">
             <div className="grid w-full gap-10 lg:grid-cols-[1.05fr_0.95fr] lg:items-end">
               <div className="max-w-3xl">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.26em] text-[#e7c99c]">
-                  Alberta trip planner
+                <div className="relative max-w-4xl overflow-hidden rounded-[2.5rem] px-5 py-6 sm:px-6">
+                  <div className="pointer-events-none absolute inset-0 rounded-[2.5rem] bg-[radial-gradient(circle_at_top_left,rgba(248,245,239,0.84),rgba(248,245,239,0.28)_42%,transparent_74%),linear-gradient(90deg,rgba(246,242,236,0.56)_0%,rgba(240,244,248,0.16)_58%,transparent_100%)] shadow-[0_18px_55px_rgba(148,163,184,0.08)] backdrop-blur-[4px] dark:hidden" />
+                  <div className="relative">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.26em] text-[#9b6219] dark:text-[#e7c99c]">
+                      Alberta trip planner
+                    </div>
+                    <h1 className="mt-5 max-w-4xl font-serif text-[3rem] leading-[0.98] tracking-[-0.045em] text-slate-950 sm:text-[4rem] lg:text-[4.7rem] dark:text-white">
+                      Describe the trip you want.
+                      <span className="block text-slate-800 dark:text-white/84">
+                        I&apos;ll fill in the gaps.
+                      </span>
+                    </h1>
+                    <p className="mt-5 max-w-2xl text-base font-medium leading-8 text-slate-800/95 sm:text-lg dark:text-white/76">
+                      One good prompt is enough to start. Describe the Alberta
+                      weekend you want, and if anything essential is missing, the
+                      planner will ask one focused follow-up before building the plan.
+                    </p>
+                  </div>
                 </div>
-                <h1 className="mt-5 max-w-4xl font-serif text-[3rem] leading-[0.98] tracking-[-0.045em] text-white sm:text-[4rem] lg:text-[4.7rem]">
-                  Describe the trip you want.
-                  <span className="block text-white/84">
-                    I&apos;ll fill in the gaps.
-                  </span>
-                </h1>
-                <p className="mt-5 max-w-2xl text-base leading-8 text-white/76 sm:text-lg">
-                  One good prompt is enough to start. Describe the Alberta
-                  weekend you want, and if anything essential is missing, the
-                  planner will ask one focused follow-up before building the plan.
-                </p>
 
-                <div className="mt-8 max-w-xl rounded-[1.8rem] border border-white/12 bg-white/10 p-5 shadow-[0_28px_80px_rgba(0,0,0,0.24)] backdrop-blur-sm">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/56">
+                <div className="mt-7 max-w-xl rounded-[1.8rem] border border-slate-200/70 bg-[#f6f1e8]/48 p-5 shadow-[0_24px_70px_rgba(148,163,184,0.12)] backdrop-blur-lg dark:border-white/12 dark:bg-white/10 dark:shadow-[0_28px_80px_rgba(0,0,0,0.24)]">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500 dark:text-white/56">
                     Daily feature
                   </div>
-                  <div className="mt-3 text-2xl font-semibold tracking-[-0.03em] text-white">
+                  <div className="mt-3 text-2xl font-semibold tracking-[-0.03em] text-slate-950 dark:text-white">
                     {featuredHero.name}
                   </div>
-                  <p className="mt-3 text-sm leading-7 text-white/74">
+                  <p className="mt-3 text-sm font-medium leading-7 text-slate-800/90 dark:text-white/74">
                     {featuredHero.caption}
                   </p>
                   <div className="mt-4 flex flex-wrap gap-2">
-                    <span className="inline-flex items-center rounded-full border border-white/12 bg-white/8 px-3 py-1.5 text-xs font-medium text-white/82">
+                    <span className="inline-flex items-center rounded-full border border-slate-200/70 bg-[#fbf7ef]/72 px-3 py-1.5 text-xs font-medium text-slate-800 dark:border-white/12 dark:bg-white/8 dark:text-white/82">
                       {featuredHero.eyebrow}
                     </span>
-                    <span className="inline-flex items-center rounded-full border border-white/12 bg-white/8 px-3 py-1.5 text-xs font-medium text-white/82">
+                    <span className="inline-flex items-center rounded-full border border-slate-200/70 bg-[#fbf7ef]/72 px-3 py-1.5 text-xs font-medium text-slate-800 dark:border-white/12 dark:bg-white/8 dark:text-white/82">
                       {featuredHero.detail}
                     </span>
                   </div>
@@ -756,9 +800,9 @@ export default function HomePage() {
 
       {(aiStatusMessage || waitingForTripText || currentTrip) ? (
         <section className="relative z-20 -mt-12 px-5 pb-20 sm:px-8 lg:px-10">
-          <div className="mx-auto max-w-6xl rounded-[2.6rem] border border-white/10 bg-[linear-gradient(180deg,rgba(8,14,23,0.94)_0%,rgba(10,17,28,0.98)_100%)] p-6 text-white shadow-[0_35px_90px_rgba(0,0,0,0.32)] backdrop-blur-sm sm:p-8">
+          <div className="mx-auto max-w-6xl rounded-[2.6rem] border border-slate-200/70 bg-[linear-gradient(180deg,rgba(247,244,238,0.68)_0%,rgba(240,244,249,0.76)_100%)] p-6 text-slate-950 shadow-[0_30px_80px_rgba(148,163,184,0.1)] backdrop-blur-md sm:p-8 dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(8,14,23,0.94)_0%,rgba(10,17,28,0.98)_100%)] dark:text-white dark:shadow-[0_35px_90px_rgba(0,0,0,0.32)]">
             {aiStatusMessage ? (
-              <div className="rounded-2xl border border-white/10 bg-white/6 px-5 py-4 text-sm text-white/76">
+              <div className="rounded-2xl border border-slate-200/70 bg-[#fbf7ef]/66 px-5 py-4 text-sm text-slate-600 dark:border-white/10 dark:bg-white/6 dark:text-white/76">
                 {aiStatusMessage}
               </div>
             ) : null}
@@ -770,10 +814,10 @@ export default function HomePage() {
                     <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#d9b57c]">
                       Your trip
                     </div>
-                    <h2 className="mt-2 text-3xl font-semibold tracking-tight text-white">
+                    <h2 className="mt-2 text-3xl font-semibold tracking-tight text-slate-950 dark:text-white">
                       {recommendationHeading(currentTrip?.confidence)}
                     </h2>
-                    <p className="mt-2 text-sm leading-6 text-white/64">
+                    <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-white/64">
                       {recommendationDescription(currentTrip?.confidence)}
                     </p>
                   </div>
@@ -783,7 +827,7 @@ export default function HomePage() {
                       type="button"
                       onClick={handleRegenerate}
                       disabled={loading}
-                      className="inline-flex h-11 items-center justify-center rounded-full border border-white/12 bg-white/8 px-5 text-sm font-semibold text-white shadow-sm backdrop-blur-sm transition hover:bg-white/14 disabled:cursor-not-allowed disabled:opacity-60"
+                      className="inline-flex h-11 items-center justify-center rounded-full border border-slate-300 bg-white px-5 text-sm font-semibold text-slate-900 shadow-sm backdrop-blur-sm transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/12 dark:bg-white/8 dark:text-white dark:hover:bg-white/14"
                     >
                       Try a different trip
                     </button>
@@ -793,7 +837,7 @@ export default function HomePage() {
                 <div className="mt-6">
                   {waitingForTripText ? (
                     <div className="space-y-4">
-                      <div className="rounded-2xl border border-white/10 bg-white/6 px-5 py-4 text-sm text-white/72 shadow-sm">
+                      <div className="rounded-2xl border border-slate-200/70 bg-[#fbf7ef]/62 px-5 py-4 text-sm text-slate-600 shadow-sm dark:border-white/10 dark:bg-white/6 dark:text-white/72">
                         Trippify is shaping your trip and pulling the strongest
                         Alberta fit for the brief.
                       </div>

@@ -7,6 +7,18 @@ function normalized(value?: string) {
   return (value ?? "").trim();
 }
 
+export type TripImageSetInput = {
+  imageUrl?: string;
+  imageUrlLight?: string;
+  imageUrlDark?: string;
+};
+
+export type TripImageSet = {
+  defaultUrl: string;
+  lightUrl: string;
+  darkUrl: string;
+};
+
 const DESTINATION_LOCAL_FALLBACKS: Record<string, string> = {
   crowsnest: "/destinations/crowsnest-pass-hero.svg",
   "crowsnest pass": "/destinations/crowsnest-pass-hero.svg",
@@ -146,4 +158,24 @@ export function normalizeTripImageUrl(value?: string, fallbackName?: string) {
   }
 
   return getFallbackImageUrl(fallbackName);
+}
+
+export function normalizeTripImageSet(
+  input: TripImageSetInput,
+  fallbackName?: string
+): TripImageSet {
+  return {
+    defaultUrl: normalizeTripImageUrl(
+      input.imageUrl ?? input.imageUrlLight ?? input.imageUrlDark,
+      fallbackName
+    ),
+    lightUrl: normalizeTripImageUrl(
+      input.imageUrlLight ?? input.imageUrl ?? input.imageUrlDark,
+      fallbackName
+    ),
+    darkUrl: normalizeTripImageUrl(
+      input.imageUrlDark ?? input.imageUrl ?? input.imageUrlLight,
+      fallbackName
+    ),
+  };
 }

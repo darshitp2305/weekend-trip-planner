@@ -119,6 +119,8 @@ export interface Destination {
   veganFriendly: boolean;
   summary: string;
   imageUrl?: string;
+  imageUrlLight?: string;
+  imageUrlDark?: string;
   latitude?: number;
   longitude?: number;
   topActivities: Activity[];
@@ -136,6 +138,9 @@ export interface RawDestination {
   home_base_city: string;
   is_staycation: boolean;
   image_url?: string;
+  image_url_light?: string;
+  image_url_dark?: string;
+  image_source_url?: string;
   latitude?: number;
   longitude?: number;
   drive_time_hours_from: {
@@ -398,6 +403,8 @@ export interface TripPlan {
   summary: string;
   driveTimeText: string;
   imageUrl?: string;
+  imageUrlLight?: string;
+  imageUrlDark?: string;
   score?: number;
   styleMatchStrength?: RankedDestination["styleMatchStrength"];
   confidence?: ConfidenceLevel;

@@ -5,7 +5,7 @@
 
 import { Destination, RawDestination, StyleScores, TripInput, TripStyle } from "./types";
 import { formatDisplayText } from "./displayText";
-import { normalizeTripImageUrl } from "./tripImages";
+import { normalizeTripImageSet } from "./tripImages";
 import { getPlanningHubForStartCity } from "./startCities";
 
 function getHiddenGemSignal(raw: RawDestination): number {
@@ -125,11 +125,21 @@ function estimateActivityCost(type: string): number {
   }
 }
 
-function getImageUrl(raw: RawDestination): string | undefined {
-  const value = (raw as RawDestination & { image_url?: string }).image_url;
-  return typeof value === "string" && value.trim().length > 0
-    ? normalizeTripImageUrl(value, raw.name)
-    : undefined;
+function getImageSet(raw: RawDestination) {
+  const imageSet = normalizeTripImageSet(
+    {
+      imageUrl: raw.image_url_light ?? raw.image_url,
+      imageUrlLight: raw.image_url_light ?? raw.image_url,
+      imageUrlDark: raw.image_url_dark ?? raw.image_url_light ?? raw.image_url,
+    },
+    raw.name
+  );
+
+  return {
+    imageUrl: imageSet.defaultUrl,
+    imageUrlLight: imageSet.lightUrl,
+    imageUrlDark: imageSet.darkUrl,
+  };
 }
 
 function getLatitude(raw: RawDestination): number | undefined {
@@ -175,6 +185,7 @@ export function mapRawDestination(
   raw: RawDestination,
   input: TripInput
 ): Destination {
+  const imageSet = getImageSet(raw);
   const startKey = getPlanningHubForStartCity(input.startCity).toLowerCase();
   const driveHours = raw.drive_time_hours_from[startKey] ?? 999;
 
@@ -247,7 +258,9 @@ export function mapRawDestination(
     budgetLevel: mapCostLevel(raw.cost_level),
     veganFriendly: false,
     summary: buildSummary(raw),
-    imageUrl: getImageUrl(raw),
+    imageUrl: imageSet.imageUrl,
+    imageUrlLight: imageSet.imageUrlLight,
+    imageUrlDark: imageSet.imageUrlDark,
     latitude: getLatitude(raw),
     longitude: getLongitude(raw),
     topActivities,

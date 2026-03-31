@@ -9,12 +9,15 @@
 import { useEffect, useState } from "react";
 import rawDestinations from "../data/destinations.json";
 import { formatDisplayTag, formatDisplayText } from "../lib/displayText";
+import { normalizeTripImageSet } from "../lib/tripImages";
 import { RawDestination } from "../lib/types";
 
 type ShowcaseSlide = {
   id: string;
   name: string;
   imageUrl: string;
+  imageUrlLight: string;
+  imageUrlDark: string;
   caption: string;
   tripTypeLabel: string;
   vibeLabel: string;
@@ -23,11 +26,6 @@ type ShowcaseSlide = {
 
 const AUTO_ROTATE_MS = 4200;
 const DESTINATION_SOURCE = rawDestinations as RawDestination[];
-
-function getFallbackImageUrl(name: string) {
-  const seed = encodeURIComponent(name.trim().toLowerCase());
-  return `https://picsum.photos/seed/${seed}/1400/900`;
-}
 
 function joinLabels(labels: string[]) {
   if (labels.length === 0) return "";
@@ -94,15 +92,24 @@ function buildShowcaseSlides(): ShowcaseSlide[] {
   return DESTINATION_SOURCE.filter(
     (destination) => destination.name.trim().length > 0
   ).map((destination) => {
-    const imageUrl =
-      typeof destination.image_url === "string" && destination.image_url.trim().length > 0
-        ? destination.image_url
-        : getFallbackImageUrl(destination.name);
+    const imageSet = normalizeTripImageSet(
+      {
+        imageUrl: destination.image_url_light ?? destination.image_url,
+        imageUrlLight: destination.image_url_light ?? destination.image_url,
+        imageUrlDark:
+          destination.image_url_dark ??
+          destination.image_url_light ??
+          destination.image_url,
+      },
+      destination.name
+    );
 
     return {
       id: destination.id,
       name: destination.name,
-      imageUrl,
+      imageUrl: imageSet.defaultUrl,
+      imageUrlLight: imageSet.lightUrl,
+      imageUrlDark: imageSet.darkUrl,
       caption: buildCaption(destination),
       tripTypeLabel: buildTripTypeLabel(destination),
       vibeLabel: buildVibeLabel(destination),
@@ -151,8 +158,16 @@ export default function DestinationShowcase() {
             className={`absolute inset-0 bg-cover bg-center transition-opacity duration-700 ${
               index === activeIndex ? "opacity-100" : "opacity-0"
             }`}
-            style={{ backgroundImage: `url("${slide.imageUrl}")` }}
-          />
+          >
+            <div
+              className="absolute inset-0 bg-cover bg-center dark:hidden"
+              style={{ backgroundImage: `url("${slide.imageUrlLight}")` }}
+            />
+            <div
+              className="absolute inset-0 hidden bg-cover bg-center dark:block"
+              style={{ backgroundImage: `url("${slide.imageUrlDark}")` }}
+            />
+          </div>
         ))}
 
         <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(15,23,42,0.18),rgba(15,23,42,0.74)_68%,rgba(2,6,23,0.92)_100%)]" />

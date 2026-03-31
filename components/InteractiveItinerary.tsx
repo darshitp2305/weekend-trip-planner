@@ -7,7 +7,7 @@
 
 
 import Image from "next/image";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { applyItineraryPrompt, extractDesiredText } from "../lib/itineraryPrompt";
 import {
   Activity,
@@ -596,7 +596,7 @@ function CampfireBadge() {
 
 function BuilderPromptPill({ children }: { children: React.ReactNode }) {
   return (
-    <span className="inline-flex items-center rounded-full border border-white/12 bg-white/[0.04] px-3 py-1 text-xs font-medium text-slate-200">
+    <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600 dark:border-white/12 dark:bg-white/[0.04] dark:text-slate-200">
       {children}
     </span>
   );
@@ -646,17 +646,17 @@ function SelectorCard({
     <div
       className={
         selected
-          ? "rounded-[1.15rem] border border-cyan-300/35 bg-cyan-300/[0.08] p-3.5 text-left shadow-[0_16px_34px_rgba(8,145,178,0.08)]"
-          : "rounded-[1.15rem] border border-white/10 bg-white/[0.035] p-3.5 text-left transition hover:bg-white/[0.06]"
+          ? "rounded-[1.15rem] border border-cyan-300/35 bg-cyan-50 p-3.5 text-left shadow-[0_16px_34px_rgba(8,145,178,0.08)] dark:bg-cyan-300/[0.08]"
+          : "rounded-[1.15rem] border border-slate-200/80 bg-white/88 p-3.5 text-left transition hover:bg-slate-50 dark:border-white/10 dark:bg-white/[0.035] dark:hover:bg-white/[0.06]"
       }
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="text-sm font-semibold leading-6 text-white">
+          <div className="text-sm font-semibold leading-6 text-slate-950 dark:text-white">
             {option.name}
           </div>
           {option.subtitle ? (
-            <div className="mt-1 text-[13px] leading-5 text-slate-300">
+            <div className="mt-1 text-[13px] leading-5 text-slate-600 dark:text-slate-300">
               {option.subtitle}
             </div>
           ) : null}
@@ -700,7 +700,7 @@ function SelectorCard({
             className={
               selected
                 ? "inline-flex h-10 items-center justify-center rounded-full bg-cyan-300 px-4 text-sm font-semibold text-slate-950 transition hover:bg-cyan-200"
-                : "inline-flex h-10 items-center justify-center rounded-full bg-white px-4 text-sm font-semibold text-slate-950 transition hover:bg-slate-100"
+                : "inline-flex h-10 items-center justify-center rounded-full bg-slate-950 px-4 text-sm font-semibold text-white transition hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-100"
             }
           >
             {selected ? "Selected" : "Choose this"}
@@ -711,7 +711,7 @@ function SelectorCard({
             href={safePrimaryUrl}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex h-10 items-center justify-center rounded-full border border-white/14 bg-white/[0.04] px-4 text-sm font-semibold text-slate-200 transition hover:bg-white/[0.08]"
+            className="inline-flex h-10 items-center justify-center rounded-full border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-white/14 dark:bg-white/[0.04] dark:text-slate-200 dark:hover:bg-white/[0.08]"
           >
             {option.primaryLabel ?? "Visit site"}
           </a>
@@ -722,7 +722,7 @@ function SelectorCard({
             href={safeAllTrailsUrl}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex h-10 items-center justify-center rounded-full border border-emerald-300/35 bg-emerald-300/[0.08] px-4 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-300/[0.14]"
+            className="inline-flex h-10 items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 px-4 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100 dark:border-emerald-300/35 dark:bg-emerald-300/[0.08] dark:text-emerald-100 dark:hover:bg-emerald-300/[0.14]"
           >
             Open on AllTrails
           </a>
@@ -733,7 +733,7 @@ function SelectorCard({
             href={safeMapsUrl}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex h-10 items-center justify-center rounded-full border border-white/14 bg-white/[0.04] px-4 text-sm font-semibold text-slate-200 transition hover:bg-white/[0.08]"
+            className="inline-flex h-10 items-center justify-center rounded-full border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-white/14 dark:bg-white/[0.04] dark:text-slate-200 dark:hover:bg-white/[0.08]"
           >
             Open map
           </a>
@@ -781,7 +781,7 @@ function CompactSelectionCard({
 
   return (
     <div
-      className="rounded-[1.1rem] border border-white/10 bg-white/[0.035] p-3 transition duration-150 hover:border-cyan-300/30 hover:bg-white/[0.055] hover:shadow-[0_18px_44px_rgba(8,145,178,0.12)]"
+      className="rounded-[1.1rem] border border-slate-200/80 bg-white/88 p-3 transition duration-150 hover:border-cyan-300/30 hover:bg-slate-50 hover:shadow-[0_18px_44px_rgba(8,145,178,0.12)] dark:border-white/10 dark:bg-white/[0.035] dark:hover:bg-white/[0.055]"
       onMouseEnter={() => {
         if (mapPinId) {
           onHoverMapPinChange?.(mapPinId);
@@ -791,14 +791,14 @@ function CompactSelectionCard({
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-200/75">
+          <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#0f766e] dark:text-cyan-200/75">
             {label}
           </div>
-          <div className="mt-1 text-[15px] font-semibold leading-6 text-white">
+          <div className="mt-1 text-[15px] font-semibold leading-6 text-slate-950 dark:text-white">
             {title}
           </div>
           {subtitle ? (
-            <p className="mt-0.5 text-[13px] leading-5 text-slate-300">
+            <p className="mt-0.5 text-[13px] leading-5 text-slate-600 dark:text-slate-300">
               {subtitle}
             </p>
           ) : null}
@@ -807,7 +807,7 @@ function CompactSelectionCard({
         <button
           type="button"
           onClick={onToggleEditing}
-          className="inline-flex h-9 shrink-0 items-center justify-center rounded-full border border-white/14 bg-white/[0.04] px-3.5 text-xs font-semibold text-slate-100 transition hover:bg-white/[0.08]"
+          className="inline-flex h-9 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white px-3.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-white/14 dark:bg-white/[0.04] dark:text-slate-100 dark:hover:bg-white/[0.08]"
         >
           {editing ? "Hide options" : "Change"}
         </button>
@@ -827,7 +827,7 @@ function CompactSelectionCard({
                 href={safePrimaryUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex h-8 items-center justify-center rounded-full border border-white/14 bg-white/[0.04] px-3 text-[11px] font-semibold text-slate-100 transition hover:bg-white/[0.08]"
+                className="inline-flex h-8 items-center justify-center rounded-full border border-slate-200 bg-white px-3 text-[11px] font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-white/14 dark:bg-white/[0.04] dark:text-slate-100 dark:hover:bg-white/[0.08]"
               >
                 {primaryLabel ?? "Visit site"}
               </a>
@@ -837,7 +837,7 @@ function CompactSelectionCard({
                 href={safeAllTrailsUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex h-8 items-center justify-center rounded-full border border-emerald-300/35 bg-emerald-300/[0.08] px-3 text-[11px] font-semibold text-emerald-100 transition hover:bg-emerald-300/[0.14]"
+                className="inline-flex h-8 items-center justify-center rounded-full border border-emerald-200 bg-emerald-50 px-3 text-[11px] font-semibold text-emerald-700 transition hover:bg-emerald-100 dark:border-emerald-300/35 dark:bg-emerald-300/[0.08] dark:text-emerald-100 dark:hover:bg-emerald-300/[0.14]"
               >
                 Open on AllTrails
               </a>
@@ -847,7 +847,7 @@ function CompactSelectionCard({
                 href={safeMapsUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex h-8 items-center justify-center rounded-full border border-white/14 bg-white/[0.04] px-3 text-[11px] font-semibold text-slate-100 transition hover:bg-white/[0.08]"
+                className="inline-flex h-8 items-center justify-center rounded-full border border-slate-200 bg-white px-3 text-[11px] font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-white/14 dark:bg-white/[0.04] dark:text-slate-100 dark:hover:bg-white/[0.08]"
               >
                 Open map
               </a>
@@ -900,6 +900,11 @@ export default function InteractiveItinerary({
   } | null>(null);
   const [builderPromptPending, setBuilderPromptPending] = useState(false);
   const [expandedDayIndex, setExpandedDayIndex] = useState<number | null>(0);
+  const expandedDayContentRefs = useRef<Record<number, HTMLDivElement | null>>(
+    {}
+  );
+  const pendingExpandedDayScrollRef = useRef<number | null>(null);
+  const hasMountedExpandedDayRef = useRef(false);
   const trimmedBuilderPrompt = builderPrompt.trim();
   const builderPromptTooLong =
     trimmedBuilderPrompt.length > BUILDER_PROMPT_MAX_CHARS;
@@ -915,6 +920,44 @@ export default function InteractiveItinerary({
   useEffect(() => {
     onHoveredMapPinChange?.(null);
   }, [expandedDayIndex, onHoveredMapPinChange]);
+
+  useEffect(() => {
+    if (!hasMountedExpandedDayRef.current) {
+      hasMountedExpandedDayRef.current = true;
+      return;
+    }
+
+    if (
+      expandedDayIndex === null ||
+      pendingExpandedDayScrollRef.current !== expandedDayIndex
+    ) {
+      return;
+    }
+
+    const target = expandedDayContentRefs.current[expandedDayIndex];
+    if (!target) {
+      return;
+    }
+
+    pendingExpandedDayScrollRef.current = null;
+
+    let secondFrameId = 0;
+    const firstFrameId = window.requestAnimationFrame(() => {
+      secondFrameId = window.requestAnimationFrame(() => {
+        target.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      });
+    });
+
+    return () => {
+      window.cancelAnimationFrame(firstFrameId);
+      if (secondFrameId) {
+        window.cancelAnimationFrame(secondFrameId);
+      }
+    };
+  }, [expandedDayIndex]);
 
   function customStopForKey(key: string) {
     return getCustomStopForKey(selection, key);
@@ -1051,28 +1094,28 @@ export default function InteractiveItinerary({
       >
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-100/85">
+            <div className="flex flex-wrap items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-800 dark:text-emerald-100/85">
               <span>{timeIcon(displayedTime ?? addedStop.time)}</span>
               <span>{displayedTime ?? addedStop.time ?? "Added stop"}</span>
-              <span className="text-emerald-100/55">
+              <span className="text-emerald-700/80 dark:text-emerald-100/55">
                 {stopNarrativeLabel(addedStop.kind)}
               </span>
             </div>
             {timeWindowLabel(displayedTime ?? addedStop.time) ? (
-              <div className="mt-1 text-[12px] font-medium leading-5 text-emerald-100/70">
+              <div className="mt-1 text-[12px] font-medium leading-5 text-emerald-700/85 dark:text-emerald-100/70">
                 {timeWindowLabel(displayedTime ?? addedStop.time)}
               </div>
             ) : null}
-            <h4 className="mt-2 text-base font-semibold text-white">
+            <h4 className="mt-2 text-base font-semibold text-slate-950 dark:text-white">
               {addedStop.title}
             </h4>
             {distanceFromPrevious ? (
-              <div className="mt-2 text-[12px] font-medium leading-5 text-slate-300">
+              <div className="mt-2 text-[12px] font-medium leading-5 text-slate-600 dark:text-slate-300">
                 {distanceFromPrevious}
               </div>
             ) : null}
             {addedStop.description ? (
-              <p className="mt-2 text-[14px] leading-6 text-slate-200">
+              <p className="mt-2 text-[14px] leading-6 text-slate-700 dark:text-slate-200">
                 {addedStop.description}
               </p>
             ) : null}
@@ -1824,62 +1867,69 @@ export default function InteractiveItinerary({
             return (
               <section
                 key={`day-${dayIndex}`}
-                className="rounded-[1.6rem] border border-white/10 bg-[linear-gradient(180deg,rgba(14,22,37,0.94),rgba(11,18,31,0.92))] shadow-[0_18px_50px_rgba(2,6,23,0.18)]"
+                className="rounded-[1.6rem] border border-slate-200/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(243,247,252,0.98))] shadow-[0_18px_50px_rgba(148,163,184,0.14)] dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(14,22,37,0.94),rgba(11,18,31,0.92))] dark:shadow-[0_18px_50px_rgba(2,6,23,0.18)]"
               >
                 <button
                   type="button"
                   onClick={() =>
-                    setExpandedDayIndex((current) =>
-                      current === dayIndex ? null : dayIndex
-                    )
+                    setExpandedDayIndex((current) => {
+                      const nextDayIndex = current === dayIndex ? null : dayIndex;
+                      pendingExpandedDayScrollRef.current = nextDayIndex;
+                      return nextDayIndex;
+                    })
                   }
                   className="w-full px-4 py-4 text-left"
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0">
-                      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-200/75">
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#0f766e] dark:text-cyan-200/75">
                         Day {dayIndex + 1}
                       </div>
-                      <h3 className="mt-2 text-[1.35rem] font-semibold tracking-tight text-white">
+                      <h3 className="mt-2 text-[1.35rem] font-semibold tracking-tight text-slate-950 dark:text-white">
                         {day.title ? day.title : `Day ${dayIndex + 1}`}
                       </h3>
                       {day.summary ? (
-                        <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">
+                        <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600 dark:text-slate-300">
                           {day.summary}
                         </p>
                       ) : null}
                       <div className="mt-3 flex flex-wrap gap-2">
                         {hasStay ? (
-                          <span className="inline-flex items-center rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs font-medium text-slate-200">
+                          <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-200">
                             Stay planned
                           </span>
                         ) : null}
                         {mealCount > 0 ? (
-                          <span className="inline-flex items-center rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs font-medium text-slate-200">
+                          <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-200">
                             {countLabel(mealCount, "meal")}
                           </span>
                         ) : null}
                         {activityCount > 0 ? (
-                          <span className="inline-flex items-center rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs font-medium text-slate-200">
+                          <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-200">
                             {countLabel(activityCount, "activity")}
                           </span>
                         ) : null}
                         {addedStops.length > 0 ? (
-                          <span className="inline-flex items-center rounded-full border border-emerald-300/25 bg-emerald-300/[0.08] px-3 py-1 text-xs font-medium text-emerald-100">
+                          <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 dark:border-emerald-300/25 dark:bg-emerald-300/[0.08] dark:text-emerald-100">
                             {countLabel(addedStops.length, "custom stop")}
                           </span>
                         ) : null}
                       </div>
                     </div>
 
-                    <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.05] text-lg text-slate-200">
+                    <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-lg text-slate-600 dark:border-white/10 dark:bg-white/[0.05] dark:text-slate-200">
                       {isExpanded ? "−" : "+"}
                     </span>
                   </div>
                 </button>
 
                 {isExpanded ? (
-                  <div className="space-y-3 border-t border-white/8 px-4 pb-4 pt-4">
+                  <div
+                    ref={(node) => {
+                      expandedDayContentRefs.current[dayIndex] = node;
+                    }}
+                    className="scroll-mt-28 space-y-3 border-t border-slate-200/80 px-4 pb-4 pt-4 dark:border-white/8"
+                  >
                     {renderInsertedStops(dayIndex, -1)}
                     {dayStops.map((stop, stopIndex) => {
                       const key = stopKey(dayIndex, stopIndex);
@@ -1899,24 +1949,24 @@ export default function InteractiveItinerary({
 
                       return (
                         <div key={`group-${key}`} className="space-y-3">
-                          <div className="rounded-[1.2rem] border border-white/10 bg-white/[0.035] p-4">
-                            <div className="flex flex-wrap items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-200/75">
+                          <div className="rounded-[1.2rem] border border-slate-200/80 bg-white/88 p-4 dark:border-white/10 dark:bg-white/[0.035]">
+                            <div className="flex flex-wrap items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#0f766e] dark:text-cyan-200/75">
                               <span>{timeIcon(displayedStopTime)}</span>
                               <span>{displayedStopTime ?? "Stay"}</span>
-                              <span className="text-cyan-200/45">
+                              <span className="text-[#0f766e]/60 dark:text-cyan-200/45">
                                 {stopNarrativeLabel(stop.kind)}
                               </span>
                               {timeWindowLabel(displayedStopTime) ? (
-                                <span className="text-[11px] font-medium normal-case tracking-normal text-slate-400">
+                                <span className="text-[11px] font-medium normal-case tracking-normal text-slate-500 dark:text-slate-400">
                                   {timeWindowLabel(displayedStopTime)}
                                 </span>
                               ) : null}
                             </div>
-                            <h4 className="mt-2 text-base font-semibold text-white">
+                            <h4 className="mt-2 text-base font-semibold text-slate-950 dark:text-white">
                               Pick where to stay
                             </h4>
                             {stop.description ? (
-                              <p className="mt-2 text-[14px] leading-6 text-slate-300">
+                              <p className="mt-2 text-[14px] leading-6 text-slate-600 dark:text-slate-300">
                                 {stop.description}
                               </p>
                             ) : null}
@@ -2059,24 +2109,24 @@ export default function InteractiveItinerary({
 
                       return (
                         <div key={`group-${key}`} className="space-y-3">
-                          <div className="rounded-[1.2rem] border border-white/10 bg-white/[0.035] p-4">
-                            <div className="flex flex-wrap items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-200/75">
+                          <div className="rounded-[1.2rem] border border-slate-200/80 bg-white/88 p-4 dark:border-white/10 dark:bg-white/[0.035]">
+                            <div className="flex flex-wrap items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#0f766e] dark:text-cyan-200/75">
                               <span>{timeIcon(displayedStopTime)}</span>
                               <span>{displayedStopTime ?? "Food"}</span>
-                              <span className="text-cyan-200/45">
+                              <span className="text-[#0f766e]/60 dark:text-cyan-200/45">
                                 {stopNarrativeLabel(stop.kind)}
                               </span>
                               {timeWindowLabel(displayedStopTime) ? (
-                                <span className="text-[11px] font-medium normal-case tracking-normal text-slate-400">
+                                <span className="text-[11px] font-medium normal-case tracking-normal text-slate-500 dark:text-slate-400">
                                   {timeWindowLabel(displayedStopTime)}
                                 </span>
                               ) : null}
                             </div>
-                            <h4 className="mt-2 text-base font-semibold text-white">
+                            <h4 className="mt-2 text-base font-semibold text-slate-950 dark:text-white">
                               Pick a food stop
                             </h4>
                             {stop.description ? (
-                              <p className="mt-2 text-[14px] leading-6 text-slate-300">
+                              <p className="mt-2 text-[14px] leading-6 text-slate-600 dark:text-slate-300">
                                 {stop.description}
                               </p>
                             ) : null}
@@ -2118,7 +2168,7 @@ export default function InteractiveItinerary({
                                   onHoverMapPinChange={onHoveredMapPinChange}
                                   onToggleEditing={() => toggleEditing(key)}
                                 />
-                                <p className="mt-2 text-[12px] leading-5 text-slate-400">
+                                <p className="mt-2 text-[12px] leading-5 text-slate-500 dark:text-slate-400">
                                   {selectedSpot.source === "catalog"
                                     ? foodPricingSourceLabel({
                                         name: selectedSpot.name,
@@ -2214,24 +2264,24 @@ export default function InteractiveItinerary({
 
                       return (
                         <div key={`group-${key}`} className="space-y-3">
-                          <div className="rounded-[1.2rem] border border-white/10 bg-white/[0.035] p-4">
-                            <div className="flex flex-wrap items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-200/75">
+                          <div className="rounded-[1.2rem] border border-slate-200/80 bg-white/88 p-4 dark:border-white/10 dark:bg-white/[0.035]">
+                            <div className="flex flex-wrap items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#0f766e] dark:text-cyan-200/75">
                               <span>{timeIcon(displayedStopTime)}</span>
                               <span>{displayedStopTime ?? "Activity"}</span>
-                              <span className="text-cyan-200/45">
+                              <span className="text-[#0f766e]/60 dark:text-cyan-200/45">
                                 {stopNarrativeLabel(stop.kind)}
                               </span>
                               {timeWindowLabel(displayedStopTime) ? (
-                                <span className="text-[11px] font-medium normal-case tracking-normal text-slate-400">
+                                <span className="text-[11px] font-medium normal-case tracking-normal text-slate-500 dark:text-slate-400">
                                   {timeWindowLabel(displayedStopTime)}
                                 </span>
                               ) : null}
                             </div>
-                            <h4 className="mt-2 text-base font-semibold text-white">
+                            <h4 className="mt-2 text-base font-semibold text-slate-950 dark:text-white">
                               Pick an activity
                             </h4>
                             {stop.description ? (
-                              <p className="mt-2 text-[14px] leading-6 text-slate-300">
+                              <p className="mt-2 text-[14px] leading-6 text-slate-600 dark:text-slate-300">
                                 {stop.description}
                               </p>
                             ) : null}
@@ -2352,26 +2402,26 @@ export default function InteractiveItinerary({
 
                     return (
                       <div key={`group-${key}`} className="space-y-3">
-                        <div className="rounded-[1.2rem] border border-white/10 bg-white/[0.035] p-4">
+                        <div className="rounded-[1.2rem] border border-slate-200/80 bg-white/88 p-4 dark:border-white/10 dark:bg-white/[0.035]">
                           {displayedStopTime ? (
-                            <div className="flex flex-wrap items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-200/75">
+                            <div className="flex flex-wrap items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#0f766e] dark:text-cyan-200/75">
                               <span>{timeIcon(displayedStopTime)}</span>
                               <span>{displayedStopTime}</span>
-                              <span className="text-cyan-200/45">
+                              <span className="text-[#0f766e]/60 dark:text-cyan-200/45">
                                 {stopNarrativeLabel(stop.kind)}
                               </span>
                             </div>
                           ) : null}
                           {timeWindowLabel(displayedStopTime) ? (
-                            <div className="mt-1 text-[12px] font-medium leading-5 text-slate-400">
+                            <div className="mt-1 text-[12px] font-medium leading-5 text-slate-500 dark:text-slate-400">
                               {timeWindowLabel(displayedStopTime)}
                             </div>
                           ) : null}
-                          <h4 className="mt-2 text-base font-semibold text-white">
+                          <h4 className="mt-2 text-base font-semibold text-slate-950 dark:text-white">
                             {stop.title}
                           </h4>
                           {stop.description ? (
-                            <p className="mt-2 text-[14px] leading-6 text-slate-300">
+                            <p className="mt-2 text-[14px] leading-6 text-slate-600 dark:text-slate-300">
                               {stop.description}
                             </p>
                           ) : null}
@@ -2380,7 +2430,7 @@ export default function InteractiveItinerary({
                           dayIndex === days.length - 1 &&
                             priorStop &&
                             startCityCoordinate ? (
-                            <div className="mt-2 text-[12px] font-medium leading-5 text-slate-400">
+                            <div className="mt-2 text-[12px] font-medium leading-5 text-slate-500 dark:text-slate-400">
                               {(() => {
                                 const distanceKm = haversineDistanceKm(priorStop, {
                                   label: startCityLabel ?? "start city",
@@ -2405,19 +2455,19 @@ export default function InteractiveItinerary({
                   hotelCoordinate &&
                   lastStopOfDay &&
                   driveBackDistance !== undefined ? (
-                    <div className="rounded-[1.2rem] border border-white/10 bg-white/[0.035] p-4">
-                      <div className="flex flex-wrap items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-200/75">
+                    <div className="rounded-[1.2rem] border border-slate-200/80 bg-white/88 p-4 dark:border-white/10 dark:bg-white/[0.035]">
+                      <div className="flex flex-wrap items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#0f766e] dark:text-cyan-200/75">
                         <span>{timeIcon("night")}</span>
                         <span>Night</span>
-                        <span className="text-cyan-200/45">Transfer</span>
+                        <span className="text-[#0f766e]/60 dark:text-cyan-200/45">Transfer</span>
                       </div>
-                      <h4 className="mt-2 text-base font-semibold text-white">
+                      <h4 className="mt-2 text-base font-semibold text-slate-950 dark:text-white">
                         Drive back to {hotelCoordinate.label}
                       </h4>
-                      <p className="mt-2 text-[14px] leading-6 text-slate-300">
+                      <p className="mt-2 text-[14px] leading-6 text-slate-600 dark:text-slate-300">
                         Wrap up the day and head back to your hotel from {lastStopOfDay.label}.
                       </p>
-                      <div className="mt-2 text-[12px] font-medium leading-5 text-slate-400">
+                      <div className="mt-2 text-[12px] font-medium leading-5 text-slate-500 dark:text-slate-400">
                         {formatTransferMinutes(
                           estimateTransferMinutes(driveBackDistance)
                         )}{" "}
@@ -2435,17 +2485,17 @@ export default function InteractiveItinerary({
 
       <form
         onSubmit={handleBuilderPromptApply}
-        className="rounded-[1.5rem] border border-white/10 bg-[linear-gradient(180deg,rgba(14,22,37,0.96),rgba(11,18,31,0.94))] p-4 shadow-[0_18px_50px_rgba(2,6,23,0.18)]"
+        className="rounded-[1.5rem] border border-slate-200/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(243,247,252,0.98))] p-4 shadow-[0_18px_50px_rgba(148,163,184,0.14)] dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(14,22,37,0.96),rgba(11,18,31,0.94))] dark:shadow-[0_18px_50px_rgba(2,6,23,0.18)]"
       >
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div>
-            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-200/75">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#0f766e] dark:text-cyan-200/75">
               Edit itinerary
             </div>
-            <h3 className="mt-2 text-xl font-semibold tracking-tight text-white">
+            <h3 className="mt-2 text-xl font-semibold tracking-tight text-slate-950 dark:text-white">
               Make a simple change
             </h3>
-            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600 dark:text-slate-300">
               Mention the day and the one thing you want swapped, added, or softened.
             </p>
           </div>
@@ -2458,15 +2508,15 @@ export default function InteractiveItinerary({
           onChange={(event) => setBuilderPrompt(event.target.value)}
           maxLength={BUILDER_PROMPT_MAX_CHARS}
           placeholder="Example: Day 2 lunch to Wild Flour Bakery."
-          className="mt-4 min-h-[88px] w-full rounded-[1.25rem] border border-white/10 bg-white/[0.04] px-4 py-4 text-sm leading-6 text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-300/40 focus:bg-white/[0.06]"
+          className="mt-4 min-h-[88px] w-full rounded-[1.25rem] border border-slate-200 bg-white px-4 py-4 text-sm leading-6 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-cyan-300/40 focus:bg-slate-50 dark:border-white/10 dark:bg-white/[0.04] dark:text-white dark:placeholder:text-slate-500 dark:focus:bg-white/[0.06]"
         />
 
         <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
           <p
             className={
               builderPromptTooLong
-                ? "text-xs font-medium text-rose-300"
-                : "text-xs text-slate-400"
+                ? "text-xs font-medium text-rose-700 dark:text-rose-300"
+                : "text-xs text-slate-500 dark:text-slate-400"
             }
           >
             {builderPromptTooLong
@@ -2476,8 +2526,8 @@ export default function InteractiveItinerary({
           <p
             className={
               builderPromptTooLong
-                ? "text-xs font-semibold text-rose-300"
-                : "text-xs text-slate-400"
+                ? "text-xs font-semibold text-rose-700 dark:text-rose-300"
+                : "text-xs text-slate-500 dark:text-slate-400"
             }
           >
             {trimmedBuilderPrompt.length}/{BUILDER_PROMPT_MAX_CHARS}
@@ -2485,7 +2535,7 @@ export default function InteractiveItinerary({
         </div>
 
         <div className="mt-4 flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-          <p className="max-w-3xl text-xs leading-5 text-slate-400">
+          <p className="max-w-3xl text-xs leading-5 text-slate-500 dark:text-slate-400">
             Keep each request to one clear edit for the cleanest result.
           </p>
 
@@ -2496,7 +2546,7 @@ export default function InteractiveItinerary({
               !trimmedBuilderPrompt ||
               builderPromptTooLong
             }
-            className="inline-flex h-11 items-center justify-center rounded-full bg-white px-5 text-sm font-semibold text-slate-950 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex h-11 items-center justify-center rounded-full bg-slate-950 px-5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-100"
           >
             {builderPromptPending ? "Applying..." : "Apply changes"}
           </button>
@@ -2506,15 +2556,15 @@ export default function InteractiveItinerary({
           <div
             className={
               builderPromptFeedback.tone === "success"
-                ? "mt-4 rounded-[1.1rem] border border-emerald-300/25 bg-emerald-300/[0.08] px-4 py-3"
-                : "mt-4 rounded-[1.1rem] border border-amber-300/25 bg-amber-300/[0.08] px-4 py-3"
+                ? "mt-4 rounded-[1.1rem] border border-emerald-200 bg-emerald-50 px-4 py-3 dark:border-emerald-300/25 dark:bg-emerald-300/[0.08]"
+                : "mt-4 rounded-[1.1rem] border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-300/25 dark:bg-amber-300/[0.08]"
             }
           >
             <div
               className={
                 builderPromptFeedback.tone === "success"
-                  ? "text-sm font-semibold text-emerald-100"
-                  : "text-sm font-semibold text-amber-100"
+                  ? "text-sm font-semibold text-emerald-900 dark:text-emerald-100"
+                  : "text-sm font-semibold text-amber-900 dark:text-amber-100"
               }
             >
               {builderPromptFeedback.title}
@@ -2523,8 +2573,8 @@ export default function InteractiveItinerary({
               <p
                 className={
                   builderPromptFeedback.tone === "success"
-                    ? "mt-1 text-sm leading-6 text-emerald-50/95"
-                    : "mt-1 text-sm leading-6 text-amber-50/95"
+                    ? "mt-1 text-sm leading-6 text-emerald-800 dark:text-emerald-50/95"
+                    : "mt-1 text-sm leading-6 text-amber-800 dark:text-amber-50/95"
                 }
               >
                 {builderPromptFeedback.detail}
@@ -2534,8 +2584,8 @@ export default function InteractiveItinerary({
               <p
                 className={
                   builderPromptFeedback.tone === "success"
-                    ? "mt-2 text-xs leading-5 text-emerald-100/80"
-                    : "mt-2 text-xs leading-5 text-amber-100/80"
+                    ? "mt-2 text-xs leading-5 text-emerald-800 dark:text-emerald-100/80"
+                    : "mt-2 text-xs leading-5 text-amber-800 dark:text-amber-100/80"
                 }
               >
                 Interpreted as: {builderPromptFeedback.interpretedPrompt}
@@ -2548,8 +2598,8 @@ export default function InteractiveItinerary({
                     key={issue}
                     className={
                       builderPromptFeedback.tone === "success"
-                        ? "text-xs leading-5 text-emerald-100/80"
-                        : "text-xs leading-5 text-amber-100/80"
+                        ? "text-xs leading-5 text-emerald-800 dark:text-emerald-100/80"
+                        : "text-xs leading-5 text-amber-800 dark:text-amber-100/80"
                     }
                   >
                     {issue}

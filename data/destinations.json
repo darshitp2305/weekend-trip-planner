@@ -6,11 +6,27 @@
     "home_base_city": "Edmonton",
     "is_staycation": true,
     "image_url": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Skyline_Edmonton_Alberta_Canada_04A.jpg",
-    "drive_time_hours_from": { "edmonton": 0.0, "calgary": 3.0 },
-    "distance_km_from": { "edmonton": 0, "calgary": 300 },
+    "drive_time_hours_from": {
+      "edmonton": 0,
+      "calgary": 3
+    },
+    "distance_km_from": {
+      "edmonton": 0,
+      "calgary": 300
+    },
     "cost_level": "low_mid",
-    "vibes": ["food", "culture", "relax", "family"],
-    "best_seasons": ["winter", "spring", "summer", "fall"],
+    "vibes": [
+      "food",
+      "culture",
+      "relax",
+      "family"
+    ],
+    "best_seasons": [
+      "winter",
+      "spring",
+      "summer",
+      "fall"
+    ],
     "avoid_seasons": [],
     "style_scores": {
       "chill": 2,
@@ -68,17 +84,27 @@
     "food_spots": [
       {
         "name": "Old Strathcona / Whyte Ave",
-        "tags": ["walkable food strip", "cafés", "nightlife"],
+        "tags": [
+          "walkable food strip",
+          "cafés",
+          "nightlife"
+        ],
         "link": "https://www.google.com/maps/search/?api=1&query=Whyte+Avenue+Edmonton",
         "description": "Best food-forward district for a city weekend."
       },
       {
         "name": "104 Street / Downtown",
-        "tags": ["restaurants", "cocktails", "central"],
+        "tags": [
+          "restaurants",
+          "cocktails",
+          "central"
+        ],
         "link": "https://www.google.com/maps/search/?api=1&query=104+Street+Edmonton",
         "description": "Good central food option if you stay downtown."
       }
-    ]
+    ],
+    "image_url_light": "/destinations/theme/edmonton_staycation_ab-light.webp",
+    "image_url_dark": "/destinations/theme/edmonton_staycation_ab-dark.webp"
   },
   {
     "id": "elk_island_np_ab",
@@ -87,11 +113,27 @@
     "home_base_city": "Fort Saskatchewan (area)",
     "is_staycation": false,
     "image_url": "https://commons.wikimedia.org/wiki/Special:Redirect/file/.Bison_in_Elk_Island_National_Park_05.jpg",
-    "drive_time_hours_from": { "edmonton": 0.75, "calgary": 3.75 },
-    "distance_km_from": { "edmonton": 55, "calgary": 360 },
+    "drive_time_hours_from": {
+      "edmonton": 0.75,
+      "calgary": 3.75
+    },
+    "distance_km_from": {
+      "edmonton": 55,
+      "calgary": 360
+    },
     "cost_level": "low",
-    "vibes": ["nature", "relax", "family", "winter_fun"],
-    "best_seasons": ["winter", "spring", "summer", "fall"],
+    "vibes": [
+      "nature",
+      "relax",
+      "family",
+      "winter_fun"
+    ],
+    "best_seasons": [
+      "winter",
+      "spring",
+      "summer",
+      "fall"
+    ],
     "avoid_seasons": [],
     "style_scores": {
       "chill": 1,
@@ -138,11 +180,17 @@
     "food_spots": [
       {
         "name": "Fort Saskatchewan cafés / casual eats",
-        "tags": ["casual", "low-friction", "near park"],
+        "tags": [
+          "casual",
+          "low-friction",
+          "near park"
+        ],
         "link": "https://www.google.com/maps/search/?api=1&query=Restaurants+Fort+Saskatchewan",
         "description": "Simple meal stop before or after the park."
       }
-    ]
+    ],
+    "image_url_light": "/destinations/theme/elk_island_np_ab-light.webp",
+    "image_url_dark": "/destinations/theme/elk_island_np_ab-dark.webp"
   },
   {
     "id": "banff_ab",
@@ -151,11 +199,29 @@
     "home_base_city": "Banff",
     "is_staycation": false,
     "image_url": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Lake_Louise%2C_Canada%2C_Banff.jpg",
-    "drive_time_hours_from": { "edmonton": 4.0, "calgary": 1.5 },
-    "distance_km_from": { "edmonton": 415, "calgary": 130 },
+    "drive_time_hours_from": {
+      "edmonton": 4,
+      "calgary": 1.5
+    },
+    "distance_km_from": {
+      "edmonton": 415,
+      "calgary": 130
+    },
     "cost_level": "high",
-    "vibes": ["nature", "adventure", "relax", "food", "hot_springs", "winter_fun"],
-    "best_seasons": ["winter", "spring", "summer", "fall"],
+    "vibes": [
+      "nature",
+      "adventure",
+      "relax",
+      "food",
+      "hot_springs",
+      "winter_fun"
+    ],
+    "best_seasons": [
+      "winter",
+      "spring",
+      "summer",
+      "fall"
+    ],
     "avoid_seasons": [],
     "style_scores": {
       "chill": 2,
@@ -177,35 +243,35 @@
         "description": "Premium scenic anchor with obvious payoff.",
         "link": "https://www.google.com/maps/search/?api=1&query=Banff+Gondola"
       },
-        {
-          "title": "Johnston Canyon to Upper Falls",
-          "type": "nature",
-          "description": "Signature Banff-area canyon hike with an easy-to-understand trail objective and strong scenic payoff.",
-          "link": "https://www.google.com/maps/search/?api=1&query=Johnston+Canyon+to+Upper+Falls"
-        },
-        {
-          "title": "Banff Sunshine Village ski day",
-          "type": "skiing",
-          "description": "Full ski-resort anchor with lifts, terrain variety, and a clear winter-trip payoff.",
-          "link": "https://www.google.com/maps/search/?api=1&query=Banff+Sunshine+Village"
-        },
-        {
-          "title": "Lake Louise Ski Resort day",
-          "type": "skiing",
-          "description": "Big-mountain ski day with the strongest destination-level skiing signal near Banff.",
-          "link": "https://www.google.com/maps/search/?api=1&query=Lake+Louise+Ski+Resort"
-        },
-        {
-          "title": "Mt. Norquay ski day",
-          "type": "skiing",
-          "description": "Closest Banff ski hill for a lower-friction ski day that still feels like the main event.",
-          "link": "https://www.google.com/maps/search/?api=1&query=Mt+Norquay"
-        },
-        {
-          "title": "Upper Hot Springs soak",
-          "type": "hot_springs",
-          "description": "Classic relaxation stop that rounds out the trip.",
-          "link": "https://www.google.com/maps/search/?api=1&query=Banff+Upper+Hot+Springs"
+      {
+        "title": "Johnston Canyon to Upper Falls",
+        "type": "nature",
+        "description": "Signature Banff-area canyon hike with an easy-to-understand trail objective and strong scenic payoff.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Johnston+Canyon+to+Upper+Falls"
+      },
+      {
+        "title": "Banff Sunshine Village ski day",
+        "type": "skiing",
+        "description": "Full ski-resort anchor with lifts, terrain variety, and a clear winter-trip payoff.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Banff+Sunshine+Village"
+      },
+      {
+        "title": "Lake Louise Ski Resort day",
+        "type": "skiing",
+        "description": "Big-mountain ski day with the strongest destination-level skiing signal near Banff.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Lake+Louise+Ski+Resort"
+      },
+      {
+        "title": "Mt. Norquay ski day",
+        "type": "skiing",
+        "description": "Closest Banff ski hill for a lower-friction ski day that still feels like the main event.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Mt+Norquay"
+      },
+      {
+        "title": "Upper Hot Springs soak",
+        "type": "hot_springs",
+        "description": "Classic relaxation stop that rounds out the trip.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Banff+Upper+Hot+Springs"
       }
     ],
     "neighborhoods": [
@@ -232,17 +298,25 @@
     "food_spots": [
       {
         "name": "Downtown Banff",
-        "tags": ["walkable base with restaurants + transit options"],
+        "tags": [
+          "walkable base with restaurants + transit options"
+        ],
         "link": "https://www.google.com/maps/search/?api=1&query=Downtown+Banff+restaurants",
         "description": "Most practical food cluster for a short weekend."
       },
       {
         "name": "Banff Ave casual stops",
-        "tags": ["cafés", "quick meals", "central"],
+        "tags": [
+          "cafés",
+          "quick meals",
+          "central"
+        ],
         "link": "https://www.google.com/maps/search/?api=1&query=Banff+Avenue+restaurants",
         "description": "Good fit for easy food between stops."
       }
-    ]
+    ],
+    "image_url_light": "/destinations/theme/banff_ab-light.webp",
+    "image_url_dark": "/destinations/theme/banff_ab-dark.webp"
   },
   {
     "id": "canmore_ab",
@@ -251,11 +325,28 @@
     "home_base_city": "Canmore",
     "is_staycation": false,
     "image_url": "https://commons.wikimedia.org/wiki/Special:Redirect/file/1canmore.jpg",
-    "drive_time_hours_from": { "edmonton": 4.0, "calgary": 1.25 },
-    "distance_km_from": { "edmonton": 420, "calgary": 105 },
+    "drive_time_hours_from": {
+      "edmonton": 4,
+      "calgary": 1.25
+    },
+    "distance_km_from": {
+      "edmonton": 420,
+      "calgary": 105
+    },
     "cost_level": "high",
-    "vibes": ["nature", "food", "relax", "adventure", "winter_fun"],
-    "best_seasons": ["winter", "spring", "summer", "fall"],
+    "vibes": [
+      "nature",
+      "food",
+      "relax",
+      "adventure",
+      "winter_fun"
+    ],
+    "best_seasons": [
+      "winter",
+      "spring",
+      "summer",
+      "fall"
+    ],
     "avoid_seasons": [],
     "style_scores": {
       "chill": 2,
@@ -308,17 +399,27 @@
     "food_spots": [
       {
         "name": "Downtown Canmore cafés",
-        "tags": ["walkable", "cafés", "mountain town"],
+        "tags": [
+          "walkable",
+          "cafés",
+          "mountain town"
+        ],
         "link": "https://www.google.com/maps/search/?api=1&query=Downtown+Canmore+cafes",
         "description": "Strong breakfast and coffee zone."
       },
       {
         "name": "Main street dinner spots",
-        "tags": ["restaurants", "casual dinner", "central"],
+        "tags": [
+          "restaurants",
+          "casual dinner",
+          "central"
+        ],
         "link": "https://www.google.com/maps/search/?api=1&query=Canmore+restaurants",
         "description": "Easy dinner cluster after hiking or sightseeing."
       }
-    ]
+    ],
+    "image_url_light": "/destinations/theme/canmore_ab-light.webp",
+    "image_url_dark": "/destinations/theme/canmore_ab-dark.webp"
   },
   {
     "id": "kananaskis_ab",
@@ -327,11 +428,27 @@
     "home_base_city": "Kananaskis Village (area)",
     "is_staycation": false,
     "image_url": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Barrier%20Lake%20Kananaskis%20country%20Alberta%20Canada%20%2811020261543%29.jpg",
-    "drive_time_hours_from": { "edmonton": 4.5, "calgary": 1.5 },
-    "distance_km_from": { "edmonton": 460, "calgary": 115 },
+    "drive_time_hours_from": {
+      "edmonton": 4.5,
+      "calgary": 1.5
+    },
+    "distance_km_from": {
+      "edmonton": 460,
+      "calgary": 115
+    },
     "cost_level": "mid",
-    "vibes": ["nature", "adventure", "relax", "winter_fun"],
-    "best_seasons": ["winter", "spring", "summer", "fall"],
+    "vibes": [
+      "nature",
+      "adventure",
+      "relax",
+      "winter_fun"
+    ],
+    "best_seasons": [
+      "winter",
+      "spring",
+      "summer",
+      "fall"
+    ],
     "avoid_seasons": [],
     "style_scores": {
       "chill": 1,
@@ -378,11 +495,17 @@
     "food_spots": [
       {
         "name": "Village dining / lodge meals",
-        "tags": ["convenient", "mountain base", "simple"],
+        "tags": [
+          "convenient",
+          "mountain base",
+          "simple"
+        ],
         "link": "https://www.google.com/maps/search/?api=1&query=Kananaskis+Village+restaurants",
         "description": "Mostly convenience-driven, but useful for an easy itinerary."
       }
-    ]
+    ],
+    "image_url_light": "/destinations/theme/kananaskis_ab-light.webp",
+    "image_url_dark": "/destinations/theme/kananaskis_ab-dark.webp"
   },
   {
     "id": "jasper_ab",
@@ -391,11 +514,27 @@
     "home_base_city": "Jasper",
     "is_staycation": false,
     "image_url": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Jasper_National_Park_Pyramid_Lake.jpg",
-    "drive_time_hours_from": { "edmonton": 4.0, "calgary": 4.5 },
-    "distance_km_from": { "edmonton": 365, "calgary": 412 },
+    "drive_time_hours_from": {
+      "edmonton": 4,
+      "calgary": 4.5
+    },
+    "distance_km_from": {
+      "edmonton": 365,
+      "calgary": 412
+    },
     "cost_level": "mid",
-    "vibes": ["nature", "adventure", "relax", "winter_fun"],
-    "best_seasons": ["winter", "spring", "summer", "fall"],
+    "vibes": [
+      "nature",
+      "adventure",
+      "relax",
+      "winter_fun"
+    ],
+    "best_seasons": [
+      "winter",
+      "spring",
+      "summer",
+      "fall"
+    ],
     "avoid_seasons": [],
     "style_scores": {
       "chill": 2,
@@ -442,11 +581,17 @@
     "food_spots": [
       {
         "name": "Downtown Jasper",
-        "tags": ["walkable", "restaurants", "park town"],
+        "tags": [
+          "walkable",
+          "restaurants",
+          "park town"
+        ],
         "link": "https://www.google.com/maps/search/?api=1&query=Downtown+Jasper+restaurants",
         "description": "Best for low-friction meals without extra driving."
       }
-    ]
+    ],
+    "image_url_light": "/destinations/theme/jasper_ab-light.webp",
+    "image_url_dark": "/destinations/theme/jasper_ab-dark.webp"
   },
   {
     "id": "sylvan_lake_ab",
@@ -455,12 +600,27 @@
     "home_base_city": "Sylvan Lake",
     "is_staycation": false,
     "image_url": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Sylvan%20Lake%202014%20Beach.jpg",
-    "drive_time_hours_from": { "edmonton": 1.75, "calgary": 2.0 },
-    "distance_km_from": { "edmonton": 175, "calgary": 150 },
+    "drive_time_hours_from": {
+      "edmonton": 1.75,
+      "calgary": 2
+    },
+    "distance_km_from": {
+      "edmonton": 175,
+      "calgary": 150
+    },
     "cost_level": "mid",
-    "vibes": ["lakes", "relax", "family", "food"],
-    "best_seasons": ["summer"],
-    "avoid_seasons": ["spring"],
+    "vibes": [
+      "lakes",
+      "relax",
+      "family",
+      "food"
+    ],
+    "best_seasons": [
+      "summer"
+    ],
+    "avoid_seasons": [
+      "spring"
+    ],
     "style_scores": {
       "chill": 2,
       "outdoors": 2,
@@ -506,11 +666,17 @@
     "food_spots": [
       {
         "name": "Lakeshore restaurants",
-        "tags": ["waterfront", "casual", "summer patios"],
+        "tags": [
+          "waterfront",
+          "casual",
+          "summer patios"
+        ],
         "link": "https://www.google.com/maps/search/?api=1&query=Sylvan+Lake+restaurants",
         "description": "Most practical food cluster for a warm-weather trip."
       }
-    ]
+    ],
+    "image_url_light": "/destinations/theme/sylvan_lake_ab-light.webp",
+    "image_url_dark": "/destinations/theme/sylvan_lake_ab-dark.webp"
   },
   {
     "id": "drumheller_ab",
@@ -519,12 +685,29 @@
     "home_base_city": "Drumheller",
     "is_staycation": false,
     "image_url": "https://commons.wikimedia.org/wiki/Special:Redirect/file/A%20life%20in%20the%20dessert%20of%20Drumheller%20Alberta%20Canada.jpg",
-    "drive_time_hours_from": { "edmonton": 3.0, "calgary": 1.5 },
-    "distance_km_from": { "edmonton": 280, "calgary": 135 },
+    "drive_time_hours_from": {
+      "edmonton": 3,
+      "calgary": 1.5
+    },
+    "distance_km_from": {
+      "edmonton": 280,
+      "calgary": 135
+    },
     "cost_level": "low_mid",
-    "vibes": ["culture", "family", "adventure", "scenic"],
-    "best_seasons": ["spring", "summer", "fall"],
-    "avoid_seasons": ["winter"],
+    "vibes": [
+      "culture",
+      "family",
+      "adventure",
+      "scenic"
+    ],
+    "best_seasons": [
+      "spring",
+      "summer",
+      "fall"
+    ],
+    "avoid_seasons": [
+      "winter"
+    ],
     "style_scores": {
       "chill": 1,
       "outdoors": 1,
@@ -570,11 +753,17 @@
     "food_spots": [
       {
         "name": "Downtown Drumheller casual spots",
-        "tags": ["casual", "road trip", "simple meals"],
+        "tags": [
+          "casual",
+          "road trip",
+          "simple meals"
+        ],
         "link": "https://www.google.com/maps/search/?api=1&query=Drumheller+restaurants",
         "description": "Works well as a functional food stop during a sightseeing-heavy weekend."
       }
-    ]
+    ],
+    "image_url_light": "/destinations/theme/drumheller_ab-light.webp",
+    "image_url_dark": "/destinations/theme/drumheller_ab-dark.webp"
   },
   {
     "id": "red_deer_ab",
@@ -583,11 +772,26 @@
     "home_base_city": "Red Deer",
     "is_staycation": false,
     "image_url": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Gaetz%20Lake%20Migratory%20Bird%20Sanctuary%2C%20Alberta2.jpg",
-    "drive_time_hours_from": { "edmonton": 1.5, "calgary": 1.5 },
-    "distance_km_from": { "edmonton": 150, "calgary": 150 },
+    "drive_time_hours_from": {
+      "edmonton": 1.5,
+      "calgary": 1.5
+    },
+    "distance_km_from": {
+      "edmonton": 150,
+      "calgary": 150
+    },
     "cost_level": "low",
-    "vibes": ["food", "relax", "family"],
-    "best_seasons": ["winter", "spring", "summer", "fall"],
+    "vibes": [
+      "food",
+      "relax",
+      "family"
+    ],
+    "best_seasons": [
+      "winter",
+      "spring",
+      "summer",
+      "fall"
+    ],
     "avoid_seasons": [],
     "style_scores": {
       "chill": 2,
@@ -634,11 +838,17 @@
     "food_spots": [
       {
         "name": "Downtown / brunch corridor",
-        "tags": ["brunch", "cafés", "easy"],
+        "tags": [
+          "brunch",
+          "cafés",
+          "easy"
+        ],
         "link": "https://www.google.com/maps/search/?api=1&query=Downtown+Red+Deer+restaurants",
         "description": "Most useful area if you want food without overcomplicating the trip."
       }
-    ]
+    ],
+    "image_url_light": "/destinations/theme/red_deer_ab-light.webp",
+    "image_url_dark": "/destinations/theme/red_deer_ab-dark.webp"
   },
   {
     "id": "nordegg_ab",
@@ -647,12 +857,28 @@
     "home_base_city": "Nordegg",
     "is_staycation": false,
     "image_url": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Abraham%20Lake%2C%20Alberta%2C%20Canada3.jpg",
-    "drive_time_hours_from": { "edmonton": 3.5, "calgary": 3.0 },
-    "distance_km_from": { "edmonton": 330, "calgary": 270 },
+    "drive_time_hours_from": {
+      "edmonton": 3.5,
+      "calgary": 3
+    },
+    "distance_km_from": {
+      "edmonton": 330,
+      "calgary": 270
+    },
     "cost_level": "low_mid",
-    "vibes": ["nature", "adventure", "winter_fun", "scenic"],
-    "best_seasons": ["winter", "summer"],
-    "avoid_seasons": ["spring"],
+    "vibes": [
+      "nature",
+      "adventure",
+      "winter_fun",
+      "scenic"
+    ],
+    "best_seasons": [
+      "winter",
+      "summer"
+    ],
+    "avoid_seasons": [
+      "spring"
+    ],
     "style_scores": {
       "chill": 0,
       "outdoors": 3,
@@ -698,11 +924,17 @@
     "food_spots": [
       {
         "name": "Nordegg local stop",
-        "tags": ["simple", "road trip", "functional"],
+        "tags": [
+          "simple",
+          "road trip",
+          "functional"
+        ],
         "link": "https://www.google.com/maps/search/?api=1&query=Nordegg+restaurants",
         "description": "Food here is more about function than destination dining."
       }
-    ]
+    ],
+    "image_url_light": "/destinations/theme/nordegg_ab-light.webp",
+    "image_url_dark": "/destinations/theme/nordegg_ab-dark.webp"
   },
   {
     "id": "calgary_staycation_ab",
@@ -711,11 +943,27 @@
     "home_base_city": "Calgary",
     "is_staycation": true,
     "image_url": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Calgary_panorama.jpg",
-    "drive_time_hours_from": { "edmonton": 3.0, "calgary": 0.0 },
-    "distance_km_from": { "edmonton": 300, "calgary": 0 },
+    "drive_time_hours_from": {
+      "edmonton": 3,
+      "calgary": 0
+    },
+    "distance_km_from": {
+      "edmonton": 300,
+      "calgary": 0
+    },
     "cost_level": "low_mid",
-    "vibes": ["food", "culture", "nightlife", "relax"],
-    "best_seasons": ["winter", "spring", "summer", "fall"],
+    "vibes": [
+      "food",
+      "culture",
+      "nightlife",
+      "relax"
+    ],
+    "best_seasons": [
+      "winter",
+      "spring",
+      "summer",
+      "fall"
+    ],
     "avoid_seasons": [],
     "style_scores": {
       "chill": 2,
@@ -773,17 +1021,26 @@
     "food_spots": [
       {
         "name": "Beltline / Downtown",
-        "tags": ["food", "nightlife", "central"],
+        "tags": [
+          "food",
+          "nightlife",
+          "central"
+        ],
         "link": "https://www.google.com/maps/search/?api=1&query=Beltline+Calgary+restaurants",
         "description": "Best central cluster for dinner and late-evening energy."
       },
       {
         "name": "Kensington",
-        "tags": ["walkable shops + brunch", "cafés"],
+        "tags": [
+          "walkable shops + brunch",
+          "cafés"
+        ],
         "link": "https://www.google.com/maps/search/?api=1&query=Kensington+Calgary+restaurants",
         "description": "Good daytime food/café anchor with a more relaxed pace."
       }
-    ]
+    ],
+    "image_url_light": "/destinations/theme/calgary_staycation_ab-light.webp",
+    "image_url_dark": "/destinations/theme/calgary_staycation_ab-dark.webp"
   },
   {
     "id": "waterton_lakes_ab",
@@ -792,12 +1049,29 @@
     "home_base_city": "Waterton Park",
     "is_staycation": false,
     "image_url": "https://commons.wikimedia.org/wiki/Special:Redirect/file/WatertonMountains.jpg",
-    "drive_time_hours_from": { "edmonton": 5.5, "calgary": 3.0 },
-    "distance_km_from": { "edmonton": 540, "calgary": 270 },
+    "drive_time_hours_from": {
+      "edmonton": 5.5,
+      "calgary": 3
+    },
+    "distance_km_from": {
+      "edmonton": 540,
+      "calgary": 270
+    },
     "cost_level": "mid",
-    "vibes": ["nature", "adventure", "scenic", "relax"],
-    "best_seasons": ["spring", "summer", "fall"],
-    "avoid_seasons": ["winter"],
+    "vibes": [
+      "nature",
+      "adventure",
+      "scenic",
+      "relax"
+    ],
+    "best_seasons": [
+      "spring",
+      "summer",
+      "fall"
+    ],
+    "avoid_seasons": [
+      "winter"
+    ],
     "style_scores": {
       "chill": 2,
       "outdoors": 3,
@@ -843,11 +1117,17 @@
     "food_spots": [
       {
         "name": "Waterton town dining",
-        "tags": ["mountain town", "casual dinner", "walkable"],
+        "tags": [
+          "mountain town",
+          "casual dinner",
+          "walkable"
+        ],
         "link": "https://www.google.com/maps/search/?api=1&query=Waterton+restaurants",
         "description": "Simple town dining that works well after hiking and viewpoints."
       }
-    ]
+    ],
+    "image_url_light": "/destinations/theme/waterton_lakes_ab-light.webp",
+    "image_url_dark": "/destinations/theme/waterton_lakes_ab-dark.webp"
   },
   {
     "id": "slave_lake_ab",
@@ -856,12 +1136,28 @@
     "home_base_city": "Slave Lake",
     "is_staycation": false,
     "image_url": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Mainstreet_Alberta_Slave_Lake_3986.jpg",
-    "drive_time_hours_from": { "edmonton": 2.75, "calgary": 5.75 },
-    "distance_km_from": { "edmonton": 255, "calgary": 555 },
+    "drive_time_hours_from": {
+      "edmonton": 2.75,
+      "calgary": 5.75
+    },
+    "distance_km_from": {
+      "edmonton": 255,
+      "calgary": 555
+    },
     "cost_level": "low_mid",
-    "vibes": ["lakes", "relax", "nature", "hidden"],
-    "best_seasons": ["summer", "fall"],
-    "avoid_seasons": ["spring"],
+    "vibes": [
+      "lakes",
+      "relax",
+      "nature",
+      "hidden"
+    ],
+    "best_seasons": [
+      "summer",
+      "fall"
+    ],
+    "avoid_seasons": [
+      "spring"
+    ],
     "style_scores": {
       "chill": 2,
       "outdoors": 2,
@@ -907,11 +1203,17 @@
     "food_spots": [
       {
         "name": "Local waterfront / town eats",
-        "tags": ["casual", "lake town", "simple"],
+        "tags": [
+          "casual",
+          "lake town",
+          "simple"
+        ],
         "link": "https://www.google.com/maps/search/?api=1&query=Slave+Lake+restaurants",
         "description": "Functional meal stops that keep the trip easy."
       }
-    ]
+    ],
+    "image_url_light": "/destinations/theme/slave_lake_ab-light.webp",
+    "image_url_dark": "/destinations/theme/slave_lake_ab-dark.webp"
   },
   {
     "id": "cypress_hills_ab",
@@ -920,12 +1222,29 @@
     "home_base_city": "Cypress Hills Interprovincial Park",
     "is_staycation": false,
     "image_url": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Elkwater_Lake_2020.jpg",
-    "drive_time_hours_from": { "edmonton": 6.0, "calgary": 3.75 },
-    "distance_km_from": { "edmonton": 610, "calgary": 330 },
+    "drive_time_hours_from": {
+      "edmonton": 6,
+      "calgary": 3.75
+    },
+    "distance_km_from": {
+      "edmonton": 610,
+      "calgary": 330
+    },
     "cost_level": "mid",
-    "vibes": ["nature", "adventure", "hidden", "family"],
-    "best_seasons": ["summer", "fall"],
-    "avoid_seasons": ["winter", "spring"],
+    "vibes": [
+      "nature",
+      "adventure",
+      "hidden",
+      "family"
+    ],
+    "best_seasons": [
+      "summer",
+      "fall"
+    ],
+    "avoid_seasons": [
+      "winter",
+      "spring"
+    ],
     "style_scores": {
       "chill": 1,
       "outdoors": 3,
@@ -971,11 +1290,17 @@
     "food_spots": [
       {
         "name": "Elkwater casual dining",
-        "tags": ["park base", "simple", "functional"],
+        "tags": [
+          "park base",
+          "simple",
+          "functional"
+        ],
         "link": "https://www.google.com/maps/search/?api=1&query=Elkwater+restaurants",
         "description": "Food is mostly convenience-driven, but it works well for a simple park stay."
       }
-    ]
+    ],
+    "image_url_light": "/destinations/theme/cypress_hills_ab-light.webp",
+    "image_url_dark": "/destinations/theme/cypress_hills_ab-dark.webp"
   },
   {
     "id": "lac_la_biche_ab",
@@ -984,12 +1309,29 @@
     "home_base_city": "Lac La Biche",
     "is_staycation": false,
     "image_url": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Sunset%20at%20Lac%20La%20Biche.jpg",
-    "drive_time_hours_from": { "edmonton": 2.5, "calgary": 5.5 },
-    "distance_km_from": { "edmonton": 235, "calgary": 525 },
+    "drive_time_hours_from": {
+      "edmonton": 2.5,
+      "calgary": 5.5
+    },
+    "distance_km_from": {
+      "edmonton": 235,
+      "calgary": 525
+    },
     "cost_level": "low_mid",
-    "vibes": ["lakes", "nature", "hidden", "relax"],
-    "best_seasons": ["summer", "fall", "winter"],
-    "avoid_seasons": ["spring"],
+    "vibes": [
+      "lakes",
+      "nature",
+      "hidden",
+      "relax"
+    ],
+    "best_seasons": [
+      "summer",
+      "fall",
+      "winter"
+    ],
+    "avoid_seasons": [
+      "spring"
+    ],
     "style_scores": {
       "chill": 2,
       "outdoors": 2,
@@ -1035,11 +1377,17 @@
     "food_spots": [
       {
         "name": "Town casual eats",
-        "tags": ["local", "simple", "lake town"],
+        "tags": [
+          "local",
+          "simple",
+          "lake town"
+        ],
         "link": "https://www.google.com/maps/search/?api=1&query=Lac+La+Biche+restaurants",
         "description": "Mostly straightforward local dining that keeps the trip low-friction."
       }
-    ]
+    ],
+    "image_url_light": "/destinations/theme/lac_la_biche_ab-light.webp",
+    "image_url_dark": "/destinations/theme/lac_la_biche_ab-dark.webp"
   },
   {
     "id": "medicine_hat_ab",
@@ -1048,12 +1396,29 @@
     "home_base_city": "Medicine Hat",
     "is_staycation": false,
     "image_url": "https://commons.wikimedia.org/wiki/Special:Redirect/file/St.%20Patrick%27s%20Roman%20Catholic%20Church%20Medicine%20Hat.JPG",
-    "drive_time_hours_from": { "edmonton": 5.5, "calgary": 3.0 },
-    "distance_km_from": { "edmonton": 535, "calgary": 295 },
+    "drive_time_hours_from": {
+      "edmonton": 5.5,
+      "calgary": 3
+    },
+    "distance_km_from": {
+      "edmonton": 535,
+      "calgary": 295
+    },
     "cost_level": "low_mid",
-    "vibes": ["culture", "food", "hidden", "scenic"],
-    "best_seasons": ["spring", "summer", "fall"],
-    "avoid_seasons": ["winter"],
+    "vibes": [
+      "culture",
+      "food",
+      "hidden",
+      "scenic"
+    ],
+    "best_seasons": [
+      "spring",
+      "summer",
+      "fall"
+    ],
+    "avoid_seasons": [
+      "winter"
+    ],
     "style_scores": {
       "chill": 1,
       "outdoors": 1,
@@ -1099,11 +1464,17 @@
     "food_spots": [
       {
         "name": "Downtown Medicine Hat dining",
-        "tags": ["local", "casual dinner", "brewery"],
+        "tags": [
+          "local",
+          "casual dinner",
+          "brewery"
+        ],
         "link": "https://www.google.com/maps/search/?api=1&query=Downtown+Medicine+Hat+restaurants",
         "description": "The best area for giving the trip a more distinctive local feel."
       }
-    ]
+    ],
+    "image_url_light": "/destinations/theme/medicine_hat_ab-light.webp",
+    "image_url_dark": "/destinations/theme/medicine_hat_ab-dark.webp"
   },
   {
     "id": "grande_cache_ab",
@@ -1112,12 +1483,29 @@
     "home_base_city": "Grande Cache",
     "is_staycation": false,
     "image_url": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Grande%20Cache%2C%20Alberta%20%2835779380475%29.jpg",
-    "drive_time_hours_from": { "edmonton": 4.75, "calgary": 7.0 },
-    "distance_km_from": { "edmonton": 430, "calgary": 660 },
+    "drive_time_hours_from": {
+      "edmonton": 4.75,
+      "calgary": 7
+    },
+    "distance_km_from": {
+      "edmonton": 430,
+      "calgary": 660
+    },
     "cost_level": "low_mid",
-    "vibes": ["nature", "adventure", "hidden", "scenic"],
-    "best_seasons": ["summer", "fall"],
-    "avoid_seasons": ["spring", "winter"],
+    "vibes": [
+      "nature",
+      "adventure",
+      "hidden",
+      "scenic"
+    ],
+    "best_seasons": [
+      "summer",
+      "fall"
+    ],
+    "avoid_seasons": [
+      "spring",
+      "winter"
+    ],
     "style_scores": {
       "chill": 1,
       "outdoors": 3,
@@ -1163,11 +1551,17 @@
     "food_spots": [
       {
         "name": "Local town dining",
-        "tags": ["small town", "simple", "functional"],
+        "tags": [
+          "small town",
+          "simple",
+          "functional"
+        ],
         "link": "https://www.google.com/maps/search/?api=1&query=Grande+Cache+restaurants",
         "description": "Food is mostly local and straightforward, which fits the hidden-gem feel."
       }
-    ]
+    ],
+    "image_url_light": "/destinations/theme/grande_cache_ab-light.webp",
+    "image_url_dark": "/destinations/theme/grande_cache_ab-dark.webp"
   },
   {
     "id": "cold_lake_ab",
@@ -1176,12 +1570,28 @@
     "home_base_city": "Cold Lake",
     "is_staycation": false,
     "image_url": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Cold%20Lake%20featuring%20Kinosoo%20Beach.jpg",
-    "drive_time_hours_from": { "edmonton": 3.0, "calgary": 6.0 },
-    "distance_km_from": { "edmonton": 300, "calgary": 590 },
+    "drive_time_hours_from": {
+      "edmonton": 3,
+      "calgary": 6
+    },
+    "distance_km_from": {
+      "edmonton": 300,
+      "calgary": 590
+    },
     "cost_level": "low_mid",
-    "vibes": ["lakes", "nature", "relax", "hidden"],
-    "best_seasons": ["summer", "fall"],
-    "avoid_seasons": ["spring"],
+    "vibes": [
+      "lakes",
+      "nature",
+      "relax",
+      "hidden"
+    ],
+    "best_seasons": [
+      "summer",
+      "fall"
+    ],
+    "avoid_seasons": [
+      "spring"
+    ],
     "style_scores": {
       "chill": 2,
       "outdoors": 2,
@@ -1227,11 +1637,17 @@
     "food_spots": [
       {
         "name": "Marina and town casual dining",
-        "tags": ["lake town", "casual", "simple"],
+        "tags": [
+          "lake town",
+          "casual",
+          "simple"
+        ],
         "link": "https://www.google.com/maps/search/?api=1&query=Cold+Lake+restaurants",
         "description": "Mostly practical, low-friction spots that work well for a short lake weekend."
       }
-    ]
+    ],
+    "image_url_light": "/destinations/theme/cold_lake_ab-light.webp",
+    "image_url_dark": "/destinations/theme/cold_lake_ab-dark.webp"
   },
   {
     "id": "peace_river_ab",
@@ -1240,12 +1656,29 @@
     "home_base_city": "Peace River",
     "is_staycation": false,
     "image_url": "https://commons.wikimedia.org/wiki/Special:Redirect/file/The%20Peace%20River%20in%20Peace%20River.jpg",
-    "drive_time_hours_from": { "edmonton": 5.5, "calgary": 8.5 },
-    "distance_km_from": { "edmonton": 485, "calgary": 785 },
+    "drive_time_hours_from": {
+      "edmonton": 5.5,
+      "calgary": 8.5
+    },
+    "distance_km_from": {
+      "edmonton": 485,
+      "calgary": 785
+    },
     "cost_level": "low_mid",
-    "vibes": ["scenic", "nature", "hidden", "culture"],
-    "best_seasons": ["summer", "fall"],
-    "avoid_seasons": ["spring", "winter"],
+    "vibes": [
+      "scenic",
+      "nature",
+      "hidden",
+      "culture"
+    ],
+    "best_seasons": [
+      "summer",
+      "fall"
+    ],
+    "avoid_seasons": [
+      "spring",
+      "winter"
+    ],
     "style_scores": {
       "chill": 1,
       "outdoors": 2,
@@ -1291,11 +1724,17 @@
     "food_spots": [
       {
         "name": "Downtown local dining",
-        "tags": ["local", "casual", "small town"],
+        "tags": [
+          "local",
+          "casual",
+          "small town"
+        ],
         "link": "https://www.google.com/maps/search/?api=1&query=Peace+River+restaurants",
         "description": "Mostly local spots that support the area's under-the-radar feel."
       }
-    ]
+    ],
+    "image_url_light": "/destinations/theme/peace_river_ab-light.webp",
+    "image_url_dark": "/destinations/theme/peace_river_ab-dark.webp"
   },
   {
     "id": "writing_on_stone_ab",
@@ -1304,12 +1743,29 @@
     "home_base_city": "Milk River (area)",
     "is_staycation": false,
     "image_url": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Writing-on-Stone%20Provincial%20Park%20%286022736800%29.jpg",
-    "drive_time_hours_from": { "edmonton": 6.0, "calgary": 3.5 },
-    "distance_km_from": { "edmonton": 590, "calgary": 290 },
+    "drive_time_hours_from": {
+      "edmonton": 6,
+      "calgary": 3.5
+    },
+    "distance_km_from": {
+      "edmonton": 590,
+      "calgary": 290
+    },
     "cost_level": "low_mid",
-    "vibes": ["scenic", "culture", "adventure", "hidden"],
-    "best_seasons": ["spring", "summer", "fall"],
-    "avoid_seasons": ["winter"],
+    "vibes": [
+      "scenic",
+      "culture",
+      "adventure",
+      "hidden"
+    ],
+    "best_seasons": [
+      "spring",
+      "summer",
+      "fall"
+    ],
+    "avoid_seasons": [
+      "winter"
+    ],
     "style_scores": {
       "chill": 1,
       "outdoors": 2,
@@ -1355,11 +1811,17 @@
     "food_spots": [
       {
         "name": "Milk River casual stops",
-        "tags": ["road trip", "casual", "simple"],
+        "tags": [
+          "road trip",
+          "casual",
+          "simple"
+        ],
         "link": "https://www.google.com/maps/search/?api=1&query=Milk+River+restaurants",
         "description": "Food is limited and functional, which matches the scenery-first trip style."
       }
-    ]
+    ],
+    "image_url_light": "/destinations/theme/writing_on_stone_ab-light.webp",
+    "image_url_dark": "/destinations/theme/writing_on_stone_ab-dark.webp"
   },
   {
     "id": "pincher_creek_ab",
@@ -1367,13 +1829,30 @@
     "region": "Alberta",
     "home_base_city": "Pincher Creek",
     "is_staycation": false,
-    "image_url": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Pincher%20Creek%20Alberta%20Panorama%20looking%20south%20from%20AB3.jpg",
-    "drive_time_hours_from": { "edmonton": 5.0, "calgary": 2.5 },
-    "distance_km_from": { "edmonton": 500, "calgary": 215 },
+    "image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Lundbreck%20Falls%20Alberta%20Canada%20%2834517228624%29.jpg",
+    "drive_time_hours_from": {
+      "edmonton": 5,
+      "calgary": 2.5
+    },
+    "distance_km_from": {
+      "edmonton": 500,
+      "calgary": 215
+    },
     "cost_level": "low_mid",
-    "vibes": ["nature", "scenic", "adventure", "hidden"],
-    "best_seasons": ["spring", "summer", "fall"],
-    "avoid_seasons": ["winter"],
+    "vibes": [
+      "nature",
+      "scenic",
+      "adventure",
+      "hidden"
+    ],
+    "best_seasons": [
+      "spring",
+      "summer",
+      "fall"
+    ],
+    "avoid_seasons": [
+      "winter"
+    ],
     "style_scores": {
       "chill": 1,
       "outdoors": 2,
@@ -1419,11 +1898,17 @@
     "food_spots": [
       {
         "name": "Town casual dining",
-        "tags": ["small town", "casual", "road trip"],
+        "tags": [
+          "small town",
+          "casual",
+          "road trip"
+        ],
         "link": "https://www.google.com/maps/search/?api=1&query=Pincher+Creek+restaurants",
         "description": "Straightforward local meal stops that fit a scenery-first weekend."
       }
-    ]
+    ],
+    "image_url_light": "/destinations/theme/pincher_creek_ab-light.webp",
+    "image_url_dark": "/destinations/theme/pincher_creek_ab-dark.webp"
   },
   {
     "id": "crowsnest_pass_ab",
@@ -1431,13 +1916,31 @@
     "region": "Alberta",
     "home_base_city": "Blairmore / Coleman",
     "is_staycation": false,
-    "image_url": "https://upload.wikimedia.org/wikipedia/commons/d/d3/Crowsnest_Mountain_-_August_2011.JPG",
-    "drive_time_hours_from": { "edmonton": 4.75, "calgary": 2.5 },
-    "distance_km_from": { "edmonton": 455, "calgary": 220 },
+    "image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/2025-06-04-184701%20CAN%20Alberta%20International%20Border%20Region%20%28Cardston%29%201364.8.jpg",
+    "drive_time_hours_from": {
+      "edmonton": 4.75,
+      "calgary": 2.5
+    },
+    "distance_km_from": {
+      "edmonton": 455,
+      "calgary": 220
+    },
     "cost_level": "low",
-    "vibes": ["nature", "adventure", "scenic", "food", "hidden"],
-    "best_seasons": ["spring", "summer", "fall"],
-    "avoid_seasons": ["winter"],
+    "vibes": [
+      "nature",
+      "adventure",
+      "scenic",
+      "food",
+      "hidden"
+    ],
+    "best_seasons": [
+      "spring",
+      "summer",
+      "fall"
+    ],
+    "avoid_seasons": [
+      "winter"
+    ],
     "style_scores": {
       "chill": 1,
       "outdoors": 3,
@@ -1483,16 +1986,28 @@
     "food_spots": [
       {
         "name": "Blairmore cafes and bakeries",
-        "tags": ["cafe", "bakery", "vegetarian-friendly", "coffee"],
+        "tags": [
+          "cafe",
+          "bakery",
+          "vegetarian-friendly",
+          "coffee"
+        ],
         "link": "https://www.google.com/maps/search/?api=1&query=Blairmore+cafe",
         "description": "Best breakfast and recovery-food cluster if part of the group needs vegetarian-friendly options."
       },
       {
         "name": "Crowsnest casual dinner spots",
-        "tags": ["restaurant", "mixed group", "shared meals", "mountain town"],
+        "tags": [
+          "restaurant",
+          "mixed group",
+          "shared meals",
+          "mountain town"
+        ],
         "link": "https://www.google.com/maps/search/?api=1&query=Crowsnest+Pass+restaurants",
         "description": "Straightforward dinner options that still work for a vegetarian plus non-vegetarian group."
       }
-    ]
+    ],
+    "image_url_light": "/destinations/theme/crowsnest_pass_ab-light.webp",
+    "image_url_dark": "/destinations/theme/crowsnest_pass_ab-dark.webp"
   }
 ]

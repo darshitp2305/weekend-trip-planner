@@ -7,7 +7,10 @@ import Image from "next/image";
 import { useState } from "react";
 import { formatDisplayTag, formatDisplayText } from "../lib/displayText";
 import { getTripMomentumSummary, getTripUrgencyLevel } from "../lib/tripMomentum";
-import { getFallbackImageUrl, normalizeTripImageUrl } from "../lib/tripImages";
+import {
+  getFallbackImageUrl,
+  normalizeTripImageSet,
+} from "../lib/tripImages";
 import {
   HotelOption,
   LiveDataSummary,
@@ -37,6 +40,8 @@ type TripHeaderProps = {
     destination?: string;
     province?: string;
     imageUrl?: string;
+    imageUrlLight?: string;
+    imageUrlDark?: string;
     summary?: string;
     driveHours?: number;
     driveHoursFromStart?: number;
@@ -92,7 +97,7 @@ function Badge({
       ? "border border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-200"
       : tone === "violet"
         ? "border border-[#b2f6df] bg-[#effff8] text-[#048f69] dark:border-[#06d8a0]/30 dark:bg-[#06d8a0]/10 dark:text-[#b2f6df]"
-        : "border border-slate-200 bg-slate-100 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200";
+        : "border border-slate-200 bg-[#fbf7ef]/72 text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200";
 
   return (
     <span
@@ -111,7 +116,7 @@ function Stat({
   value: string;
 }) {
   return (
-    <div className="rounded-[1.1rem] border border-slate-200 bg-slate-50 px-3.5 py-3 dark:border-slate-700 dark:bg-slate-800/80">
+    <div className="rounded-[1.1rem] border border-slate-200 bg-[linear-gradient(180deg,rgba(249,245,238,0.72),rgba(240,244,248,0.72))] px-3.5 py-3 dark:border-slate-700 dark:bg-[linear-gradient(180deg,rgba(24,34,49,0.9),rgba(14,21,34,0.88))]">
       <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
         {label}
       </div>
@@ -257,6 +262,8 @@ export default function TripHeader({ trip, shareMode = false }: TripHeaderProps)
       : undefined,
     province: trip.province,
     imageUrl: trip.imageUrl,
+    imageUrlLight: trip.imageUrlLight,
+    imageUrlDark: trip.imageUrlDark,
     confidence: trip.confidence,
     styleMatchStrength: trip.styleMatchStrength,
     score: trip.score,
@@ -313,12 +320,29 @@ export default function TripHeader({ trip, shareMode = false }: TripHeaderProps)
     homeBaseCity: trip.homeBaseCity,
     name: trip.name,
   });
-  const [failedImageKey, setFailedImageKey] = useState<string | null>(null);
-  const imageKey = `${trip.imageUrl ?? ""}:${title}`;
-  const primaryHeroImageUrl = normalizeTripImageUrl(trip.imageUrl, title);
-  const heroImageUrl = failedImageKey === imageKey
+  const [failedImageKeys, setFailedImageKeys] = useState<{
+    light: string | null;
+    dark: string | null;
+  }>({
+    light: null,
+    dark: null,
+  });
+  const imageSet = normalizeTripImageSet(
+    {
+      imageUrl: trip.imageUrl,
+      imageUrlLight: trip.imageUrlLight ?? trip.imageUrl,
+      imageUrlDark: trip.imageUrlDark ?? trip.imageUrlLight ?? trip.imageUrl,
+    },
+    title
+  );
+  const lightImageKey = `${trip.imageUrlLight ?? trip.imageUrl ?? ""}:${title}:light`;
+  const darkImageKey = `${trip.imageUrlDark ?? trip.imageUrlLight ?? trip.imageUrl ?? ""}:${title}:dark`;
+  const lightHeroImageUrl = failedImageKeys.light === lightImageKey
     ? getFallbackImageUrl(title)
-    : primaryHeroImageUrl;
+    : imageSet.lightUrl;
+  const darkHeroImageUrl = failedImageKeys.dark === darkImageKey
+    ? getFallbackImageUrl(title)
+    : imageSet.darkUrl;
 
   const finalizedDateLabel = formatFinalizedAt(trip.finalizedAt);
   const tripDecisionLabel = decisionLabel(trip.decisionStatus);
@@ -328,27 +352,47 @@ export default function TripHeader({ trip, shareMode = false }: TripHeaderProps)
       className={
         shareMode
           ? "overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900"
-          : "overflow-hidden rounded-[1.75rem] border border-white/10 bg-[linear-gradient(180deg,rgba(14,22,37,0.96),rgba(9,15,28,0.94))] shadow-[0_24px_70px_rgba(2,6,23,0.32)]"
+          : "overflow-hidden rounded-[1.75rem] border border-slate-200/80 bg-[linear-gradient(180deg,rgba(247,244,238,0.78),rgba(238,243,248,0.84))] shadow-[0_24px_70px_rgba(148,163,184,0.12)] backdrop-blur-sm dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(14,22,37,0.96),rgba(9,15,28,0.94))] dark:shadow-[0_24px_70px_rgba(2,6,23,0.32)]"
       }
     >
-      {heroImageUrl ? (
+      {lightHeroImageUrl || darkHeroImageUrl ? (
         <div className="aspect-[16/4.5] w-full overflow-hidden bg-slate-100 dark:bg-slate-800">
           <Image
-            key={heroImageUrl}
-            src={heroImageUrl}
+            key={`light:${lightHeroImageUrl}`}
+            src={lightHeroImageUrl}
             alt={title}
             width={1600}
             height={450}
             unoptimized
-            className="h-full w-full object-cover"
-            onError={() => setFailedImageKey(imageKey)}
+            className="h-full w-full object-cover dark:hidden"
+            onError={() =>
+              setFailedImageKeys((current) => ({
+                ...current,
+                light: lightImageKey,
+              }))
+            }
+          />
+          <Image
+            key={`dark:${darkHeroImageUrl}`}
+            src={darkHeroImageUrl}
+            alt={title}
+            width={1600}
+            height={450}
+            unoptimized
+            className="hidden h-full w-full object-cover dark:block"
+            onError={() =>
+              setFailedImageKeys((current) => ({
+                ...current,
+                dark: darkImageKey,
+              }))
+            }
           />
         </div>
       ) : null}
 
-      <div className="p-5 sm:p-6">
+        <div className="p-5 sm:p-6">
         {!shareMode ? (
-          <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-200/75">
+          <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#0f766e] dark:text-cyan-200/75">
             Alberta trip planner
           </div>
         ) : null}

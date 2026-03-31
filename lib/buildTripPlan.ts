@@ -2800,6 +2800,8 @@ export function buildTripPlan(
     region: trip.province,
     summary: trip.summary,
     imageUrl: trip.imageUrl,
+    imageUrlLight: trip.imageUrlLight,
+    imageUrlDark: trip.imageUrlDark,
 
     driveTimeText: preview.driveTimeText,
     score: trip.score,

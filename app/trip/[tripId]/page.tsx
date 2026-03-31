@@ -1281,8 +1281,8 @@ export default function TripPage() {
 
   if (loading) {
     return (
-      <main className="dark min-h-screen bg-[radial-gradient(circle_at_top,_rgba(21,94,117,0.22),_transparent_28%),linear-gradient(180deg,#06101d_0%,#0b1424_55%,#101b2d_100%)] px-6 py-10 text-slate-100">
-        <div className="mx-auto max-w-7xl rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(12,18,30,0.98),rgba(10,16,27,0.94))] p-8 shadow-[0_28px_80px_rgba(0,0,0,0.32)]">
+      <main className="min-h-screen bg-[radial-gradient(circle_at_top,rgba(125,211,252,0.14),transparent_34%),linear-gradient(180deg,#edf2f7_0%,#e4ebf3_52%,#dbe3ee_100%)] px-6 py-10 text-slate-900 dark:bg-[radial-gradient(circle_at_top,_rgba(21,94,117,0.22),_transparent_28%),linear-gradient(180deg,#06101d_0%,#0b1424_55%,#101b2d_100%)] dark:text-slate-100">
+        <div className="mx-auto max-w-7xl rounded-[2rem] border border-slate-200/80 bg-[linear-gradient(180deg,rgba(247,244,238,0.78),rgba(238,243,248,0.84))] p-8 shadow-[0_28px_80px_rgba(148,163,184,0.12)] backdrop-blur-sm dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(12,18,30,0.98),rgba(10,16,27,0.94))] dark:shadow-[0_28px_80px_rgba(0,0,0,0.32)]">
           Loading trip...
         </div>
       </main>
@@ -1291,15 +1291,15 @@ export default function TripPage() {
 
   if (!trip) {
     return (
-      <main className="dark min-h-screen bg-[radial-gradient(circle_at_top,_rgba(21,94,117,0.22),_transparent_28%),linear-gradient(180deg,#06101d_0%,#0b1424_55%,#101b2d_100%)] px-6 py-10 text-slate-100">
-        <div className="mx-auto max-w-3xl rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(12,18,30,0.98),rgba(10,16,27,0.94))] p-8 shadow-[0_28px_80px_rgba(0,0,0,0.32)]">
-          <h1 className="text-2xl font-semibold text-white">Trip not found</h1>
-          <p className="mt-3 text-slate-300">
+      <main className="min-h-screen bg-[radial-gradient(circle_at_top,rgba(125,211,252,0.14),transparent_34%),linear-gradient(180deg,#edf2f7_0%,#e4ebf3_52%,#dbe3ee_100%)] px-6 py-10 text-slate-900 dark:bg-[radial-gradient(circle_at_top,_rgba(21,94,117,0.22),_transparent_28%),linear-gradient(180deg,#06101d_0%,#0b1424_55%,#101b2d_100%)] dark:text-slate-100">
+        <div className="mx-auto max-w-3xl rounded-[2rem] border border-slate-200/80 bg-[linear-gradient(180deg,rgba(247,244,238,0.78),rgba(238,243,248,0.84))] p-8 shadow-[0_28px_80px_rgba(148,163,184,0.12)] backdrop-blur-sm dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(12,18,30,0.98),rgba(10,16,27,0.94))] dark:shadow-[0_28px_80px_rgba(0,0,0,0.32)]">
+          <h1 className="text-2xl font-semibold text-slate-950 dark:text-white">Trip not found</h1>
+          <p className="mt-3 text-slate-600 dark:text-slate-300">
             This trip could not be found locally or in the shared trip database.
           </p>
           <button
             onClick={() => router.push("/")}
-            className="mt-6 rounded-2xl bg-white px-5 py-3 text-slate-950 transition hover:bg-[#f5efe5]"
+            className="mt-6 rounded-2xl bg-slate-950 px-5 py-3 text-white transition hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-[#f5efe5]"
           >
             Back to planner
           </button>
@@ -1321,8 +1321,8 @@ export default function TripPage() {
     <main
       className={`min-h-screen px-4 py-6 sm:px-6 ${
         isShareView
-          ? "bg-[#f6f8fb] text-slate-900 dark:bg-slate-950 dark:text-slate-100"
-          : "dark bg-[radial-gradient(circle_at_top,_rgba(21,94,117,0.22),_transparent_28%),linear-gradient(180deg,#06101d_0%,#0b1424_55%,#101b2d_100%)] text-slate-100"
+          ? "bg-[#edf2f7] text-slate-900 dark:bg-slate-950 dark:text-slate-100"
+          : "bg-[radial-gradient(circle_at_top,rgba(125,211,252,0.14),transparent_34%),linear-gradient(180deg,#edf2f7_0%,#e4ebf3_52%,#dbe3ee_100%)] text-slate-900 dark:bg-[radial-gradient(circle_at_top,_rgba(21,94,117,0.22),_transparent_28%),linear-gradient(180deg,#06101d_0%,#0b1424_55%,#101b2d_100%)] dark:text-slate-100"
       }`}
     >
       <div className={`mx-auto space-y-5 ${isShareView ? "max-w-6xl" : "max-w-[1400px]"}`}>
@@ -1331,16 +1331,16 @@ export default function TripPage() {
             <button
               type="button"
               onClick={handleBackButtonClick}
-              className="inline-flex h-11 items-center gap-2 rounded-full border border-white/12 bg-[linear-gradient(180deg,rgba(13,20,33,0.82),rgba(8,14,24,0.92))] px-4 text-sm font-semibold text-slate-100 shadow-[0_14px_40px_rgba(0,0,0,0.22)] transition hover:border-white/18 hover:bg-[linear-gradient(180deg,rgba(17,26,41,0.9),rgba(10,16,28,0.98))]"
+              className="inline-flex h-11 items-center gap-2 rounded-full border border-slate-200/80 bg-white/82 px-4 text-sm font-semibold text-slate-800 shadow-[0_14px_40px_rgba(148,163,184,0.18)] transition hover:border-slate-300 hover:bg-white dark:border-white/12 dark:bg-[linear-gradient(180deg,rgba(13,20,33,0.82),rgba(8,14,24,0.92))] dark:text-slate-100 dark:shadow-[0_14px_40px_rgba(0,0,0,0.22)] dark:hover:border-white/18 dark:hover:bg-[linear-gradient(180deg,rgba(17,26,41,0.9),rgba(10,16,28,0.98))]"
             >
               <span aria-hidden="true">&larr;</span>
               <span>Back</span>
             </button>
-            <div className="inline-flex rounded-full border border-white/12 bg-[linear-gradient(180deg,rgba(13,20,33,0.82),rgba(8,14,24,0.92))] px-4 py-2.5 shadow-[0_14px_40px_rgba(0,0,0,0.22)] backdrop-blur-xl">
+            <div className="inline-flex rounded-full border border-slate-200/80 bg-[#fbf7ef]/66 px-4 py-2.5 shadow-[0_14px_40px_rgba(148,163,184,0.14)] backdrop-blur-xl dark:border-white/12 dark:bg-[linear-gradient(180deg,rgba(13,20,33,0.82),rgba(8,14,24,0.92))] dark:shadow-[0_14px_40px_rgba(0,0,0,0.22)]">
               <BrandLogo
                 variant="horizontal"
                 href="/"
-                tone="dark"
+                tone="auto"
                 className="h-8 w-auto sm:h-9"
               />
             </div>
@@ -1426,85 +1426,85 @@ export default function TripPage() {
         <div className={isItineraryWorkspace ? "space-y-5" : "grid gap-5 xl:grid-cols-[320px_minmax(0,1fr)] xl:items-start"}>
           {!isItineraryWorkspace ? (
           <aside className="space-y-5 xl:sticky xl:top-5">
-            <section className="overflow-hidden rounded-[1.75rem] border border-white/10 bg-[linear-gradient(180deg,rgba(15,23,42,0.96),rgba(9,15,28,0.92))] shadow-[0_24px_70px_rgba(2,6,23,0.35)]">
-              <div className="border-b border-white/10 px-5 py-4">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-cyan-200/75">
+            <section className="overflow-hidden rounded-[1.75rem] border border-slate-200/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(243,247,251,0.98))] shadow-[0_24px_70px_rgba(148,163,184,0.16)] dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(15,23,42,0.96),rgba(9,15,28,0.92))] dark:shadow-[0_24px_70px_rgba(2,6,23,0.35)]">
+              <div className="border-b border-slate-200/80 px-5 py-4 dark:border-white/10">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#0f766e] dark:text-cyan-200/75">
                   Builder workspace
                 </div>
-                <h2 className="mt-1 text-[1.45rem] font-semibold tracking-tight text-white">
+                <h2 className="mt-1 text-[1.45rem] font-semibold tracking-tight text-slate-950 dark:text-white">
                   Plan with fewer moving parts
                 </h2>
-                <p className="mt-2 text-sm leading-6 text-slate-300">
+                <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
                   Keep the trip brief, budget rail, and current stay visible while you work one planning surface at a time.
                 </p>
               </div>
 
               <div className="space-y-5 p-5">
                 <div className="grid grid-cols-2 gap-2">
-                  <div className="rounded-[1.1rem] border border-white/10 bg-white/5 p-3">
-                    <div className="text-[10px] font-medium uppercase tracking-[0.12em] text-slate-400">
+                  <div className="rounded-[1.1rem] border border-slate-200 bg-white/85 p-3 dark:border-white/10 dark:bg-white/5">
+                    <div className="text-[10px] font-medium uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
                       Trip length
                     </div>
-                    <div className="mt-1 text-base font-semibold text-white">
+                    <div className="mt-1 text-base font-semibold text-slate-950 dark:text-white">
                       {deriveTripLengthDays(trip)} day{deriveTripLengthDays(trip) === 1 ? "" : "s"}
                     </div>
                   </div>
 
-                  <div className="rounded-[1.1rem] border border-white/10 bg-white/5 p-3">
-                    <div className="text-[10px] font-medium uppercase tracking-[0.12em] text-slate-400">
+                  <div className="rounded-[1.1rem] border border-slate-200 bg-white/85 p-3 dark:border-white/10 dark:bg-white/5">
+                    <div className="text-[10px] font-medium uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
                       Travel window
                     </div>
-                    <div className="mt-1 text-base font-semibold text-white">
+                    <div className="mt-1 text-base font-semibold text-slate-950 dark:text-white">
                       {tripDateRange ?? "Dates flexible"}
                     </div>
                   </div>
 
-                  <div className="rounded-[1.1rem] border border-white/10 bg-white/5 p-3">
-                    <div className="text-[10px] font-medium uppercase tracking-[0.12em] text-slate-400">
+                  <div className="rounded-[1.1rem] border border-slate-200 bg-white/85 p-3 dark:border-white/10 dark:bg-white/5">
+                    <div className="text-[10px] font-medium uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
                       Selected stay
                     </div>
-                    <div className="mt-1 text-base font-semibold text-white">
+                    <div className="mt-1 text-base font-semibold text-slate-950 dark:text-white">
                       {selectedHotel?.name ?? trip.homeBaseCity ?? trip.destinationName}
                     </div>
                   </div>
 
                   <div className="rounded-[1.1rem] border border-emerald-400/20 bg-emerald-400/10 p-3">
-                    <div className="text-[10px] font-medium uppercase tracking-[0.12em] text-emerald-200">
+                    <div className="text-[10px] font-medium uppercase tracking-[0.12em] text-emerald-700 dark:text-emerald-200">
                       Budget fit
                     </div>
-                    <div className="mt-1 text-base font-semibold text-white">
+                    <div className="mt-1 text-base font-semibold text-slate-950 dark:text-white">
                       {budgetStatus?.label ?? "Estimated spend"}
                     </div>
                   </div>
                 </div>
 
                 {trip.tripPrompt ? (
-                  <div className="rounded-[1.25rem] border border-white/10 bg-slate-950/40 p-4">
-                    <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                  <div className="rounded-[1.25rem] border border-slate-200 bg-white/78 p-4 dark:border-white/10 dark:bg-slate-950/40">
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
                       Original brief
                     </div>
-                    <p className="mt-2 text-sm leading-6 text-slate-300">
+                    <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
                       &quot;{trip.tripPrompt}&quot;
                     </p>
                   </div>
                 ) : null}
 
                 {constraintFitSummary ? (
-                  <div className="rounded-[1.25rem] border border-cyan-400/20 bg-cyan-400/10 p-4">
-                    <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-cyan-200">
+                  <div className="rounded-[1.25rem] border border-cyan-200 bg-cyan-50 p-4 dark:border-cyan-400/20 dark:bg-cyan-400/10">
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-cyan-700 dark:text-cyan-200">
                       Constraint check
                     </div>
-                    <p className="mt-2 text-sm leading-6 text-slate-200">
+                    <p className="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-200">
                       {constraintFitSummary}
                     </p>
                   </div>
                 ) : null}
 
-                <div className="rounded-[1.25rem] border border-white/10 bg-white/5 p-4">
-                  <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                <div className="rounded-[1.25rem] border border-slate-200 bg-white/78 p-4 dark:border-white/10 dark:bg-white/5">
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
                     Sync state
                   </div>
-                  <p className="mt-2 text-sm leading-6 text-slate-300">
+                  <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
                     {syncState.message}
                   </p>
                   {syncState.lastSavedAt ? (
@@ -1516,59 +1516,59 @@ export default function TripPage() {
               </div>
             </section>
 
-            <section className="overflow-hidden rounded-[1.75rem] border border-white/10 bg-[linear-gradient(180deg,rgba(15,23,42,0.92),rgba(7,12,23,0.92))] shadow-[0_24px_70px_rgba(2,6,23,0.28)]">
-              <div className="border-b border-white/10 px-5 py-4">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-200/75">
+            <section className="overflow-hidden rounded-[1.75rem] border border-slate-200/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.92),rgba(239,245,250,0.96))] shadow-[0_24px_70px_rgba(148,163,184,0.16)] dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(15,23,42,0.92),rgba(7,12,23,0.92))] dark:shadow-[0_24px_70px_rgba(2,6,23,0.28)]">
+              <div className="border-b border-slate-200/80 px-5 py-4 dark:border-white/10">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700 dark:text-emerald-200/75">
                   Budget rail
                 </div>
-                <h2 className="mt-1 text-[1.45rem] font-semibold tracking-tight text-white">
+                <h2 className="mt-1 text-[1.45rem] font-semibold tracking-tight text-slate-950 dark:text-white">
                   Keep spend in view
                 </h2>
               </div>
 
               <div className="space-y-4 p-5">
                 <div className="grid grid-cols-2 gap-2">
-                  <div className="rounded-[1rem] border border-white/10 bg-white/5 p-3">
-                    <div className="text-[10px] font-medium uppercase tracking-[0.1em] text-slate-400">
+                  <div className="rounded-[1rem] border border-slate-200 bg-white/85 p-3 dark:border-white/10 dark:bg-white/5">
+                    <div className="text-[10px] font-medium uppercase tracking-[0.1em] text-slate-500 dark:text-slate-400">
                       Travelers
                     </div>
-                    <div className="mt-1 text-base font-semibold text-white">
+                    <div className="mt-1 text-base font-semibold text-slate-950 dark:text-white">
                       {travelerCount}
                     </div>
                   </div>
 
-                  <div className="rounded-[1rem] border border-white/10 bg-white/5 p-3">
-                    <div className="text-[10px] font-medium uppercase tracking-[0.1em] text-slate-400">
+                  <div className="rounded-[1rem] border border-slate-200 bg-white/85 p-3 dark:border-white/10 dark:bg-white/5">
+                    <div className="text-[10px] font-medium uppercase tracking-[0.1em] text-slate-500 dark:text-slate-400">
                       Budget each
                     </div>
-                    <div className="mt-1 text-base font-semibold text-white">
+                    <div className="mt-1 text-base font-semibold text-slate-950 dark:text-white">
                       {formatMoney(budgetPerTraveler)}
                     </div>
                   </div>
 
-                  <div className="rounded-[1rem] border border-white/10 bg-white/5 p-3">
-                    <div className="text-[10px] font-medium uppercase tracking-[0.1em] text-slate-400">
+                  <div className="rounded-[1rem] border border-slate-200 bg-white/85 p-3 dark:border-white/10 dark:bg-white/5">
+                    <div className="text-[10px] font-medium uppercase tracking-[0.1em] text-slate-500 dark:text-slate-400">
                       Target total
                     </div>
-                    <div className="mt-1 text-base font-semibold text-white">
+                    <div className="mt-1 text-base font-semibold text-slate-950 dark:text-white">
                       {formatMoney(targetTotalBudget)}
                     </div>
                   </div>
 
                   <div className="rounded-[1rem] border border-emerald-400/20 bg-emerald-400/10 p-3">
-                    <div className="text-[10px] font-medium uppercase tracking-[0.1em] text-emerald-200">
+                    <div className="text-[10px] font-medium uppercase tracking-[0.1em] text-emerald-700 dark:text-emerald-200">
                       {stayPriceIsVerified ? "Selected each" : "Estimated each"}
                     </div>
-                    <div className="mt-1 text-base font-semibold text-white">
+                    <div className="mt-1 text-base font-semibold text-slate-950 dark:text-white">
                       {formatMoney(estimatedBudgetPerTraveler)}
                     </div>
                   </div>
 
                   <div className="col-span-2 rounded-[1rem] border border-emerald-400/20 bg-emerald-400/10 p-3">
-                    <div className="text-[10px] font-medium uppercase tracking-[0.1em] text-emerald-200">
+                    <div className="text-[10px] font-medium uppercase tracking-[0.1em] text-emerald-700 dark:text-emerald-200">
                       {stayPriceIsVerified ? "Selected total" : "Estimated total"}
                     </div>
-                    <div className="mt-1 text-lg font-semibold text-white">
+                    <div className="mt-1 text-lg font-semibold text-slate-950 dark:text-white">
                       {formatMoney(estimatedTotalCost)}
                     </div>
                   </div>
@@ -1586,50 +1586,50 @@ export default function TripPage() {
           {itineraryDays.length > 0 ? (
             <div className="space-y-5">
               {isItineraryWorkspace ? (
-                <section className="rounded-[1.75rem] border border-white/10 bg-[linear-gradient(180deg,rgba(15,23,42,0.94),rgba(9,15,28,0.9))] p-5 shadow-[0_24px_70px_rgba(2,6,23,0.3)]">
+                <section className="rounded-[1.75rem] border border-slate-200/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(243,247,251,0.98))] p-5 shadow-[0_24px_70px_rgba(148,163,184,0.16)] dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(15,23,42,0.94),rgba(9,15,28,0.9))] dark:shadow-[0_24px_70px_rgba(2,6,23,0.3)]">
                   <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                     <div className="max-w-3xl">
-                      <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-cyan-200/75">
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#0f766e] dark:text-cyan-200/75">
                         Trip at a glance
                       </div>
-                      <h2 className="mt-2 text-xl font-semibold tracking-tight text-white">
+                      <h2 className="mt-2 text-xl font-semibold tracking-tight text-slate-950 dark:text-white">
                         One clean itinerary view
                       </h2>
-                      <p className="mt-2 text-sm leading-6 text-slate-300">
+                      <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
                         Focus on the selected plan first. Open a day when you want to edit it, then use the map beside it to sanity-check the route.
                       </p>
                     </div>
 
                     <div className="grid gap-2 sm:grid-cols-2 xl:min-w-[360px]">
-                      <div className="rounded-[1rem] border border-white/10 bg-white/5 p-3">
-                        <div className="text-[10px] font-medium uppercase tracking-[0.12em] text-slate-400">
+                      <div className="rounded-[1rem] border border-slate-200 bg-white/85 p-3 dark:border-white/10 dark:bg-white/5">
+                        <div className="text-[10px] font-medium uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
                           Trip length
                         </div>
-                        <div className="mt-1 text-base font-semibold text-white">
+                        <div className="mt-1 text-base font-semibold text-slate-950 dark:text-white">
                           {deriveTripLengthDays(trip)} day{deriveTripLengthDays(trip) === 1 ? "" : "s"}
                         </div>
                       </div>
-                      <div className="rounded-[1rem] border border-white/10 bg-white/5 p-3">
-                        <div className="text-[10px] font-medium uppercase tracking-[0.12em] text-slate-400">
+                      <div className="rounded-[1rem] border border-slate-200 bg-white/85 p-3 dark:border-white/10 dark:bg-white/5">
+                        <div className="text-[10px] font-medium uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
                           Travel window
                         </div>
-                        <div className="mt-1 text-base font-semibold text-white">
+                        <div className="mt-1 text-base font-semibold text-slate-950 dark:text-white">
                           {tripDateRange ?? "Dates flexible"}
                         </div>
                       </div>
-                      <div className="rounded-[1rem] border border-white/10 bg-white/5 p-3">
-                        <div className="text-[10px] font-medium uppercase tracking-[0.12em] text-slate-400">
+                      <div className="rounded-[1rem] border border-slate-200 bg-white/85 p-3 dark:border-white/10 dark:bg-white/5">
+                        <div className="text-[10px] font-medium uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
                           Selected stay
                         </div>
-                        <div className="mt-1 text-base font-semibold text-white">
+                        <div className="mt-1 text-base font-semibold text-slate-950 dark:text-white">
                           {selectedHotel?.name ?? trip.homeBaseCity ?? trip.destinationName}
                         </div>
                       </div>
                       <div className="rounded-[1rem] border border-emerald-400/20 bg-emerald-400/10 p-3">
-                        <div className="text-[10px] font-medium uppercase tracking-[0.12em] text-emerald-200">
+                        <div className="text-[10px] font-medium uppercase tracking-[0.12em] text-emerald-700 dark:text-emerald-200">
                           Budget fit
                         </div>
-                        <div className="mt-1 text-base font-semibold text-white">
+                        <div className="mt-1 text-base font-semibold text-slate-950 dark:text-white">
                           {budgetStatus?.label ?? "Estimated spend"}
                         </div>
                       </div>
@@ -1637,20 +1637,20 @@ export default function TripPage() {
                   </div>
 
                   {trip.tripPrompt ? (
-                    <div className="mt-4 rounded-[1.15rem] border border-white/10 bg-slate-950/35 px-4 py-3 text-sm leading-6 text-slate-300">
+                    <div className="mt-4 rounded-[1.15rem] border border-slate-200 bg-white/78 px-4 py-3 text-sm leading-6 text-slate-600 dark:border-white/10 dark:bg-slate-950/35 dark:text-slate-300">
                       {trip.tripPrompt}
                     </div>
                   ) : null}
                 </section>
               ) : null}
 
-              <section className="sticky top-4 z-30 overflow-hidden rounded-[1.8rem] border border-white/10 bg-[linear-gradient(180deg,rgba(14,22,37,0.88),rgba(11,18,31,0.78))] px-5 py-4 shadow-[0_26px_80px_rgba(2,6,23,0.3)] backdrop-blur-2xl">
+              <section className="sticky top-4 z-30 overflow-hidden rounded-[1.8rem] border border-slate-200/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.88),rgba(245,249,252,0.82))] px-5 py-4 shadow-[0_26px_80px_rgba(148,163,184,0.18)] backdrop-blur-2xl dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(14,22,37,0.88),rgba(11,18,31,0.78))] dark:shadow-[0_26px_80px_rgba(2,6,23,0.3)]">
                 <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
                   <div className="min-w-0">
-                    <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-cyan-200/70">
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[#0f766e] dark:text-cyan-200/70">
                       Trip workspace
                     </div>
-                    <p className="mt-2 text-sm text-slate-400">
+                    <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
                       {activeWorkspaceMeta.description}
                     </p>
                   </div>
@@ -1667,8 +1667,8 @@ export default function TripPage() {
                             onClick={() => setActiveWorkspaceTab(tab.id)}
                             className={`inline-flex h-11 items-center rounded-full border px-4 text-sm font-medium transition ${
                               isActive
-                                ? "border-[#d9b57c]/45 bg-[#d9b57c]/16 text-[#fff4de] shadow-[0_0_0_1px_rgba(217,181,124,0.16)]"
-                                : "border-white/10 bg-white/5 text-slate-300 hover:border-white/18 hover:bg-white/8 hover:text-white"
+                                ? "border-[#d9b57c]/45 bg-[#fff6e7] text-[#8a5b18] shadow-[0_0_0_1px_rgba(217,181,124,0.16)] dark:bg-[#d9b57c]/16 dark:text-[#fff4de]"
+                                : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-950 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:border-white/18 dark:hover:bg-white/8 dark:hover:text-white"
                             }`}
                           >
                             {tab.label}
@@ -1728,14 +1728,14 @@ export default function TripPage() {
 
               {activeWorkspaceTab === "map" ? (
                 <div className="space-y-5">
-                  <section className="rounded-[1.75rem] border border-white/10 bg-[linear-gradient(180deg,rgba(15,23,42,0.96),rgba(9,15,28,0.92))] p-5 shadow-[0_24px_70px_rgba(2,6,23,0.35)]">
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-cyan-200/75">
+                  <section className="rounded-[1.75rem] border border-slate-200/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(243,247,251,0.98))] p-5 shadow-[0_24px_70px_rgba(148,163,184,0.16)] dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(15,23,42,0.96),rgba(9,15,28,0.92))] dark:shadow-[0_24px_70px_rgba(2,6,23,0.35)]">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#0f766e] dark:text-cyan-200/75">
                       Map workspace
                     </div>
-                    <h2 className="mt-1 text-xl font-semibold tracking-tight text-white">
+                    <h2 className="mt-1 text-xl font-semibold tracking-tight text-slate-950 dark:text-white">
                       Read the route before you edit the details
                     </h2>
-                    <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">
+                    <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600 dark:text-slate-300">
                       Modern planners keep the route close to the itinerary. Use this view to confirm whether the chosen stay and stop order still make sense before you keep editing.
                     </p>
                   </section>
@@ -1750,14 +1750,14 @@ export default function TripPage() {
 
               {activeWorkspaceTab === "booking" ? (
                 <div className="space-y-5">
-                  <section className="rounded-[1.75rem] border border-white/10 bg-[linear-gradient(180deg,rgba(15,23,42,0.96),rgba(9,15,28,0.92))] p-5 shadow-[0_24px_70px_rgba(2,6,23,0.35)]">
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-cyan-200/75">
+                  <section className="rounded-[1.75rem] border border-slate-200/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(243,247,251,0.98))] p-5 shadow-[0_24px_70px_rgba(148,163,184,0.16)] dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(15,23,42,0.96),rgba(9,15,28,0.92))] dark:shadow-[0_24px_70px_rgba(2,6,23,0.35)]">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#0f766e] dark:text-cyan-200/75">
                       Stay booking
                     </div>
-                    <h2 className="mt-1 text-xl font-semibold tracking-tight text-white">
+                    <h2 className="mt-1 text-xl font-semibold tracking-tight text-slate-950 dark:text-white">
                       Keep hotel decisions in their own lane
                     </h2>
-                    <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">
+                    <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600 dark:text-slate-300">
                       Instead of mixing booking controls into the itinerary, this view keeps the stay search separate so you can confirm the lodging without losing your place in the trip.
                     </p>
                   </section>
@@ -1773,14 +1773,14 @@ export default function TripPage() {
 
               {activeWorkspaceTab === "finalize" ? (
                 <div className="space-y-5">
-                  <section className="rounded-[1.75rem] border border-white/10 bg-[linear-gradient(180deg,rgba(15,23,42,0.96),rgba(9,15,28,0.92))] p-5 shadow-[0_24px_70px_rgba(2,6,23,0.35)]">
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-cyan-200/75">
+                  <section className="rounded-[1.75rem] border border-slate-200/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(243,247,251,0.98))] p-5 shadow-[0_24px_70px_rgba(148,163,184,0.16)] dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(15,23,42,0.96),rgba(9,15,28,0.92))] dark:shadow-[0_24px_70px_rgba(2,6,23,0.35)]">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#0f766e] dark:text-cyan-200/75">
                       Review and finalize
                     </div>
-                    <h2 className="mt-1 text-xl font-semibold tracking-tight text-white">
+                    <h2 className="mt-1 text-xl font-semibold tracking-tight text-slate-950 dark:text-white">
                       {showDraftBuilderMode ? "Lock the version you want people to react to" : "Review the locked version before sharing or booking"}
                     </h2>
-                    <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">
+                    <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600 dark:text-slate-300">
                       Keep the editing workflow separate from the commitment moment. When the route, stay, and budget feel coherent, finalize here instead of inside the itinerary itself.
                     </p>
                   </section>
@@ -1802,14 +1802,14 @@ export default function TripPage() {
 
               {activeWorkspaceTab === "coordination" ? (
                 <div className="space-y-5">
-                  <section className="rounded-[1.75rem] border border-white/10 bg-[linear-gradient(180deg,rgba(15,23,42,0.96),rgba(9,15,28,0.92))] p-5 shadow-[0_24px_70px_rgba(2,6,23,0.35)]">
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-cyan-200/75">
+                  <section className="rounded-[1.75rem] border border-slate-200/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(243,247,251,0.98))] p-5 shadow-[0_24px_70px_rgba(148,163,184,0.16)] dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(15,23,42,0.96),rgba(9,15,28,0.92))] dark:shadow-[0_24px_70px_rgba(2,6,23,0.35)]">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#0f766e] dark:text-cyan-200/75">
                       Share and operations
                     </div>
-                    <h2 className="mt-1 text-xl font-semibold tracking-tight text-white">
+                    <h2 className="mt-1 text-xl font-semibold tracking-tight text-slate-950 dark:text-white">
                       Keep exports, sharing, and logistics out of the editing lane
                     </h2>
-                    <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">
+                    <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600 dark:text-slate-300">
                       This is where collaboration and operational follow-through belong, instead of being stacked in the middle of the itinerary builder.
                     </p>
                   </section>
@@ -1828,14 +1828,14 @@ export default function TripPage() {
                       isOwner={isOwner}
                     />
                   ) : (
-                    <section className="rounded-[1.5rem] border border-white/10 bg-[linear-gradient(180deg,rgba(15,23,42,0.96),rgba(9,15,28,0.92))] p-5 shadow-[0_24px_70px_rgba(2,6,23,0.28)]">
-                      <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-200/75">
+                    <section className="rounded-[1.5rem] border border-slate-200/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(243,247,252,0.98))] p-5 shadow-[0_24px_70px_rgba(148,163,184,0.14)] dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(15,23,42,0.96),rgba(9,15,28,0.92))] dark:shadow-[0_24px_70px_rgba(2,6,23,0.28)]">
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-700 dark:text-emerald-200/75">
                         Next steps
                       </div>
-                      <h2 className="mt-1 text-xl font-semibold tracking-tight text-white">
+                      <h2 className="mt-1 text-xl font-semibold tracking-tight text-slate-950 dark:text-white">
                         Operations unlock once the trip is approved or booked
                       </h2>
-                      <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">
+                      <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600 dark:text-slate-300">
                         Right now this trip is still in planning mode. Share it, collect reactions, and once the group is aligned this tab will grow into the logistics workspace.
                       </p>
                     </section>
@@ -1844,9 +1844,9 @@ export default function TripPage() {
               ) : null}
             </div>
           ) : (
-            <section className="rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(15,23,42,0.96),rgba(9,15,28,0.92))] p-6 shadow-[0_24px_70px_rgba(2,6,23,0.35)]">
-              <h2 className="text-2xl font-semibold text-white">Itinerary</h2>
-              <p className="mt-4 text-slate-300">No itinerary generated yet.</p>
+            <section className="rounded-[2rem] border border-slate-200/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(243,247,252,0.98))] p-6 shadow-[0_24px_70px_rgba(148,163,184,0.16)] dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(15,23,42,0.96),rgba(9,15,28,0.92))] dark:shadow-[0_24px_70px_rgba(2,6,23,0.35)]">
+              <h2 className="text-2xl font-semibold text-slate-950 dark:text-white">Itinerary</h2>
+              <p className="mt-4 text-slate-600 dark:text-slate-300">No itinerary generated yet.</p>
             </section>
           )}
         </div>

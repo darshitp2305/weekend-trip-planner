@@ -7,15 +7,15 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
-  --background: #08111a;
-  --foreground: #f8fafc;
+  --background: #e8eef5;
+  --foreground: #0f172a;
   --date-input-foreground: #0f172a;
   --scrollbar-size: 12px;
-  --scrollbar-track: rgba(15, 23, 42, 0.12);
-  --scrollbar-thumb: rgba(15, 23, 42, 0.36);
-  --scrollbar-thumb-strong: rgba(15, 23, 42, 0.52);
-  --scrollbar-thumb-hover: rgba(4, 184, 135, 0.58);
-  --scrollbar-thumb-active: rgba(4, 184, 135, 0.72);
+  --scrollbar-track: rgba(148, 163, 184, 0.22);
+  --scrollbar-thumb: rgba(71, 85, 105, 0.34);
+  --scrollbar-thumb-strong: rgba(51, 65, 85, 0.48);
+  --scrollbar-thumb-hover: rgba(4, 184, 135, 0.5);
+  --scrollbar-thumb-active: rgba(4, 184, 135, 0.66);
   --brand-accent-50: #effff8;
   --brand-accent-100: #d7fcef;
   --brand-accent-200: #b2f6df;
@@ -56,6 +56,15 @@ body {
   color: var(--foreground);
   font-family: var(--font-geist-sans), "Segoe UI", sans-serif;
   text-rendering: optimizeLegibility;
+  background-image:
+    radial-gradient(circle at top, rgba(125, 211, 252, 0.12), transparent 34%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.18), transparent 24%);
+}
+
+.dark body {
+  background-image:
+    radial-gradient(circle at top, rgba(21, 94, 117, 0.2), transparent 30%),
+    linear-gradient(180deg, rgba(5, 10, 16, 0.18), transparent 24%);
 }
 
 html {
