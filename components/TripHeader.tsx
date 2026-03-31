@@ -4,7 +4,7 @@
  */
 
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { formatDisplayTag, formatDisplayText } from "../lib/displayText";
 import { getTripMomentumSummary, getTripUrgencyLevel } from "../lib/tripMomentum";
 import { getFallbackImageUrl, normalizeTripImageUrl } from "../lib/tripImages";
@@ -313,34 +313,45 @@ export default function TripHeader({ trip, shareMode = false }: TripHeaderProps)
     homeBaseCity: trip.homeBaseCity,
     name: trip.name,
   });
-  const [heroImageUrl, setHeroImageUrl] = useState(
-    normalizeTripImageUrl(trip.imageUrl, title)
-  );
-
-  useEffect(() => {
-    setHeroImageUrl(normalizeTripImageUrl(trip.imageUrl, title));
-  }, [trip.imageUrl, title]);
+  const [failedImageKey, setFailedImageKey] = useState<string | null>(null);
+  const imageKey = `${trip.imageUrl ?? ""}:${title}`;
+  const primaryHeroImageUrl = normalizeTripImageUrl(trip.imageUrl, title);
+  const heroImageUrl = failedImageKey === imageKey
+    ? getFallbackImageUrl(title)
+    : primaryHeroImageUrl;
 
   const finalizedDateLabel = formatFinalizedAt(trip.finalizedAt);
   const tripDecisionLabel = decisionLabel(trip.decisionStatus);
 
   return (
-    <section className="overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+    <section
+      className={
+        shareMode
+          ? "overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900"
+          : "overflow-hidden rounded-[1.75rem] border border-white/10 bg-[linear-gradient(180deg,rgba(14,22,37,0.96),rgba(9,15,28,0.94))] shadow-[0_24px_70px_rgba(2,6,23,0.32)]"
+      }
+    >
       {heroImageUrl ? (
         <div className="aspect-[16/4.5] w-full overflow-hidden bg-slate-100 dark:bg-slate-800">
           <Image
+            key={heroImageUrl}
             src={heroImageUrl}
             alt={title}
             width={1600}
             height={450}
             unoptimized
             className="h-full w-full object-cover"
-            onError={() => setHeroImageUrl(getFallbackImageUrl(title))}
+            onError={() => setFailedImageKey(imageKey)}
           />
         </div>
       ) : null}
 
       <div className="p-5 sm:p-6">
+        {!shareMode ? (
+          <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-200/75">
+            Alberta trip planner
+          </div>
+        ) : null}
         <div className="flex flex-wrap items-center gap-2">
           <Badge>{trip.province ?? "Alberta"}</Badge>
           <Badge tone={trip.status === "finalized" ? "green" : "slate"}>

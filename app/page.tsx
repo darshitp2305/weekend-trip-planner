@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import AccountPanel from "../components/AccountPanel";
+import AccountPanel, { type AccountPanelUser } from "../components/AccountPanel";
 import BrandLogo from "../components/BrandLogo";
 import TripCard from "../components/TripCard";
 import TripForm from "../components/TripForm";
@@ -9,6 +9,7 @@ import rawDestinations from "../data/destinations.json";
 import { trackProductEvent } from "../lib/productAnalytics";
 import { normalizeTripImageUrl } from "../lib/tripImages";
 import { ProviderOutcome, RankedDestination, RawDestination, TripInput } from "../lib/types";
+import { displayNameFromEmail } from "../lib/viewerIdentity";
 
 type RankTripsResponse = {
   success?: boolean;
@@ -250,7 +251,11 @@ export default function HomePage() {
   const [waitingForTripText, setWaitingForTripText] = useState(false);
   const [restored, setRestored] = useState(false);
   const [savedTripsOpen, setSavedTripsOpen] = useState(false);
+  const [accountUser, setAccountUser] = useState<AccountPanelUser | null>(null);
   const [featuredHero, setFeaturedHero] = useState<FeaturedHero>(DEFAULT_HERO);
+  const accountTriggerLabel = accountUser
+    ? displayNameFromEmail(accountUser.email)
+    : "Log in";
 
   const persistPageState = useCallback(
     (nextState: StoredPageState) => {
@@ -620,7 +625,23 @@ export default function HomePage() {
 
   return (
     <main className="min-h-screen bg-[#08111a] text-white">
-      <AccountPanel open={savedTripsOpen} onClose={() => setSavedTripsOpen(false)} />
+      <AccountPanel
+        open={savedTripsOpen}
+        onClose={() => setSavedTripsOpen(false)}
+        onUserChange={setAccountUser}
+      />
+
+      <button
+        type="button"
+        onClick={() => setSavedTripsOpen(true)}
+        aria-label="Open account and saved trips panel"
+        className="fixed bottom-5 left-5 z-40 inline-flex items-center gap-3 rounded-full border border-white/14 bg-[linear-gradient(180deg,rgba(14,22,37,0.92),rgba(9,15,27,0.94))] px-4 py-3 text-sm font-semibold text-white shadow-[0_20px_60px_rgba(2,6,23,0.34)] backdrop-blur-xl transition hover:border-[#d9b57c]/35 hover:bg-[linear-gradient(180deg,rgba(18,28,45,0.96),rgba(11,18,31,0.96))] sm:bottom-auto sm:top-1/2 sm:-translate-y-1/2 sm:flex-col sm:rounded-[1.8rem] sm:px-3 sm:py-4"
+      >
+        <span className="inline-flex h-2.5 w-2.5 shrink-0 rounded-full bg-[#7decc7] shadow-[0_0_18px_rgba(125,236,199,0.65)]" />
+        <span className="max-w-[7rem] text-left leading-5 sm:text-center">
+          {accountTriggerLabel}
+        </span>
+      </button>
 
       {destinationConstraintModal ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
@@ -671,30 +692,23 @@ export default function HomePage() {
         </div>
 
         <div className="relative z-10 mx-auto flex min-h-screen max-w-7xl flex-col px-5 py-6 sm:px-8 lg:px-10">
-          <header className="flex items-center justify-between gap-4">
-            <div className="inline-flex rounded-full border border-white/12 bg-white/88 px-4 py-2 shadow-[0_14px_40px_rgba(0,0,0,0.12)]">
+          <header className="flex items-center">
+            <div className="inline-flex rounded-full border border-white/12 bg-[linear-gradient(180deg,rgba(13,20,33,0.82),rgba(8,14,24,0.92))] px-4 py-2.5 shadow-[0_14px_40px_rgba(0,0,0,0.22)] backdrop-blur-xl">
               <BrandLogo
                 variant="horizontal"
                 href="/"
                 priority
+                tone="dark"
                 className="h-8 w-auto sm:h-9"
               />
             </div>
-
-            <button
-              type="button"
-              onClick={() => setSavedTripsOpen(true)}
-              className="inline-flex h-11 items-center justify-center rounded-full border border-white/16 bg-white/10 px-5 text-sm font-semibold text-white shadow-[0_18px_50px_rgba(0,0,0,0.18)] backdrop-blur-sm transition hover:bg-white/16"
-            >
-              Saved trips
-            </button>
           </header>
 
           <div className="flex flex-1 items-center py-10 lg:py-14">
             <div className="grid w-full gap-10 lg:grid-cols-[1.05fr_0.95fr] lg:items-end">
               <div className="max-w-3xl">
                 <div className="text-[11px] font-semibold uppercase tracking-[0.26em] text-[#e7c99c]">
-                  Alberta weekend concierge
+                  Alberta trip planner
                 </div>
                 <h1 className="mt-5 max-w-4xl font-serif text-[3rem] leading-[0.98] tracking-[-0.045em] text-white sm:text-[4rem] lg:text-[4.7rem]">
                   Describe the trip you want.
@@ -703,9 +717,9 @@ export default function HomePage() {
                   </span>
                 </h1>
                 <p className="mt-5 max-w-2xl text-base leading-8 text-white/76 sm:text-lg">
-                  One good prompt is enough to start. Tell Trippify the Alberta
-                  weekend you want, and if anything essential is missing, it will
-                  ask one focused follow-up before building the plan.
+                  One good prompt is enough to start. Describe the Alberta
+                  weekend you want, and if anything essential is missing, the
+                  planner will ask one focused follow-up before building the plan.
                 </p>
 
                 <div className="mt-8 max-w-xl rounded-[1.8rem] border border-white/12 bg-white/10 p-5 shadow-[0_28px_80px_rgba(0,0,0,0.24)] backdrop-blur-sm">

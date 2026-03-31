@@ -220,7 +220,9 @@ export function extractPromptTripLengthDays(value?: string) {
   const text = normalizeText(value);
   if (!text) return undefined;
 
-  const dayMatch = text.match(/\b(\d)\s*[- ]?day\b/i);
+  const dayMatch = text.match(
+    /\b(\d{1,2})\s*(?:[- ]?\s*day(?:s)?)(?:\s+long)?\b/i
+  );
   if (dayMatch) {
     const days = Number.parseInt(dayMatch[1] ?? "", 10);
     if (Number.isFinite(days) && days >= 1 && days <= 7) {
@@ -228,7 +230,9 @@ export function extractPromptTripLengthDays(value?: string) {
     }
   }
 
-  const nightsMatch = text.match(/\b(\d)\s*[- ]?night\b/i);
+  const nightsMatch = text.match(
+    /\b(\d{1,2})\s*(?:[- ]?\s*night(?:s)?)(?:\s+long)?\b/i
+  );
   if (nightsMatch) {
     const nights = Number.parseInt(nightsMatch[1] ?? "", 10);
     if (Number.isFinite(nights) && nights >= 1 && nights <= 6) {

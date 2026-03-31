@@ -90,6 +90,14 @@ function formatDurationSeconds(durationSeconds?: number) {
   return `${hours} hr ${minutes} min`;
 }
 
+function buildPlacePhotoUrl(photoRef?: string, photoUrl?: string) {
+  if (photoRef) {
+    return `/api/place-photo?ref=${encodeURIComponent(photoRef)}`;
+  }
+
+  return photoUrl;
+}
+
 function normalized(value?: string) {
   return (value ?? "").trim().toLowerCase();
 }
@@ -276,6 +284,10 @@ export default function TripPage() {
   });
   const [activeWorkspaceTab, setActiveWorkspaceTab] =
     useState<BuilderWorkspaceTab>("itinerary");
+  const [expandedItineraryDayIndex, setExpandedItineraryDayIndex] =
+    useState<number | null>(0);
+  const [hoveredItineraryMapPinId, setHoveredItineraryMapPinId] =
+    useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -322,6 +334,8 @@ export default function TripPage() {
 
   useEffect(() => {
     setActiveWorkspaceTab("itinerary");
+    setExpandedItineraryDayIndex(0);
+    setHoveredItineraryMapPinId(null);
   }, [trip?.id]);
 
   useEffect(() => {
@@ -536,7 +550,12 @@ export default function TripPage() {
 
   const tripMapData = useMemo(() => {
     if (!trip) {
-      return { pins: [], routePaths: [], missingLocationCount: 0 };
+      return {
+        pins: [],
+        routePaths: [],
+        missingLocationCount: 0,
+        missingLocationCountByDay: {} as Record<number, number>,
+      };
     }
 
     const hotels = hotelOptions;
@@ -547,10 +566,14 @@ export default function TripPage() {
       label: string;
       day: number;
       type: "stay" | "food" | "activity";
+      isDayStart?: boolean;
+      isSyntheticStart?: boolean;
       latitude: number;
       longitude: number;
       subtitle?: string;
       mapsUrl?: string;
+      rating?: number;
+      photoUrl?: string;
     }> = [];
     const routePaths: Array<{
       day: number;
@@ -560,9 +583,15 @@ export default function TripPage() {
       }>;
     }> = [];
     let missingLocationCount = 0;
+    const missingLocationCountByDay: Record<number, number> = {};
     const selectedHotel =
       hotels.find((hotel) => hotel.name === activeSelectionState.hotelName) ??
       hotels[0];
+    const incrementMissingLocationCount = (dayNumber: number) => {
+      missingLocationCount += 1;
+      missingLocationCountByDay[dayNumber] =
+        (missingLocationCountByDay[dayNumber] ?? 0) + 1;
+    };
 
     itineraryDays.forEach((day: ItineraryDayData, dayIndex) => {
       const dayNumber = dayIndex + 1;
@@ -570,6 +599,7 @@ export default function TripPage() {
         latitude: number;
         longitude: number;
       }> = [];
+      let hasVisibleDayStartPin = false;
 
       if (
         selectedHotel &&
@@ -604,11 +634,18 @@ export default function TripPage() {
               label: selectedHotel.name,
               day: dayNumber,
               type: "stay",
+              isDayStart: true,
               latitude: selectedHotel.latitude,
               longitude: selectedHotel.longitude,
               subtitle: selectedHotel.shortDescription,
               mapsUrl: selectedHotel.mapsUrl || selectedHotel.bookingLink,
+              rating: selectedHotel.rating,
+              photoUrl: buildPlacePhotoUrl(
+                selectedHotel.photoRef,
+                selectedHotel.photoUrl
+              ),
             });
+            hasVisibleDayStartPin = true;
 
             const alreadyAddedHotelRoutePoint = routePoints.some(
               (point) =>
@@ -623,7 +660,7 @@ export default function TripPage() {
               });
             }
           } else {
-            missingLocationCount += 1;
+            incrementMissingLocationCount(dayNumber);
           }
 
           return;
@@ -644,6 +681,11 @@ export default function TripPage() {
                 longitude: customStop.longitude,
                 subtitle: customStop.description,
                 mapsUrl: customStop.mapsUrl || customStop.websiteUrl,
+                rating: customStop.rating,
+                photoUrl: buildPlacePhotoUrl(
+                  customStop.photoRef,
+                  customStop.photoUrl
+                ),
               });
 
               routePoints.push({
@@ -651,7 +693,7 @@ export default function TripPage() {
                 longitude: customStop.longitude,
               });
             } else {
-              missingLocationCount += 1;
+              incrementMissingLocationCount(dayNumber);
             }
 
             return;
@@ -679,6 +721,11 @@ export default function TripPage() {
               longitude: selectedFood.longitude,
               subtitle: selectedFood.shortDescription,
               mapsUrl: selectedFood.mapsUrl || selectedFood.websiteUrl || selectedFood.link,
+              rating: selectedFood.rating,
+              photoUrl: buildPlacePhotoUrl(
+                selectedFood.photoRef,
+                selectedFood.photoUrl
+              ),
             });
 
             routePoints.push({
@@ -686,7 +733,7 @@ export default function TripPage() {
               longitude: selectedFood.longitude,
             });
           } else {
-            missingLocationCount += 1;
+            incrementMissingLocationCount(dayNumber);
           }
 
           return;
@@ -707,6 +754,11 @@ export default function TripPage() {
                 longitude: customStop.longitude,
                 subtitle: customStop.description,
                 mapsUrl: customStop.mapsUrl || customStop.websiteUrl,
+                rating: customStop.rating,
+                photoUrl: buildPlacePhotoUrl(
+                  customStop.photoRef,
+                  customStop.photoUrl
+                ),
               });
 
               routePoints.push({
@@ -714,7 +766,7 @@ export default function TripPage() {
                 longitude: customStop.longitude,
               });
             } else {
-              missingLocationCount += 1;
+              incrementMissingLocationCount(dayNumber);
             }
 
             return;
@@ -747,6 +799,11 @@ export default function TripPage() {
                 selectedActivity.mapsUrl ||
                 selectedActivity.websiteUrl ||
                 selectedActivity.bookingLink,
+              rating: selectedActivity.rating,
+              photoUrl: buildPlacePhotoUrl(
+                selectedActivity.photoRef,
+                selectedActivity.photoUrl
+              ),
             });
 
             routePoints.push({
@@ -754,7 +811,7 @@ export default function TripPage() {
               longitude: selectedActivity.longitude,
             });
           } else {
-            missingLocationCount += 1;
+            incrementMissingLocationCount(dayNumber);
           }
         }
       });
@@ -773,6 +830,8 @@ export default function TripPage() {
             longitude: addedStop.longitude,
             subtitle: addedStop.description,
             mapsUrl: addedStop.mapsUrl || addedStop.websiteUrl,
+            rating: addedStop.rating,
+            photoUrl: buildPlacePhotoUrl(addedStop.photoRef, addedStop.photoUrl),
           });
 
           routePoints.push({
@@ -780,9 +839,34 @@ export default function TripPage() {
             longitude: addedStop.longitude,
           });
         } else {
-          missingLocationCount += 1;
+          incrementMissingLocationCount(dayNumber);
         }
       });
+
+      if (
+        !hasVisibleDayStartPin &&
+        selectedHotel &&
+        typeof selectedHotel.latitude === "number" &&
+        typeof selectedHotel.longitude === "number"
+      ) {
+        pins.push({
+          id: `day-start-${dayNumber}-${selectedHotel.name}`,
+          label: selectedHotel.name,
+          day: dayNumber,
+          type: "stay",
+          isDayStart: true,
+          isSyntheticStart: true,
+          latitude: selectedHotel.latitude,
+          longitude: selectedHotel.longitude,
+          subtitle: "Start from your selected stay",
+          mapsUrl: selectedHotel.mapsUrl || selectedHotel.bookingLink,
+          rating: selectedHotel.rating,
+          photoUrl: buildPlacePhotoUrl(
+            selectedHotel.photoRef,
+            selectedHotel.photoUrl
+          ),
+        });
+      }
 
       if (routePoints.length >= 2) {
         routePaths.push({
@@ -792,8 +876,56 @@ export default function TripPage() {
       }
     });
 
-    return { pins, routePaths, missingLocationCount };
+    return { pins, routePaths, missingLocationCount, missingLocationCountByDay };
   }, [activeSelectionState, hotelOptions, itineraryDays, trip]);
+
+  const itineraryMapData = useMemo(() => {
+    if (expandedItineraryDayIndex === null) {
+      return {
+        pins: [],
+        routePaths: [],
+        missingLocationCount: 0,
+        emptyStateDescription:
+          "Expand a day to focus the map on just that day's stay, meals, and activities.",
+      };
+    }
+
+    const dayNumber = expandedItineraryDayIndex + 1;
+
+    return {
+      pins: tripMapData.pins.filter((pin) => pin.day === dayNumber),
+      routePaths: tripMapData.routePaths.filter((routePath) => routePath.day === dayNumber),
+      missingLocationCount: tripMapData.missingLocationCountByDay[dayNumber] ?? 0,
+      emptyStateDescription:
+        "The expanded day does not have enough saved coordinates yet to render its route.",
+    };
+  }, [expandedItineraryDayIndex, tripMapData]);
+
+  const itineraryMapFallbackCenter = useMemo(() => {
+    if (
+      selectedHotel &&
+      typeof selectedHotel.latitude === "number" &&
+      typeof selectedHotel.longitude === "number"
+    ) {
+      return {
+        latitude: selectedHotel.latitude,
+        longitude: selectedHotel.longitude,
+      };
+    }
+
+    if (
+      trip &&
+      typeof trip.latitude === "number" &&
+      typeof trip.longitude === "number"
+    ) {
+      return {
+        latitude: trip.latitude,
+        longitude: trip.longitude,
+      };
+    }
+
+    return undefined;
+  }, [selectedHotel, trip]);
 
   const persistedTrip = useMemo(() => {
     if (!trip) return null;
@@ -886,6 +1018,7 @@ export default function TripPage() {
   );
   const activeWorkspaceMeta =
     workspaceTabs.find((tab) => tab.id === activeWorkspaceTab) ?? workspaceTabs[0];
+  const isItineraryWorkspace = activeWorkspaceTab === "itinerary";
 
   useEffect(() => {
     if (!trip || !isShareView || !viewer.ready) return;
@@ -1198,12 +1331,19 @@ export default function TripPage() {
             <button
               type="button"
               onClick={handleBackButtonClick}
-              className="inline-flex h-11 items-center gap-2 rounded-2xl border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+              className="inline-flex h-11 items-center gap-2 rounded-full border border-white/12 bg-[linear-gradient(180deg,rgba(13,20,33,0.82),rgba(8,14,24,0.92))] px-4 text-sm font-semibold text-slate-100 shadow-[0_14px_40px_rgba(0,0,0,0.22)] transition hover:border-white/18 hover:bg-[linear-gradient(180deg,rgba(17,26,41,0.9),rgba(10,16,28,0.98))]"
             >
               <span aria-hidden="true">&larr;</span>
               <span>Back</span>
             </button>
-            <BrandLogo variant="horizontal" href="/" className="h-10 w-auto sm:h-11" />
+            <div className="inline-flex rounded-full border border-white/12 bg-[linear-gradient(180deg,rgba(13,20,33,0.82),rgba(8,14,24,0.92))] px-4 py-2.5 shadow-[0_14px_40px_rgba(0,0,0,0.22)] backdrop-blur-xl">
+              <BrandLogo
+                variant="horizontal"
+                href="/"
+                tone="dark"
+                className="h-8 w-auto sm:h-9"
+              />
+            </div>
           </div>
         ) : null}
 
@@ -1283,7 +1423,8 @@ export default function TripPage() {
             />
           </div>
         ) : (
-        <div className="grid gap-5 xl:grid-cols-[320px_minmax(0,1fr)] xl:items-start">
+        <div className={isItineraryWorkspace ? "space-y-5" : "grid gap-5 xl:grid-cols-[320px_minmax(0,1fr)] xl:items-start"}>
+          {!isItineraryWorkspace ? (
           <aside className="space-y-5 xl:sticky xl:top-5">
             <section className="overflow-hidden rounded-[1.75rem] border border-white/10 bg-[linear-gradient(180deg,rgba(15,23,42,0.96),rgba(9,15,28,0.92))] shadow-[0_24px_70px_rgba(2,6,23,0.35)]">
               <div className="border-b border-white/10 px-5 py-4">
@@ -1440,9 +1581,69 @@ export default function TripPage() {
               </div>
             </section>
           </aside>
+          ) : null}
 
           {itineraryDays.length > 0 ? (
             <div className="space-y-5">
+              {isItineraryWorkspace ? (
+                <section className="rounded-[1.75rem] border border-white/10 bg-[linear-gradient(180deg,rgba(15,23,42,0.94),rgba(9,15,28,0.9))] p-5 shadow-[0_24px_70px_rgba(2,6,23,0.3)]">
+                  <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                    <div className="max-w-3xl">
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-cyan-200/75">
+                        Trip at a glance
+                      </div>
+                      <h2 className="mt-2 text-xl font-semibold tracking-tight text-white">
+                        One clean itinerary view
+                      </h2>
+                      <p className="mt-2 text-sm leading-6 text-slate-300">
+                        Focus on the selected plan first. Open a day when you want to edit it, then use the map beside it to sanity-check the route.
+                      </p>
+                    </div>
+
+                    <div className="grid gap-2 sm:grid-cols-2 xl:min-w-[360px]">
+                      <div className="rounded-[1rem] border border-white/10 bg-white/5 p-3">
+                        <div className="text-[10px] font-medium uppercase tracking-[0.12em] text-slate-400">
+                          Trip length
+                        </div>
+                        <div className="mt-1 text-base font-semibold text-white">
+                          {deriveTripLengthDays(trip)} day{deriveTripLengthDays(trip) === 1 ? "" : "s"}
+                        </div>
+                      </div>
+                      <div className="rounded-[1rem] border border-white/10 bg-white/5 p-3">
+                        <div className="text-[10px] font-medium uppercase tracking-[0.12em] text-slate-400">
+                          Travel window
+                        </div>
+                        <div className="mt-1 text-base font-semibold text-white">
+                          {tripDateRange ?? "Dates flexible"}
+                        </div>
+                      </div>
+                      <div className="rounded-[1rem] border border-white/10 bg-white/5 p-3">
+                        <div className="text-[10px] font-medium uppercase tracking-[0.12em] text-slate-400">
+                          Selected stay
+                        </div>
+                        <div className="mt-1 text-base font-semibold text-white">
+                          {selectedHotel?.name ?? trip.homeBaseCity ?? trip.destinationName}
+                        </div>
+                      </div>
+                      <div className="rounded-[1rem] border border-emerald-400/20 bg-emerald-400/10 p-3">
+                        <div className="text-[10px] font-medium uppercase tracking-[0.12em] text-emerald-200">
+                          Budget fit
+                        </div>
+                        <div className="mt-1 text-base font-semibold text-white">
+                          {budgetStatus?.label ?? "Estimated spend"}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {trip.tripPrompt ? (
+                    <div className="mt-4 rounded-[1.15rem] border border-white/10 bg-slate-950/35 px-4 py-3 text-sm leading-6 text-slate-300">
+                      {trip.tripPrompt}
+                    </div>
+                  ) : null}
+                </section>
+              ) : null}
+
               <section className="sticky top-4 z-30 overflow-hidden rounded-[1.8rem] border border-white/10 bg-[linear-gradient(180deg,rgba(14,22,37,0.88),rgba(11,18,31,0.78))] px-5 py-4 shadow-[0_26px_80px_rgba(2,6,23,0.3)] backdrop-blur-2xl">
                 <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
                   <div className="min-w-0">
@@ -1481,7 +1682,7 @@ export default function TripPage() {
 
               {activeWorkspaceTab === "itinerary" ? (
                 <div>
-                  <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start xl:grid-cols-[minmax(0,1fr)_430px]">
+                  <div className="grid gap-5 lg:grid-cols-[minmax(0,0.92fr)_minmax(420px,1.08fr)] lg:items-start xl:grid-cols-[minmax(0,0.84fr)_minmax(540px,1.16fr)] 2xl:grid-cols-[minmax(0,0.8fr)_minmax(620px,1.2fr)]">
                     <InteractiveItinerary
                       key={`${trip.id}:${JSON.stringify(trip.savedSelectionState ?? emptySelectionState())}`}
                       days={itineraryDays}
@@ -1505,13 +1706,19 @@ export default function TripPage() {
                           : undefined
                       }
                       onSelectionChange={handleSelectionChange}
+                      onExpandedDayChange={setExpandedItineraryDayIndex}
+                      onHoveredMapPinChange={setHoveredItineraryMapPinId}
                     />
 
-                    <div className="lg:sticky lg:top-28">
+                    <div className="self-start lg:sticky lg:top-24">
                       <TripStopMap
-                        pins={tripMapData.pins}
-                        routePaths={tripMapData.routePaths}
-                        missingLocationCount={tripMapData.missingLocationCount}
+                        pins={itineraryMapData.pins}
+                        routePaths={itineraryMapData.routePaths}
+                        missingLocationCount={itineraryMapData.missingLocationCount}
+                        emptyStateDescription={itineraryMapData.emptyStateDescription}
+                        highlightedPinId={hoveredItineraryMapPinId}
+                        fallbackCenter={itineraryMapFallbackCenter}
+                        fallbackZoom={selectedHotel ? 12 : 11}
                         variant="compact"
                       />
                     </div>

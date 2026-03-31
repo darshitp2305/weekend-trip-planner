@@ -72,7 +72,9 @@ const TRAVELER_COUNT_PATTERNS = [
   /\bthere\s+(?:are|will be)\s+(\d{1,2})\s+of\s+us\b/i,
   /\bgroup\s+of\s+(\d{1,2})\b/i,
   /\bfor\s+(\d{1,2})\s+(?:people|travellers|travelers)\b/i,
+  /\bfor\s+(\d{1,2})\s+(?:friends|buddies|pals|adults|guests)\b/i,
   /\b(\d{1,2})\s+(?:people|travellers|travelers)\b/i,
+  /\b(\d{1,2})\s+(?:friends|buddies|pals|adults|guests)\b/i,
 ];
 const COMPANION_COUNT_PATTERNS: Array<{
   pattern: RegExp;

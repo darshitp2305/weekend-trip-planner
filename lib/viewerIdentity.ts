@@ -38,9 +38,25 @@ function getVisitorId() {
   }
 }
 
-function displayNameFromEmail(email?: string) {
+export function displayNameFromEmail(email?: string) {
   if (!email) return "Guest";
-  return email.split("@")[0] || email;
+
+  const localPart = email.split("@")[0]?.trim() || email.trim();
+  if (!localPart) return "Guest";
+
+  const normalized = localPart
+    .replace(/[._-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (!normalized) return localPart;
+
+  return normalized
+    .split(" ")
+    .map((segment) =>
+      segment ? segment.charAt(0).toUpperCase() + segment.slice(1) : segment
+    )
+    .join(" ");
 }
 
 export function useViewerIdentity() {

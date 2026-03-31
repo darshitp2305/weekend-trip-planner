@@ -345,16 +345,33 @@ export default function TripForm({
     await handleResolvedDraft(nextDraft, nextMessages);
   }
 
+  function handleComposerKeyDown(
+    event: React.KeyboardEvent<HTMLTextAreaElement>
+  ) {
+    if (event.key !== "Enter" || event.nativeEvent.isComposing) {
+      return;
+    }
+
+    if (event.ctrlKey || event.metaKey) {
+      return;
+    }
+
+    event.preventDefault();
+
+    if (loading || !submitHandler || tripPromptTooLong) {
+      return;
+    }
+
+    event.currentTarget.form?.requestSubmit();
+  }
+
   const assumptionPills = buildAssumptionPills(draft);
 
   return (
     <section className="w-full rounded-[2rem] border border-white/12 bg-[linear-gradient(180deg,rgba(8,14,22,0.78),rgba(10,18,29,0.54))] p-5 text-white shadow-[0_32px_90px_rgba(0,0,0,0.28)] backdrop-blur-xl sm:p-7">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/60">
-            AI concierge
-          </div>
-          <h2 className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-white sm:text-[2rem]">
+          <h2 className="text-2xl font-semibold tracking-[-0.03em] text-white sm:text-[2rem]">
             Tell me the trip you actually want.
           </h2>
         </div>
@@ -413,6 +430,7 @@ export default function TripForm({
           <textarea
             value={composerValue}
             onChange={(event) => setComposerValue(event.target.value)}
+            onKeyDown={handleComposerKeyDown}
             placeholder={nextComposerPlaceholder(pendingField)}
             disabled={loading}
             className={`w-full resize-none border-0 bg-transparent px-2 text-[15px] leading-7 text-white placeholder:text-white/42 focus:outline-none ${

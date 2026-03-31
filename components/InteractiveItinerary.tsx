@@ -57,6 +57,8 @@ type Props = {
     longitude: number;
   };
   onSelectionChange?: (selection: TripSelectionState) => void;
+  onExpandedDayChange?: (dayIndex: number | null) => void;
+  onHoveredMapPinChange?: (pinId: string | null) => void;
 };
 
 type StopOption = {
@@ -257,6 +259,10 @@ function stopNarrativeLabel(kind: ItineraryDayData["stops"][number]["kind"]) {
   }
 }
 
+function countLabel(count: number, singular: string, plural = `${singular}s`) {
+  return `${count} ${count === 1 ? singular : plural}`;
+}
+
 function shiftTimeLabel(time?: string, steps = 0) {
   if (!time || steps <= 0) return time;
 
@@ -289,6 +295,15 @@ function resolvedActivityCost(choice: ResolvedStopChoice, travelers: number) {
 
 function stopKey(dayIndex: number, stopIndex: number) {
   return `day-${dayIndex}-stop-${stopIndex}`;
+}
+
+function dayIndexFromStopKey(key?: string | null) {
+  if (!key) return null;
+  const match = key.match(/^day-(\d+)-stop-\d+$/);
+  if (!match) return null;
+
+  const parsed = Number.parseInt(match[1] ?? "", 10);
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
 function isDemandingHikeText(value?: string) {
@@ -622,8 +637,6 @@ function SelectorCard({
   selectedElsewhereLabel?: string;
   onSelect: () => void;
 }) {
-  const previewImageUrl =
-    buildPhotoUrl(option.photoRef) ?? option.photoUrl ?? option.fallbackPhotoUrl;
   const showCampingBadge = isCampingOnlyLikeOption(option);
   const safePrimaryUrl = sanitizeExternalNavigationUrl(option.primaryUrl);
   const safeAllTrailsUrl = sanitizeExternalNavigationUrl(option.allTrailsUrl);
@@ -633,8 +646,8 @@ function SelectorCard({
     <div
       className={
         selected
-          ? "group rounded-[1.15rem] border border-cyan-300/35 bg-cyan-300/[0.08] p-3.5 text-left shadow-[0_16px_34px_rgba(8,145,178,0.08)]"
-          : "group rounded-[1.15rem] border border-white/10 bg-white/[0.035] p-3.5 text-left transition hover:bg-white/[0.06]"
+          ? "rounded-[1.15rem] border border-cyan-300/35 bg-cyan-300/[0.08] p-3.5 text-left shadow-[0_16px_34px_rgba(8,145,178,0.08)]"
+          : "rounded-[1.15rem] border border-white/10 bg-white/[0.035] p-3.5 text-left transition hover:bg-white/[0.06]"
       }
     >
       <div className="flex items-start justify-between gap-3">
@@ -647,6 +660,23 @@ function SelectorCard({
               {option.subtitle}
             </div>
           ) : null}
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {option.category ? <OptionPill>{option.category}</OptionPill> : null}
+            {option.pricePerNight !== undefined ? (
+              <OptionPill>${option.pricePerNight}/night</OptionPill>
+            ) : null}
+            {option.totalStayPrice !== undefined ? (
+              <OptionPill>Total ${option.totalStayPrice}</OptionPill>
+            ) : null}
+            {option.estimatedCost !== undefined ? (
+              <OptionPill>
+                {option.estimatedCost === 0
+                  ? "Free"
+                  : option.estimatedCostLabel ?? `$${option.estimatedCost}`}
+              </OptionPill>
+            ) : null}
+            {distanceFromPrevious ? <OptionPill>{distanceFromPrevious}</OptionPill> : null}
+          </div>
         </div>
 
         <div className="flex flex-wrap justify-end gap-1.5">
@@ -660,50 +690,8 @@ function SelectorCard({
               {option.availabilityLabel}
             </OptionPill>
           ) : null}
-          {option.rating !== undefined ? (
-            <OptionPill tone="green">Rating {option.rating}</OptionPill>
-          ) : null}
         </div>
       </div>
-
-      <div className="mt-2.5 flex flex-wrap gap-1.5">
-        {option.category ? <OptionPill>{option.category}</OptionPill> : null}
-        {option.pricePerNight !== undefined ? (
-          <OptionPill>${option.pricePerNight}/night</OptionPill>
-        ) : null}
-        {option.totalStayPrice !== undefined ? (
-          <OptionPill>Total ${option.totalStayPrice}</OptionPill>
-        ) : null}
-        {option.estimatedCost !== undefined ? (
-          <OptionPill>
-            {option.estimatedCost === 0
-              ? "Free"
-              : option.estimatedCostLabel ?? `$${option.estimatedCost}`}
-          </OptionPill>
-        ) : null}
-      </div>
-
-      {distanceFromPrevious ? (
-        <div className="mt-2 text-[12px] font-medium leading-5 text-slate-400">
-          {distanceFromPrevious}
-        </div>
-      ) : null}
-
-      {previewImageUrl ? (
-        <div className="max-h-0 overflow-hidden opacity-0 transition-all duration-200 ease-out group-hover:mt-3 group-hover:max-h-40 group-hover:opacity-100 group-focus-visible:mt-3 group-focus-visible:max-h-40 group-focus-visible:opacity-100">
-          <div className="overflow-hidden rounded-[0.9rem] border border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800">
-            <Image
-              src={previewImageUrl}
-              alt={option.name}
-              width={800}
-              height={288}
-              unoptimized
-              className="h-36 w-full object-cover"
-              loading="lazy"
-            />
-          </div>
-        </div>
-      ) : null}
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
           <button
@@ -763,10 +751,9 @@ function CompactSelectionCard({
   primaryUrl,
   primaryLabel,
   mapsUrl,
-  photoRef,
-  photoUrl,
-  fallbackPhotoUrl,
+  mapPinId,
   editing,
+  onHoverMapPinChange,
   onToggleEditing,
 }: {
   label: string;
@@ -776,14 +763,11 @@ function CompactSelectionCard({
   primaryUrl?: string;
   primaryLabel?: string;
   mapsUrl?: string;
-  photoRef?: string;
-  photoUrl?: string;
-  fallbackPhotoUrl?: string;
+  mapPinId?: string;
   editing: boolean;
+  onHoverMapPinChange?: (pinId: string | null) => void;
   onToggleEditing: () => void;
 }) {
-  const previewImageUrl =
-    buildPhotoUrl(photoRef) ?? photoUrl ?? fallbackPhotoUrl;
   const showCampingBadge = isCampingOnlyLikeOption({
     name: title,
     subtitle,
@@ -796,17 +780,25 @@ function CompactSelectionCard({
   const safeMapsUrl = sanitizeExternalNavigationUrl(mapsUrl);
 
   return (
-    <div className="group rounded-[1.15rem] border border-white/10 bg-white/[0.035] p-3.5">
+    <div
+      className="rounded-[1.1rem] border border-white/10 bg-white/[0.035] p-3 transition duration-150 hover:border-cyan-300/30 hover:bg-white/[0.055] hover:shadow-[0_18px_44px_rgba(8,145,178,0.12)]"
+      onMouseEnter={() => {
+        if (mapPinId) {
+          onHoverMapPinChange?.(mapPinId);
+        }
+      }}
+      onMouseLeave={() => onHoverMapPinChange?.(null)}
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-200/75">
             {label}
           </div>
-          <div className="mt-1 text-base font-semibold text-white">
+          <div className="mt-1 text-[15px] font-semibold leading-6 text-white">
             {title}
           </div>
           {subtitle ? (
-            <p className="mt-1 text-[13px] leading-5 text-slate-300">
+            <p className="mt-0.5 text-[13px] leading-5 text-slate-300">
               {subtitle}
             </p>
           ) : null}
@@ -821,70 +813,49 @@ function CompactSelectionCard({
         </button>
       </div>
 
-      {showCampingBadge ? (
-        <div className="mt-2">
-          <CampfireBadge />
-        </div>
-      ) : null}
-
-      {pills && pills.length > 0 ? (
-        <div className="mt-2 flex flex-wrap gap-1.5">
-          {pills.map((pill) => (
-            <OptionPill key={pill}>{pill}</OptionPill>
-          ))}
-        </div>
-      ) : null}
-
-      {(safePrimaryUrl || safeAllTrailsUrl || safeMapsUrl) ? (
-        <div className="mt-3 flex flex-wrap gap-2">
-          {safePrimaryUrl && !safeAllTrailsUrl ? (
-            <a
-            href={safePrimaryUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex h-9 items-center justify-center rounded-full border border-white/14 bg-white/[0.04] px-3.5 text-xs font-semibold text-slate-100 transition hover:bg-white/[0.08]"
-          >
-            {primaryLabel ?? "Visit site"}
-          </a>
-          ) : null}
-          {safeAllTrailsUrl ? (
-            <a
-            href={safeAllTrailsUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex h-9 items-center justify-center rounded-full border border-emerald-300/35 bg-emerald-300/[0.08] px-3.5 text-xs font-semibold text-emerald-100 transition hover:bg-emerald-300/[0.14]"
-          >
-            Open on AllTrails
-          </a>
-          ) : null}
-          {safeMapsUrl ? (
-            <a
-            href={safeMapsUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex h-9 items-center justify-center rounded-full border border-white/14 bg-white/[0.04] px-3.5 text-xs font-semibold text-slate-100 transition hover:bg-white/[0.08]"
-          >
-            Open map
-          </a>
-          ) : null}
-        </div>
-      ) : null}
-
-      {previewImageUrl ? (
-        <div className="max-h-0 overflow-hidden opacity-0 transition-all duration-200 ease-out group-hover:mt-3 group-hover:max-h-40 group-hover:opacity-100 group-focus-within:mt-3 group-focus-within:max-h-40 group-focus-within:opacity-100">
-          <div className="overflow-hidden rounded-[0.9rem] border border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800">
-            <Image
-              src={previewImageUrl}
-              alt={title}
-              width={800}
-              height={288}
-              unoptimized
-              className="h-36 w-full object-cover"
-              loading="lazy"
-            />
+      {(showCampingBadge || (pills && pills.length > 0) || safePrimaryUrl || safeAllTrailsUrl || safeMapsUrl) ? (
+        <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center gap-1.5">
+            {showCampingBadge ? <CampfireBadge /> : null}
+            {pills?.slice(0, 2).map((pill) => (
+              <OptionPill key={pill}>{pill}</OptionPill>
+            ))}
+          </div>
+          <div className="flex flex-wrap items-center justify-end gap-1.5">
+            {safePrimaryUrl && !safeAllTrailsUrl ? (
+              <a
+                href={safePrimaryUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex h-8 items-center justify-center rounded-full border border-white/14 bg-white/[0.04] px-3 text-[11px] font-semibold text-slate-100 transition hover:bg-white/[0.08]"
+              >
+                {primaryLabel ?? "Visit site"}
+              </a>
+            ) : null}
+            {safeAllTrailsUrl ? (
+              <a
+                href={safeAllTrailsUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex h-8 items-center justify-center rounded-full border border-emerald-300/35 bg-emerald-300/[0.08] px-3 text-[11px] font-semibold text-emerald-100 transition hover:bg-emerald-300/[0.14]"
+              >
+                Open on AllTrails
+              </a>
+            ) : null}
+            {safeMapsUrl ? (
+              <a
+                href={safeMapsUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex h-8 items-center justify-center rounded-full border border-white/14 bg-white/[0.04] px-3 text-[11px] font-semibold text-slate-100 transition hover:bg-white/[0.08]"
+              >
+                Open map
+              </a>
+            ) : null}
           </div>
         </div>
       ) : null}
+
     </div>
   );
 }
@@ -903,6 +874,8 @@ export default function InteractiveItinerary({
   startCityLabel,
   startCityCoordinate,
   onSelectionChange,
+  onExpandedDayChange,
+  onHoveredMapPinChange,
 }: Props) {
   // Seed the planner from the generated itinerary so each day already has a
   // sensible default hotel, food stop, and activity before the user edits it.
@@ -926,6 +899,7 @@ export default function InteractiveItinerary({
     issues: string[];
   } | null>(null);
   const [builderPromptPending, setBuilderPromptPending] = useState(false);
+  const [expandedDayIndex, setExpandedDayIndex] = useState<number | null>(0);
   const trimmedBuilderPrompt = builderPrompt.trim();
   const builderPromptTooLong =
     trimmedBuilderPrompt.length > BUILDER_PROMPT_MAX_CHARS;
@@ -933,6 +907,14 @@ export default function InteractiveItinerary({
   useEffect(() => {
     onSelectionChange?.(selection);
   }, [onSelectionChange, selection]);
+
+  useEffect(() => {
+    onExpandedDayChange?.(expandedDayIndex);
+  }, [expandedDayIndex, onExpandedDayChange]);
+
+  useEffect(() => {
+    onHoveredMapPinChange?.(null);
+  }, [expandedDayIndex, onHoveredMapPinChange]);
 
   function customStopForKey(key: string) {
     return getCustomStopForKey(selection, key);
@@ -1061,7 +1043,11 @@ export default function InteractiveItinerary({
     return (
       <div
         key={addedStop.id}
-        className="group rounded-[1.2rem] border border-emerald-300/25 bg-emerald-300/[0.08] p-4 shadow-[0_16px_38px_rgba(16,185,129,0.08)]"
+        className="group rounded-[1.2rem] border border-emerald-300/25 bg-emerald-300/[0.08] p-4 shadow-[0_16px_38px_rgba(16,185,129,0.08)] transition duration-150 hover:border-cyan-300/30 hover:bg-emerald-300/[0.1] hover:shadow-[0_20px_48px_rgba(8,145,178,0.12)]"
+        onMouseEnter={() =>
+          onHoveredMapPinChange?.(`${addedStop.kind}-${dayIndex + 1}-${addedStop.id}`)
+        }
+        onMouseLeave={() => onHoveredMapPinChange?.(null)}
       >
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
@@ -1460,6 +1446,10 @@ export default function InteractiveItinerary({
   }
 
   function toggleEditing(key: string) {
+    const nextDayIndex = dayIndexFromStopKey(key);
+    if (nextDayIndex !== null) {
+      setExpandedDayIndex(nextDayIndex);
+    }
     setEditingStopKey((current) => (current === key ? null : key));
   }
 
@@ -1790,7 +1780,9 @@ export default function InteractiveItinerary({
 
       if (result.appliedChanges.length > 0) {
         setSelection(result.selection);
-        setEditingStopKey(result.appliedChanges[0]?.stopKey ?? null);
+        const nextStopKey = result.appliedChanges[0]?.stopKey ?? null;
+        setEditingStopKey(nextStopKey);
+        setExpandedDayIndex(dayIndexFromStopKey(nextStopKey));
       }
     } catch {
       setBuilderPromptFeedback({
@@ -1817,28 +1809,77 @@ export default function InteractiveItinerary({
                 ? haversineDistanceKm(lastStopOfDay, hotelCoordinate)
                 : undefined;
             const dayStops = day.stops ?? [];
+            const addedStops = addedStopsForDay(dayIndex);
+            const isExpanded = expandedDayIndex === dayIndex;
+            const mealCount =
+              dayStops.filter((stop) => stop.kind === "food").length +
+              addedStops.filter((stop) => stop.kind === "food").length;
+            const activityCount =
+              dayStops.filter((stop) => stop.kind === "activity").length +
+              addedStops.filter((stop) => stop.kind === "activity").length;
+            const hasStay =
+              dayStops.some((stop) => stop.kind === "stay") ||
+              addedStops.some((stop) => stop.kind === "stay");
 
             return (
               <section
                 key={`day-${dayIndex}`}
-                className="rounded-[1.5rem] border border-white/10 bg-[linear-gradient(180deg,rgba(14,22,37,0.94),rgba(11,18,31,0.92))] p-4 shadow-[0_18px_50px_rgba(2,6,23,0.18)]"
+                className="rounded-[1.6rem] border border-white/10 bg-[linear-gradient(180deg,rgba(14,22,37,0.94),rgba(11,18,31,0.92))] shadow-[0_18px_50px_rgba(2,6,23,0.18)]"
               >
-                <div className="mb-4 border-b border-white/10 pb-3">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-200/75">
-                    Day {dayIndex + 1}
-                  </div>
-                  <h3 className="mt-2 text-[1.55rem] font-semibold tracking-tight text-white">
-                    Day {dayIndex + 1}
-                    {day.title ? ` - ${day.title}` : ""}
-                  </h3>
-                  {day.summary ? (
-                    <p className="mt-2 max-w-3xl text-[1rem] italic leading-7 text-slate-300">
-                      {day.summary}
-                    </p>
-                  ) : null}
-                </div>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setExpandedDayIndex((current) =>
+                      current === dayIndex ? null : dayIndex
+                    )
+                  }
+                  className="w-full px-4 py-4 text-left"
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0">
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-200/75">
+                        Day {dayIndex + 1}
+                      </div>
+                      <h3 className="mt-2 text-[1.35rem] font-semibold tracking-tight text-white">
+                        {day.title ? day.title : `Day ${dayIndex + 1}`}
+                      </h3>
+                      {day.summary ? (
+                        <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">
+                          {day.summary}
+                        </p>
+                      ) : null}
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {hasStay ? (
+                          <span className="inline-flex items-center rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs font-medium text-slate-200">
+                            Stay planned
+                          </span>
+                        ) : null}
+                        {mealCount > 0 ? (
+                          <span className="inline-flex items-center rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs font-medium text-slate-200">
+                            {countLabel(mealCount, "meal")}
+                          </span>
+                        ) : null}
+                        {activityCount > 0 ? (
+                          <span className="inline-flex items-center rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs font-medium text-slate-200">
+                            {countLabel(activityCount, "activity")}
+                          </span>
+                        ) : null}
+                        {addedStops.length > 0 ? (
+                          <span className="inline-flex items-center rounded-full border border-emerald-300/25 bg-emerald-300/[0.08] px-3 py-1 text-xs font-medium text-emerald-100">
+                            {countLabel(addedStops.length, "custom stop")}
+                          </span>
+                        ) : null}
+                      </div>
+                    </div>
 
-                <div className="space-y-3">
+                    <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.05] text-lg text-slate-200">
+                      {isExpanded ? "−" : "+"}
+                    </span>
+                  </div>
+                </button>
+
+                {isExpanded ? (
+                  <div className="space-y-3 border-t border-white/8 px-4 pb-4 pt-4">
                     {renderInsertedStops(dayIndex, -1)}
                     {dayStops.map((stop, stopIndex) => {
                       const key = stopKey(dayIndex, stopIndex);
@@ -1865,12 +1906,12 @@ export default function InteractiveItinerary({
                               <span className="text-cyan-200/45">
                                 {stopNarrativeLabel(stop.kind)}
                               </span>
+                              {timeWindowLabel(displayedStopTime) ? (
+                                <span className="text-[11px] font-medium normal-case tracking-normal text-slate-400">
+                                  {timeWindowLabel(displayedStopTime)}
+                                </span>
+                              ) : null}
                             </div>
-                            {timeWindowLabel(displayedStopTime) ? (
-                              <div className="mt-1 text-[12px] font-medium leading-5 text-slate-400">
-                                {timeWindowLabel(displayedStopTime)}
-                              </div>
-                            ) : null}
                             <h4 className="mt-2 text-base font-semibold text-white">
                               Pick where to stay
                             </h4>
@@ -1919,10 +1960,9 @@ export default function InteractiveItinerary({
                                   })}
                                   primaryLabel="Stay site"
                                   mapsUrl={selectedHotel.mapsUrl}
-                                  photoRef={selectedHotel.photoRef}
-                                  photoUrl={selectedHotel.photoUrl}
-                                  fallbackPhotoUrl={destinationImageUrl}
+                                  mapPinId={`stay-${key}-${selectedHotel.name}`}
                                   editing={isEditing}
+                                  onHoverMapPinChange={onHoveredMapPinChange}
                                   onToggleEditing={() => toggleEditing(key)}
                                 />
                               </div>
@@ -2026,12 +2066,12 @@ export default function InteractiveItinerary({
                               <span className="text-cyan-200/45">
                                 {stopNarrativeLabel(stop.kind)}
                               </span>
+                              {timeWindowLabel(displayedStopTime) ? (
+                                <span className="text-[11px] font-medium normal-case tracking-normal text-slate-400">
+                                  {timeWindowLabel(displayedStopTime)}
+                                </span>
+                              ) : null}
                             </div>
-                            {timeWindowLabel(displayedStopTime) ? (
-                              <div className="mt-1 text-[12px] font-medium leading-5 text-slate-400">
-                                {timeWindowLabel(displayedStopTime)}
-                              </div>
-                            ) : null}
                             <h4 className="mt-2 text-base font-semibold text-white">
                               Pick a food stop
                             </h4>
@@ -2069,9 +2109,13 @@ export default function InteractiveItinerary({
                                   primaryUrl={selectedSpot.websiteUrl}
                                   primaryLabel="Restaurant site"
                                   mapsUrl={selectedSpot.mapsUrl}
-                                  photoRef={selectedSpot.photoRef}
-                                  photoUrl={selectedSpot.photoUrl}
+                                  mapPinId={
+                                    selectedSpot.source === "custom"
+                                      ? `food-${key}-${customStopForKey(key)?.id}`
+                                      : `food-${key}-${selectedSpot.name}`
+                                  }
                                   editing={isEditing}
+                                  onHoverMapPinChange={onHoveredMapPinChange}
                                   onToggleEditing={() => toggleEditing(key)}
                                 />
                                 <p className="mt-2 text-[12px] leading-5 text-slate-400">
@@ -2177,12 +2221,12 @@ export default function InteractiveItinerary({
                               <span className="text-cyan-200/45">
                                 {stopNarrativeLabel(stop.kind)}
                               </span>
+                              {timeWindowLabel(displayedStopTime) ? (
+                                <span className="text-[11px] font-medium normal-case tracking-normal text-slate-400">
+                                  {timeWindowLabel(displayedStopTime)}
+                                </span>
+                              ) : null}
                             </div>
-                            {timeWindowLabel(displayedStopTime) ? (
-                              <div className="mt-1 text-[12px] font-medium leading-5 text-slate-400">
-                                {timeWindowLabel(displayedStopTime)}
-                              </div>
-                            ) : null}
                             <h4 className="mt-2 text-base font-semibold text-white">
                               Pick an activity
                             </h4>
@@ -2225,9 +2269,13 @@ export default function InteractiveItinerary({
                                   primaryUrl={selectedActivityLink?.url}
                                   primaryLabel={selectedActivityLink?.label}
                                   mapsUrl={selectedActivity.mapsUrl}
-                                  photoRef={selectedActivity.photoRef}
-                                  photoUrl={selectedActivity.photoUrl}
+                                  mapPinId={
+                                    selectedActivity.source === "custom"
+                                      ? `activity-${key}-${customStopForKey(key)?.id}`
+                                      : `activity-${key}-${selectedActivity.name}`
+                                  }
                                   editing={isEditing}
+                                  onHoverMapPinChange={onHoveredMapPinChange}
                                   onToggleEditing={() => toggleEditing(key)}
                                 />
                               </div>
@@ -2378,6 +2426,7 @@ export default function InteractiveItinerary({
                     </div>
                   ) : null}
                 </div>
+                ) : null}
               </section>
             );
           })()
@@ -2391,33 +2440,25 @@ export default function InteractiveItinerary({
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-200/75">
-              Ask for a change
+              Edit itinerary
             </div>
             <h3 className="mt-2 text-xl font-semibold tracking-tight text-white">
-              Adjust the trip in plain English
+              Make a simple change
             </h3>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">
-              Keep it short and specific. Mention the day and what you want swapped,
-              added, or softened.
+              Mention the day and the one thing you want swapped, added, or softened.
             </p>
           </div>
 
-          <BuilderPromptPill>Auto-saves with the builder</BuilderPromptPill>
-        </div>
-
-        <div className="mt-4 flex flex-wrap gap-2">
-          <BuilderPromptPill>Day 2 lunch to Wild Flour Bakery</BuilderPromptPill>
-          <BuilderPromptPill>Add a coffee stop on day 3 before we leave</BuilderPromptPill>
-          <BuilderPromptPill>Day 3 activity to Johnston Canyon</BuilderPromptPill>
-          <BuilderPromptPill>Switch the stay to Rimrock Resort Hotel</BuilderPromptPill>
+          <BuilderPromptPill>Auto-saves</BuilderPromptPill>
         </div>
 
         <textarea
           value={builderPrompt}
           onChange={(event) => setBuilderPrompt(event.target.value)}
           maxLength={BUILDER_PROMPT_MAX_CHARS}
-          placeholder="Example: Day 2 lunch to Wild Flour Bakery. Add a coffee stop on day 3 before we leave for Edmonton."
-          className="mt-4 min-h-[116px] w-full rounded-[1.25rem] border border-white/10 bg-white/[0.04] px-4 py-4 text-sm leading-6 text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-300/40 focus:bg-white/[0.06]"
+          placeholder="Example: Day 2 lunch to Wild Flour Bakery."
+          className="mt-4 min-h-[88px] w-full rounded-[1.25rem] border border-white/10 bg-white/[0.04] px-4 py-4 text-sm leading-6 text-white outline-none transition placeholder:text-slate-500 focus:border-cyan-300/40 focus:bg-white/[0.06]"
         />
 
         <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
@@ -2445,8 +2486,7 @@ export default function InteractiveItinerary({
 
         <div className="mt-4 flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <p className="max-w-3xl text-xs leading-5 text-slate-400">
-            Use this when you want to guide the itinerary directly instead of opening
-            a specific stay, food stop, or activity card.
+            Keep each request to one clear edit for the cleanest result.
           </p>
 
           <button

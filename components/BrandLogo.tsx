@@ -11,6 +11,7 @@ type BrandLogoProps = {
   href?: string;
   className?: string;
   priority?: boolean;
+  tone?: "auto" | "light" | "dark";
 };
 
 const logoAssets = {
@@ -42,28 +43,47 @@ export default function BrandLogo({
   href,
   className,
   priority = false,
+  tone = "auto",
 }: BrandLogoProps) {
   const asset = logoAssets[variant];
   const imageClassName = className ?? "h-auto w-auto";
+  const showLightAsset = tone === "light" || tone === "auto";
+  const showDarkAsset = tone === "dark" || tone === "auto";
+  const lightAssetClassName =
+    tone === "auto"
+      ? `${imageClassName} dark:hidden`
+      : tone === "light"
+        ? imageClassName
+        : `${imageClassName} hidden`;
+  const darkAssetClassName =
+    tone === "auto"
+      ? `${imageClassName} hidden dark:block`
+      : tone === "dark"
+        ? imageClassName
+        : `${imageClassName} hidden`;
 
   const image = (
     <span className="inline-flex items-center">
-      <Image
-        src={asset.src}
-        alt={asset.alt}
-        width={asset.width}
-        height={asset.height}
-        priority={priority}
-        className={`${imageClassName} dark:hidden`}
-      />
-      <Image
-        src={asset.darkSrc}
-        alt={asset.alt}
-        width={asset.width}
-        height={asset.height}
-        priority={priority}
-        className={`${imageClassName} hidden dark:block`}
-      />
+      {showLightAsset ? (
+        <Image
+          src={asset.src}
+          alt={asset.alt}
+          width={asset.width}
+          height={asset.height}
+          priority={priority}
+          className={lightAssetClassName}
+        />
+      ) : null}
+      {showDarkAsset ? (
+        <Image
+          src={asset.darkSrc}
+          alt={asset.alt}
+          width={asset.width}
+          height={asset.height}
+          priority={priority}
+          className={darkAssetClassName}
+        />
+      ) : null}
     </span>
   );
 

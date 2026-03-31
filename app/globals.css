@@ -10,6 +10,12 @@
   --background: #08111a;
   --foreground: #f8fafc;
   --date-input-foreground: #0f172a;
+  --scrollbar-size: 12px;
+  --scrollbar-track: rgba(15, 23, 42, 0.12);
+  --scrollbar-thumb: rgba(15, 23, 42, 0.36);
+  --scrollbar-thumb-strong: rgba(15, 23, 42, 0.52);
+  --scrollbar-thumb-hover: rgba(4, 184, 135, 0.58);
+  --scrollbar-thumb-active: rgba(4, 184, 135, 0.72);
   --brand-accent-50: #effff8;
   --brand-accent-100: #d7fcef;
   --brand-accent-200: #b2f6df;
@@ -31,6 +37,11 @@
   --background: #020617;
   --foreground: #e2e8f0;
   --date-input-foreground: #f8fafc;
+  --scrollbar-track: rgba(148, 163, 184, 0.08);
+  --scrollbar-thumb: rgba(148, 163, 184, 0.28);
+  --scrollbar-thumb-strong: rgba(148, 163, 184, 0.42);
+  --scrollbar-thumb-hover: rgba(125, 236, 199, 0.56);
+  --scrollbar-thumb-active: rgba(125, 236, 199, 0.72);
 }
 
 @theme inline {
@@ -45,6 +56,59 @@ body {
   color: var(--foreground);
   font-family: var(--font-geist-sans), "Segoe UI", sans-serif;
   text-rendering: optimizeLegibility;
+}
+
+html {
+  scrollbar-gutter: stable;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+
+*::-webkit-scrollbar {
+  width: var(--scrollbar-size);
+  height: var(--scrollbar-size);
+}
+
+*::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background-clip: padding-box;
+}
+
+*::-webkit-scrollbar-thumb {
+  min-height: 48px;
+  background: linear-gradient(
+    180deg,
+    var(--scrollbar-thumb),
+    var(--scrollbar-thumb-strong)
+  );
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background-clip: padding-box;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(
+    180deg,
+    var(--scrollbar-thumb-hover),
+    var(--scrollbar-thumb-active)
+  );
+}
+
+*::-webkit-scrollbar-thumb:active {
+  background: linear-gradient(
+    180deg,
+    var(--scrollbar-thumb-active),
+    var(--scrollbar-thumb-active)
+  );
+}
+
+*::-webkit-scrollbar-corner {
+  background: transparent;
 }
 
 .font-serif {
