@@ -19,7 +19,7 @@ import {
 } from "../../../lib/promptLimits";
 import { recalculateConfidence } from "../../../lib/generateRankedTrips";
 import { isStartCity } from "../../../lib/startCities";
-import { deriveTripEndDate, getTodayIsoDate, isIsoDate } from "../../../lib/tripDates";
+import { deriveTripEndDate, isIsoDate } from "../../../lib/tripDates";
 import { extractPromptDepartureTime } from "../../../lib/tripIntent";
 import { rankDestinations } from "../../../lib/rankDestinations";
 import {
@@ -98,12 +98,6 @@ function isTripInput(value: unknown): value is TripInput {
   );
 }
 
-function getCurrentTimeValue(referenceDate = new Date()) {
-  return `${String(referenceDate.getHours()).padStart(2, "0")}:${String(
-    referenceDate.getMinutes()
-  ).padStart(2, "0")}`;
-}
-
 function normalizeDepartureTime(value: unknown) {
   if (typeof value !== "string" || !/^\d{2}:\d{2}$/.test(value.trim())) {
     return undefined;
@@ -125,8 +119,7 @@ function normalizeInput(raw: unknown): TripInput | null {
   const tripPrompt = normalizePromptText(candidateInput.tripPrompt) || undefined;
   const departureTime =
     normalizeDepartureTime(candidateInput.departureTime) ??
-    extractPromptDepartureTime(tripPrompt) ??
-    (tripStartDate === getTodayIsoDate() ? getCurrentTimeValue() : undefined);
+    extractPromptDepartureTime(tripPrompt);
 
   const candidate = {
     startCity: candidateInput.startCity,

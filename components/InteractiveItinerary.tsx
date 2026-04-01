@@ -1964,11 +1964,6 @@ export default function InteractiveItinerary({
                             <h4 className="mt-2 text-base font-semibold text-slate-950 dark:text-white">
                               Pick where to stay
                             </h4>
-                            {stop.description ? (
-                              <p className="mt-2 text-[14px] leading-6 text-slate-600 dark:text-slate-300">
-                                {stop.description}
-                              </p>
-                            ) : null}
 
                             {selectedHotel ? (
                               <div className="mt-3">
@@ -2124,11 +2119,6 @@ export default function InteractiveItinerary({
                             <h4 className="mt-2 text-base font-semibold text-slate-950 dark:text-white">
                               Pick a food stop
                             </h4>
-                            {stop.description ? (
-                              <p className="mt-2 text-[14px] leading-6 text-slate-600 dark:text-slate-300">
-                                {stop.description}
-                              </p>
-                            ) : null}
 
                             {selectedSpot ? (
                               <div className="mt-3">
@@ -2272,11 +2262,6 @@ export default function InteractiveItinerary({
                             <h4 className="mt-2 text-base font-semibold text-slate-950 dark:text-white">
                               Pick an activity
                             </h4>
-                            {stop.description ? (
-                              <p className="mt-2 text-[14px] leading-6 text-slate-600 dark:text-slate-300">
-                                {stop.description}
-                              </p>
-                            ) : null}
 
                             {selectedActivity ? (
                               <div className="mt-3">

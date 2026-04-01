@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import {
   buildConversationalDraft,
   buildTripInputFromDraft,
@@ -16,7 +16,7 @@ import {
   getPromptLimitError,
   TRIP_PROMPT_MAX_CHARS,
 } from "../lib/promptLimits";
-import { StartCity } from "../lib/startCities";
+import { StartCity, START_CITY_OPTIONS } from "../lib/startCities";
 import { formatDisplayDate, getTodayIsoDate } from "../lib/tripDates";
 import { ActivityFocus, TripInput, TripStyle } from "../lib/types";
 
@@ -503,6 +503,10 @@ function nextComposerPlaceholder(field: IntakeQuestionField | null) {
   }
 }
 
+function normalizeStartCityQuery(value: string) {
+  return value.trim().toLocaleLowerCase();
+}
+
 export default function TripForm({
   onGenerate,
   onSubmit,
@@ -518,8 +522,12 @@ export default function TripForm({
   const [pendingField, setPendingField] = useState<IntakeQuestionField | null>(null);
   const [mode, setMode] = useState<"prompt" | "followup">("prompt");
   const [errorMessage, setErrorMessage] = useState("");
+  const [isStartCityInputFocused, setIsStartCityInputFocused] = useState(false);
+  const [activeStartCityIndex, setActiveStartCityIndex] = useState(0);
   const messageIdRef = useRef(0);
   const chatViewportRef = useRef<HTMLDivElement | null>(null);
+  const startCityInputRef = useRef<HTMLInputElement | null>(null);
+  const startCityListboxId = useId();
 
   const previewPrompt = mode === "prompt" ? composerValue : prompt;
   const draft = buildConversationalDraft(previewPrompt, answers);
@@ -527,10 +535,29 @@ export default function TripForm({
   const tripPromptTooLong = trimmedComposerValue.length > TRIP_PROMPT_MAX_CHARS;
   const submitHandler = onGenerate ?? onSubmit;
   const isTripTimingQuestion = mode === "followup" && pendingField === "tripTiming";
+  const isStartCityQuestion = mode === "followup" && pendingField === "startCity";
   const selectedCalendarDate = isTripTimingQuestion
     ? extractPromptTiming(composerValue).tripStartDate ?? ""
     : "";
   const minimumTripDate = getTodayIsoDate();
+  const shouldShowAssumptionPills =
+    mode === "followup" || messages.length > 0 || trimmedComposerValue.length > 0;
+  const normalizedStartCityQuery = normalizeStartCityQuery(composerValue);
+  const filteredStartCities = START_CITY_OPTIONS.filter((city) =>
+    normalizeStartCityQuery(city).includes(normalizedStartCityQuery)
+  );
+  const hasExactStartCityMatch = START_CITY_OPTIONS.some(
+    (city) => normalizeStartCityQuery(city) === normalizedStartCityQuery
+  );
+  const shouldShowStartCitySuggestions =
+    isStartCityQuestion &&
+    isStartCityInputFocused &&
+    filteredStartCities.length > 0 &&
+    !hasExactStartCityMatch;
+  const highlightedStartCityIndex = Math.min(
+    activeStartCityIndex,
+    Math.max(filteredStartCities.length - 1, 0)
+  );
 
   function nextMessageId(prefix: string) {
     messageIdRef.current += 1;
@@ -544,6 +571,14 @@ export default function TripForm({
 
     chatViewportRef.current.scrollTop = chatViewportRef.current.scrollHeight;
   }, [messages]);
+
+  useEffect(() => {
+    if (!isStartCityQuestion || loading) {
+      return;
+    }
+
+    startCityInputRef.current?.focus();
+  }, [isStartCityQuestion, loading]);
 
   async function handleResolvedDraft(
     resolvedDraft: ReturnType<typeof buildConversationalDraft>,
@@ -607,6 +642,8 @@ export default function TripForm({
         setMode("followup");
         setPendingField(nextQuestion);
         setComposerValue("");
+        setIsStartCityInputFocused(false);
+        setActiveStartCityIndex(0);
         setMessages([
           ...initialMessages,
           {
@@ -621,6 +658,8 @@ export default function TripForm({
       setPendingField(null);
       setMode("followup");
       setComposerValue("");
+      setIsStartCityInputFocused(false);
+      setActiveStartCityIndex(0);
       await handleResolvedDraft(nextDraft, initialMessages);
       return;
     }
@@ -653,6 +692,8 @@ export default function TripForm({
         },
       ]);
       setComposerValue("");
+      setIsStartCityInputFocused(false);
+      setActiveStartCityIndex(0);
       return;
     }
 
@@ -666,6 +707,8 @@ export default function TripForm({
 
     if (nextQuestion) {
       setPendingField(nextQuestion);
+      setIsStartCityInputFocused(false);
+      setActiveStartCityIndex(0);
       setMessages([
         ...nextMessages,
         {
@@ -678,12 +721,52 @@ export default function TripForm({
     }
 
     setPendingField(null);
+    setIsStartCityInputFocused(false);
+    setActiveStartCityIndex(0);
     await handleResolvedDraft(nextDraft, nextMessages);
   }
 
   function handleComposerKeyDown(
-    event: React.KeyboardEvent<HTMLTextAreaElement>
+    event: React.KeyboardEvent<HTMLTextAreaElement | HTMLInputElement>
   ) {
+    if (isStartCityQuestion) {
+      if (event.key === "ArrowDown" && filteredStartCities.length > 0) {
+        event.preventDefault();
+        setIsStartCityInputFocused(true);
+        setActiveStartCityIndex((current) =>
+          current >= filteredStartCities.length - 1 ? 0 : current + 1
+        );
+        return;
+      }
+
+      if (event.key === "ArrowUp" && filteredStartCities.length > 0) {
+        event.preventDefault();
+        setIsStartCityInputFocused(true);
+        setActiveStartCityIndex((current) =>
+          current <= 0 ? filteredStartCities.length - 1 : current - 1
+        );
+        return;
+      }
+
+      if (event.key === "Escape") {
+        setIsStartCityInputFocused(false);
+        setActiveStartCityIndex(0);
+        return;
+      }
+
+      if (
+        event.key === "Enter" &&
+        shouldShowStartCitySuggestions &&
+        filteredStartCities[highlightedStartCityIndex]
+      ) {
+        event.preventDefault();
+        setComposerValue(filteredStartCities[highlightedStartCityIndex]);
+        setErrorMessage("");
+        setIsStartCityInputFocused(false);
+        return;
+      }
+    }
+
     if (event.key !== "Enter" || event.nativeEvent.isComposing) {
       return;
     }
@@ -706,6 +789,12 @@ export default function TripForm({
     setErrorMessage("");
   }
 
+  function handleStartCitySelect(city: StartCity) {
+    setComposerValue(city);
+    setErrorMessage("");
+    setIsStartCityInputFocused(false);
+  }
+
   const assumptionPills = buildAssumptionPills(draft);
 
   return (
@@ -721,22 +810,24 @@ export default function TripForm({
         </div>
       </div>
 
-      <div className="mt-6 flex flex-wrap gap-2">
-        {assumptionPills.slice(0, 6).map((pill) => (
-          <span
-            key={pill}
-            className="inline-flex items-center rounded-full border border-slate-200/70 bg-[#fbf7ef]/76 px-3 py-1.5 text-xs font-medium text-slate-800 dark:border-white/12 dark:bg-white/8 dark:text-white/84"
-          >
-            {pill}
-          </span>
-        ))}
-      </div>
+      {shouldShowAssumptionPills ? (
+        <div className="mt-6 flex flex-wrap gap-2">
+          {assumptionPills.slice(0, 6).map((pill) => (
+            <span
+              key={pill}
+              className="inline-flex items-center rounded-full border border-slate-200/70 bg-[#fbf7ef]/76 px-3 py-1.5 text-xs font-medium text-slate-800 dark:border-white/12 dark:bg-white/8 dark:text-white/84"
+            >
+              {pill}
+            </span>
+          ))}
+        </div>
+      ) : null}
 
       {messages.length > 0 ? (
         <div className="mt-6 rounded-[1.6rem] border border-slate-200/70 bg-[#fbf7ef]/72 p-4 dark:border-white/10 dark:bg-black/12">
           <div
             ref={chatViewportRef}
-            className="h-[25rem] space-y-3 overflow-y-auto pr-1 sm:h-[27rem]"
+            className="max-h-[18rem] space-y-3 overflow-y-auto pr-1"
           >
             {messages.map((message) => (
               <div
@@ -768,16 +859,99 @@ export default function TripForm({
 
       <form onSubmit={handleSubmit} className="mt-5 space-y-4">
         <div className="rounded-[1.7rem] border border-slate-200/70 bg-[#f7f3eb]/82 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.72)] dark:border-white/14 dark:bg-white/10 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
-          <textarea
-            value={composerValue}
-            onChange={(event) => setComposerValue(event.target.value)}
-            onKeyDown={handleComposerKeyDown}
-            placeholder={nextComposerPlaceholder(pendingField)}
-            disabled={loading}
-            className={`w-full resize-none border-0 bg-transparent px-2 text-[15px] leading-7 text-slate-950 placeholder:text-slate-500 focus:outline-none dark:text-white dark:placeholder:text-white/42 ${
-              mode === "prompt" ? "min-h-[150px]" : "min-h-[88px]"
-            }`}
-          />
+          {isStartCityQuestion ? (
+            <>
+              <div className="relative">
+                <input
+                  ref={startCityInputRef}
+                  type="text"
+                  role="combobox"
+                  aria-autocomplete="list"
+                  aria-expanded={shouldShowStartCitySuggestions}
+                  aria-controls={
+                    shouldShowStartCitySuggestions ? startCityListboxId : undefined
+                  }
+                  aria-activedescendant={
+                    shouldShowStartCitySuggestions
+                      ? `${startCityListboxId}-option-${highlightedStartCityIndex}`
+                      : undefined
+                  }
+                  value={composerValue}
+                  onChange={(event) => {
+                    setComposerValue(event.target.value);
+                    setErrorMessage("");
+                    setIsStartCityInputFocused(true);
+                    setActiveStartCityIndex(0);
+                  }}
+                  onFocus={() => setIsStartCityInputFocused(true)}
+                  onBlur={() => {
+                    window.setTimeout(() => setIsStartCityInputFocused(false), 120);
+                  }}
+                  onKeyDown={handleComposerKeyDown}
+                  placeholder={nextComposerPlaceholder(pendingField)}
+                  disabled={loading}
+                  autoComplete="off"
+                  className="h-16 w-full border-0 bg-transparent px-2 text-[15px] leading-7 text-slate-950 placeholder:text-slate-500 focus:outline-none dark:text-white dark:placeholder:text-white/42"
+                />
+
+                {shouldShowStartCitySuggestions ? (
+                  <div className="px-2 pb-2">
+                    <div className="overflow-hidden rounded-[1.35rem] border border-[#d9b57c]/30 bg-[linear-gradient(180deg,rgba(255,252,246,0.98),rgba(247,242,233,0.96))] shadow-[0_18px_42px_rgba(15,23,42,0.1)] dark:border-[#7decc7]/16 dark:bg-[linear-gradient(180deg,rgba(11,18,29,0.96),rgba(7,13,24,0.98))] dark:shadow-[0_24px_48px_rgba(2,6,23,0.4)]">
+                      <div className="border-b border-slate-200/70 px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-500 dark:border-white/8 dark:text-white/40">
+                        Starting city
+                      </div>
+                      <div
+                        id={startCityListboxId}
+                        role="listbox"
+                        aria-label="Suggested Alberta departure cities"
+                        className="max-h-60 overflow-y-auto p-2"
+                      >
+                        {filteredStartCities.map((city, index) => {
+                          const isActive = index === highlightedStartCityIndex;
+
+                          return (
+                            <button
+                              key={city}
+                              id={`${startCityListboxId}-option-${index}`}
+                              type="button"
+                              role="option"
+                              aria-selected={isActive}
+                              onMouseDown={(event) => event.preventDefault()}
+                              onClick={() => handleStartCitySelect(city)}
+                              onMouseEnter={() => setActiveStartCityIndex(index)}
+                              className={`flex w-full items-center justify-between rounded-[1rem] px-3 py-3 text-left text-[15px] font-medium transition ${
+                                isActive
+                                  ? "bg-slate-950 text-white shadow-[0_10px_24px_rgba(15,23,42,0.16)] dark:bg-[linear-gradient(135deg,rgba(125,236,199,0.18),rgba(59,130,246,0.18))] dark:text-white dark:shadow-[0_12px_28px_rgba(2,6,23,0.34)]"
+                                  : "text-slate-700 hover:bg-white/80 hover:text-slate-950 dark:text-white/78 dark:hover:bg-white/8 dark:hover:text-white"
+                              }`}
+                            >
+                              <span>{city}</span>
+                              {isActive ? (
+                                <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/72 dark:text-[#b2f6df]">
+                                  Enter
+                                </span>
+                              ) : null}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            </>
+          ) : (
+            <textarea
+              value={composerValue}
+              onChange={(event) => setComposerValue(event.target.value)}
+              onKeyDown={handleComposerKeyDown}
+              placeholder={nextComposerPlaceholder(pendingField)}
+              disabled={loading}
+              className={`w-full resize-none border-0 bg-transparent px-2 text-[15px] leading-7 text-slate-950 placeholder:text-slate-500 focus:outline-none dark:text-white dark:placeholder:text-white/42 ${
+                mode === "prompt" ? "min-h-[150px]" : "min-h-[88px]"
+              }`}
+            />
+          )}
           {isTripTimingQuestion ? (
             <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-[1.2rem] border border-slate-200/80 bg-white/70 px-4 py-3 dark:border-white/10 dark:bg-slate-950/35">
               <div className="space-y-1">
