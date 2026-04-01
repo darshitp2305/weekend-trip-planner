@@ -1,6 +1,7 @@
 import { loadEnvConfig } from "@next/env";
 import { buildTripPlan } from "../lib/buildTripPlan";
 import { rankDestinations } from "../lib/rankDestinations";
+import { getPromptAwareTripSummary } from "../lib/tripSpecificity";
 import { deriveTripEndDate } from "../lib/tripDates";
 import { TripInput, TripPlan, TripStyle } from "../lib/types";
 
@@ -394,6 +395,221 @@ function evaluateSkiTripRegression(): RegressionCheck {
   };
 }
 
+function evaluateMultiDaySkiTripRegression(): RegressionCheck {
+  const tripPrompt =
+    "We're 4 people starting in Edmonton and want a 3-day ski trip in Jasper with about $300 each. Keep the arrival day easy because of the drive, but make the full middle day and the final morning both about skiing.";
+
+  const input: TripInput = {
+    ...makeInput({
+      style: "adventure",
+      startCity: "Edmonton",
+      travelerCount: 4,
+      budgetPerTraveler: 300,
+      budget: 1200,
+      tripLengthDays: 3,
+      maxDriveHours: 5,
+      preferredDestination: "Jasper",
+      season: "spring",
+      tripStartDate: "2026-04-03",
+    }),
+    tripPrompt,
+  };
+
+  const winner = rankDestinations(input, 1)[0];
+  if (!winner) {
+    return {
+      id: "R04",
+      passed: false,
+      notes: ["No destination matched the multi-day Jasper ski regression case."],
+    };
+  }
+
+  const plan = buildTripPlan(winner, input, "static-ranking");
+  const skiKeywords = [
+    "ski",
+    "skiing",
+    "snowboard",
+    "chairlift",
+    "gondola",
+    "marmot basin",
+  ];
+  const skiDays = plan.itineraryDays
+    .map((day, index) => ({
+      dayNumber: index + 1,
+      hasSkiActivity: day.stops.some((stop) => {
+        if (stop.kind !== "activity") return false;
+        const stopText = `${stop.title} ${stop.description ?? ""}`.toLowerCase();
+        return skiKeywords.some((term) => stopText.includes(term));
+      }),
+    }))
+    .filter((day) => day.hasSkiActivity)
+    .map((day) => day.dayNumber);
+  const notes: string[] = [];
+
+  if (!winner.name.toLowerCase().includes("jasper")) {
+    notes.push(`Expected Jasper to win, got ${winner.name}.`);
+  }
+
+  if (!skiDays.includes(2)) {
+    notes.push("Expected the middle day to include a ski activity.");
+  }
+
+  if (!skiDays.includes(3)) {
+    notes.push("Expected the final day to keep a ski activity before the drive back.");
+  }
+
+  return {
+    id: "R04",
+    passed:
+      winner.name.toLowerCase().includes("jasper") &&
+      skiDays.includes(2) &&
+      skiDays.includes(3),
+    notes,
+  };
+}
+
+function evaluateFutureDateTimingRegression(): RegressionCheck {
+  const tripPrompt =
+    "Plan a 3-day ski trip in Jasper for 4 people starting from Edmonton on April 3, 2026. Keep day 1 easy because of the drive, make day 2 a full ski day, and keep skiing on the morning of day 3 before heading back. Budget is about $300 per person total, so choose the most budget-friendly stay and food options that still make sense.";
+
+  const input: TripInput = {
+    ...makeInput({
+      style: "adventure",
+      startCity: "Edmonton",
+      travelerCount: 4,
+      budgetPerTraveler: 300,
+      budget: 1200,
+      tripLengthDays: 3,
+      maxDriveHours: 5,
+      preferredDestination: "Jasper",
+      season: "spring",
+      tripStartDate: "2026-04-03",
+    }),
+    tripPrompt,
+  };
+
+  const winner = rankDestinations(input, 1)[0];
+  if (!winner) {
+    return {
+      id: "R05",
+      passed: false,
+      notes: ["No destination matched the future-date timing regression case."],
+    };
+  }
+
+  const plan = buildTripPlan(winner, input, "static-ranking");
+  if (!plan) {
+    return {
+      id: "R05",
+      passed: false,
+      notes: ["Planner failed to build the future-date timing regression case."],
+    };
+  }
+  const firstDayText = [
+    plan.itineraryDays[0]?.title ?? "",
+    plan.itineraryDays[0]?.summary ?? "",
+    ...(plan.itineraryDays[0]?.stops ?? []).flatMap((stop) => [
+      stop.time ?? "",
+      stop.title,
+      stop.description ?? "",
+    ]),
+  ]
+    .join(" ")
+    .toLowerCase();
+  const notes: string[] = [];
+
+  if (/\bleav(?:e|ing) around\b/.test(firstDayText)) {
+    notes.push("Expected future-dated trips without a prompt time to avoid invented departure copy.");
+  }
+
+  if (/\b\d{1,2}:\d{2}\s*(am|pm)\b/.test(firstDayText)) {
+    notes.push("Expected future-dated trips without a prompt time to avoid exact clock times.");
+  }
+
+  return {
+    id: "R05",
+    passed:
+      !/\bleav(?:e|ing) around\b/.test(firstDayText) &&
+      !/\b\d{1,2}:\d{2}\s*(am|pm)\b/.test(firstDayText),
+    notes,
+  };
+}
+
+function evaluateMultiDaySkiSummaryRegression(): RegressionCheck {
+  const tripPrompt =
+    "Plan a 3-day ski trip in Jasper for 4 people starting from Edmonton on April 3, 2026. Keep day 1 easy because of the drive, make day 2 a full ski day, and keep skiing on the morning of day 3 before heading back. Budget is about $300 per person total, so choose the most budget-friendly stay and food options that still make sense.";
+
+  const input: TripInput = {
+    ...makeInput({
+      style: "adventure",
+      startCity: "Edmonton",
+      travelerCount: 4,
+      budgetPerTraveler: 300,
+      budget: 1200,
+      tripLengthDays: 3,
+      maxDriveHours: 5,
+      preferredDestination: "Jasper",
+      season: "spring",
+      tripStartDate: "2026-04-03",
+    }),
+    tripPrompt,
+  };
+
+  const winner = rankDestinations(input, 1)[0];
+  if (!winner) {
+    return {
+      id: "R06",
+      passed: false,
+      notes: ["No destination matched the multi-day ski summary regression case."],
+    };
+  }
+
+  const plan = buildTripPlan(winner, input, "static-ranking");
+  if (!plan) {
+    return {
+      id: "R06",
+      passed: false,
+      notes: ["Planner failed to build the multi-day ski summary regression case."],
+    };
+  }
+  const summary = (
+    getPromptAwareTripSummary({
+      summary: plan.summary,
+      tripPrompt: plan.tripPrompt,
+      tripLengthDays: plan.itineraryDays?.length,
+      destinationName: plan.destinationName,
+      destination: plan.destination,
+      homeBaseCity: plan.homeBaseCity,
+      name: plan.name,
+      topActivities: plan.topActivities,
+      itineraryDays: plan.itineraryDays,
+      savedSelectionState: plan.savedSelectionState,
+    }) ?? ""
+  ).toLowerCase();
+  const notes: string[] = [];
+
+  if (!summary.includes("across 2 days")) {
+    notes.push(`Expected the ski summary to reflect multi-day skiing, got: ${summary}`);
+  }
+
+  if (summary.includes("one clear winter-sports day")) {
+    notes.push("Expected the ski summary to stop describing the trip as a one-day winter-sports plan.");
+  }
+
+  if (summary.includes("jasper ski day")) {
+    notes.push("Expected the ski summary to avoid generated placeholder ski-anchor names.");
+  }
+
+  return {
+    id: "R06",
+    passed:
+      summary.includes("across 2 days") &&
+      !summary.includes("one clear winter-sports day") &&
+      !summary.includes("jasper ski day"),
+    notes,
+  };
+}
+
 function main() {
   const cases = buildCases();
   const evaluations = cases.map((testCase) => {
@@ -404,6 +620,9 @@ function main() {
     evaluatePromptDrivenCanmoreRegression(),
     evaluateRequestedActivityRegression(),
     evaluateSkiTripRegression(),
+    evaluateMultiDaySkiTripRegression(),
+    evaluateFutureDateTimingRegression(),
+    evaluateMultiDaySkiSummaryRegression(),
   ];
 
   const passCount = evaluations.filter(

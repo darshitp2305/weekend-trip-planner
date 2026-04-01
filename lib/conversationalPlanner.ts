@@ -7,8 +7,13 @@ import {
 } from "./tripIntent";
 import {
   deriveSeasonFromDateRange,
+  formatDisplayDate,
   getTodayIsoDate,
 } from "./tripDates";
+import {
+  normalizePromptText,
+  TRIP_PROMPT_MAX_CHARS,
+} from "./promptLimits";
 import {
   isStartCity,
   StartCity,
@@ -510,6 +515,228 @@ export function getRetryCopy(field: IntakeQuestionField) {
   }
 }
 
+function pluralize(count: number, singular: string, plural = `${singular}s`) {
+  return `${count} ${count === 1 ? singular : plural}`;
+}
+
+function buildTimingClause(draft: ConversationalDraft) {
+  if (draft.tripStartDate) {
+    return `starting ${formatDisplayDate(draft.tripStartDate) ?? draft.tripStartDate}`;
+  }
+
+  if (draft.season) {
+    return `in ${draft.season.toLowerCase()}`;
+  }
+
+  return undefined;
+}
+
+function promptBudgetMatchesDraft(
+  promptBudget: PromptBudgetMatch | null,
+  travelerCount: number | undefined,
+  budgetPerTraveler: number
+) {
+  if (!promptBudget) {
+    return false;
+  }
+
+  if (promptBudget.scope === "per_traveler") {
+    return promptBudget.amount === budgetPerTraveler;
+  }
+
+  if (!travelerCount) {
+    return false;
+  }
+
+  return promptBudget.amount === travelerCount * budgetPerTraveler;
+}
+
+function buildMissingPromptDetails(
+  basePrompt: string,
+  draft: ConversationalDraft
+) {
+  const details: string[] = [];
+  const promptTiming = extractPromptTiming(basePrompt);
+
+  if (draft.startCity && extractPromptStartCity(basePrompt) !== draft.startCity) {
+    details.push(`from ${draft.startCity}`);
+  }
+
+  if (
+    draft.travelerCount &&
+    extractPromptTravelerCount(basePrompt) !== draft.travelerCount
+  ) {
+    details.push(`for ${pluralize(draft.travelerCount, "traveler")}`);
+  }
+
+  if (
+    draft.tripLengthDays &&
+    extractPromptTripLengthDays(basePrompt) !== draft.tripLengthDays
+  ) {
+    details.push(`for ${pluralize(draft.tripLengthDays, "day")}`);
+  }
+
+  if (draft.tripStartDate) {
+    if (promptTiming.tripStartDate !== draft.tripStartDate) {
+      details.push(buildTimingClause(draft)!);
+    }
+  } else if (draft.season && promptTiming.season !== draft.season) {
+    details.push(buildTimingClause(draft)!);
+  }
+
+  if (
+    !promptBudgetMatchesDraft(
+      extractPromptBudget(basePrompt),
+      draft.travelerCount,
+      draft.budgetPerTraveler
+    )
+  ) {
+    details.push(`with a budget of $${draft.budgetPerTraveler} per traveler`);
+  }
+
+  return details;
+}
+
+function promptConflictsWithResolvedDetails(
+  basePrompt: string,
+  draft: ConversationalDraft
+) {
+  const promptTravelerCount = extractPromptTravelerCount(basePrompt);
+  if (
+    draft.travelerCount &&
+    promptTravelerCount &&
+    promptTravelerCount !== draft.travelerCount
+  ) {
+    return true;
+  }
+
+  const promptStartCity = extractPromptStartCity(basePrompt);
+  if (draft.startCity && promptStartCity && promptStartCity !== draft.startCity) {
+    return true;
+  }
+
+  const promptTripLengthDays = extractPromptTripLengthDays(basePrompt);
+  if (
+    draft.tripLengthDays &&
+    promptTripLengthDays &&
+    promptTripLengthDays !== draft.tripLengthDays
+  ) {
+    return true;
+  }
+
+  const promptTiming = extractPromptTiming(basePrompt);
+  if (
+    draft.tripStartDate &&
+    promptTiming.tripStartDate &&
+    promptTiming.tripStartDate !== draft.tripStartDate
+  ) {
+    return true;
+  }
+
+  if (draft.season && promptTiming.season && promptTiming.season !== draft.season) {
+    return true;
+  }
+
+  const promptBudget = extractPromptBudget(basePrompt);
+  if (
+    promptBudget &&
+    !promptBudgetMatchesDraft(
+      promptBudget,
+      draft.travelerCount,
+      draft.budgetPerTraveler
+    )
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+function describeTripSubject(draft: ConversationalDraft) {
+  if (draft.intent.activityFocus === "skiing") {
+    return "skiing trip";
+  }
+
+  if (draft.intent.activityFocus === "hiking") {
+    return "hiking trip";
+  }
+
+  if (draft.intent.activityFocus === "camping") {
+    return "camping trip";
+  }
+
+  switch (draft.intent.style) {
+    case "foodie":
+      return "food-focused trip";
+    case "outdoors":
+      return "outdoor trip";
+    case "adventure":
+      return "adventure trip";
+    case "chill":
+      return "slow-paced trip";
+    case "solo reset":
+      return "solo reset trip";
+    case "hidden gems":
+      return "hidden-gems trip";
+    default:
+      return "Alberta trip";
+  }
+}
+
+function buildStructuredTripPrompt(draft: ConversationalDraft) {
+  const destination = draft.intent.preferredDestination
+    ? ` in ${draft.intent.preferredDestination}`
+    : " in Alberta";
+  const origin = draft.startCity ? ` from ${draft.startCity}` : "";
+  const groupAndLength =
+    draft.travelerCount && draft.tripLengthDays
+      ? ` for ${pluralize(draft.travelerCount, "traveler")} over ${pluralize(
+          draft.tripLengthDays,
+          "day"
+        )}`
+      : draft.travelerCount
+        ? ` for ${pluralize(draft.travelerCount, "traveler")}`
+        : draft.tripLengthDays
+          ? ` for ${pluralize(draft.tripLengthDays, "day")}`
+          : "";
+  const extraClauses = [
+    buildTimingClause(draft),
+    `with a budget of $${draft.budgetPerTraveler} per traveler`,
+  ].filter((value): value is string => Boolean(value));
+
+  const summary = `${describeTripSubject(draft)}${destination}${origin}${groupAndLength}`;
+  const canonicalPrompt = `${summary.charAt(0).toUpperCase()}${summary.slice(1)}${
+    extraClauses.length > 0 ? `, ${extraClauses.join(", ")}` : ""
+  }.`;
+
+  return canonicalPrompt.length <= TRIP_PROMPT_MAX_CHARS
+    ? canonicalPrompt
+    : canonicalPrompt.slice(0, TRIP_PROMPT_MAX_CHARS).trimEnd();
+}
+
+export function buildCanonicalTripPrompt(draft: ConversationalDraft) {
+  const basePrompt = normalizePromptText(draft.prompt);
+  if (!basePrompt) {
+    return buildStructuredTripPrompt(draft);
+  }
+
+  if (promptConflictsWithResolvedDetails(basePrompt, draft)) {
+    return buildStructuredTripPrompt(draft);
+  }
+
+  const missingDetails = buildMissingPromptDetails(basePrompt, draft);
+  if (missingDetails.length === 0) {
+    return basePrompt;
+  }
+
+  const trimmedBasePrompt = basePrompt.replace(/\s*[.!?]+\s*$/, "");
+  const appendedPrompt = `${trimmedBasePrompt}, ${missingDetails.join(", ")}.`;
+
+  return appendedPrompt.length <= TRIP_PROMPT_MAX_CHARS
+    ? appendedPrompt
+    : basePrompt;
+}
+
 export function buildTripInputFromDraft(
   draft: ConversationalDraft
 ): TripInput | null {
@@ -532,7 +759,7 @@ export function buildTripInputFromDraft(
     tripLengthDays: draft.tripLengthDays,
     season: draft.season,
     style: draft.intent.style,
-    tripPrompt: draft.prompt,
+    tripPrompt: buildCanonicalTripPrompt(draft),
     activityFocus: draft.intent.activityFocus,
     veganFriendly: draft.intent.veganFriendly,
     includeStaycations: draft.intent.includeStaycations,

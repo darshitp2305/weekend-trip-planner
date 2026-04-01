@@ -20,7 +20,6 @@ import {
 import {
   estimateFoodCostForGroup,
   estimateFoodCostRangeForGroup,
-  foodPricingSourceLabel,
 } from "../lib/foodPricing";
 import {
   buildDefaultSelectionState,
@@ -2168,17 +2167,12 @@ export default function InteractiveItinerary({
                                   onHoverMapPinChange={onHoveredMapPinChange}
                                   onToggleEditing={() => toggleEditing(key)}
                                 />
-                                <p className="mt-2 text-[12px] leading-5 text-slate-500 dark:text-slate-400">
-                                  {selectedSpot.source === "catalog"
-                                    ? foodPricingSourceLabel({
-                                        name: selectedSpot.name,
-                                        tags: [],
-                                        category: selectedSpot.category,
-                                        estimatedCost: selectedSpot.estimatedCost,
-                                      })
-                                    : customChoiceLabel(selectedSpot) ??
+                                {selectedSpot.source !== "catalog" ? (
+                                  <p className="mt-2 text-[12px] leading-5 text-slate-500 dark:text-slate-400">
+                                    {customChoiceLabel(selectedSpot) ??
                                       "Matched from your builder prompt."}
-                                </p>
+                                  </p>
+                                ) : null}
                               </div>
                             ) : null}
 
@@ -2196,9 +2190,7 @@ export default function InteractiveItinerary({
                                       key={spot.name}
                                       option={{
                                         name: spot.name,
-                                        subtitle: `${spot.shortDescription ?? ""}${
-                                          spot.shortDescription ? " " : ""
-                                        }${foodPricingSourceLabel(spot)}`,
+                                        subtitle: spot.shortDescription ?? "",
                                         rating: spot.rating,
                                         estimatedCost,
                                         estimatedCostLabel: `Est. ${formatMoney(

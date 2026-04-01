@@ -37,6 +37,7 @@ import {
   getAddedStopsForDay,
   getCustomStopForKey,
   normalizeSelectionState,
+  optimizeSelectionForBudget,
 } from "../../../lib/tripSelections";
 import { getPromptConstraintFitSummary } from "../../../lib/tripSpecificity";
 import {
@@ -400,6 +401,80 @@ export default function TripPage() {
     selection: emptySelectionState(),
   });
 
+  const travelerCount = useMemo(() => {
+    const value = Number(trip?.travelerCount ?? 1);
+    return Number.isFinite(value) && value > 0 ? value : 1;
+  }, [trip]);
+
+  const hotelOptions = useMemo(() => trip?.hotelOptions ?? [], [trip?.hotelOptions]);
+
+  const targetTotalBudget = useMemo(() => {
+    const fromSavedField = Number(trip?.totalBudget);
+    if (Number.isFinite(fromSavedField) && fromSavedField > 0) {
+      return fromSavedField;
+    }
+    return 0;
+  }, [trip]);
+
+  const defaultSelectionState = useMemo(() => {
+    if (!trip) {
+      return emptySelectionState();
+    }
+
+    return buildDefaultSelectionState(
+      itineraryDays,
+      trip.hotelOptions ?? [],
+      trip.foodSpots ?? [],
+      trip.topActivities ?? []
+    );
+  }, [itineraryDays, trip]);
+
+  const legacyBudgetFit = useMemo(() => {
+    if (!trip) {
+      return null;
+    }
+
+    const normalizedSaved = normalizeSelectionState(
+      trip.savedSelectionState ?? defaultSelectionState
+    );
+    const savedLooksDefault = selectionStatesEqual(
+      normalizedSaved,
+      defaultSelectionState
+    );
+
+    if (!savedLooksDefault || trip.budgetOptimization) {
+      return null;
+    }
+
+    const result = optimizeSelectionForBudget({
+      tripLengthDays: deriveTripLengthDays(trip),
+      travelerCount,
+      targetTotalBudget,
+      hotelOptions,
+      foodSpots: trip.foodSpots ?? [],
+      activities: trip.topActivities ?? [],
+      itineraryDays,
+      selection: defaultSelectionState,
+      fallbackBreakdown: trip.budgetBreakdown,
+    });
+
+    if (
+      selectionStatesEqual(result.optimizedSelection, defaultSelectionState) &&
+      result.summary.actions.length === 0
+    ) {
+      return null;
+    }
+
+    return result;
+  }, [
+    defaultSelectionState,
+    hotelOptions,
+    itineraryDays,
+    targetTotalBudget,
+    travelerCount,
+    trip,
+  ]);
+
   const activeSelectionState = useMemo(() => {
     if (!trip) {
       return emptySelectionState();
@@ -409,23 +484,28 @@ export default function TripPage() {
       return normalizeSelectionState(selectionState.selection);
     }
 
-    return normalizeSelectionState(
-      trip.savedSelectionState ??
-      buildDefaultSelectionState(
-        itineraryDays,
-        trip.hotelOptions ?? [],
-        trip.foodSpots ?? [],
-        trip.topActivities ?? []
-      )
+    const normalizedSaved = normalizeSelectionState(
+      trip.savedSelectionState ?? defaultSelectionState
     );
-  }, [itineraryDays, selectionState, trip]);
+    const savedLooksDefault = selectionStatesEqual(
+      normalizedSaved,
+      defaultSelectionState
+    );
 
-  const travelerCount = useMemo(() => {
-    const value = Number(trip?.travelerCount ?? 1);
-    return Number.isFinite(value) && value > 0 ? value : 1;
-  }, [trip]);
+    if (legacyBudgetFit && savedLooksDefault) {
+      return legacyBudgetFit.optimizedSelection;
+    }
 
-  const hotelOptions = useMemo(() => trip?.hotelOptions ?? [], [trip?.hotelOptions]);
+    return normalizedSaved;
+  }, [defaultSelectionState, legacyBudgetFit, selectionState, trip]);
+
+  const activeBudgetOptimization = useMemo(() => {
+    if (trip?.budgetOptimization) {
+      return trip.budgetOptimization;
+    }
+
+    return legacyBudgetFit?.summary;
+  }, [legacyBudgetFit, trip?.budgetOptimization]);
 
   const selectedHotel = useMemo(() => {
     if (!trip) return undefined;
@@ -451,14 +531,6 @@ export default function TripPage() {
       fallbackBreakdown: trip.budgetBreakdown,
     });
   }, [activeSelectionState, hotelOptions, itineraryDays, travelerCount, trip]);
-
-  const targetTotalBudget = useMemo(() => {
-    const fromSavedField = Number(trip?.totalBudget);
-    if (Number.isFinite(fromSavedField) && fromSavedField > 0) {
-      return fromSavedField;
-    }
-    return 0;
-  }, [trip]);
 
   const budgetPerTraveler = useMemo(() => {
     const saved = Number(trip?.budgetPerTraveler);
@@ -548,6 +620,42 @@ export default function TripPage() {
     return notes;
   }, [stayPriceIsVerified]);
 
+  const budgetAlert = useMemo(() => {
+    if (
+      !budgetStatus ||
+      budgetStatus.label !== "Over target" ||
+      targetTotalBudget <= 0 ||
+      estimatedTotalCost <= 0
+    ) {
+      return null;
+    }
+
+    const overage = Math.max(0, estimatedTotalCost - targetTotalBudget);
+    const cheapestDraftStillOver =
+      activeBudgetOptimization?.status === "optimized_but_over";
+
+    return {
+      eyebrow: cheapestDraftStillOver ? "Budget reality check" : "Budget warning",
+      title: cheapestDraftStillOver
+        ? "Cheapest matching draft still misses the budget"
+        : "This draft is currently over the saved budget",
+      body: cheapestDraftStillOver
+        ? `Even after swapping in cheaper default picks, this plan is still about ${formatMoney(
+            overage
+          )} over your ${formatMoney(
+            targetTotalBudget
+          )} total target. Jasper may need a higher budget, a cheaper stay, or a different destination to fit cleanly.`
+        : `This draft is about ${formatMoney(overage)} over your ${formatMoney(
+            targetTotalBudget
+          )} total target right now. Open the builder to swap down the stay, meals, or activities before you commit to it.`,
+    };
+  }, [
+    activeBudgetOptimization?.status,
+    budgetStatus,
+    estimatedTotalCost,
+    targetTotalBudget,
+  ]);
+
   const tripMapData = useMemo(() => {
     if (!trip) {
       return {
@@ -584,9 +692,6 @@ export default function TripPage() {
     }> = [];
     let missingLocationCount = 0;
     const missingLocationCountByDay: Record<number, number> = {};
-    const selectedHotel =
-      hotels.find((hotel) => hotel.name === activeSelectionState.hotelName) ??
-      hotels[0];
     const incrementMissingLocationCount = (dayNumber: number) => {
       missingLocationCount += 1;
       missingLocationCountByDay[dayNumber] =
@@ -599,18 +704,6 @@ export default function TripPage() {
         latitude: number;
         longitude: number;
       }> = [];
-      let hasVisibleDayStartPin = false;
-
-      if (
-        selectedHotel &&
-        typeof selectedHotel.latitude === "number" &&
-        typeof selectedHotel.longitude === "number"
-      ) {
-        routePoints.push({
-          latitude: selectedHotel.latitude,
-          longitude: selectedHotel.longitude,
-        });
-      }
 
       (day.stops ?? []).forEach((stop, stopIndex) => {
         const key = stopKey(dayIndex, stopIndex);
@@ -645,20 +738,11 @@ export default function TripPage() {
                 selectedHotel.photoUrl
               ),
             });
-            hasVisibleDayStartPin = true;
 
-            const alreadyAddedHotelRoutePoint = routePoints.some(
-              (point) =>
-                Math.abs(point.latitude - selectedHotel.latitude!) < 0.00001 &&
-                Math.abs(point.longitude - selectedHotel.longitude!) < 0.00001
-            );
-
-            if (!alreadyAddedHotelRoutePoint) {
-              routePoints.push({
-                latitude: selectedHotel.latitude,
-                longitude: selectedHotel.longitude,
-              });
-            }
+            routePoints.push({
+              latitude: selectedHotel.latitude,
+              longitude: selectedHotel.longitude,
+            });
           } else {
             incrementMissingLocationCount(dayNumber);
           }
@@ -843,31 +927,6 @@ export default function TripPage() {
         }
       });
 
-      if (
-        !hasVisibleDayStartPin &&
-        selectedHotel &&
-        typeof selectedHotel.latitude === "number" &&
-        typeof selectedHotel.longitude === "number"
-      ) {
-        pins.push({
-          id: `day-start-${dayNumber}-${selectedHotel.name}`,
-          label: selectedHotel.name,
-          day: dayNumber,
-          type: "stay",
-          isDayStart: true,
-          isSyntheticStart: true,
-          latitude: selectedHotel.latitude,
-          longitude: selectedHotel.longitude,
-          subtitle: "Start from your selected stay",
-          mapsUrl: selectedHotel.mapsUrl || selectedHotel.bookingLink,
-          rating: selectedHotel.rating,
-          photoUrl: buildPlacePhotoUrl(
-            selectedHotel.photoRef,
-            selectedHotel.photoUrl
-          ),
-        });
-      }
-
       if (routePoints.length >= 2) {
         routePaths.push({
           day: dayNumber,
@@ -934,8 +993,9 @@ export default function TripPage() {
       ...trip,
       savedSelectionState: activeSelectionState,
       budgetBreakdown: selectedBudget ?? trip.budgetBreakdown,
+      budgetOptimization: activeBudgetOptimization ?? trip.budgetOptimization,
     } satisfies TripPlan;
-  }, [activeSelectionState, selectedBudget, trip]);
+  }, [activeBudgetOptimization, activeSelectionState, selectedBudget, trip]);
 
   const routeSummaryLabel = useMemo(() => {
     const duration = formatDurationSeconds(trip?.routeSummary?.durationSeconds);
@@ -1359,6 +1419,19 @@ export default function TripPage() {
             </p>
           </section>
         ) : null}
+        {budgetAlert ? (
+          <section className="rounded-[1.5rem] border border-amber-200 bg-amber-50 p-5 shadow-sm dark:border-amber-500/30 dark:bg-amber-500/10">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-amber-700 dark:text-amber-300">
+              {budgetAlert.eyebrow}
+            </div>
+            <h2 className="mt-2 text-2xl font-semibold tracking-tight text-amber-950 dark:text-amber-100">
+              {budgetAlert.title}
+            </h2>
+            <p className="mt-2 max-w-4xl text-sm leading-6 text-amber-900 dark:text-amber-100">
+              {budgetAlert.body}
+            </p>
+          </section>
+        ) : null}
 
         {isOwner && syncConflict ? (
           <section className="rounded-[1.5rem] border border-amber-200 bg-amber-50 p-5 shadow-sm dark:border-amber-500/30 dark:bg-amber-500/10">
@@ -1406,6 +1479,11 @@ export default function TripPage() {
               <BudgetBreakdown
                 breakdown={selectedBudget ?? trip.budgetBreakdown}
                 notes={budgetNotes}
+                targetTotalBudget={targetTotalBudget}
+                estimatedTotalCost={estimatedTotalCost}
+                travelerCount={travelerCount}
+                fitStatus={budgetStatus}
+                optimization={activeBudgetOptimization}
               />
             </section>
 
@@ -1577,6 +1655,11 @@ export default function TripPage() {
                 <BudgetBreakdown
                   breakdown={selectedBudget ?? trip.budgetBreakdown}
                   notes={budgetNotes}
+                  targetTotalBudget={targetTotalBudget}
+                  estimatedTotalCost={estimatedTotalCost}
+                  travelerCount={travelerCount}
+                  fitStatus={budgetStatus}
+                  optimization={activeBudgetOptimization}
                 />
               </div>
             </section>
@@ -1690,7 +1773,7 @@ export default function TripPage() {
                       foodSpots={trip.foodSpots ?? []}
                       activities={trip.topActivities ?? []}
                       travelerCount={travelerCount}
-                      initialSelection={trip.savedSelectionState}
+                      initialSelection={activeSelectionState}
                       destinationImageUrl={trip.imageUrl}
                       destinationLabel={getDestinationLabel(trip)}
                       tripStartDate={trip.tripStartDate}

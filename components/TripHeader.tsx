@@ -50,7 +50,7 @@ type TripHeaderProps = {
     source?: TripDataSource;
     rawVibes?: string[];
     hotelOptions?: Pick<HotelOption, "name" | "shortDescription">[];
-    savedSelectionState?: Pick<TripSelectionState, "hotelName">;
+    savedSelectionState?: TripSelectionState;
     confidence?: TripPlan["confidence"];
     status?: "draft" | "finalized";
     finalizedAt?: string;
@@ -319,6 +319,9 @@ export default function TripHeader({ trip, shareMode = false }: TripHeaderProps)
     destination: trip.destination,
     homeBaseCity: trip.homeBaseCity,
     name: trip.name,
+    topActivities: trip.topActivities,
+    itineraryDays: trip.itineraryDays,
+    savedSelectionState: trip.savedSelectionState,
   });
   const [failedImageKeys, setFailedImageKeys] = useState<{
     light: string | null;

@@ -25,6 +25,11 @@ type TripStopPin = {
   photoUrl?: string;
 };
 
+type DisplayTripStopPin = TripStopPin & {
+  originalLatitude: number;
+  originalLongitude: number;
+};
+
 type TripStopRoutePath = {
   day: number;
   points: Array<{
@@ -125,7 +130,10 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
 }
 
-function distanceBetweenPinsInKm(a: TripStopPin, b: TripStopPin) {
+function distanceBetweenCoordinatesInKm(
+  a: Pick<TripStopPin, "latitude" | "longitude">,
+  b: Pick<TripStopPin, "latitude" | "longitude">
+) {
   const averageLatitudeRadians = ((a.latitude + b.latitude) / 2) * (Math.PI / 180);
   const latDistanceKm = (a.latitude - b.latitude) * 111;
   const lonDistanceKm =
@@ -134,17 +142,17 @@ function distanceBetweenPinsInKm(a: TripStopPin, b: TripStopPin) {
   return Math.sqrt(latDistanceKm ** 2 + lonDistanceKm ** 2);
 }
 
-function spreadNearbyPins(pins: TripStopPin[]) {
+function spreadNearbyPins(pins: DisplayTripStopPin[]) {
   const groups: Array<{
     centroidLatitude: number;
     centroidLongitude: number;
-    pins: Array<{ pin: TripStopPin; originalIndex: number }>;
+    pins: Array<{ pin: DisplayTripStopPin; originalIndex: number }>;
   }> = [];
 
   pins.forEach((pin, originalIndex) => {
     const group = groups.find(
       (candidate) =>
-        distanceBetweenPinsInKm(pin, {
+        distanceBetweenCoordinatesInKm(pin, {
           ...pin,
           latitude: candidate.centroidLatitude,
           longitude: candidate.centroidLongitude,
@@ -170,7 +178,7 @@ function spreadNearbyPins(pins: TripStopPin[]) {
     group.centroidLongitude = longitudeSum / group.pins.length;
   });
 
-  const spreadPins = new Array<TripStopPin>(pins.length);
+  const spreadPins = new Array<DisplayTripStopPin>(pins.length);
 
   groups.forEach((group) => {
     if (group.pins.length === 1) {
@@ -205,6 +213,50 @@ function spreadNearbyPins(pins: TripStopPin[]) {
   });
 
   return spreadPins;
+}
+
+function alignRoutePathsToDisplayedPins(
+  routePaths: TripStopRoutePath[],
+  pins: DisplayTripStopPin[]
+) {
+  const pinsByDay = new Map<number, DisplayTripStopPin[]>();
+
+  pins.forEach((pin) => {
+    const dayPins = pinsByDay.get(pin.day) ?? [];
+    dayPins.push(pin);
+    pinsByDay.set(pin.day, dayPins);
+  });
+
+  return routePaths.map((routePath) => {
+    const dayPins = pinsByDay.get(routePath.day) ?? [];
+
+    return {
+      ...routePath,
+      points: routePath.points.map((point) => {
+        const matchedPin = dayPins
+          .map((pin) => ({
+            pin,
+            distanceKm: distanceBetweenCoordinatesInKm(
+              {
+                latitude: pin.originalLatitude,
+                longitude: pin.originalLongitude,
+              },
+              point
+            ),
+          }))
+          .sort((left, right) => left.distanceKm - right.distanceKm)[0];
+
+        if (!matchedPin || matchedPin.distanceKm > 0.45) {
+          return point;
+        }
+
+        return {
+          latitude: matchedPin.pin.latitude,
+          longitude: matchedPin.pin.longitude,
+        };
+      }),
+    };
+  });
 }
 
 function computePopupLayout(map: L.Map, pin: TripStopPin): PopupLayout {
@@ -315,10 +367,16 @@ export default function TripStopMap({
           )
           .map((pin) => ({
             ...pin,
+            originalLatitude: pin.latitude,
+            originalLongitude: pin.longitude,
             mapsUrl: sanitizeExternalNavigationUrl(pin.mapsUrl),
           }))
       ),
     [pins]
+  );
+  const mappedRoutePaths = useMemo(
+    () => alignRoutePathsToDisplayedPins(routePaths, mappedPins),
+    [mappedPins, routePaths]
   );
 
   const dayList = useMemo(() => uniqueDays(mappedPins), [mappedPins]);
@@ -426,7 +484,7 @@ export default function TripStopMap({
       mappedPins.map((pin) => [pin.latitude, pin.longitude] as L.LatLngTuple)
     );
 
-    routePaths.forEach((routePath) => {
+    mappedRoutePaths.forEach((routePath) => {
       const validPoints = routePath.points.filter(
         (point) =>
           Number.isFinite(point.latitude) && Number.isFinite(point.longitude)
@@ -499,7 +557,7 @@ export default function TripStopMap({
     fallbackZoom,
     highlightedPinId,
     mappedPins,
-    routePaths,
+    mappedRoutePaths,
     schedulePopupClose,
     variant,
   ]);

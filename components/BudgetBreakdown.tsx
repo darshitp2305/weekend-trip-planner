@@ -3,6 +3,8 @@
  * Keeping this logic in its own component makes the page-level containers easier to scan and keeps related rendering and state updates together.
  */
 
+import type { BudgetOptimizationSummary } from "../lib/types";
+
 type BudgetBreakdownData = {
   gas?: number;
   hotel?: number;
@@ -17,10 +19,40 @@ type BudgetBreakdownData = {
 type Props = {
   breakdown?: BudgetBreakdownData;
   notes?: string[];
+  targetTotalBudget?: number;
+  estimatedTotalCost?: number;
+  travelerCount?: number;
+  fitStatus?: {
+    label: string;
+    detail: string;
+  } | null;
+  optimization?: BudgetOptimizationSummary;
 };
 
 function formatMoney(value?: number) {
   return value !== undefined ? `$${value}` : "-";
+}
+
+function optimizationHeadline(summary?: BudgetOptimizationSummary) {
+  if (!summary || summary.actions.length === 0) return null;
+
+  if (summary.status === "optimized_to_target") {
+    return `Budget-fit defaults saved ${formatMoney(summary.totalSavings)}.`;
+  }
+
+  if (summary.status === "optimized_but_over") {
+    return `Cheaper defaults saved ${formatMoney(summary.totalSavings)}, but the trip still lands over target.`;
+  }
+
+  return null;
+}
+
+function fitToneClasses(label?: string) {
+  if (label === "Over target") {
+    return "border-amber-200 bg-amber-50/90 text-amber-950 dark:border-amber-500/25 dark:bg-amber-500/10 dark:text-amber-100";
+  }
+
+  return "border-emerald-200 bg-emerald-50/90 text-emerald-950 dark:border-emerald-500/25 dark:bg-emerald-500/10 dark:text-emerald-100";
 }
 
 function BudgetChip({
@@ -93,7 +125,25 @@ function TotalCard({
   );
 }
 
-export default function BudgetBreakdown({ breakdown, notes = [] }: Props) {
+export default function BudgetBreakdown({
+  breakdown,
+  notes = [],
+  targetTotalBudget,
+  estimatedTotalCost,
+  travelerCount,
+  fitStatus,
+  optimization,
+}: Props) {
+  const optimizationTitle = optimizationHeadline(optimization);
+  const targetPerTraveler =
+    targetTotalBudget && travelerCount
+      ? Math.round(targetTotalBudget / Math.max(1, travelerCount))
+      : undefined;
+  const selectedPerTraveler =
+    estimatedTotalCost && travelerCount
+      ? Math.round(estimatedTotalCost / Math.max(1, travelerCount))
+      : undefined;
+
   return (
     <section>
       <div className="flex flex-col gap-1">
@@ -115,6 +165,103 @@ export default function BudgetBreakdown({ breakdown, notes = [] }: Props) {
           </p>
         ))}
       </div>
+
+      {fitStatus || targetTotalBudget ? (
+        <div
+          className={`mt-4 rounded-[1.2rem] border px-4 py-4 ${fitToneClasses(
+            fitStatus?.label
+          )}`}
+        >
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+            <div className="max-w-xl">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-current/70">
+                Budget fit
+              </div>
+              <div className="mt-1 text-lg font-semibold tracking-tight text-current">
+                {fitStatus?.label ?? "Budget target loaded"}
+              </div>
+              {fitStatus?.detail ? (
+                <p className="mt-1 text-sm leading-6 text-current/80">
+                  {fitStatus.detail}
+                </p>
+              ) : (
+                <p className="mt-1 text-sm leading-6 text-current/80">
+                  Use the current total against your saved target to keep the draft realistic.
+                </p>
+              )}
+            </div>
+
+            <div className="grid gap-2 sm:grid-cols-3 lg:min-w-[360px]">
+              <div className="rounded-[1rem] border border-current/10 bg-white/70 px-3.5 py-3 dark:bg-slate-950/20">
+                <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-current/60">
+                  Target total
+                </div>
+                <div className="mt-1 text-lg font-semibold text-current">
+                  {formatMoney(targetTotalBudget)}
+                </div>
+              </div>
+              <div className="rounded-[1rem] border border-current/10 bg-white/70 px-3.5 py-3 dark:bg-slate-950/20">
+                <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-current/60">
+                  Current total
+                </div>
+                <div className="mt-1 text-lg font-semibold text-current">
+                  {formatMoney(estimatedTotalCost)}
+                </div>
+              </div>
+              <div className="rounded-[1rem] border border-current/10 bg-white/70 px-3.5 py-3 dark:bg-slate-950/20">
+                <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-current/60">
+                  Per traveler
+                </div>
+                <div className="mt-1 text-lg font-semibold text-current">
+                  {formatMoney(selectedPerTraveler)}
+                </div>
+                {targetPerTraveler ? (
+                  <div className="mt-1 text-[11px] text-current/60">
+                    Target {formatMoney(targetPerTraveler)} each
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          </div>
+
+          {optimization && optimizationTitle ? (
+            <div className="mt-4 rounded-[1rem] border border-current/10 bg-white/70 px-4 py-3.5 dark:bg-slate-950/20">
+              <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-current/60">
+                Budget-fit defaults
+              </div>
+              <p className="mt-1 text-sm leading-6 text-current/85">
+                {optimizationTitle}
+              </p>
+              <ul className="mt-2 space-y-1.5 text-[12px] leading-5 text-current/75">
+                {optimization.actions.slice(0, 3).map((action) => (
+                  <li key={`${action.kind}-${action.from}-${action.to}`}>
+                    {action.label}: {action.from} to {action.to} ({formatMoney(action.savings)} saved)
+                  </li>
+                ))}
+                {optimization.actions.length > 3 ? (
+                  <li>
+                    {optimization.actions.length - 3} more cost-cutting swap
+                    {optimization.actions.length - 3 === 1 ? "" : "s"} applied.
+                  </li>
+                ) : null}
+                {optimization.status === "optimized_but_over" &&
+                optimization.targetTotalBudget ? (
+                  <li>
+                    Cheapest matching picks still land about{" "}
+                    {formatMoney(
+                      Math.max(
+                        0,
+                        optimization.optimizedTotal - optimization.targetTotalBudget
+                      )
+                    )}{" "}
+                    over target.
+                  </li>
+                ) : null}
+              </ul>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
 
       <div className="mt-4 grid grid-cols-2 gap-2.5 sm:grid-cols-3">
         <BudgetChip label="Gas" value={breakdown?.gas} />

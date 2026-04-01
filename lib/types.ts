@@ -289,6 +289,31 @@ export interface TripSelectionState {
   addedStops?: Record<string, TripCustomStop[]>;
 }
 
+export type BudgetOptimizationActionKind = "hotel" | "food" | "activity";
+
+export interface BudgetOptimizationAction {
+  kind: BudgetOptimizationActionKind;
+  label: string;
+  from: string;
+  to: string;
+  savings: number;
+}
+
+export type BudgetOptimizationStatus =
+  | "no_target"
+  | "already_within_target"
+  | "optimized_to_target"
+  | "optimized_but_over";
+
+export interface BudgetOptimizationSummary {
+  status: BudgetOptimizationStatus;
+  targetTotalBudget?: number;
+  baselineTotal: number;
+  optimizedTotal: number;
+  totalSavings: number;
+  actions: BudgetOptimizationAction[];
+}
+
 export type TripFeedbackReaction = "love" | "maybe" | "pass";
 export type TripDecisionStatus =
   | "waiting_on_partner"
@@ -434,6 +459,7 @@ export interface TripPlan {
   tripPrompt?: string;
   maxDriveMinutesBetweenStops?: number;
   savedSelectionState?: TripSelectionState;
+  budgetOptimization?: BudgetOptimizationSummary;
   status?: "draft" | "finalized";
   finalizedAt?: string;
   decisionStatus?: TripDecisionStatus;

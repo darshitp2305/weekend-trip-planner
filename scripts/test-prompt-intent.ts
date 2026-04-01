@@ -1,4 +1,8 @@
 import { loadEnvConfig } from "@next/env";
+import {
+  buildConversationalDraft,
+  buildTripInputFromDraft,
+} from "../lib/conversationalPlanner";
 import { mergePromptParametersIntoTripInput } from "../lib/openAiPromptParameters";
 import {
   deriveTripIntentFromPrompt,
@@ -299,6 +303,63 @@ function buildTests(): TestResult[] {
         merged.startCity === "Red Deer" &&
         merged.departureTime === "16:00",
       details: `start=${merged.startCity} departure=${merged.departureTime ?? "none"}`,
+    });
+  }
+
+  {
+    const draft = buildConversationalDraft(
+      "skiing trip in jasper for 3 days",
+      {
+        travelerCount: 4,
+        startCity: "Edmonton",
+        budgetPerTraveler: 300,
+        tripStartDate: "2026-04-03",
+        season: "Spring",
+      }
+    );
+    const input = buildTripInputFromDraft(draft);
+    const tripPrompt = input?.tripPrompt ?? "";
+
+    tests.push({
+      id: "PI14",
+      passed:
+        Boolean(input) &&
+        /skiing trip in jasper for 3 days/i.test(tripPrompt) &&
+        /from Edmonton/i.test(tripPrompt) &&
+        /for 4 travelers/i.test(tripPrompt) &&
+        /\$300 per traveler/i.test(tripPrompt) &&
+        /Apr 3, 2026/i.test(tripPrompt),
+      details: `tripPrompt=${tripPrompt || "none"}`,
+    });
+  }
+
+  {
+    const draft = buildConversationalDraft(
+      "ski trip from Calgary to Jasper for 2 days",
+      {
+        travelerCount: 4,
+        startCity: "Edmonton",
+        tripLengthDays: 3,
+        budgetPerTraveler: 300,
+        season: "Winter",
+      }
+    );
+    const input = buildTripInputFromDraft(draft);
+    const tripPrompt = input?.tripPrompt ?? "";
+
+    tests.push({
+      id: "PI15",
+      passed:
+        Boolean(input) &&
+        /ski/i.test(tripPrompt) &&
+        /Jasper/i.test(tripPrompt) &&
+        /Edmonton/i.test(tripPrompt) &&
+        /4 travelers/i.test(tripPrompt) &&
+        /3 days/i.test(tripPrompt) &&
+        /\$300 per traveler/i.test(tripPrompt) &&
+        !/Calgary/i.test(tripPrompt) &&
+        !/\b2 days?\b/i.test(tripPrompt),
+      details: `tripPrompt=${tripPrompt || "none"}`,
     });
   }
 

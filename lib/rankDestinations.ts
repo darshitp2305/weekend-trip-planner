@@ -2012,8 +2012,18 @@ export function rankDestinations(
       if (driveSlackB !== driveSlackA) return driveSlackB - driveSlackA;
 
       return a.name.localeCompare(b.name);
-    })
-    .slice(0, limit);
+    });
 
-  return ranked;
+  if (!input.preferredDestination && input.budget > 0) {
+    const budgetCap = input.budget * (input.strictBudget ? 1 : 1.15);
+    const withinBudgetCap = ranked.filter(
+      (destination) => destination.estimatedCost <= budgetCap
+    );
+
+    if (withinBudgetCap.length > 0) {
+      return withinBudgetCap.slice(0, limit);
+    }
+  }
+
+  return ranked.slice(0, limit);
 }

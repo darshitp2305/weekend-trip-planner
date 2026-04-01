@@ -23,7 +23,7 @@ type RecommendationTripLike = {
   longitude?: number;
   hotelOptions?: HotelOption[];
   topActivities?: Activity[];
-  savedSelectionState?: Pick<TripSelectionState, "hotelName">;
+  savedSelectionState?: TripSelectionState;
 };
 
 type PromptFitTripLike = Pick<RecommendationTripLike, "topActivities"> & {
@@ -37,8 +37,14 @@ type PromptFitTripLike = Pick<RecommendationTripLike, "topActivities"> & {
 
 type PromptSummaryTripLike = Pick<
   RecommendationTripLike,
-  "destination" | "destinationName" | "homeBaseCity" | "name" | "topActivities"
+  | "destination"
+  | "destinationName"
+  | "homeBaseCity"
+  | "name"
+  | "topActivities"
+  | "savedSelectionState"
 > & {
+  itineraryDays?: Pick<ItineraryDayData, "title" | "summary" | "stops">[];
   summary?: string;
   tripPrompt?: string;
   tripLengthDays?: number;
@@ -46,6 +52,52 @@ type PromptSummaryTripLike = Pick<
 
 function normalized(value?: string) {
   return (value ?? "").trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function isSkiLikeText(value?: string) {
+  const text = normalized(value);
+  if (!text) return false;
+
+  return [
+    "ski",
+    "skiing",
+    "snowboard",
+    "chairlift",
+    "gondola",
+    "lift",
+    "resort",
+    "alpine",
+  ].some((term) => text.includes(term));
+}
+
+function extractNamedAnchorFromDescription(description?: string) {
+  const text = description?.trim();
+  if (!text) return undefined;
+
+  const match = text.match(
+    /\b(?:use|start at|head to|ski at|ride at|base the day at)\s+([^.,]+?)\s+as\b/i
+  );
+  const candidate = normalizePlaceDisplayName(match?.[1]);
+
+  if (!candidate || isGenericActivityDisplayName(candidate)) {
+    return undefined;
+  }
+
+  return candidate;
+}
+
+function isGeneratedSkiPlaceholder(value?: string, baseName?: string) {
+  const normalizedValue = normalized(normalizePlaceDisplayName(value));
+  const normalizedBaseName = normalized(baseName);
+  if (!normalizedValue) return true;
+
+  return (
+    normalizedValue === "ski day" ||
+    normalizedValue.startsWith("ski day in ") ||
+    (normalizedBaseName
+      ? normalizedValue === normalized(`${baseName} ski day`)
+      : false)
+  );
 }
 
 const GENERIC_ACTIVITY_NAMES = new Set([
@@ -330,6 +382,90 @@ function hasLighterRecoveryDays(
   return recoveryDays.length >= 1;
 }
 
+function countSkiFocusedDays(
+  trip: PromptSummaryTripLike,
+  anchorName?: string
+) {
+  if (!trip.itineraryDays?.length) return 0;
+
+  const normalizedAnchor = normalized(anchorName);
+
+  return trip.itineraryDays.filter((day) => {
+    if (isSkiLikeText([day.title, day.summary].filter(Boolean).join(" "))) {
+      return true;
+    }
+
+    return day.stops.some((stop) => {
+      const stopText = normalized(
+        [stop.title, stop.description, stop.kind === "activity" ? stop.time : ""]
+          .filter(Boolean)
+          .join(" ")
+      );
+
+      if (isSkiLikeText(stopText)) {
+        return true;
+      }
+
+      return Boolean(normalizedAnchor) && stopText.includes(normalizedAnchor);
+    });
+  }).length;
+}
+
+function findSkiAnchorName(trip: PromptSummaryTripLike, baseName: string) {
+  const itineraryAnchor = trip.itineraryDays
+    ?.flatMap((day) => day.stops)
+    .find((stop) => {
+      if (stop.kind !== "activity") return false;
+
+      return isSkiLikeText([stop.title, stop.description].filter(Boolean).join(" "));
+    });
+
+  const itineraryAnchorName = normalizePlaceDisplayName(itineraryAnchor?.title);
+  if (
+    itineraryAnchorName &&
+    !isGenericActivityDisplayName(itineraryAnchorName) &&
+    !isGeneratedSkiPlaceholder(itineraryAnchorName, baseName)
+  ) {
+    return itineraryAnchorName;
+  }
+
+  const describedAnchorName = extractNamedAnchorFromDescription(
+    itineraryAnchor?.description
+  );
+  if (describedAnchorName) {
+    return describedAnchorName;
+  }
+
+  const selectedSkiAnchor = Object.values(
+    trip.savedSelectionState?.activities ?? {}
+  ).find((activityName) => {
+    const normalizedActivityName = normalizePlaceDisplayName(activityName);
+    return (
+      isSkiLikeText(normalizedActivityName) &&
+      !isGeneratedSkiPlaceholder(normalizedActivityName, baseName)
+    );
+  });
+  if (selectedSkiAnchor?.trim()) {
+    return normalizePlaceDisplayName(selectedSkiAnchor);
+  }
+
+  const skiAnchor = (trip.topActivities ?? []).find((activity) => {
+    const activityText = normalized(
+      [activity.name, activity.type, activity.shortDescription ?? ""].join(" ")
+    );
+
+    return (
+      activityText.includes("ski") ||
+      activityText.includes("snowboard") ||
+      activityText.includes("lift") ||
+      activityText.includes("chairlift") ||
+      activityText.includes("resort")
+    );
+  });
+
+  return normalizePlaceDisplayName(skiAnchor?.name ?? `${baseName} ski day`);
+}
+
 export function getPromptConstraintFitSummary(
   trip: PromptFitTripLike,
   input?: Partial<TripInput> | null
@@ -455,26 +591,24 @@ export function getPromptAwareTripSummary(trip: PromptSummaryTripLike) {
   }
 
   if (promptIntent.activityFocus === "skiing") {
-    const skiAnchor = (trip.topActivities ?? []).find((activity) => {
-      const activityText = normalized(
-        [activity.name, activity.type, activity.shortDescription ?? ""].join(" ")
-      );
-
-      return (
-        activityText.includes("ski") ||
-        activityText.includes("snowboard") ||
-        activityText.includes("lift") ||
-        activityText.includes("chairlift") ||
-        activityText.includes("resort")
-      );
-    });
-    const anchorName = normalizePlaceDisplayName(
-      skiAnchor?.name ?? `${baseName} ski day`
-    );
+    const anchorName = findSkiAnchorName(trip, baseName);
+    const skiDayCount = countSkiFocusedDays(trip, anchorName);
+    const hasNamedSkiAnchor =
+      Boolean(anchorName) &&
+      !isGenericActivityDisplayName(anchorName) &&
+      !isGeneratedSkiPlaceholder(anchorName, baseName);
 
     return isTwoDayCompromise
-      ? `${baseName} now frames the trip around ${anchorName} as the main ski day, with an easy arrival night and a lighter drive-back finish.`
-      : `${baseName} now uses ${anchorName} as the main ski anchor, with the rest of the trip paced around one clear winter-sports day.`;
+      ? hasNamedSkiAnchor
+        ? `${baseName} now frames the trip around ${anchorName} as the main ski day, with an easy arrival night and a lighter drive-back finish.`
+        : `${baseName} now frames the trip around one main ski day, with an easy arrival night and a lighter drive-back finish.`
+      : skiDayCount >= 2
+        ? hasNamedSkiAnchor
+          ? `${baseName} now uses ${anchorName} as the main ski anchor, with skiing carrying across ${skiDayCount} days instead of collapsing into one short winter-sports window.`
+          : `${baseName} now keeps skiing spread across ${skiDayCount} days instead of collapsing the trip into one short winter-sports window.`
+        : hasNamedSkiAnchor
+          ? `${baseName} now uses ${anchorName} as the main ski anchor, with the rest of the trip paced around one clear winter-sports day.`
+          : `${baseName} now keeps one clear ski day as the main winter-sports anchor for the trip.`;
   }
 
   if (promptIntent.hardConstraints.activityAnchor !== "summit_hike") {

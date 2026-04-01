@@ -5,6 +5,7 @@ import {
   buildConversationalDraft,
   buildTripInputFromDraft,
   ConversationalAnswers,
+  extractPromptTiming,
   getNextIntakeQuestion,
   getQuestionCopy,
   getRetryCopy,
@@ -16,6 +17,7 @@ import {
   TRIP_PROMPT_MAX_CHARS,
 } from "../lib/promptLimits";
 import { StartCity } from "../lib/startCities";
+import { formatDisplayDate, getTodayIsoDate } from "../lib/tripDates";
 import { ActivityFocus, TripInput, TripStyle } from "../lib/types";
 
 type Props = {
@@ -30,6 +32,335 @@ type ChatMessage = {
   role: "assistant" | "user";
   text: string;
 };
+
+type CalendarDatePickerProps = {
+  value?: string;
+  minDate: string;
+  disabled?: boolean;
+  onChange: (nextDate?: string) => void;
+};
+
+const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+const MONTH_LABEL_FORMATTER = new Intl.DateTimeFormat("en-CA", {
+  month: "long",
+  year: "numeric",
+});
+
+function formatIsoDate(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function parseIsoDate(value?: string) {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return null;
+  }
+
+  const [year, month, day] = value
+    .split("-")
+    .map((part) => Number.parseInt(part, 10));
+  const date = new Date(year, month - 1, day);
+
+  if (
+    Number.isNaN(date.getTime()) ||
+    date.getFullYear() !== year ||
+    date.getMonth() !== month - 1 ||
+    date.getDate() !== day
+  ) {
+    return null;
+  }
+
+  return date;
+}
+
+function startOfMonth(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth(), 1);
+}
+
+function addMonths(date: Date, months: number) {
+  return new Date(date.getFullYear(), date.getMonth() + months, 1);
+}
+
+function isSameDay(left: Date, right: Date) {
+  return (
+    left.getFullYear() === right.getFullYear() &&
+    left.getMonth() === right.getMonth() &&
+    left.getDate() === right.getDate()
+  );
+}
+
+function buildCalendarDays(visibleMonth: Date) {
+  const monthStart = startOfMonth(visibleMonth);
+  const gridStart = new Date(monthStart);
+  gridStart.setDate(monthStart.getDate() - monthStart.getDay());
+
+  return Array.from({ length: 42 }, (_, index) => {
+    const date = new Date(gridStart);
+    date.setDate(gridStart.getDate() + index);
+
+    return {
+      date,
+      iso: formatIsoDate(date),
+      inCurrentMonth: date.getMonth() === visibleMonth.getMonth(),
+    };
+  });
+}
+
+function CalendarIcon({ className = "" }: { className?: string }) {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M8 2v4" />
+      <path d="M16 2v4" />
+      <rect x="3" y="4.5" width="18" height="16.5" rx="3.5" />
+      <path d="M3 9.5h18" />
+    </svg>
+  );
+}
+
+function ChevronIcon({ className = "" }: { className?: string }) {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 20 20"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="m6 4 6 6-6 6" />
+    </svg>
+  );
+}
+
+function CalendarDatePicker({
+  value,
+  minDate,
+  disabled = false,
+  onChange,
+}: CalendarDatePickerProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const minimumDate = parseIsoDate(minDate) ?? new Date();
+  const selectedDate = parseIsoDate(value);
+  const [visibleMonth, setVisibleMonth] = useState(() =>
+    startOfMonth(selectedDate ?? minimumDate)
+  );
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    function handlePointerDown(event: MouseEvent) {
+      if (
+        containerRef.current &&
+        event.target instanceof Node &&
+        !containerRef.current.contains(event.target)
+      ) {
+        setIsOpen(false);
+      }
+    }
+
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setIsOpen(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [isOpen]);
+
+  const today = parseIsoDate(getTodayIsoDate()) ?? new Date();
+  const minimumMonth = startOfMonth(minimumDate);
+  const canGoToPreviousMonth =
+    visibleMonth.getFullYear() > minimumMonth.getFullYear() ||
+    (visibleMonth.getFullYear() === minimumMonth.getFullYear() &&
+      visibleMonth.getMonth() > minimumMonth.getMonth());
+  const calendarDays = buildCalendarDays(visibleMonth);
+  const triggerLabel = value ? formatDisplayDate(value) ?? value : "Choose exact date";
+  const helperLabel = value
+    ? "Selected date"
+    : "Optional if you want a specific day";
+
+  return (
+    <div ref={containerRef} className="relative">
+      <button
+        type="button"
+        onClick={() => {
+          if (!disabled) {
+            if (!isOpen) {
+              setVisibleMonth(startOfMonth(selectedDate ?? minimumDate));
+            }
+
+            setIsOpen((current) => !current);
+          }
+        }}
+        disabled={disabled}
+        aria-expanded={isOpen}
+        aria-haspopup="dialog"
+        className="group inline-flex h-12 min-w-[15rem] items-center justify-between gap-3 rounded-full border border-[#d9b57c]/28 bg-[linear-gradient(180deg,rgba(255,252,246,0.94),rgba(247,242,233,0.96))] px-4 text-left text-sm font-medium text-slate-800 shadow-[0_12px_32px_rgba(148,163,184,0.14)] transition hover:-translate-y-0.5 hover:border-[#d9b57c]/44 hover:shadow-[0_18px_40px_rgba(148,163,184,0.18)] focus:outline-none focus:ring-2 focus:ring-[#d9b57c]/18 disabled:cursor-not-allowed disabled:opacity-60 dark:border-[#7decc7]/18 dark:bg-[linear-gradient(180deg,rgba(16,24,39,0.94),rgba(10,17,29,0.98))] dark:text-slate-100 dark:shadow-[0_16px_40px_rgba(2,6,23,0.26)] dark:hover:border-[#7decc7]/30 dark:hover:shadow-[0_20px_48px_rgba(2,6,23,0.34)] dark:focus:ring-[#7decc7]/14"
+      >
+        <span className="flex min-w-0 items-center gap-3">
+          <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[radial-gradient(circle_at_top,rgba(217,181,124,0.3),rgba(217,181,124,0.14))] text-[#8a5b18] dark:bg-[radial-gradient(circle_at_top,rgba(125,236,199,0.2),rgba(125,236,199,0.08))] dark:text-[#b6f4db]">
+            <CalendarIcon className="h-4 w-4" />
+          </span>
+          <span className="min-w-0">
+            <span className="block truncate font-semibold">{triggerLabel}</span>
+            <span className="block truncate text-[11px] uppercase tracking-[0.16em] text-slate-500 dark:text-white/42">
+              {helperLabel}
+            </span>
+          </span>
+        </span>
+        <ChevronIcon
+          className={`h-4 w-4 shrink-0 text-slate-500 transition duration-200 dark:text-white/48 ${
+            isOpen ? "rotate-90" : ""
+          }`}
+        />
+      </button>
+
+      {isOpen ? (
+        <div
+          role="dialog"
+          aria-label="Trip date calendar"
+          className="absolute bottom-[calc(100%+0.75rem)] right-0 z-30 w-[21rem] max-w-[calc(100vw-2.5rem)] rounded-[1.55rem] border border-slate-200/85 bg-[linear-gradient(180deg,rgba(255,255,255,0.97),rgba(241,246,251,0.98))] p-4 shadow-[0_30px_90px_rgba(148,163,184,0.24)] backdrop-blur-xl dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(14,22,37,0.98),rgba(8,14,24,0.96))] dark:shadow-[0_34px_110px_rgba(2,6,23,0.42)]"
+        >
+          <div className="rounded-[1.2rem] border border-slate-200/80 bg-[radial-gradient(circle_at_top_left,rgba(125,236,199,0.14),transparent_42%),radial-gradient(circle_at_top_right,rgba(217,181,124,0.16),transparent_46%),linear-gradient(180deg,rgba(255,255,255,0.88),rgba(247,242,234,0.76))] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] dark:border-white/8 dark:bg-[radial-gradient(circle_at_top_left,rgba(125,236,199,0.08),transparent_40%),radial-gradient(circle_at_top_right,rgba(217,181,124,0.12),transparent_44%),linear-gradient(180deg,rgba(17,26,42,0.82),rgba(10,16,28,0.9))] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[#0f766e] dark:text-[#7decc7]">
+                  Exact trip date
+                </p>
+                <h3 className="mt-2 text-[1.15rem] font-semibold tracking-[-0.03em] text-slate-950 dark:text-white">
+                  {MONTH_LABEL_FORMATTER.format(visibleMonth)}
+                </h3>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setVisibleMonth((current) => addMonths(current, -1))}
+                  disabled={!canGoToPreviousMonth}
+                  aria-label="Previous month"
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200/80 bg-white/86 text-slate-600 transition hover:border-slate-300 hover:bg-white hover:text-slate-950 disabled:cursor-not-allowed disabled:opacity-35 dark:border-white/10 dark:bg-white/6 dark:text-slate-300 dark:hover:border-white/16 dark:hover:bg-white/10 dark:hover:text-white"
+                >
+                  <ChevronIcon className="h-4 w-4 rotate-180" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setVisibleMonth((current) => addMonths(current, 1))}
+                  aria-label="Next month"
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200/80 bg-white/86 text-slate-600 transition hover:border-slate-300 hover:bg-white hover:text-slate-950 dark:border-white/10 dark:bg-white/6 dark:text-slate-300 dark:hover:border-white/16 dark:hover:bg-white/10 dark:hover:text-white"
+                >
+                  <ChevronIcon className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+
+            <div className="mt-4 grid grid-cols-7 gap-2 text-center">
+              {WEEKDAY_LABELS.map((label) => (
+                <div
+                  key={label}
+                  className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-white/42"
+                >
+                  {label}
+                </div>
+              ))}
+
+              {calendarDays.map(({ date, iso, inCurrentMonth }) => {
+                const isDisabled = iso < minDate;
+                const isSelected = Boolean(selectedDate && isSameDay(date, selectedDate));
+                const isToday = isSameDay(date, today);
+
+                let dayClasses =
+                  "inline-flex h-10 w-10 items-center justify-center rounded-[1rem] border text-sm font-semibold transition";
+
+                if (isSelected) {
+                  dayClasses +=
+                    " border-slate-950 bg-slate-950 text-white shadow-[0_14px_28px_rgba(15,23,42,0.18)] dark:border-white dark:bg-white dark:text-slate-950 dark:shadow-[0_14px_30px_rgba(255,255,255,0.08)]";
+                } else if (isDisabled) {
+                  dayClasses +=
+                    " border-transparent text-slate-300/80 opacity-60 dark:text-slate-600/70";
+                } else if (isToday) {
+                  dayClasses +=
+                    " border-[#d9b57c]/50 bg-[#fff6e7]/88 text-[#8a5b18] hover:bg-[#fff1d8] dark:border-[#d9b57c]/28 dark:bg-[#d9b57c]/14 dark:text-[#f4d8b1] dark:hover:bg-[#d9b57c]/20";
+                } else if (inCurrentMonth) {
+                  dayClasses +=
+                    " border-transparent bg-white/72 text-slate-700 hover:border-slate-200 hover:bg-white hover:text-slate-950 dark:bg-white/[0.04] dark:text-slate-200 dark:hover:border-white/14 dark:hover:bg-white/10 dark:hover:text-white";
+                } else {
+                  dayClasses +=
+                    " border-transparent bg-transparent text-slate-400 hover:bg-white/70 hover:text-slate-600 dark:text-slate-500 dark:hover:bg-white/6 dark:hover:text-slate-300";
+                }
+
+                return (
+                  <button
+                    key={iso}
+                    type="button"
+                    onClick={() => {
+                      if (!isDisabled) {
+                        onChange(iso);
+                        setIsOpen(false);
+                      }
+                    }}
+                    disabled={isDisabled}
+                    aria-pressed={isSelected}
+                    className={dayClasses}
+                  >
+                    {date.getDate()}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="mt-4 flex items-center justify-between gap-3 border-t border-slate-200/80 pt-4 dark:border-white/8">
+              <button
+                type="button"
+                onClick={() => {
+                  onChange(undefined);
+                  setIsOpen(false);
+                }}
+                className="inline-flex h-10 items-center justify-center rounded-full border border-slate-200/80 bg-white/86 px-4 text-sm font-medium text-slate-600 transition hover:border-slate-300 hover:bg-white hover:text-slate-950 dark:border-white/10 dark:bg-white/6 dark:text-slate-300 dark:hover:border-white/16 dark:hover:bg-white/10 dark:hover:text-white"
+              >
+                Clear
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const todayIso = formatIsoDate(today);
+                  const nextDate = todayIso < minDate ? minDate : todayIso;
+                  onChange(nextDate);
+                  setVisibleMonth(startOfMonth(parseIsoDate(nextDate) ?? minimumDate));
+                  setIsOpen(false);
+                }}
+                className="inline-flex h-10 items-center justify-center rounded-full bg-slate-950 px-4 text-sm font-semibold text-white transition hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-[#f5efe5]"
+              >
+                Today
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat("en-CA", {
@@ -162,7 +493,7 @@ function nextComposerPlaceholder(field: IntakeQuestionField | null) {
     case "startCity":
       return "Example: Calgary";
     case "tripTiming":
-      return "Example: this summer or June 14";
+      return "Example: this summer, or pick a date below";
     case "tripLengthDays":
       return "Example: 3 days";
     case "budgetPerTraveler":
@@ -195,6 +526,11 @@ export default function TripForm({
   const trimmedComposerValue = composerValue.trim();
   const tripPromptTooLong = trimmedComposerValue.length > TRIP_PROMPT_MAX_CHARS;
   const submitHandler = onGenerate ?? onSubmit;
+  const isTripTimingQuestion = mode === "followup" && pendingField === "tripTiming";
+  const selectedCalendarDate = isTripTimingQuestion
+    ? extractPromptTiming(composerValue).tripStartDate ?? ""
+    : "";
+  const minimumTripDate = getTodayIsoDate();
 
   function nextMessageId(prefix: string) {
     messageIdRef.current += 1;
@@ -365,6 +701,11 @@ export default function TripForm({
     event.currentTarget.form?.requestSubmit();
   }
 
+  function handleTripDateChange(nextDate?: string) {
+    setComposerValue(nextDate ? formatDisplayDate(nextDate) ?? nextDate : "");
+    setErrorMessage("");
+  }
+
   const assumptionPills = buildAssumptionPills(draft);
 
   return (
@@ -437,6 +778,24 @@ export default function TripForm({
               mode === "prompt" ? "min-h-[150px]" : "min-h-[88px]"
             }`}
           />
+          {isTripTimingQuestion ? (
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-[1.2rem] border border-slate-200/80 bg-white/70 px-4 py-3 dark:border-white/10 dark:bg-slate-950/35">
+              <div className="space-y-1">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-600 dark:text-white/56">
+                  Pick an exact date
+                </p>
+                <p className="text-xs text-slate-600 dark:text-white/60">
+                  Opens a themed calendar and still lets people type a month or season.
+                </p>
+              </div>
+              <CalendarDatePicker
+                value={selectedCalendarDate}
+                minDate={minimumTripDate}
+                disabled={loading}
+                onChange={handleTripDateChange}
+              />
+            </div>
+          ) : null}
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 px-2 pt-3 dark:border-white/10">
             <div className="text-xs text-slate-700 dark:text-white/58">
               {mode === "prompt"

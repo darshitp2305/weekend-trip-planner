@@ -5,19 +5,20 @@
 
 import {
   BudgetBreakdown,
+  BudgetOptimizationSummary,
   ItineraryDayData,
   ItineraryStop,
   RankedDestination,
   TripDataSource,
   TripInput,
   TripPlan,
+  TripSelectionState,
 } from "./types";
 import { sortHotelOptions } from "./hotelAvailability";
-import { deriveTripEndDate, getTodayIsoDate } from "./tripDates";
+import { deriveTripEndDate } from "./tripDates";
 import { ensureTripEditToken } from "./tripSecurity";
 import {
-  buildDefaultSelectionState,
-  calculateSelectedBudget,
+  optimizeSelectionForBudget,
 } from "./tripSelections";
 import {
   getRecommendedTripTitle,
@@ -49,6 +50,8 @@ export type TripPlanPreview = {
   safeInput: TripInput;
   filteredTrip: RankedDestination;
   budgetBreakdown: BudgetBreakdown;
+  budgetOptimization?: BudgetOptimizationSummary;
+  budgetSelectionState: TripSelectionState;
   itineraryDays: ItineraryDayData[];
   recommendedTitle: string;
   driveHoursFromStart: number;
@@ -75,8 +78,7 @@ function normalizeInput(input?: Partial<TripInput>): TripInput {
       : undefined;
   const departureTime =
     normalizeDepartureTime(input?.departureTime) ??
-    extractPromptDepartureTime(tripPrompt) ??
-    (tripStartDate === getTodayIsoDate() ? getCurrentTimeValue() : undefined);
+    extractPromptDepartureTime(tripPrompt);
 
   return {
     ...defaultInput,
@@ -128,12 +130,6 @@ function makeDriveText(trip: RankedDestination) {
   }`;
 }
 
-function getCurrentTimeValue(referenceDate = new Date()) {
-  return `${String(referenceDate.getHours()).padStart(2, "0")}:${String(
-    referenceDate.getMinutes()
-  ).padStart(2, "0")}`;
-}
-
 function normalizeDepartureTime(value?: string) {
   if (typeof value !== "string" || !/^\d{2}:\d{2}$/.test(value.trim())) {
     return undefined;
@@ -168,12 +164,28 @@ function formatTimeLabel(totalMinutes: number) {
 function timeBucketForMinutes(totalMinutes: number): ItineraryStop["time"] {
   const normalizedMinutes = ((Math.round(totalMinutes) % 1440) + 1440) % 1440;
 
+  if (normalizedMinutes < 5 * 60) return "Night";
   if (normalizedMinutes < 11 * 60) return "Morning";
   if (normalizedMinutes < 14 * 60) return "Late morning";
   if (normalizedMinutes < 16 * 60 + 30) return "Afternoon";
   if (normalizedMinutes < 18 * 60 + 30) return "Late afternoon";
   if (normalizedMinutes < 21 * 60) return "Evening";
   return "Night";
+}
+
+function hasGroundedDepartureTime(
+  departureTime?: string,
+  tripPrompt?: string
+) {
+  const normalizedDepartureTime = normalizeDepartureTime(departureTime);
+  if (!normalizedDepartureTime) return false;
+
+  const promptText = tripPrompt?.trim();
+  if (!promptText) {
+    return true;
+  }
+
+  return extractPromptDepartureTime(promptText) === normalizedDepartureTime;
 }
 
 function formatRemainingWindow(minutes: number) {
@@ -258,26 +270,23 @@ function arrivalDaySummary(timing: ArrivalDayTiming) {
   return `Leaving around ${timing.departureLabel} still leaves ${formatRemainingWindow(timing.remainingMinutesAfterArrival)} after hotel arrival, so day one can fit one light stop before dinner without rushing.`;
 }
 
-function buildBudgetBreakdown(
+function resolveBudgetFitDefaults(
   trip: RankedDestination,
   input: TripInput,
   itineraryDays: ItineraryDayData[]
-): BudgetBreakdown {
-  const defaultSelection = buildDefaultSelectionState(
-    itineraryDays,
-    trip.hotelOptions ?? [],
-    trip.foodSpots ?? [],
-    trip.topActivities ?? []
-  );
-
-  return calculateSelectedBudget({
+): {
+  budgetBreakdown: BudgetBreakdown;
+  budgetSelectionState: TripSelectionState;
+  budgetOptimization?: BudgetOptimizationSummary;
+} {
+  const result = optimizeSelectionForBudget({
     tripLengthDays: input.tripLengthDays,
     travelerCount: input.travelerCount,
+    targetTotalBudget: input.budget,
     hotelOptions: trip.hotelOptions ?? [],
     foodSpots: trip.foodSpots ?? [],
     activities: trip.topActivities ?? [],
     itineraryDays,
-    selection: defaultSelection,
     fallbackBreakdown: {
       ...trip.budgetBreakdown,
       gas:
@@ -288,6 +297,13 @@ function buildBudgetBreakdown(
             : Math.max(40, trip.driveHoursFromStart * 22),
     },
   });
+
+  return {
+    budgetBreakdown: result.optimizedBudget,
+    budgetSelectionState: result.optimizedSelection,
+    budgetOptimization:
+      result.summary.status === "no_target" ? undefined : result.summary,
+  };
 }
 
 type FoodSpot = NonNullable<RankedDestination["foodSpots"]>[number];
@@ -1509,6 +1525,10 @@ function claimReservedPrimaryActivity(ctx: BuildContext) {
   return reservedPrimaryActivity;
 }
 
+function peekReservedPrimaryActivity(ctx: BuildContext) {
+  return ctx.reservedPrimaryActivity;
+}
+
 function pickMorningFood(
   ctx: BuildContext,
   input: TripInput,
@@ -1715,6 +1735,10 @@ function middleDayTitle(
     return "Signature summit day";
   }
 
+  if (!isStaycation && isSkiTrip(input)) {
+    return dayNumber === 2 ? "Full ski day" : `Ski day ${dayNumber}`;
+  }
+
   if (!isStaycation && prefersRecoveryDays(input) && dayNumber > 2) {
     return `Recovery and food day ${dayNumber}`;
   }
@@ -1738,6 +1762,12 @@ function middleDaySummary(
 ) {
   if (!isStaycation && isSummitHikeTrip(input) && dayNumber === 2) {
     return "Use the first full day for the one signature summit hike, then keep the rest of the trip easier.";
+  }
+
+  if (!isStaycation && isSkiTrip(input)) {
+    return totalDays <= 3
+      ? "Use the middle of the trip for a full ski day instead of burning the best snow window on logistics."
+      : `Keep day ${dayNumber} focused on lift time while the trip is still at full energy.`;
   }
 
   if (!isStaycation && prefersRecoveryDays(input) && dayNumber > 2) {
@@ -1804,6 +1834,21 @@ function styleActivityDescription(
 ) {
   const promptIntent = deriveTripIntentFromPrompt(input.tripPrompt);
   const displayName = normalizePlaceDisplayName(activityName) || activityName;
+
+  if (
+    promptIntent.hardConstraints.activityAnchor === "ski_trip" ||
+    promptIntent.activityFocus === "skiing"
+  ) {
+    if (phase === "secondary") {
+      return `Add ${displayName} only if it still keeps the day centered on skiing.`;
+    }
+
+    if (phase === "light") {
+      return `Use ${displayName} as a shorter ski-focused stop before the drive home.`;
+    }
+
+    return `Use ${displayName} as the main ski-day anchor for the trip.`;
+  }
 
   if (promptIntent.hardConstraints.activityAnchor === "summit_hike") {
     if (phase === "secondary") {
@@ -2391,6 +2436,13 @@ function buildGetawayFinalDay(
         estimatedCost: activityGroupCost(finalActivity, input),
         kind: "activity" as const,
       },
+      skiTrip &&
+        !finalActivity && {
+          time: "Late morning",
+          title: `Final ski morning in ${trip.name}`,
+          description: `Keep the final daylight window centered on skiing before you drive back to ${input.startCity}.`,
+          kind: "activity" as const,
+        },
       input.style === "foodie" &&
         !breakfast &&
         makeFlexibleFoodStop(
@@ -2402,8 +2454,7 @@ function buildGetawayFinalDay(
       {
         time: "Afternoon",
         title: `Drive back to ${input.startCity}`,
-        description:
-          "Head back without turning the final day into a scramble.",
+        description: undefined,
         kind: "travel" as const,
       },
     ]),
@@ -2418,6 +2469,7 @@ function buildMiddleDay(
   ctx: BuildContext
 ): ItineraryDayData {
   const summitTrip = isSummitHikeTrip(input);
+  const skiTrip = isSkiTrip(input);
   const recoveryDays = prefersRecoveryDays(input);
   const baseCoordinate =
     toCoordinate(trip.hotelOptions?.[0]) ?? buildBaseCoordinate(trip);
@@ -2437,9 +2489,12 @@ function buildMiddleDay(
         )
       : undefined);
   const breakfastCoordinate = toCoordinate(breakfast);
+  const repeatedSkiActivity = skiTrip ? peekReservedPrimaryActivity(ctx) : undefined;
   const mainActivity =
     summitTrip && ctx.reservedPrimaryActivity
       ? claimReservedPrimaryActivity(ctx)
+      : repeatedSkiActivity
+        ? repeatedSkiActivity
       : recoveryDays && summitTrip && ctx.primaryActivityUsed
         ? pickRelaxActivity(
             ctx,
@@ -2479,6 +2534,7 @@ function buildMiddleDay(
   const mainActivityCoordinate = toCoordinate(mainActivity);
 
   const buildLightDay =
+    skiTrip ||
     (dayNumber % 2 === 0 && totalDays >= 5) ||
     (summitTrip && recoveryDays);
   const secondaryActivity = buildLightDay
@@ -2574,6 +2630,13 @@ function buildMiddleDay(
         estimatedCost: activityGroupCost(mainActivity, input),
         kind: "activity" as const,
       },
+      skiTrip &&
+        !mainActivity && {
+          time: "Late morning",
+          title: `Ski day in ${trip.name}`,
+          description: `Use the main daylight window for a ski block before you settle back into the rest of the trip.`,
+          kind: "activity" as const,
+        },
       secondaryActivity && {
         time: "Afternoon",
         title: displayActivityName(secondaryActivity),
@@ -2736,7 +2799,7 @@ export function buildTripPlanPreview(
     topActivities: finalRecommendation.activities,
   };
   const itineraryDays = buildItineraryDays(filteredTrip, safeInput);
-  const budgetBreakdown = buildBudgetBreakdown(
+  const budgetFit = resolveBudgetFitDefaults(
     filteredTrip,
     safeInput,
     itineraryDays
@@ -2761,7 +2824,9 @@ export function buildTripPlanPreview(
   return {
     safeInput,
     filteredTrip,
-    budgetBreakdown,
+    budgetBreakdown: budgetFit.budgetBreakdown,
+    budgetOptimization: budgetFit.budgetOptimization,
+    budgetSelectionState: budgetFit.budgetSelectionState,
     itineraryDays,
     recommendedTitle,
     driveHoursFromStart,
@@ -2775,22 +2840,6 @@ export function buildTripPlan(
   dataSource: TripDataSource = "static-fallback"
 ): TripPlan {
   const preview = buildTripPlanPreview(trip, input);
-  const defaultSelection = buildDefaultSelectionState(
-    preview.itineraryDays,
-    preview.filteredTrip.hotelOptions,
-    preview.filteredTrip.foodSpots,
-    preview.filteredTrip.topActivities
-  );
-  const selectedBudget = calculateSelectedBudget({
-    tripLengthDays: preview.safeInput.tripLengthDays,
-    travelerCount: preview.safeInput.travelerCount,
-    hotelOptions: preview.filteredTrip.hotelOptions,
-    foodSpots: preview.filteredTrip.foodSpots,
-    activities: preview.filteredTrip.topActivities,
-    itineraryDays: preview.itineraryDays,
-    selection: defaultSelection,
-    fallbackBreakdown: preview.budgetBreakdown,
-  });
 
   return ensureTripEditToken({
     id: crypto.randomUUID(),
@@ -2811,7 +2860,7 @@ export function buildTripPlan(
     rankingReasons: trip.rankingReasons ?? [],
     tags: trip.rawVibes ?? [],
 
-    budgetBreakdown: selectedBudget,
+    budgetBreakdown: preview.budgetBreakdown,
     hotelOptions: preview.filteredTrip.hotelOptions,
     foodSpots: preview.filteredTrip.foodSpots,
     topActivities: preview.filteredTrip.topActivities,
@@ -2834,7 +2883,8 @@ export function buildTripPlan(
     departureTime: preview.safeInput.departureTime,
     tripPrompt: preview.safeInput.tripPrompt,
     maxDriveMinutesBetweenStops: preview.safeInput.maxDriveMinutesBetweenStops,
-    savedSelectionState: defaultSelection,
+    savedSelectionState: preview.budgetSelectionState,
+    budgetOptimization: preview.budgetOptimization,
     status: "draft",
     decisionStatus: "waiting_on_partner",
     bookingChecklist: {
@@ -2866,7 +2916,7 @@ export function buildTripPlan(
 
 export function syncTripPlanTiming(plan: TripPlan): TripPlan {
   if (
-    !plan.departureTime ||
+    !hasGroundedDepartureTime(plan.departureTime, plan.tripPrompt) ||
     !Array.isArray(plan.itineraryDays) ||
     plan.itineraryDays.length === 0 ||
     typeof plan.routeSummary?.durationSeconds !== "number" ||
