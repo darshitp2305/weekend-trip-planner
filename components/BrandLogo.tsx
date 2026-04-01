@@ -1,99 +1,203 @@
-/**
- * Reusable UI component for the brand logo section of the planner.
- * Keeping this logic in its own component makes the page-level containers easier to scan and keeps related rendering and state updates together.
- */
-
-import Image from "next/image";
 import Link from "next/link";
+
+type BrandTone = "auto" | "light" | "dark";
 
 type BrandLogoProps = {
   variant?: "horizontal" | "stacked" | "icon";
   href?: string;
   className?: string;
   priority?: boolean;
-  tone?: "auto" | "light" | "dark";
+  tone?: BrandTone;
 };
 
-const logoAssets = {
-  horizontal: {
-    src: "/branding/trippify-logo-horizontal.png",
-    darkSrc: "/branding/trippify-logo-horizontal-dark-clean.png",
-    alt: "Trippify logo",
-    width: 857,
-    height: 268,
-  },
-  stacked: {
-    src: "/branding/trippify-logo-stacked.png",
-    darkSrc: "/branding/trippify-logo-stacked-dark-clean.png",
-    alt: "Trippify stacked logo",
-    width: 541,
-    height: 560,
-  },
-  icon: {
-    src: "/branding/trippify-icon.png",
-    darkSrc: "/branding/trippify-icon-white.png",
-    alt: "Trippify icon",
-    width: 256,
-    height: 256,
-  },
-} as const;
+type BrandMarkProps = {
+  tone?: BrandTone;
+  className?: string;
+};
+
+function cx(...values: Array<string | undefined | false>) {
+  return values.filter(Boolean).join(" ");
+}
+
+function resolveBrandPalette(tone: BrandTone) {
+  if (tone === "light") {
+    return {
+      title: "text-slate-950",
+      highlight: "text-[#0c8f69]",
+      horizontalShell:
+        "border-slate-800/10 bg-[linear-gradient(180deg,rgba(15,23,42,0.16),rgba(15,23,42,0.08))] shadow-[0_14px_28px_rgba(15,23,42,0.08)] backdrop-blur-[6px]",
+      markBorder: "border-slate-200/80 shadow-[0_16px_38px_rgba(148,163,184,0.16)]",
+      markInner:
+        "bg-[linear-gradient(160deg,rgba(255,255,255,0.96),rgba(243,237,226,0.92))]",
+      ring: "border-[#d9b57c]/24",
+      ringSoft: "border-[#7decc7]/26",
+      peak: "fill-[#0c5a44]",
+      ridge: "fill-[#d9b57c]",
+      trail: "stroke-[#9b6219]",
+      sun: "fill-[#3be0ab]",
+    };
+  }
+
+  if (tone === "dark") {
+    return {
+      title: "text-white",
+      highlight: "text-[#7decc7]",
+      horizontalShell: "",
+      markBorder: "border-white/12 shadow-[0_18px_44px_rgba(0,0,0,0.3)]",
+      markInner:
+        "bg-[linear-gradient(160deg,rgba(8,15,27,0.98),rgba(13,22,36,0.9))]",
+      ring: "border-white/12",
+      ringSoft: "border-[#7decc7]/20",
+      peak: "fill-[#c7f9e4]",
+      ridge: "fill-[#f2d7ab]",
+      trail: "stroke-[#f2d7ab]",
+      sun: "fill-[#7decc7]",
+    };
+  }
+
+  return {
+    title: "text-slate-950 dark:text-white",
+    highlight: "text-[#0c8f69] dark:text-[#7decc7]",
+    horizontalShell:
+      "border-slate-800/10 bg-[linear-gradient(180deg,rgba(15,23,42,0.16),rgba(15,23,42,0.08))] shadow-[0_14px_28px_rgba(15,23,42,0.08)] backdrop-blur-[6px] dark:border-transparent dark:bg-transparent dark:shadow-none dark:backdrop-blur-0",
+    markBorder:
+      "border-slate-200/80 shadow-[0_16px_38px_rgba(148,163,184,0.16)] dark:border-white/12 dark:shadow-[0_18px_44px_rgba(0,0,0,0.3)]",
+    markInner:
+      "bg-[linear-gradient(160deg,rgba(255,255,255,0.96),rgba(243,237,226,0.92))] dark:bg-[linear-gradient(160deg,rgba(8,15,27,0.98),rgba(13,22,36,0.9))]",
+    ring: "border-[#d9b57c]/24 dark:border-white/12",
+    ringSoft: "border-[#7decc7]/26 dark:border-[#7decc7]/20",
+    peak: "fill-[#0c5a44] dark:fill-[#c7f9e4]",
+    ridge: "fill-[#d9b57c] dark:fill-[#f2d7ab]",
+    trail: "stroke-[#9b6219] dark:stroke-[#f2d7ab]",
+    sun: "fill-[#3be0ab] dark:fill-[#7decc7]",
+  };
+}
+
+export function BrandMark({ tone = "auto", className }: BrandMarkProps) {
+  const palette = resolveBrandPalette(tone);
+
+  return (
+    <span
+      aria-hidden="true"
+      className={cx(
+        "relative inline-flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-[1.35rem] border",
+        palette.markBorder,
+        className
+      )}
+    >
+      <span className="absolute inset-0 bg-[conic-gradient(from_210deg_at_50%_50%,rgba(12,90,68,0.18),rgba(125,236,199,0.72),rgba(217,181,124,0.68),rgba(12,90,68,0.18))]" />
+      <span
+        className={cx(
+          "absolute inset-[1.5px] rounded-[calc(1.35rem-2px)]",
+          palette.markInner
+        )}
+      />
+      <span className={cx("absolute inset-[18%] rounded-[1rem] border", palette.ring)} />
+      <span
+        className={cx("absolute inset-[29%] rounded-[0.8rem] border", palette.ringSoft)}
+      />
+      <svg
+        viewBox="0 0 64 64"
+        className="relative z-10 h-[56%] w-[56%]"
+        fill="none"
+      >
+        <circle cx="46" cy="15" r="5" className={palette.sun} />
+        <path
+          d="M10 47.5 25.5 23l8.5 10.5 7-8L54 47.5H10Z"
+          className={palette.peak}
+        />
+        <path
+          d="M23 47.5 34 32l7 7.5 6.5 8H23Z"
+          className={palette.ridge}
+        />
+        <path
+          d="M18 50c6.5-4 13-5 20-3.5 4.2.9 8.4.5 13-2"
+          strokeLinecap="round"
+          className={cx("stroke-[3.2]", palette.trail)}
+        />
+      </svg>
+    </span>
+  );
+}
 
 export default function BrandLogo({
   variant = "horizontal",
   href,
   className,
-  priority = false,
   tone = "auto",
 }: BrandLogoProps) {
-  const asset = logoAssets[variant];
-  const imageClassName = className ?? "h-auto w-auto";
-  const showLightAsset = tone === "light" || tone === "auto";
-  const showDarkAsset = tone === "dark" || tone === "auto";
-  const lightAssetClassName =
-    tone === "auto"
-      ? `${imageClassName} dark:hidden`
-      : tone === "light"
-        ? imageClassName
-        : `${imageClassName} hidden`;
-  const darkAssetClassName =
-    tone === "auto"
-      ? `${imageClassName} hidden dark:block`
-      : tone === "dark"
-        ? imageClassName
-        : `${imageClassName} hidden`;
+  const palette = resolveBrandPalette(tone);
 
-  const image = (
-    <span className="inline-flex items-center">
-      {showLightAsset ? (
-        <Image
-          src={asset.src}
-          alt={asset.alt}
-          width={asset.width}
-          height={asset.height}
-          priority={priority}
-          className={lightAssetClassName}
-        />
-      ) : null}
-      {showDarkAsset ? (
-        <Image
-          src={asset.darkSrc}
-          alt={asset.alt}
-          width={asset.width}
-          height={asset.height}
-          priority={priority}
-          className={darkAssetClassName}
-        />
-      ) : null}
+  if (variant === "icon") {
+    const icon = <BrandMark tone={tone} className={className} />;
+
+    if (!href) {
+      return icon;
+    }
+
+    return (
+      <Link
+        href={href}
+        aria-label="Trippify home"
+        className="inline-flex focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d9b57c]/40 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent"
+      >
+        {icon}
+      </Link>
+    );
+  }
+
+  const isStacked = variant === "stacked";
+
+  const content = (
+    <span
+      className={cx(
+        "group relative inline-flex transition duration-300",
+        isStacked
+          ? "flex-col items-center text-center"
+          : "items-center gap-3.5 rounded-full border px-2.5 py-1.5",
+        !isStacked && palette.horizontalShell,
+        className
+      )}
+    >
+      <BrandMark tone={tone} className={isStacked ? "h-16 w-16" : "h-12 w-12"} />
+      <span className={cx("relative z-10 flex", isStacked ? "items-center" : "items-start")}>
+        <span className={cx("flex flex-col", isStacked ? "items-center" : "items-start")}>
+          {isStacked ? (
+            <span className="text-[0.6rem] font-semibold uppercase tracking-[0.3em] text-[#7a4307] dark:text-[#e7c99c]">
+              Alberta weekend studio
+            </span>
+          ) : null}
+          <span
+            className={cx(
+              "font-brand font-semibold leading-none tracking-[-0.02em]",
+              palette.title,
+              isStacked ? "mt-2 text-[2.35rem]" : "text-[1.9rem]"
+            )}
+          >
+            Trippi
+            <span className={palette.highlight}>fy</span>
+          </span>
+          {isStacked ? (
+            <span className="mt-1.5 text-[0.62rem] font-semibold uppercase tracking-[0.24em] text-slate-700 dark:text-white/66">
+              Trail planner
+            </span>
+          ) : null}
+        </span>
+      </span>
     </span>
   );
 
   if (!href) {
-    return image;
+    return content;
   }
 
   return (
-    <Link href={href} aria-label="Trippify home">
-      {image}
+    <Link
+      href={href}
+      aria-label="Trippify home"
+      className="inline-flex focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d9b57c]/40 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent"
+    >
+      {content}
     </Link>
   );
 }

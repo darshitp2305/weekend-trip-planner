@@ -112,7 +112,12 @@ export default function GoogleAuthCallbackPage() {
   return (
     <main className="min-h-screen bg-[#f8fafc] px-6 py-10 text-slate-900">
       <div className="mx-auto mb-6 flex max-w-xl justify-center">
-        <BrandLogo variant="stacked" href="/" priority className="h-28 w-auto" />
+        <BrandLogo
+          variant="stacked"
+          href="/"
+          priority
+          className="scale-[0.88] sm:scale-100"
+        />
       </div>
       <Suspense
         fallback={

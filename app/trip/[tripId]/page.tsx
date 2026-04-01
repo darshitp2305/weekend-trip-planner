@@ -1396,14 +1396,12 @@ export default function TripPage() {
               <span aria-hidden="true">&larr;</span>
               <span>Back</span>
             </button>
-            <div className="inline-flex rounded-full border border-slate-200/80 bg-[#fbf7ef]/66 px-4 py-2.5 shadow-[0_14px_40px_rgba(148,163,184,0.14)] backdrop-blur-xl dark:border-white/12 dark:bg-[linear-gradient(180deg,rgba(13,20,33,0.82),rgba(8,14,24,0.92))] dark:shadow-[0_14px_40px_rgba(0,0,0,0.22)]">
-              <BrandLogo
-                variant="horizontal"
-                href="/"
-                tone="auto"
-                className="h-8 w-auto sm:h-9"
-              />
-            </div>
+            <BrandLogo
+              variant="horizontal"
+              href="/"
+              tone="auto"
+              className="origin-left scale-[0.88] sm:scale-95"
+            />
           </div>
         ) : null}
 

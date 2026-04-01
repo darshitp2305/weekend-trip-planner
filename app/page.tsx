@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import AccountPanel, { type AccountPanelUser } from "../components/AccountPanel";
-import BrandLogo from "../components/BrandLogo";
+import BrandLogo, { BrandMark } from "../components/BrandLogo";
 import TripCard from "../components/TripCard";
 import TripForm from "../components/TripForm";
 import rawDestinations from "../data/destinations.json";
@@ -667,12 +667,17 @@ export default function HomePage() {
       <button
         type="button"
         onClick={() => setSavedTripsOpen(true)}
-        aria-label="Open account and saved trips panel"
-        className="fixed bottom-5 left-5 z-40 inline-flex items-center gap-3 rounded-full border border-slate-200/80 bg-white/82 px-4 py-3 text-sm font-semibold text-slate-800 shadow-[0_20px_60px_rgba(148,163,184,0.2)] backdrop-blur-xl transition hover:border-[#d9b57c]/35 hover:bg-white sm:bottom-auto sm:top-1/2 sm:-translate-y-1/2 sm:flex-col sm:rounded-[1.8rem] sm:px-3 sm:py-4 dark:border-white/14 dark:bg-[linear-gradient(180deg,rgba(14,22,37,0.92),rgba(9,15,27,0.94))] dark:text-white dark:shadow-[0_20px_60px_rgba(2,6,23,0.34)] dark:hover:bg-[linear-gradient(180deg,rgba(18,28,45,0.96),rgba(11,18,31,0.96))]"
+        aria-label={`Open travel desk${accountUser ? ` for ${accountTriggerLabel}` : ""}`}
+        className="fixed right-4 top-[4.8rem] z-40 inline-flex items-center gap-2.5 rounded-full border border-slate-300/70 bg-white/88 px-3 py-2 text-left shadow-[0_16px_40px_rgba(15,23,42,0.16)] backdrop-blur-md transition hover:border-[#d9b57c]/35 hover:bg-white dark:border-white/12 dark:bg-[linear-gradient(180deg,rgba(11,18,30,0.92),rgba(8,14,24,0.96))] dark:shadow-[0_18px_46px_rgba(0,0,0,0.28)] dark:hover:bg-[linear-gradient(180deg,rgba(15,23,38,0.96),rgba(10,16,28,0.98))] sm:right-6 sm:top-[5.1rem]"
       >
-        <span className="inline-flex h-2.5 w-2.5 shrink-0 rounded-full bg-[#7decc7] shadow-[0_0_18px_rgba(125,236,199,0.65)]" />
-        <span className="max-w-[7rem] text-left leading-5 sm:text-center">
-          {accountTriggerLabel}
+        <BrandMark tone="auto" className="h-9 w-9" />
+        <span className="min-w-0">
+          <span className="block text-sm font-semibold leading-5 text-slate-900 dark:text-white">
+            {accountTriggerLabel}
+          </span>
+          <span className="block text-[0.62rem] font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-white/52">
+            Saved trips
+          </span>
         </span>
       </button>
 
@@ -732,15 +737,13 @@ export default function HomePage() {
 
         <div className="relative z-10 mx-auto flex min-h-screen max-w-7xl flex-col px-5 py-6 sm:px-8 lg:px-10">
           <header className="flex items-center">
-            <div className="inline-flex rounded-full border border-slate-200/70 bg-[#f6f1e8]/66 px-4 py-2.5 shadow-[0_14px_40px_rgba(148,163,184,0.12)] backdrop-blur-xl dark:border-white/12 dark:bg-[linear-gradient(180deg,rgba(13,20,33,0.82),rgba(8,14,24,0.92))] dark:shadow-[0_14px_40px_rgba(0,0,0,0.22)]">
-              <BrandLogo
-                variant="horizontal"
-                href="/"
-                priority
-                tone="auto"
-                className="h-8 w-auto sm:h-9"
-              />
-            </div>
+            <BrandLogo
+              variant="horizontal"
+              href="/"
+              priority
+              tone="auto"
+              className="origin-left scale-[0.9] sm:scale-100"
+            />
           </header>
 
           <div className="flex flex-1 items-center py-10 lg:py-14">
