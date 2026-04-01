@@ -668,7 +668,7 @@ export default function HomePage() {
         type="button"
         onClick={() => setSavedTripsOpen(true)}
         aria-label={`Open travel desk${accountUser ? ` for ${accountTriggerLabel}` : ""}`}
-        className="fixed right-4 top-[4.8rem] z-40 inline-flex items-center gap-2.5 rounded-full border border-slate-300/70 bg-white/88 px-3 py-2 text-left shadow-[0_16px_40px_rgba(15,23,42,0.16)] backdrop-blur-md transition hover:border-[#d9b57c]/35 hover:bg-white dark:border-white/12 dark:bg-[linear-gradient(180deg,rgba(11,18,30,0.92),rgba(8,14,24,0.96))] dark:shadow-[0_18px_46px_rgba(0,0,0,0.28)] dark:hover:bg-[linear-gradient(180deg,rgba(15,23,38,0.96),rgba(10,16,28,0.98))] sm:right-6 sm:top-[5.1rem]"
+        className="fixed right-4 top-4 z-40 inline-flex items-center gap-2.5 rounded-full border border-slate-300/70 bg-white/88 px-3 py-2 text-left shadow-[0_16px_40px_rgba(15,23,42,0.16)] backdrop-blur-md transition hover:border-[#d9b57c]/35 hover:bg-white dark:border-white/12 dark:bg-[linear-gradient(180deg,rgba(11,18,30,0.92),rgba(8,14,24,0.96))] dark:shadow-[0_18px_46px_rgba(0,0,0,0.28)] dark:hover:bg-[linear-gradient(180deg,rgba(15,23,38,0.96),rgba(10,16,28,0.98))] sm:right-6 sm:top-6"
       >
         <BrandMark tone="auto" className="h-9 w-9" />
         <span className="min-w-0">

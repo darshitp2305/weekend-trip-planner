@@ -50,7 +50,7 @@ export default function ThemeToggle() {
         mounted ? `Switch to ${theme === "dark" ? "light" : "dark"} mode` : "Toggle theme"
       }
       aria-pressed={mounted ? theme === "dark" : false}
-      className="fixed right-4 top-4 z-[60] inline-flex h-11 items-center gap-2 rounded-full border border-slate-300/80 bg-white/90 px-3 text-sm font-semibold text-slate-800 shadow-lg backdrop-blur-md transition hover:-translate-y-0.5 hover:bg-white dark:border-slate-700 dark:bg-slate-900/90 dark:text-slate-100 dark:hover:bg-slate-900 sm:right-6 sm:top-6"
+      className="fixed bottom-4 right-4 z-[60] inline-flex h-11 items-center gap-2 rounded-full border border-slate-300/80 bg-white/90 px-3 text-sm font-semibold text-slate-800 shadow-lg backdrop-blur-md transition hover:-translate-y-0.5 hover:bg-white dark:border-slate-700 dark:bg-slate-900/90 dark:text-slate-100 dark:hover:bg-slate-900 sm:bottom-6 sm:right-6"
     >
       <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-amber-100 text-sm text-amber-700 dark:bg-slate-800 dark:text-cyan-200">
         {mounted && theme === "dark" ? "☾" : "☀"}
