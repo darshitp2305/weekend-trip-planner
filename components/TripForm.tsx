@@ -16,6 +16,8 @@ import {
   getPromptLimitError,
   TRIP_PROMPT_MAX_CHARS,
 } from "../lib/promptLimits";
+import { PROMPT_TEXT_ENTRY_PROPS } from "../lib/textEntryAssist";
+import { validateTripPrompt } from "../lib/promptValidation";
 import { StartCity, START_CITY_OPTIONS } from "../lib/startCities";
 import { formatDisplayDate, getTodayIsoDate } from "../lib/tripDates";
 import { ActivityFocus, TripInput, TripStyle } from "../lib/types";
@@ -530,8 +532,12 @@ export default function TripForm({
   const startCityListboxId = useId();
 
   const previewPrompt = mode === "prompt" ? composerValue : prompt;
-  const draft = buildConversationalDraft(previewPrompt, answers);
   const trimmedComposerValue = composerValue.trim();
+  const draft = buildConversationalDraft(previewPrompt, answers);
+  const promptValidation =
+    mode === "prompt" && trimmedComposerValue.length > 0
+      ? validateTripPrompt(trimmedComposerValue)
+      : null;
   const tripPromptTooLong = trimmedComposerValue.length > TRIP_PROMPT_MAX_CHARS;
   const submitHandler = onGenerate ?? onSubmit;
   const isTripTimingQuestion = mode === "followup" && pendingField === "tripTiming";
@@ -541,7 +547,9 @@ export default function TripForm({
     : "";
   const minimumTripDate = getTodayIsoDate();
   const shouldShowAssumptionPills =
-    mode === "followup" || messages.length > 0 || trimmedComposerValue.length > 0;
+    mode === "followup" ||
+    messages.length > 0 ||
+    (trimmedComposerValue.length > 0 && promptValidation?.ok === true);
   const normalizedStartCityQuery = normalizeStartCityQuery(composerValue);
   const filteredStartCities = START_CITY_OPTIONS.filter((city) =>
     normalizeStartCityQuery(city).includes(normalizedStartCityQuery)
@@ -626,6 +634,12 @@ export default function TripForm({
       }
 
       const nextPrompt = trimmedComposerValue;
+      const promptValidation = validateTripPrompt(nextPrompt);
+      if (!promptValidation.ok) {
+        setErrorMessage(promptValidation.message);
+        return;
+      }
+
       const nextDraft = buildConversationalDraft(nextPrompt, answers);
       const nextQuestion = getNextIntakeQuestion(nextDraft);
       const initialMessages: ChatMessage[] = [
@@ -865,6 +879,7 @@ export default function TripForm({
                 <input
                   ref={startCityInputRef}
                   type="text"
+                  {...PROMPT_TEXT_ENTRY_PROPS}
                   role="combobox"
                   aria-autocomplete="list"
                   aria-expanded={shouldShowStartCitySuggestions}
@@ -942,6 +957,7 @@ export default function TripForm({
             </>
           ) : (
             <textarea
+              {...PROMPT_TEXT_ENTRY_PROPS}
               value={composerValue}
               onChange={(event) => setComposerValue(event.target.value)}
               onKeyDown={handleComposerKeyDown}

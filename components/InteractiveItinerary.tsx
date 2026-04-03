@@ -37,6 +37,8 @@ import {
   BUILDER_PROMPT_MAX_CHARS,
   getPromptLimitError,
 } from "../lib/promptLimits";
+import { validateBuilderPrompt } from "../lib/promptValidation";
+import { PROMPT_TEXT_ENTRY_PROPS } from "../lib/textEntryAssist";
 import { sanitizeExternalNavigationUrl } from "../lib/urlSafety";
 
 type Props = {
@@ -1693,17 +1695,33 @@ export default function InteractiveItinerary({
       }),
     });
 
-    if (!response.ok) {
-      return prompt;
-    }
-
     const data = (await response.json()) as {
       success?: boolean;
+      error?: string;
       rewrittenPrompt?: string | null;
+      confidence?: "low" | "medium" | "high" | null;
     };
+
+    if (!response.ok) {
+      throw new Error(
+        typeof data.error === "string" && data.error.trim()
+          ? data.error.trim()
+          : "Builder prompt could not be interpreted."
+      );
+    }
 
     const rewrittenPrompt =
       typeof data.rewrittenPrompt === "string" ? data.rewrittenPrompt.trim() : "";
+    const confidence =
+      data.confidence === "low" ||
+      data.confidence === "medium" ||
+      data.confidence === "high"
+        ? data.confidence
+        : null;
+
+    if (confidence === "low") {
+      return prompt;
+    }
 
     return rewrittenPrompt || prompt;
   }
@@ -1734,13 +1752,35 @@ export default function InteractiveItinerary({
       return;
     }
 
+    const promptValidation = validateBuilderPrompt(trimmedBuilderPrompt);
+    if (!promptValidation.ok) {
+      setBuilderPromptFeedback({
+        tone: "warning",
+        title: "Builder prompt needs more detail",
+        detail: promptValidation.message,
+        interpretedPrompt: undefined,
+        issues: [],
+      });
+      return;
+    }
+
     setBuilderPromptPending(true);
     try {
       let promptForApply = trimmedBuilderPrompt;
       try {
         promptForApply = await interpretBuilderPrompt(trimmedBuilderPrompt);
-      } catch {
-        promptForApply = trimmedBuilderPrompt;
+      } catch (error) {
+        setBuilderPromptFeedback({
+          tone: "warning",
+          title: "Builder prompt needs more detail",
+          detail:
+            error instanceof Error && error.message.trim()
+              ? error.message
+              : "Try a more explicit sentence with a day number and the stop you want changed.",
+          interpretedPrompt: undefined,
+          issues: [],
+        });
+        return;
       }
       const interpretedPrompt =
         promptForApply.trim() !== trimmedBuilderPrompt ? promptForApply : undefined;
@@ -2481,6 +2521,7 @@ export default function InteractiveItinerary({
         </div>
 
         <textarea
+          {...PROMPT_TEXT_ENTRY_PROPS}
           value={builderPrompt}
           onChange={(event) => setBuilderPrompt(event.target.value)}
           maxLength={BUILDER_PROMPT_MAX_CHARS}

@@ -11,8 +11,18 @@ import { normalizeTripImageSet } from "../lib/tripImages";
 import { ProviderOutcome, RankedDestination, RawDestination, TripInput } from "../lib/types";
 import { displayNameFromEmail } from "../lib/viewerIdentity";
 
+type PlannerErrorCode = "invalid_trip_prompt" | "invalid_builder_prompt";
+type PlannerValidationReason =
+  | "empty"
+  | "unreadable"
+  | "low_signal"
+  | "unsupported_destination";
+
 type RankTripsResponse = {
   success?: boolean;
+  error?: string;
+  errorCode?: PlannerErrorCode | string;
+  validationReason?: PlannerValidationReason | string;
   results?: RankedDestination[];
   usedLiveData?: boolean;
   normalizedInput?: TripInput;
@@ -25,6 +35,9 @@ type RankTripsResponse = {
 
 type GenerateTripResponse = {
   success?: boolean;
+  error?: string;
+  errorCode?: PlannerErrorCode | string;
+  validationReason?: PlannerValidationReason | string;
   source?: "live-openai" | "fallback-template";
   results?: RankedDestination[];
   trips?: RankedDestination[];
@@ -97,6 +110,17 @@ function joinLabels(labels: string[]) {
   if (labels.length === 1) return labels[0];
   if (labels.length === 2) return `${labels[0]} and ${labels[1]}`;
   return `${labels.slice(0, -1).join(", ")}, and ${labels[labels.length - 1]}`;
+}
+
+function plannerErrorMessage(
+  payload: { error?: string } | null | undefined,
+  fallback: string
+) {
+  if (typeof payload?.error === "string" && payload.error.trim()) {
+    return payload.error.trim();
+  }
+
+  return fallback;
 }
 
 function buildHeroCandidates() {
@@ -430,18 +454,23 @@ export default function HomePage() {
       }
 
       if (!rankResponse.ok) {
+        const message = plannerErrorMessage(
+          rankData,
+          "I couldn't build that trip yet. Try rewording the request and try again."
+        );
         console.error("/api/rank-trips failed:", rankResponse.status, rankData);
         setCurrentTrip(null);
         if (shouldResetShownDestinationNames) {
           setShownDestinationNames([]);
         }
+        setAiStatusMessage(message);
         persistPageState({
           currentTrip: null,
           shownDestinationNames: shouldResetShownDestinationNames
             ? []
             : shownDestinationNames,
           lastInput: input,
-          aiStatusMessage: "",
+          aiStatusMessage: message,
         });
         return;
       }
@@ -631,14 +660,17 @@ export default function HomePage() {
       if (shouldResetShownDestinationNames) {
         setShownDestinationNames([]);
       }
-      setAiStatusMessage("");
+      setAiStatusMessage(
+        "The planner hit an unexpected error. Try again with a slightly clearer prompt."
+      );
       persistPageState({
         currentTrip: null,
         shownDestinationNames: shouldResetShownDestinationNames
           ? []
           : shownDestinationNames,
-        lastInput: input,
-        aiStatusMessage: "",
+          lastInput: input,
+          aiStatusMessage:
+            "The planner hit an unexpected error. Try again with a slightly clearer prompt.",
       });
     } finally {
       setLoading(false);

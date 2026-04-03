@@ -5,6 +5,10 @@ import {
 } from "../lib/conversationalPlanner";
 import { mergePromptParametersIntoTripInput } from "../lib/openAiPromptParameters";
 import {
+  validateBuilderPrompt,
+  validateTripPrompt,
+} from "../lib/promptValidation";
+import {
   deriveTripIntentFromPrompt,
   extractPromptBudget,
   extractPromptDepartureTime,
@@ -40,6 +44,19 @@ function makeInput(overrides?: Partial<TripInput>): TripInput {
     tripEndDate: "2026-03-30",
     ...overrides,
   };
+}
+
+function describeValidation(
+  validation:
+    | ReturnType<typeof validateTripPrompt>
+    | ReturnType<typeof validateBuilderPrompt>,
+  successText: string
+) {
+  if (validation.ok) {
+    return successText;
+  }
+
+  return (validation as { ok: false; message: string }).message;
 }
 
 function buildTests(): TestResult[] {
@@ -360,6 +377,65 @@ function buildTests(): TestResult[] {
         !/Calgary/i.test(tripPrompt) &&
         !/\b2 days?\b/i.test(tripPrompt),
       details: `tripPrompt=${tripPrompt || "none"}`,
+    });
+  }
+
+  {
+    const validation = validateTripPrompt(
+      "Plan a low-effort mountain trip from Edmonton for 4 friends this summer with good coffee."
+    );
+    const details = describeValidation(validation, "accepted");
+
+    tests.push({
+      id: "PI16",
+      passed: validation.ok,
+      details,
+    });
+  }
+
+  {
+    const validation = validateTripPrompt("asdf qwrty zxcvb");
+    const details = describeValidation(validation, "unexpectedly accepted");
+
+    tests.push({
+      id: "PI17",
+      passed: !validation.ok,
+      details,
+    });
+  }
+
+  {
+    const validation = validateTripPrompt("Plan a weekend trip to Las Vegas for 2.");
+    const details = describeValidation(validation, "unexpectedly accepted");
+
+    tests.push({
+      id: "PI18",
+      passed: !validation.ok,
+      details,
+    });
+  }
+
+  {
+    const validation = validateBuilderPrompt(
+      "Add a coffee stop on day 2 before we leave town."
+    );
+    const details = describeValidation(validation, "accepted");
+
+    tests.push({
+      id: "PI19",
+      passed: validation.ok,
+      details,
+    });
+  }
+
+  {
+    const validation = validateBuilderPrompt("make it better");
+    const details = describeValidation(validation, "unexpectedly accepted");
+
+    tests.push({
+      id: "PI20",
+      passed: !validation.ok,
+      details,
     });
   }
 

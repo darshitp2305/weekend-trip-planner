@@ -218,6 +218,11 @@ function normalizeDepartureTimeMatch(
 function inferPreferredDestination(prompt: string): string | undefined {
   const normalizedPrompt = normalizeText(prompt);
   if (!normalizedPrompt) return undefined;
+  const promptStartCity = extractPromptStartCity(prompt);
+  const localTripSignal =
+    /\bstaycation\b|\blocal\b|\bin town\b|\bclose to home\b|\bnear home\b/i.test(
+      prompt
+    );
 
   const options = (rawDestinations as RawDestination[])
     .map((destination) => ({
@@ -253,6 +258,13 @@ function inferPreferredDestination(prompt: string): string | undefined {
       Boolean(option.destinationMatchText) &&
       (normalizedPrompt === option.destinationMatchText ||
         normalizedPrompt.includes(option.destinationMatchText));
+
+    if (matchesDestinationName) {
+      return option.destinationName;
+    }
+  }
+
+  for (const option of options) {
     const matchesHomeBase =
       Boolean(option.homeBaseMatchText) &&
       (normalizedPrompt.includes(`to ${option.homeBaseMatchText}`) ||
@@ -260,7 +272,15 @@ function inferPreferredDestination(prompt: string): string | undefined {
         normalizedPrompt.includes(`around ${option.homeBaseMatchText}`) ||
         normalizedPrompt.includes(`near ${option.homeBaseMatchText}`));
 
-    if (matchesDestinationName || matchesHomeBase) {
+    const homeBaseMatchesStartCity =
+      Boolean(promptStartCity) &&
+      normalizeText(promptStartCity) === option.homeBaseMatchText;
+
+    if (matchesHomeBase && homeBaseMatchesStartCity && !localTripSignal) {
+      continue;
+    }
+
+    if (matchesHomeBase) {
       return option.destinationName;
     }
   }

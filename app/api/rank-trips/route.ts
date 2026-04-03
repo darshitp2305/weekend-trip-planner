@@ -16,6 +16,10 @@ import {
   normalizePromptText,
   TRIP_PROMPT_MAX_CHARS,
 } from "../../../lib/promptLimits";
+import {
+  PromptValidationFailureReason,
+  validateTripPrompt,
+} from "../../../lib/promptValidation";
 import { isStartCity } from "../../../lib/startCities";
 import { deriveTripEndDate, isIsoDate } from "../../../lib/tripDates";
 import { extractPromptDepartureTime } from "../../../lib/tripIntent";
@@ -184,6 +188,21 @@ export async function POST(req: Request) {
         { error: getPromptLimitError("Trip prompt", TRIP_PROMPT_MAX_CHARS) },
         { status: 400 }
       );
+    }
+
+    if (input.tripPrompt) {
+      const promptValidation = validateTripPrompt(input.tripPrompt);
+      if (!promptValidation.ok) {
+        return jsonNoStore(
+          {
+            error: promptValidation.message,
+            errorCode: "invalid_trip_prompt",
+            validationReason:
+              promptValidation.reason satisfies PromptValidationFailureReason,
+          },
+          { status: 400 }
+        );
+      }
     }
 
     const promptEnrichment = await enrichTripInputWithOpenAI(input);

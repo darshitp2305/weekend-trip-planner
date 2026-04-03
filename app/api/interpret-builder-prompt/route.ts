@@ -16,6 +16,10 @@ import {
   isPromptTooLong,
   normalizePromptText,
 } from "../../../lib/promptLimits";
+import {
+  PromptValidationFailureReason,
+  validateBuilderPrompt,
+} from "../../../lib/promptValidation";
 import { Activity, FoodSpot, HotelOption, ItineraryDayData } from "../../../lib/types";
 
 type RequestBody = {
@@ -67,6 +71,20 @@ export async function POST(request: Request) {
         {
           success: false,
           error: getPromptLimitError("Builder prompt", BUILDER_PROMPT_MAX_CHARS),
+        },
+        { status: 400 }
+      );
+    }
+
+    const promptValidation = validateBuilderPrompt(prompt);
+    if (!promptValidation.ok) {
+      return jsonNoStore(
+        {
+          success: false,
+          error: promptValidation.message,
+          errorCode: "invalid_builder_prompt",
+          validationReason:
+            promptValidation.reason satisfies PromptValidationFailureReason,
         },
         { status: 400 }
       );
