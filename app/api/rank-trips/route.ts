@@ -17,6 +17,7 @@ import {
   TRIP_PROMPT_MAX_CHARS,
 } from "../../../lib/promptLimits";
 import {
+  PromptValidationResult,
   PromptValidationFailureReason,
   validateTripPrompt,
 } from "../../../lib/promptValidation";
@@ -155,6 +156,12 @@ function normalizeExcludedDestinationNames(value: unknown): string[] {
     .filter(Boolean);
 }
 
+function isPromptValidationFailure(
+  result: PromptValidationResult
+): result is Extract<PromptValidationResult, { ok: false }> {
+  return result.ok === false;
+}
+
 export async function POST(req: Request) {
   const sameOriginViolation = enforceSameOrigin(req);
   if (sameOriginViolation) return sameOriginViolation;
@@ -192,13 +199,13 @@ export async function POST(req: Request) {
 
     if (input.tripPrompt) {
       const promptValidation = validateTripPrompt(input.tripPrompt);
-      if (!promptValidation.ok) {
+      if (isPromptValidationFailure(promptValidation)) {
+        const { message, reason } = promptValidation;
         return jsonNoStore(
           {
-            error: promptValidation.message,
+            error: message,
             errorCode: "invalid_trip_prompt",
-            validationReason:
-              promptValidation.reason satisfies PromptValidationFailureReason,
+            validationReason: reason satisfies PromptValidationFailureReason,
           },
           { status: 400 }
         );

@@ -216,6 +216,7 @@ function sanitizePromptParameters(
     payload.style === "foodie" ||
     payload.style === "solo reset" ||
     payload.style === "adventure" ||
+    payload.style === "must see" ||
     payload.style === "hidden gems"
   ) {
     parameters.style = payload.style;
@@ -405,6 +406,7 @@ export async function enrichTripInputWithOpenAI(
         "foodie",
         "solo reset",
         "adventure",
+        "must see",
         "hidden gems",
       ],
       allowed_activity_focus: ["skiing", "hiking", "camping"],

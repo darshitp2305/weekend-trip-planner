@@ -16,6 +16,7 @@ import {
   TripSelectionState,
 } from "./types";
 import { estimateFoodCostForGroup } from "./foodPricing";
+import { estimatedHotelStayCost } from "./hotelAvailability";
 
 function normalized(value?: string) {
   return (value ?? "").trim().toLowerCase();
@@ -65,15 +66,10 @@ function hotelCostForSelection(
 ) {
   if (!hotel) return Number(fallbackBreakdown?.hotel ?? 0);
 
-  if (typeof hotel.totalStayPrice === "number" && hotel.totalStayPrice > 0) {
-    return hotel.totalStayPrice;
-  }
-
-  if (typeof hotel.pricePerNight === "number" && hotel.pricePerNight > 0) {
-    return hotel.pricePerNight * nights;
-  }
-
-  return Number(fallbackBreakdown?.hotel ?? 0);
+  return estimatedHotelStayCost(hotel, {
+    nights,
+    fallbackTotalStayCost: Number(fallbackBreakdown?.hotel ?? 0),
+  });
 }
 
 function foodText(spot?: Pick<FoodSpot, "name" | "category" | "tags" | "priceLevel">) {
@@ -160,6 +156,179 @@ function isScenicActivity(activity?: Activity) {
   return ["scenic", "viewpoint", "lookout", "lake", "gondola", "view"].some((term) =>
     text.includes(term)
   );
+}
+
+function titleMatchScore(name?: string, preferredTitle?: string) {
+  const optionName = normalized(name);
+  const title = normalized(preferredTitle);
+
+  if (!optionName || !title) return 0;
+  if (optionName === title) return 100;
+  if (optionName.includes(title) || title.includes(optionName)) return 80;
+  return 0;
+}
+
+function isGenericActivityStop(stop: Pick<ItineraryStop, "title" | "description">) {
+  const text = normalized([stop.title, stop.description].filter(Boolean).join(" "));
+  if (!text) return true;
+
+  return [
+    "pick an activity",
+    "choose an activity",
+    "pick a nearby activity",
+    "choose a nearby activity",
+    "pick something nearby",
+    "choose something nearby",
+    "flexible activity",
+  ].some((phrase) => text.includes(phrase));
+}
+
+function distanceBetweenCoordinatesInKm(
+  a: { latitude: number; longitude: number },
+  b: { latitude: number; longitude: number }
+) {
+  const averageLatitudeRadians = ((a.latitude + b.latitude) / 2) * (Math.PI / 180);
+  const latDistanceKm = (a.latitude - b.latitude) * 111;
+  const lonDistanceKm =
+    (a.longitude - b.longitude) * 111 * Math.cos(averageLatitudeRadians);
+
+  return Math.sqrt(latDistanceKm ** 2 + lonDistanceKm ** 2);
+}
+
+function resolveBaseCoordinate(
+  hotels: HotelOption[],
+  preferredHotelName?: string,
+  fallbackCenter?: { latitude?: number; longitude?: number }
+) {
+  const selectedHotel = hotels.find((hotel) => hotel.name === preferredHotelName);
+  const firstHotelWithCoordinates = hotels.find(
+    (hotel) =>
+      typeof hotel.latitude === "number" && typeof hotel.longitude === "number"
+  );
+  const source = selectedHotel ?? firstHotelWithCoordinates;
+
+  if (typeof source?.latitude === "number" && typeof source.longitude === "number") {
+    return {
+      latitude: source.latitude,
+      longitude: source.longitude,
+    };
+  }
+
+  if (
+    typeof fallbackCenter?.latitude === "number" &&
+    typeof fallbackCenter?.longitude === "number"
+  ) {
+    return {
+      latitude: fallbackCenter.latitude,
+      longitude: fallbackCenter.longitude,
+    };
+  }
+
+  return undefined;
+}
+
+type DefaultActivitySelectionOptions = {
+  day?: Pick<ItineraryDayData, "title" | "summary">;
+  tripPrompt?: string;
+  hotelName?: string;
+  hotels?: HotelOption[];
+  fallbackCenter?: {
+    latitude?: number;
+    longitude?: number;
+  };
+};
+
+export function pickDefaultActivityForStop(
+  stop: ItineraryStop,
+  activities: Activity[],
+  options: DefaultActivitySelectionOptions = {}
+) {
+  if (activities.length === 0) return undefined;
+
+  const exactTitleMatch = matchByTitle(activities, stop.title);
+  if (exactTitleMatch && titleMatchScore(exactTitleMatch.name, stop.title) >= 80) {
+    return exactTitleMatch;
+  }
+
+  const intent = stopIntentText(
+    stop,
+    [options.day?.title, options.day?.summary, options.tripPrompt]
+      .filter(Boolean)
+      .join(" ")
+  );
+  const genericStop = isGenericActivityStop(stop);
+  const wantsSki =
+    ["ski", "skiing", "snowboard", "snowboarding", "chairlift", "lift", "resort"].some(
+      (term) => intent.includes(term)
+    );
+  const wantsHotSprings = intent.includes("hot springs");
+  const wantsHike =
+    ["hike", "hiking", "trail", "summit", "ridge", "scramble", "canyon"].some((term) =>
+      intent.includes(term)
+    );
+  const wantsScenic =
+    ["scenic", "viewpoint", "lookout", "view", "lake", "gondola"].some((term) =>
+      intent.includes(term)
+    );
+  const wantsNearby =
+    genericStop ||
+    ["nearby", "close", "local", "walkable", "short", "easy first day", "easy arrival"].some(
+      (term) => intent.includes(term)
+    );
+  const baseCoordinate = resolveBaseCoordinate(
+    options.hotels ?? [],
+    options.hotelName,
+    options.fallbackCenter
+  );
+
+  return [...activities]
+    .map((activity) => {
+      let score = titleMatchScore(activity.name, stop.title);
+
+      if (wantsSki) {
+        score += isSkiActivity(activity) ? 80 : -60;
+      }
+      if (wantsHotSprings) {
+        score += isHotSpringsActivity(activity) ? 70 : -45;
+      }
+      if (wantsHike) {
+        score += isHikeActivity(activity) ? 65 : -30;
+      }
+      if (wantsScenic) {
+        score += isScenicActivity(activity) ? 35 : -10;
+      }
+      if (genericStop && isHikeActivity(activity) && isScenicActivity(activity)) {
+        score += 18;
+      }
+
+      if (
+        baseCoordinate &&
+        typeof activity.latitude === "number" &&
+        typeof activity.longitude === "number"
+      ) {
+        const distanceKm = distanceBetweenCoordinatesInKm(baseCoordinate, {
+          latitude: activity.latitude,
+          longitude: activity.longitude,
+        });
+
+        if (distanceKm <= 12) score += 42;
+        else if (distanceKm <= 25) score += 30;
+        else if (distanceKm <= 45) score += 14;
+        else if (distanceKm <= 70) score -= wantsNearby ? 18 : 4;
+        else if (distanceKm <= 100) score -= wantsNearby ? 52 : 18;
+        else score -= wantsNearby ? 140 : 55;
+      } else if (genericStop) {
+        score -= 12;
+      }
+
+      score += Math.min((activity.rating ?? 0) * 2, 10);
+
+      return { activity, score };
+    })
+    .sort((left, right) => {
+      if (right.score !== left.score) return right.score - left.score;
+      return (right.activity.rating ?? 0) - (left.activity.rating ?? 0);
+    })[0]?.activity;
 }
 
 function getBestBudgetFoodCandidate(
@@ -262,7 +431,14 @@ export function buildDefaultSelectionState(
   days: ItineraryDayData[],
   hotels: HotelOption[],
   foodSpots: FoodSpot[],
-  activities: Activity[]
+  activities: Activity[],
+  options?: {
+    tripPrompt?: string;
+    fallbackCenter?: {
+      latitude?: number;
+      longitude?: number;
+    };
+  }
 ): TripSelectionState {
   const initial: TripSelectionState = {
     hotelName: hotels[0]?.name,
@@ -284,9 +460,15 @@ export function buildDefaultSelectionState(
       }
 
       if (stop.kind === "activity") {
-        const match = activities.find(
-          (item) => normalized(item.name) === normalized(stop.title)
-        );
+        const match =
+          activities.find((item) => normalized(item.name) === normalized(stop.title)) ??
+          pickDefaultActivityForStop(stop, activities, {
+            day,
+            tripPrompt: options?.tripPrompt,
+            hotelName: initial.hotelName,
+            hotels,
+            fallbackCenter: options?.fallbackCenter,
+          });
         if (match?.name) initial.activities[key] = match.name;
       }
 
@@ -328,6 +510,11 @@ type SelectionBudgetInput = {
   itineraryDays?: ItineraryDayData[];
   selection?: TripSelectionState;
   fallbackBreakdown?: Partial<BudgetBreakdown>;
+  tripPrompt?: string;
+  fallbackCenter?: {
+    latitude?: number;
+    longitude?: number;
+  };
 };
 
 export type BudgetOptimizationResult = {
@@ -372,11 +559,7 @@ export function calculateSelectedBudget({
   const hotel =
     hasStructuredItinerary && !includesStayStop
       ? 0
-      : typeof selectedHotel?.totalStayPrice === "number"
-        ? selectedHotel.totalStayPrice
-        : typeof selectedHotel?.pricePerNight === "number"
-          ? selectedHotel.pricePerNight * nights
-          : Number(fallbackBreakdown?.hotel ?? 0);
+      : hotelCostForSelection(selectedHotel, nights, fallbackBreakdown);
 
   const customReplacementStops = Object.entries(safeSelection.customStops ?? {}).reduce(
     (result, [key, stop]) => {
@@ -546,7 +729,11 @@ export function optimizeSelectionForBudget(
         input.itineraryDays ?? [],
         input.hotelOptions,
         input.foodSpots,
-        input.activities
+        input.activities,
+        {
+          tripPrompt: input.tripPrompt,
+          fallbackCenter: input.fallbackCenter,
+        }
       )
   );
   const baselineBudget = calculateSelectedBudget({

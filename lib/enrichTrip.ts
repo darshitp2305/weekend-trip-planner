@@ -568,6 +568,18 @@ function placeRelevanceScore(
     const styleSignals =
       input.style === "foodie"
         ? ["market", "tour", "museum", "downtown"]
+        : input.style === "must see"
+          ? [
+              "landmark",
+              "iconic",
+              "museum",
+              "viewpoint",
+              "lookout",
+              "gondola",
+              "waterfall",
+              "hot spring",
+              "historic",
+            ]
         : input.style === "adventure" || input.style === "outdoors"
           ? ["trail", "hike", "lake", "viewpoint", "park", "gondola", "canyon", "waterfall"]
           : input.style === "chill" || input.style === "solo reset"
@@ -1080,11 +1092,14 @@ function evaluateLivePromptFit(
 
 export async function enrichRankedTrip(
   trip: RankedDestination,
-  input: TripInput
+  input: TripInput,
+  options?: {
+    bypassCache?: boolean;
+  }
 ): Promise<{ trip: RankedDestination; source: TripDataSource }> {
   const cacheKey = createEnrichCacheKey(trip, input);
   const cached = enrichCache.get(cacheKey);
-  if (cached && cached.expiresAt > Date.now()) {
+  if (!options?.bypassCache && cached && cached.expiresAt > Date.now()) {
     return cached.value;
   }
 

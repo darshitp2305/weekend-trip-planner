@@ -17,6 +17,7 @@ import { RankedDestination, TripInput } from "../../../lib/types";
 type Body = {
   trip: RankedDestination;
   input: TripInput;
+  forceRefresh?: boolean;
 };
 
 export async function POST(req: NextRequest) {
@@ -46,7 +47,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const result = await enrichRankedTrip(body.trip, body.input);
+    const result = await enrichRankedTrip(body.trip, body.input, {
+      bypassCache: body.forceRefresh === true,
+    });
     const [reconciledTrip] = recalculateConfidence([result.trip], body.input);
 
     return jsonNoStore({

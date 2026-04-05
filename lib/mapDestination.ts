@@ -51,6 +51,62 @@ function getHiddenGemSignal(raw: RawDestination): number {
   return strongCount - weakCount;
 }
 
+function getMustSeeSignal(raw: RawDestination): number {
+  const text = [
+    raw.name,
+    raw.region,
+    raw.home_base_city,
+    ...(raw.vibes ?? []),
+    ...(raw.anchor_experiences ?? []).map((item) => item.title),
+    ...(raw.anchor_experiences ?? []).map((item) => item.description ?? ""),
+    ...(raw.neighborhoods ?? []).map((item) => item.name),
+    ...(raw.neighborhoods ?? []).map((item) => item.reason),
+  ]
+    .join(" ")
+    .toLowerCase();
+
+  const strongKeywords = [
+    "iconic",
+    "famous",
+    "landmark",
+    "landmarks",
+    "must see",
+    "must-see",
+    "bucket list",
+    "classic",
+    "sightseeing",
+    "viewpoint",
+    "lookout",
+    "museum",
+    "historic",
+    "gondola",
+    "hot springs",
+    "waterfall",
+    "canyon",
+    "popular",
+  ];
+
+  const weakKeywords = [
+    "hidden",
+    "lesser-known",
+    "lesser known",
+    "underrated",
+    "under the radar",
+    "quiet",
+  ];
+
+  const strongCount = strongKeywords.reduce(
+    (count, keyword) => count + (text.includes(keyword) ? 1 : 0),
+    0
+  );
+  const weakCount = weakKeywords.reduce(
+    (count, keyword) => count + (text.includes(keyword) ? 1 : 0),
+    0
+  );
+
+  return strongCount - weakCount;
+}
+
 function deriveTripStylesFromScores(styleScores: StyleScores, raw: RawDestination): TripStyle[] {
   const derivedStyles = (Object.entries(styleScores) as [TripStyle, number][])
     .filter(([, score]) => score >= 2)
@@ -58,6 +114,10 @@ function deriveTripStylesFromScores(styleScores: StyleScores, raw: RawDestinatio
 
   if (getHiddenGemSignal(raw) >= 2) {
     derivedStyles.push("hidden gems");
+  }
+
+  if (getMustSeeSignal(raw) >= 3) {
+    derivedStyles.push("must see");
   }
 
   return Array.from(new Set(derivedStyles));
@@ -85,13 +145,39 @@ function estimateHotelPrice(costLevel: RawDestination["cost_level"]): number {
   }
 }
 
+function joinNaturalList(items: string[]) {
+  if (items.length === 0) return "";
+  if (items.length === 1) return items[0];
+  if (items.length === 2) return `${items[0]} and ${items[1]}`;
+  return `${items.slice(0, -1).join(", ")}, and ${items[items.length - 1]}`;
+}
+
+function formatVibeLabel(value: string) {
+  const normalized = formatDisplayText(value).toLowerCase();
+
+  if (normalized === "relax") {
+    return "relaxation";
+  }
+
+  return normalized;
+}
+
 function buildSummary(raw: RawDestination): string {
   const topHighlights = raw.anchor_experiences
     .slice(0, 2)
     .map((exp) => exp.title)
-    .join(" and ");
+    .filter(Boolean);
+  const vibeText = joinNaturalList(
+    raw.vibes
+      .slice(0, 4)
+      .map(formatVibeLabel)
+      .filter(Boolean)
+  );
+  const highlightsText = joinNaturalList(topHighlights);
 
-  return `${raw.name} is a ${formatDisplayText(raw.vibes.join(", "))} getaway in ${raw.region} with highlights like ${topHighlights}.`;
+  return `${raw.name} is an Alberta getaway known for ${vibeText || "mountain scenery"}${
+    highlightsText ? `, with highlights like ${highlightsText}` : ""
+  }.`;
 }
 
 function estimateActivityCost(type: string): number {

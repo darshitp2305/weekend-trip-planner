@@ -255,7 +255,24 @@ export function validateTripPrompt(prompt: string): PromptValidationResult {
     TRIP_KEYWORD_PATTERN.test(normalizedPrompt),
   ].filter(Boolean).length;
 
-  if (!hasTripShapeSignal(normalizedPrompt) || signalScore < 2) {
+  const hasSpecificTripSignal = Boolean(
+    intent.preferredDestination ||
+      intent.requestedActivityName ||
+      intent.activityFocus ||
+      intent.hardConstraints.requiresScenicView ||
+      intent.hardConstraints.requiresVegetarianOptions ||
+      intent.softPreferences.wantsGoodFood ||
+      intent.softPreferences.wantsScenery ||
+      intent.softPreferences.wantsGetawayFeel ||
+      intent.softPreferences.wantsLowEffort ||
+      intent.softPreferences.wantsRecoveryDays ||
+      intent.strictBudget
+  );
+
+  if (
+    !hasTripShapeSignal(normalizedPrompt) ||
+    (signalScore < 2 && !hasSpecificTripSignal)
+  ) {
     return {
       ok: false,
       reason: "low_signal",

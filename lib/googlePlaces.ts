@@ -418,6 +418,8 @@ export function buildActivityTextQuery(
     activityFocusQuery ??
     (normalizedStyle === "foodie"
       ? "food tours, markets, cooking classes, scenic walks"
+      : normalizedStyle === "must see"
+        ? "iconic landmarks, famous attractions, sightseeing spots, museums, viewpoints"
       : normalizedStyle === "adventure"
         ? "hikes, lakes, viewpoints, outdoor adventure"
         : normalizedStyle === "outdoors"

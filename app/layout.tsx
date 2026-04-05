@@ -4,6 +4,7 @@
  */
 
 import type { Metadata } from "next";
+import SiteFooter from "../components/SiteFooter";
 import ThemeToggle from "../components/ThemeToggle";
 import "./globals.css";
 
@@ -28,14 +29,17 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className="antialiased" suppressHydrationWarning>
+      <body className="min-h-screen antialiased" suppressHydrationWarning>
         <script
           dangerouslySetInnerHTML={{
             __html: `(function(){try{var stored=localStorage.getItem("trippify-theme");var theme=stored==="dark"?"dark":"light";document.documentElement.classList.toggle("dark",theme==="dark");document.documentElement.style.colorScheme=theme;}catch(e){}})();`,
           }}
         />
         <ThemeToggle />
-        {children}
+        <div className="flex min-h-screen flex-col">
+          <div className="flex-1">{children}</div>
+          <SiteFooter />
+        </div>
       </body>
     </html>
   );

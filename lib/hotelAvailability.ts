@@ -13,6 +13,24 @@ const availabilityPriority: Record<HotelAvailabilityStatus, number> = {
   sold_out: 1,
 };
 
+function hotelPricingSignals(
+  hotel: Pick<HotelOption, "name" | "shortDescription" | "rating">
+) {
+  const text = `${hotel.name ?? ""} ${hotel.shortDescription ?? ""}`.toLowerCase();
+
+  return {
+    luxury:
+      /\b(fairmont|gold experience|luxury|premium|five star|5 star|spa resort|residence club|castle|chateau)\b/.test(
+        text
+      ) ||
+      (/\b(resort|spa|boutique|experience)\b/.test(text) &&
+        (hotel.rating ?? 0) >= 4.5),
+    value:
+      /\b(hostel|motel|motor inn|budget|affordable|value stay)\b/.test(text) ||
+      /\b(inn|lodge|guesthouse|basecamp|suites)\b/.test(text),
+  };
+}
+
 export function hotelAvailabilityPriorityFor(
   status?: HotelOption["availabilityStatus"]
 ) {
@@ -47,15 +65,85 @@ export function hotelAvailabilityTone(
   }
 }
 
+export function estimatedHotelStayCost(
+  hotel: Pick<
+    HotelOption,
+    "name" | "shortDescription" | "pricePerNight" | "totalStayPrice" | "rating"
+  >,
+  options?: {
+    nights?: number;
+    fallbackTotalStayCost?: number;
+  }
+) {
+  const nights =
+    typeof options?.nights === "number" &&
+    Number.isFinite(options.nights) &&
+    options.nights > 0
+      ? Math.round(options.nights)
+      : 1;
+
+  if (typeof hotel.totalStayPrice === "number" && hotel.totalStayPrice > 0) {
+    return hotel.totalStayPrice;
+  }
+
+  if (typeof hotel.pricePerNight === "number" && hotel.pricePerNight > 0) {
+    return hotel.pricePerNight * nights;
+  }
+
+  const fallbackTotalStayCost =
+    typeof options?.fallbackTotalStayCost === "number" &&
+    Number.isFinite(options.fallbackTotalStayCost) &&
+    options.fallbackTotalStayCost > 0
+      ? options.fallbackTotalStayCost
+      : 180 * nights;
+  const signals = hotelPricingSignals(hotel);
+  let multiplier = 1;
+
+  if (signals.luxury) {
+    multiplier += 0.95;
+  } else if ((hotel.rating ?? 0) >= 4.7) {
+    multiplier += 0.2;
+  } else if ((hotel.rating ?? 0) >= 4.4) {
+    multiplier += 0.08;
+  }
+
+  if (signals.value) {
+    multiplier -= 0.18;
+  }
+
+  const estimatedCost = fallbackTotalStayCost * multiplier;
+
+  return Math.round(
+    Math.min(
+      Math.max(estimatedCost, fallbackTotalStayCost * 0.72),
+      fallbackTotalStayCost * 2.6
+    )
+  );
+}
+
 export function sortHotelOptions<T extends Pick<
   HotelOption,
-  "name" | "availabilityStatus" | "pricePerNight" | "totalStayPrice" | "rating"
->>(hotels: T[]) {
+  | "name"
+  | "shortDescription"
+  | "availabilityStatus"
+  | "pricePerNight"
+  | "totalStayPrice"
+  | "rating"
+>>(
+  hotels: T[],
+  options?: { nights?: number; fallbackTotalStayCost?: number }
+) {
   return [...hotels].sort((a, b) => {
     const availabilityDiff =
       hotelAvailabilityPriorityFor(b.availabilityStatus) -
       hotelAvailabilityPriorityFor(a.availabilityStatus);
     if (availabilityDiff !== 0) return availabilityDiff;
+
+    const aComparablePrice = estimatedHotelStayCost(a, options);
+    const bComparablePrice = estimatedHotelStayCost(b, options);
+    if (aComparablePrice !== bComparablePrice) {
+      return aComparablePrice - bComparablePrice;
+    }
 
     const pricedDiff =
       Number(
@@ -63,27 +151,11 @@ export function sortHotelOptions<T extends Pick<
       ) -
       Number(
         typeof a.pricePerNight === "number" || typeof a.totalStayPrice === "number"
-      );
+    );
     if (pricedDiff !== 0) return pricedDiff;
 
     const ratingDiff = (b.rating ?? 0) - (a.rating ?? 0);
     if (ratingDiff !== 0) return ratingDiff;
-
-    const aComparablePrice =
-      typeof a.totalStayPrice === "number"
-        ? a.totalStayPrice
-        : typeof a.pricePerNight === "number"
-          ? a.pricePerNight
-          : Number.POSITIVE_INFINITY;
-    const bComparablePrice =
-      typeof b.totalStayPrice === "number"
-        ? b.totalStayPrice
-        : typeof b.pricePerNight === "number"
-          ? b.pricePerNight
-          : Number.POSITIVE_INFINITY;
-    if (aComparablePrice !== bComparablePrice) {
-      return aComparablePrice - bComparablePrice;
-    }
 
     return a.name.localeCompare(b.name);
   });

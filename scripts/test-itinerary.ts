@@ -75,6 +75,7 @@ function buildCases(): TestCase[] {
     { id: "T18", input: makeInput({ style: "solo reset", startCity: "Calgary", travelerCount: 1, budgetPerTraveler: 180, budget: 180, tripLengthDays: 2, maxDriveHours: 2, strictBudget: true, includeStaycations: true }) },
     { id: "T19", input: makeInput({ style: "hidden gems", startCity: "Edmonton", budgetPerTraveler: 380, budget: 760, tripLengthDays: 4, maxDriveHours: 5 }) },
     { id: "T20", input: makeInput({ style: "adventure", startCity: "Calgary", budgetPerTraveler: 275, budget: 550, tripLengthDays: 2, maxDriveHours: 3, strictBudget: true, includeStaycations: false }) },
+    { id: "T21", input: makeInput({ style: "must see", startCity: "Calgary", budgetPerTraveler: 475, budget: 950, tripLengthDays: 3, maxDriveHours: 4, preferredDestination: "Banff" }) },
   ];
 }
 
@@ -127,6 +128,24 @@ function scoreStyle(plan: TripPlan, style: TripStyle): { score: number; passed: 
     score += activityStops;
     score += countKeywords(text, ["local", "historic", "heritage", "lookout", "scenic", "museum", "trail", "favorites"]);
     if (text.includes("downtown")) score -= 1;
+  } else if (style === "must see") {
+    score += activityStops * 2;
+    score += countKeywords(text, [
+      "iconic",
+      "landmark",
+      "famous",
+      "must-see",
+      "must see",
+      "classic",
+      "sight",
+      "museum",
+      "viewpoint",
+      "lookout",
+      "gondola",
+      "waterfall",
+      "hot spring",
+    ]);
+    if (activityStops < 2) notes.push("Too few sightseeing anchors for a must-see trip.");
   }
 
   const thresholds: Record<TripStyle, number> = {
@@ -135,6 +154,7 @@ function scoreStyle(plan: TripPlan, style: TripStyle): { score: number; passed: 
     outdoors: 5,
     chill: 4,
     "solo reset": 4,
+    "must see": 5,
     "hidden gems": 4,
   };
 
@@ -319,6 +339,68 @@ function evaluateRequestedActivityRegression(): RegressionCheck {
     passed:
       winner.name.toLowerCase().includes("banff") &&
       itineraryText.includes("johnston canyon"),
+    notes,
+  };
+}
+
+function evaluatePromptDinnerGuaranteeRegression(): RegressionCheck {
+  const tripPrompt =
+    "Plan a 2-day Banff trip from Calgary for 4 travelers starting August 26, 2026. Keep the total budget under $350 per traveler. I want one scenic nearby hike, one solid local dinner, and a real overnight stay in Banff. Keep day 1 easy after the drive. Do not use distant hikes, fallback activities, or generic placeholder stops in the finalized trip.";
+
+  const input: TripInput = {
+    ...makeInput({
+      style: "outdoors",
+      startCity: "Calgary",
+      travelerCount: 4,
+      budgetPerTraveler: 350,
+      budget: 1400,
+      tripLengthDays: 2,
+      maxDriveHours: 5,
+      preferredDestination: "Banff",
+      tripStartDate: "2026-08-26",
+    }),
+    tripPrompt,
+  };
+
+  const winner = rankDestinations(input, 1)[0];
+  if (!winner) {
+    return {
+      id: "R10",
+      passed: false,
+      notes: ["No destination matched the Banff dinner guarantee regression case."],
+    };
+  }
+
+  const plan = buildTripPlan(winner, input, "static-ranking");
+  const foodStops = plan.itineraryDays.flatMap((day) =>
+    day.stops.filter((stop) => stop.kind === "food")
+  );
+  const activityStops = plan.itineraryDays.flatMap((day) =>
+    day.stops.filter((stop) => stop.kind === "activity")
+  );
+  const itineraryText = joinedItineraryText(plan);
+  const notes: string[] = [];
+
+  if (!winner.name.toLowerCase().includes("banff")) {
+    notes.push(`Expected Banff to win, got ${winner.name}.`);
+  }
+  if (foodStops.length < 1) {
+    notes.push("Expected at least one real food stop for the requested local dinner.");
+  }
+  if (activityStops.length < 1) {
+    notes.push("Expected at least one activity stop for the requested nearby hike.");
+  }
+  if (itineraryText.includes("mistaya canyon")) {
+    notes.push("Expected the nearby-hike brief to avoid far-away Mistaya Canyon.");
+  }
+
+  return {
+    id: "R10",
+    passed:
+      winner.name.toLowerCase().includes("banff") &&
+      foodStops.length >= 1 &&
+      activityStops.length >= 1 &&
+      !itineraryText.includes("mistaya canyon"),
     notes,
   };
 }
@@ -610,6 +692,222 @@ function evaluateMultiDaySkiSummaryRegression(): RegressionCheck {
   };
 }
 
+function evaluateDistanceCappedActivityRegression(): RegressionCheck {
+  const input: TripInput = {
+    ...makeInput({
+      style: "adventure",
+      startCity: "Edmonton",
+      travelerCount: 2,
+      budgetPerTraveler: 275,
+      budget: 550,
+      tripLengthDays: 2,
+      maxDriveHours: 5,
+      maxDriveMinutesBetweenStops: 45,
+      preferredDestination: "Banff",
+    }),
+    tripPrompt:
+      "Plan a Banff overnight with one scenic hike and keep the stops close to town.",
+  };
+
+  const baseTrip = rankDestinations(input, 1)[0];
+  if (!baseTrip) {
+    return {
+      id: "R07",
+      passed: false,
+      notes: ["No destination matched the distance-capped Banff regression case."],
+    };
+  }
+
+  const syntheticTrip = {
+    ...baseTrip,
+    latitude: 51.1784,
+    longitude: -115.5708,
+    hotelOptions: [
+      {
+        name: "Tunnel Mountain area stay",
+        bookingLink: "https://example.com/hotel",
+        latitude: 51.1787,
+        longitude: -115.5549,
+      },
+    ],
+    topActivities: [
+      {
+        name: "Banff Gondola",
+        type: "Scenic",
+        costEstimate: 70,
+        latitude: 51.1499,
+        longitude: -115.5739,
+      },
+      {
+        name: "Mistaya Canyon Trail Head - Banff",
+        type: "Hiking Area",
+        costEstimate: 0,
+        latitude: 51.9189,
+        longitude: -116.4638,
+      },
+    ],
+    foodSpots: [
+      {
+        name: "Banff Ave Cafe",
+        tags: ["Cafe"],
+        latitude: 51.178,
+        longitude: -115.571,
+      },
+    ],
+  };
+
+  const plan = buildTripPlan(syntheticTrip, input, "static-ranking");
+  const itineraryText = joinedItineraryText(plan);
+
+  return {
+    id: "R07",
+    passed:
+      itineraryText.includes("banff gondola") &&
+      !itineraryText.includes("mistaya canyon"),
+    notes:
+      itineraryText.includes("mistaya canyon")
+        ? ["Expected far-off activities to be excluded when a nearby Banff option exists."]
+        : [],
+  };
+}
+
+function evaluatePlanPersistenceRegression(): RegressionCheck {
+  const input = makeInput({
+    style: "adventure",
+    startCity: "Calgary",
+    travelerCount: 2,
+    budgetPerTraveler: 300,
+    budget: 600,
+    tripLengthDays: 2,
+    preferredDestination: "Banff",
+  });
+
+  const baseTrip = rankDestinations(input, 1)[0];
+  if (!baseTrip) {
+    return {
+      id: "R08",
+      passed: false,
+      notes: ["No destination matched the saved-plan persistence regression case."],
+    };
+  }
+
+  const plan = buildTripPlan(
+    {
+      ...baseTrip,
+      latitude: 51.1784,
+      longitude: -115.5708,
+      routeSummary: {
+        distanceMeters: 128000,
+        durationSeconds: 5400,
+        origin: {
+          lat: 51.0447,
+          lon: -114.0719,
+          label: "Calgary, Alberta",
+        },
+        destination: {
+          lat: 51.1784,
+          lon: -115.5708,
+          label: "Banff, Alberta",
+        },
+      },
+    },
+    input,
+    "static-ranking"
+  );
+
+  const notes: string[] = [];
+  if (!plan.routeSummary?.durationSeconds) {
+    notes.push("Expected saved plans to retain route summary data.");
+  }
+  if (typeof plan.latitude !== "number" || typeof plan.longitude !== "number") {
+    notes.push("Expected saved plans to retain destination coordinates.");
+  }
+
+  return {
+    id: "R08",
+    passed: notes.length === 0,
+    notes,
+  };
+}
+
+function evaluateFarOnlyActivityFallbackRegression(): RegressionCheck {
+  const input: TripInput = {
+    ...makeInput({
+      style: "adventure",
+      startCity: "Edmonton",
+      travelerCount: 2,
+      budgetPerTraveler: 275,
+      budget: 550,
+      tripLengthDays: 2,
+      maxDriveHours: 5,
+      maxDriveMinutesBetweenStops: 45,
+      preferredDestination: "Banff",
+    }),
+    tripPrompt:
+      "Plan a Banff overnight with a nearby scenic activity, not a huge detour.",
+  };
+
+  const baseTrip = rankDestinations(input, 1)[0];
+  if (!baseTrip) {
+    return {
+      id: "R09",
+      passed: false,
+      notes: ["No destination matched the far-only activity fallback case."],
+    };
+  }
+
+  const syntheticTrip = {
+    ...baseTrip,
+    latitude: 51.1784,
+    longitude: -115.5708,
+    hotelOptions: [
+      {
+        name: "Tunnel Mountain area stay",
+        bookingLink: "https://example.com/hotel",
+        latitude: 51.1787,
+        longitude: -115.5549,
+      },
+    ],
+    topActivities: [
+      {
+        name: "Mistaya Canyon Trail Head - Banff",
+        type: "Hiking Area",
+        costEstimate: 0,
+        latitude: 51.9189,
+        longitude: -116.4638,
+      },
+    ],
+    foodSpots: [
+      {
+        name: "Banff Ave Cafe",
+        tags: ["Cafe"],
+        latitude: 51.178,
+        longitude: -115.571,
+      },
+    ],
+  };
+
+  const plan = buildTripPlan(syntheticTrip, input, "static-ranking");
+  const itineraryText = joinedItineraryText(plan);
+  const activityStopCount = countKind(plan, "activity");
+  const hasLocalFallbackCopy =
+    itineraryText.includes("nearby activity in banff") ||
+    itineraryText.includes("keep this activity close to banff");
+
+  return {
+    id: "R09",
+    passed:
+      !itineraryText.includes("mistaya canyon") &&
+      (hasLocalFallbackCopy || activityStopCount === 0),
+    notes:
+      itineraryText.includes("mistaya canyon")
+        ? ["Expected the planner to fall back to a local placeholder when every activity is too far away."]
+        : !(hasLocalFallbackCopy || activityStopCount === 0)
+          ? ["Expected the planner to keep the day local or omit the activity slot when every option is too far away."]
+          : [],
+  };
+}
+
 function main() {
   const cases = buildCases();
   const evaluations = cases.map((testCase) => {
@@ -619,10 +917,14 @@ function main() {
   const regressionChecks = [
     evaluatePromptDrivenCanmoreRegression(),
     evaluateRequestedActivityRegression(),
+    evaluatePromptDinnerGuaranteeRegression(),
     evaluateSkiTripRegression(),
     evaluateMultiDaySkiTripRegression(),
     evaluateFutureDateTimingRegression(),
     evaluateMultiDaySkiSummaryRegression(),
+    evaluateDistanceCappedActivityRegression(),
+    evaluatePlanPersistenceRegression(),
+    evaluateFarOnlyActivityFallbackRegression(),
   ];
 
   const passCount = evaluations.filter(

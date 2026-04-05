@@ -5,6 +5,11 @@
 
 import type { TripPlan } from "./types";
 import { getBrowserSupabaseAccessToken } from "./supabaseBrowserAuth";
+import {
+  TripPlanInvariantIssue,
+  TripPlanInvariantStage,
+  validateTripPlanInvariants,
+} from "./tripInvariants";
 
 const STORAGE_KEY = "weekend-trip-plans";
 const PENDING_SYNC_STORAGE_KEY = "weekend-trip-pending-sync";
@@ -22,6 +27,12 @@ export type SaveTripPlanResult = {
   remoteSaved: boolean;
   accountSaved: boolean;
   trip: TripPlan;
+  error?: string;
+  issues?: TripPlanInvariantIssue[];
+};
+
+export type SaveTripPlanOptions = {
+  stage?: TripPlanInvariantStage;
 };
 
 function sortPlansNewestFirst(plans: TripPlan[]) {
@@ -200,8 +211,25 @@ export function removeLocalTripPlans(ids: string[]) {
   removePendingTripSyncRecords(ids);
 }
 
-export async function saveTripPlan(plan: TripPlan): Promise<SaveTripPlanResult> {
-  upsertLocalTripPlan(plan);
+export async function saveTripPlan(
+  plan: TripPlan,
+  options?: SaveTripPlanOptions
+): Promise<SaveTripPlanResult> {
+  const stage = options?.stage ?? "save";
+  const invariantResult = validateTripPlanInvariants(plan, { stage });
+
+  if (!invariantResult.ok) {
+    return {
+      success: false,
+      id: plan.id,
+      shareUrl: `/trip/${plan.id}`,
+      remoteSaved: false,
+      accountSaved: false,
+      trip: plan,
+      error: invariantResult.message ?? "Trip validation failed.",
+      issues: invariantResult.issues,
+    };
+  }
 
   try {
     const authHeaders = await getAuthenticatedHeaders();
@@ -212,17 +240,32 @@ export async function saveTripPlan(plan: TripPlan): Promise<SaveTripPlanResult> 
         "Content-Type": "application/json",
         ...authHeaders,
       },
-      body: JSON.stringify({ plan }),
+      body: JSON.stringify({ plan, stage }),
     });
 
     const data = await response.json().catch(() => null);
 
     if (!response.ok || !data?.success) {
+      if (response.status >= 400 && response.status < 500) {
+        return {
+          success: false,
+          id: plan.id,
+          shareUrl: `/trip/${plan.id}`,
+          remoteSaved: false,
+          accountSaved: false,
+          trip: plan,
+          error: (data?.error as string | undefined) ?? "Trip save failed.",
+          issues: data?.issues as TripPlanInvariantIssue[] | undefined,
+        };
+      }
+
       throw new Error(data?.error || "Remote save failed.");
     }
 
     if (data?.trip) {
       upsertLocalTripPlan(data.trip as TripPlan);
+    } else {
+      upsertLocalTripPlan(plan);
     }
     clearPendingTripSyncRecord(plan.id);
 
@@ -236,6 +279,7 @@ export async function saveTripPlan(plan: TripPlan): Promise<SaveTripPlanResult> 
     };
   } catch (error) {
     console.error("Remote trip save failed, local save kept:", error);
+    upsertLocalTripPlan(plan);
     upsertPendingTripSyncRecord(plan);
 
     return {

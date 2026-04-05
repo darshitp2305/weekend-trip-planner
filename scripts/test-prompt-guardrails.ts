@@ -224,6 +224,16 @@ function buildTests(): TestResult[] {
   }
 
   {
+    const validation = validateTripPrompt("I wan to go on a hike");
+
+    tests.push({
+      id: "PG05B",
+      passed: validation.ok,
+      details: describeValidation(validation, "accepted"),
+    });
+  }
+
+  {
     const validation = validateBuilderPrompt("make it better");
 
     tests.push({

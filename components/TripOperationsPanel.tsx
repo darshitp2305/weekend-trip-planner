@@ -8,6 +8,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { baseTripAnalytics, trackProductEvent } from "../lib/productAnalytics";
+import { formatSharedCurrency } from "../lib/priceFormatting";
 import {
   buildTripDepartureBrief,
   getCostSplitSummary,
@@ -109,7 +110,9 @@ export default function TripOperationsPanel({
 
   async function persistTrip(nextTrip: TripPlan) {
     const result = await saveTripPlan(nextTrip);
-    if (!result.success) throw new Error("Trip operations save failed.");
+    if (!result.success) {
+      throw new Error(result.error ?? "Trip operations save failed.");
+    }
     const savedTrip = result.trip ?? nextTrip;
     onTripUpdated(savedTrip, result);
     return savedTrip;
@@ -531,7 +534,7 @@ export default function TripOperationsPanel({
         <div className="space-y-4">
           <section className="rounded-[1.25rem] border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/50">
             <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">Payment split</div>
-            <div className="mt-1 text-base font-semibold text-slate-950 dark:text-slate-100">{formatMoney(costSplit.perTraveler)} per traveler</div>
+            <div className="mt-1 text-base font-semibold text-slate-950 dark:text-slate-100">{formatSharedCurrency(costSplit.total, costSplit.travelerCount)} per traveler</div>
             <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">
               Estimated total {formatMoney(costSplit.total)} across {costSplit.travelerCount} traveler{costSplit.travelerCount === 1 ? "" : "s"}.
             </p>

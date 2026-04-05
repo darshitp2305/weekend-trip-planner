@@ -214,7 +214,7 @@ export default function TripFeedbackPanel({
     const result = await saveTripPlan(nextTrip);
 
     if (!result.success) {
-      throw new Error("Trip feedback save failed.");
+      throw new Error(result.error ?? "Trip feedback save failed.");
     }
 
     onTripUpdated(result.trip ?? nextTrip, result);

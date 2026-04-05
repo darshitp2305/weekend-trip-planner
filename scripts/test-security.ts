@@ -13,6 +13,7 @@ import {
   sanitizeTripForPersistence,
   sanitizeTripForResponse,
 } from "../lib/tripSecurity";
+import { validateTripPlanInvariants } from "../lib/tripInvariants";
 import type { TripPlan } from "../lib/types";
 import { sanitizeExternalNavigationUrl } from "../lib/urlSafety";
 
@@ -55,6 +56,59 @@ function sampleTrip(): TripPlan {
         ],
       },
     },
+  };
+}
+
+function validItineraryTrip(overrides: Partial<TripPlan> = {}): TripPlan {
+  return {
+    ...sampleTrip(),
+    hotelOptions: [
+      {
+        name: "Tunnel Mountain area stay",
+        bookingLink: "https://example.com/stay",
+      },
+    ],
+    itineraryDays: [
+      {
+        title: "Day 1",
+        summary: "Arrive and settle in.",
+        stops: [
+          {
+            time: "Evening",
+            title: "Drive from Edmonton to Banff",
+            kind: "travel",
+          },
+          {
+            time: "Night",
+            title: "Tunnel Mountain area stay",
+            kind: "stay",
+          },
+          {
+            time: "Late evening",
+            title: "Banff Avenue walk",
+            kind: "activity",
+          },
+        ],
+      },
+      {
+        title: "Day 2",
+        summary: "Enjoy one more anchor and head back.",
+        stops: [
+          {
+            time: "Morning",
+            title: "Johnston Canyon",
+            kind: "activity",
+          },
+          {
+            time: "Afternoon",
+            title: "Drive back to Edmonton",
+            kind: "travel",
+          },
+        ],
+      },
+    ],
+    tripLengthDays: 2,
+    ...overrides,
   };
 }
 
@@ -320,12 +374,130 @@ function testNavigationUrlSanitizer() {
   assert.equal(sanitizeExternalNavigationUrl("/trip/123"), undefined);
 }
 
+function testTripInvariantGuards() {
+  const validTrip = validItineraryTrip();
+  assert.equal(validateTripPlanInvariants(validTrip, { stage: "save" }).ok, true);
+  assert.equal(validateTripPlanInvariants(validTrip, { stage: "finalize" }).ok, true);
+
+  const missingStayTrip = validItineraryTrip({
+    hotelOptions: [],
+    itineraryDays: validItineraryTrip().itineraryDays.map((day) => ({
+      ...day,
+      stops: day.stops.filter((stop) => stop.kind !== "stay"),
+    })),
+  });
+  const missingStayResult = validateTripPlanInvariants(missingStayTrip, {
+    stage: "save",
+  });
+  assert.equal(missingStayResult.ok, false);
+  assert.equal(
+    missingStayResult.issues.some((issue) => issue.code === "missing_stay_anchor"),
+    true
+  );
+
+  const placeholderDraft = validItineraryTrip({
+    itineraryDays: [
+      {
+        title: "Day 1",
+        summary: "Keep it local.",
+        stops: [
+          {
+            time: "Flexible",
+            title: "Pick a nearby activity in Banff",
+            description: "Use this block for one more outdoor anchor around Banff.",
+            kind: "activity",
+          },
+          {
+            time: "Night",
+            title: "Tunnel Mountain area stay",
+            kind: "stay",
+          },
+        ],
+      },
+      {
+        title: "Day 2",
+        summary: "Return home.",
+        stops: [
+          {
+            time: "Afternoon",
+            title: "Drive back to Edmonton",
+            kind: "travel",
+          },
+        ],
+      },
+    ],
+  });
+  assert.equal(validateTripPlanInvariants(placeholderDraft, { stage: "save" }).ok, true);
+
+  const placeholderFinalize = validateTripPlanInvariants(placeholderDraft, {
+    stage: "finalize",
+  });
+  assert.equal(placeholderFinalize.ok, false);
+  assert.equal(
+    placeholderFinalize.issues.some(
+      (issue) => issue.code === "unresolved_activity_placeholder"
+    ),
+    true
+  );
+  assert.match(
+    placeholderFinalize.message ?? "",
+    /Finalize blocked: replace unresolved placeholder stop/i
+  );
+
+  const skiAnchorFinalize = validateTripPlanInvariants(
+    validItineraryTrip({
+      destinationName: "Jasper",
+      itineraryDays: [
+        {
+          title: "Day 1",
+          summary: "Drive in and settle.",
+          stops: [
+            {
+              time: "Night",
+              title: "Drive from Edmonton to Jasper",
+              kind: "travel",
+            },
+            {
+              time: "Late night",
+              title: "Budget Jasper stay",
+              kind: "stay",
+            },
+          ],
+        },
+        {
+          title: "Day 2",
+          summary: "Main ski day.",
+          stops: [
+            {
+              time: "Late morning",
+              title: "Ski day in Jasper",
+              description:
+                "Use the main daylight window for a ski block before you settle back into the rest of the trip.",
+              kind: "activity",
+            },
+            {
+              time: "Afternoon",
+              title: "Drive back to Edmonton",
+              kind: "travel",
+            },
+          ],
+        },
+      ],
+    }),
+    {
+      stage: "finalize",
+    }
+  );
+  assert.equal(skiAnchorFinalize.ok, true);
+}
+
 function main() {
   testTripSanitizers();
   testCollaborativeTripMerge();
   testRouteGuards();
   testIdAndRedirectValidation();
   testNavigationUrlSanitizer();
+  testTripInvariantGuards();
   console.log("Security helper tests passed.");
 }
 

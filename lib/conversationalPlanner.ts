@@ -53,6 +53,10 @@ export type ConversationalDraft = {
   intent: ReturnType<typeof deriveTripIntentFromPrompt>;
 };
 
+type BuildConversationalDraftOptions = {
+  preferPromptSignals?: boolean;
+};
+
 type ParsedTiming = {
   season?: PlannerSeason;
   tripStartDate?: string;
@@ -304,24 +308,45 @@ function resolveBudgetPerTraveler(options: {
 export function buildConversationalDraft(
   prompt: string,
   answers: ConversationalAnswers = {},
-  referenceDate = new Date()
+  referenceDate = new Date(),
+  options: BuildConversationalDraftOptions = {}
 ): ConversationalDraft {
   const intent = deriveTripIntentFromPrompt(prompt);
   const promptBudget = extractPromptBudget(prompt);
   const promptTiming = extractPromptTiming(prompt, referenceDate);
+  const promptTravelerCount = extractPromptTravelerCount(prompt) ?? undefined;
+  const promptStartCity = extractPromptStartCity(prompt);
+  const promptTripLengthDays = extractPromptTripLengthDays(prompt);
+  const preferPromptSignals = options.preferPromptSignals === true;
 
   const travelerCount =
-    answers.travelerCount ?? extractPromptTravelerCount(prompt) ?? undefined;
-  const startCity = answers.startCity ?? extractPromptStartCity(prompt);
+    preferPromptSignals
+      ? promptTravelerCount ?? answers.travelerCount
+      : answers.travelerCount ?? promptTravelerCount;
+  const startCity = preferPromptSignals
+    ? promptStartCity ?? answers.startCity
+    : answers.startCity ?? promptStartCity;
   const tripLengthDays =
-    answers.tripLengthDays ?? extractPromptTripLengthDays(prompt);
-  const tripStartDate = answers.tripStartDate ?? promptTiming.tripStartDate;
+    preferPromptSignals
+      ? promptTripLengthDays ?? answers.tripLengthDays
+      : answers.tripLengthDays ?? promptTripLengthDays;
+  const tripStartDate = preferPromptSignals
+    ? promptTiming.tripStartDate ?? answers.tripStartDate
+    : answers.tripStartDate ?? promptTiming.tripStartDate;
   const season =
-    answers.season ??
-    promptTiming.season ??
-    (tripStartDate ? deriveSeasonFromDateRange(tripStartDate) : undefined);
+    preferPromptSignals
+      ? promptTiming.season ??
+        answers.season ??
+        (tripStartDate ? deriveSeasonFromDateRange(tripStartDate) : undefined)
+      : answers.season ??
+        promptTiming.season ??
+        (tripStartDate ? deriveSeasonFromDateRange(tripStartDate) : undefined);
+  const explicitBudgetPerTraveler =
+    preferPromptSignals && promptBudget
+      ? undefined
+      : answers.budgetPerTraveler;
   const hasExplicitBudget =
-    typeof answers.budgetPerTraveler === "number" || Boolean(promptBudget);
+    typeof explicitBudgetPerTraveler === "number" || Boolean(promptBudget);
 
   return {
     prompt,
@@ -333,7 +358,7 @@ export function buildConversationalDraft(
     budgetPerTraveler: resolveBudgetPerTraveler({
       promptBudget,
       travelerCount,
-      explicitBudgetPerTraveler: answers.budgetPerTraveler,
+      explicitBudgetPerTraveler,
       suggestedBudgetPerTraveler: intent.suggestedBudgetPerTraveler,
     }),
     hasExplicitBudget,
@@ -668,6 +693,8 @@ function describeTripSubject(draft: ConversationalDraft) {
   switch (draft.intent.style) {
     case "foodie":
       return "food-focused trip";
+    case "must see":
+      return "must-see sights trip";
     case "outdoors":
       return "outdoor trip";
     case "adventure":

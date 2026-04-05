@@ -84,11 +84,11 @@ export function tripSourceTone(item: TrustSourceLike) {
 export function tripConfidenceLabel(confidence?: ConfidenceLevel) {
   switch (confidence) {
     case "high":
-      return "High conviction";
+      return "High confidence";
     case "medium":
-      return "Good conviction";
+      return "Medium confidence";
     case "low":
-      return "Lower conviction";
+      return "Lower confidence";
     default:
       return "Trip plan";
   }

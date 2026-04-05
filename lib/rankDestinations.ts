@@ -17,6 +17,12 @@ import { mapRawDestination } from "./mapDestination";
 import {
   deriveTripIntentFromPrompt,
 } from "./tripIntent";
+import {
+  isBroadDestinationActivity,
+  isGenericActivityDisplayName,
+  normalizePlaceDisplayName,
+  refineTripStayRecommendation,
+} from "./tripSpecificity";
 
 type ReasonCandidate = RankingReason & {
   priority: number;
@@ -24,6 +30,8 @@ type ReasonCandidate = RankingReason & {
 };
 
 type MappedDestination = ReturnType<typeof mapRawDestination>;
+type ActivityCandidate = MappedDestination["topActivities"][number];
+type FoodCandidate = MappedDestination["foodSpots"][number];
 
 export type NoMatchDiagnostics = {
   headline: string;
@@ -179,12 +187,417 @@ function getCalmSignal(destination: ReturnType<typeof mapRawDestination>): numbe
   return countMatches(text, strongKeywords) - 0.5 * countMatches(text, weakKeywords);
 }
 
+function getMustSeeSignal(destination: ReturnType<typeof mapRawDestination>): number {
+  const text = getJoinedSignals(destination);
+
+  const strongKeywords = [
+    "iconic",
+    "famous",
+    "landmark",
+    "landmarks",
+    "must see",
+    "must-see",
+    "bucket list",
+    "classic",
+    "sightseeing",
+    "viewpoint",
+    "lookout",
+    "museum",
+    "historic",
+    "gondola",
+    "hot springs",
+    "hot_springs",
+    "waterfall",
+    "canyon",
+    "popular",
+  ];
+
+  const weakKeywords = [
+    "hidden",
+    "lesser known",
+    "lesser-known",
+    "under the radar",
+    "underrated",
+    "quiet",
+  ];
+
+  let signal =
+    countMatches(text, strongKeywords) - 0.5 * countMatches(text, weakKeywords);
+
+  if (!destination.isStaycation) {
+    signal += 0.5;
+  }
+
+  if (destination.driveHoursFromStart >= 1 && destination.driveHoursFromStart <= 5) {
+    signal += 0.5;
+  }
+
+  return signal;
+}
+
 function normalizeActivityName(value?: string): string {
   return (value ?? "")
     .toLowerCase()
     .replace(/[^a-z0-9\s]/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function normalizeCatalogName(value?: string): string {
+  return normalizeSearchText(normalizePlaceDisplayName(value));
+}
+
+function dedupeNamedItems<T extends { name?: string }>(items: T[] | undefined): T[] {
+  if (!items?.length) return [];
+
+  const seen = new Set<string>();
+  const deduped: T[] = [];
+
+  for (const item of items) {
+    const key = normalizeCatalogName(item.name);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    deduped.push(item);
+  }
+
+  return deduped;
+}
+
+function activitySignalText(activity?: ActivityCandidate): string {
+  return normalizeSearchText(
+    [activity?.name, activity?.type, activity?.shortDescription].filter(Boolean).join(" ")
+  );
+}
+
+function foodSignalText(food?: FoodCandidate): string {
+  return normalizeSearchText(
+    [food?.name, ...(food?.tags ?? []), food?.shortDescription, food?.category]
+      .filter(Boolean)
+      .join(" ")
+  );
+}
+
+function isFoodForwardActivity(activity?: ActivityCandidate): boolean {
+  const text = activitySignalText(activity);
+
+  return (
+    text.includes("food") ||
+    text.includes("restaurant") ||
+    text.includes("cafe") ||
+    text.includes("coffee") ||
+    text.includes("bakery") ||
+    text.includes("brewery") ||
+    text.includes("brewpub") ||
+    text.includes("brunch") ||
+    text.includes("market") ||
+    text.includes("tasting")
+  );
+}
+
+function isHospitalityLikeActivity(activity?: ActivityCandidate): boolean {
+  const text = activitySignalText(activity);
+
+  return (
+    text.includes("hotel") ||
+    text.includes("resort") ||
+    text.includes("lodge") ||
+    text.includes("inn") ||
+    text.includes("motel") ||
+    text.includes("suite") ||
+    text.includes("suites") ||
+    text.includes("accommodation") ||
+    text.includes("hostel")
+  );
+}
+
+function isSkiLikeActivity(activity?: ActivityCandidate): boolean {
+  const text = activitySignalText(activity);
+
+  return (
+    text.includes("ski") ||
+    text.includes("skiing") ||
+    text.includes("snowboard") ||
+    text.includes("snowboarding") ||
+    text.includes("chairlift") ||
+    text.includes("terrain park") ||
+    text.includes("groomer") ||
+    text.includes("alpine resort")
+  );
+}
+
+function isHikeLikeActivity(activity?: ActivityCandidate): boolean {
+  const text = activitySignalText(activity);
+
+  return (
+    text.includes("trail") ||
+    text.includes("hike") ||
+    text.includes("summit") ||
+    text.includes("peak") ||
+    text.includes("ridge") ||
+    text.includes("scramble") ||
+    text.includes("alpine") ||
+    text.includes("waterfall") ||
+    text.includes("canyon") ||
+    text.includes("trailhead")
+  );
+}
+
+function isScenicSupportActivity(activity?: ActivityCandidate): boolean {
+  const text = activitySignalText(activity);
+
+  return (
+    text.includes("scenic") ||
+    text.includes("view") ||
+    text.includes("viewpoint") ||
+    text.includes("lookout") ||
+    text.includes("lake") ||
+    text.includes("river") ||
+    text.includes("walk") ||
+    text.includes("stroll") ||
+    text.includes("boardwalk") ||
+    text.includes("hot spring") ||
+    text.includes("hot springs") ||
+    text.includes("gondola")
+  );
+}
+
+function activityMatchesRequestedName(
+  activity: ActivityCandidate | undefined,
+  requestedActivityName?: string
+): boolean {
+  const normalizedRequestedActivity = normalizeActivityName(
+    requestedActivityName
+  );
+  const normalizedActivity = normalizeActivityName(activity?.name);
+
+  if (!normalizedRequestedActivity || !normalizedActivity) return false;
+
+  return (
+    normalizedActivity === normalizedRequestedActivity ||
+    normalizedActivity.includes(normalizedRequestedActivity) ||
+    normalizedRequestedActivity.includes(normalizedActivity)
+  );
+}
+
+function rankingActivityScore(
+  activity: ActivityCandidate,
+  destination: MappedDestination,
+  input: TripInput
+): number {
+  const promptIntent = deriveTripIntentFromPrompt(input.tripPrompt);
+  const name = normalizePlaceDisplayName(activity.name);
+  let score = 0;
+
+  if (activityMatchesRequestedName(activity, promptIntent.requestedActivityName)) {
+    score += 250;
+  }
+
+  if (isSkiLikeActivity(activity)) {
+    score +=
+      promptIntent.activityFocus === "skiing" ||
+      promptIntent.hardConstraints.activityAnchor === "ski_trip"
+        ? 120
+        : 8;
+  }
+
+  if (isHikeLikeActivity(activity)) {
+    score +=
+      promptIntent.hardConstraints.activityAnchor === "summit_hike" ||
+      input.activityFocus === "hiking"
+        ? 110
+        : input.style === "adventure" || input.style === "outdoors"
+          ? 26
+          : 8;
+  }
+
+  if (isScenicSupportActivity(activity)) {
+    score +=
+      promptIntent.hardConstraints.requiresScenicView ||
+      input.style === "must see" ||
+      input.style === "chill" ||
+      input.style === "solo reset" ||
+      input.style === "hidden gems"
+        ? 20
+        : 8;
+  }
+
+  if (
+    input.style === "must see" &&
+    [
+      "landmark",
+      "iconic",
+      "museum",
+      "viewpoint",
+      "lookout",
+      "gondola",
+      "waterfall",
+      "hot spring",
+      "historic",
+      "canyon",
+    ].some((term) => activitySignalText(activity).includes(term))
+  ) {
+    score += 22;
+  }
+
+  if (isFoodForwardActivity(activity)) {
+    score += input.style === "foodie" ? 18 : -30;
+  }
+
+  if (isHospitalityLikeActivity(activity)) {
+    score -= 36;
+  }
+
+  if (isBroadDestinationActivity(activity, destination)) {
+    score -= 22;
+  }
+
+  if (isGenericActivityDisplayName(name)) {
+    score -= 20;
+  } else {
+    score += 10;
+  }
+
+  score += activity.rating ?? 0;
+
+  return score;
+}
+
+function rankingFoodScore(food: FoodCandidate, input: TripInput): number {
+  const promptIntent = deriveTripIntentFromPrompt(input.tripPrompt);
+  const text = foodSignalText(food);
+  let score = 0;
+
+  if (
+    text.includes("restaurant") ||
+    text.includes("cafe") ||
+    text.includes("coffee") ||
+    text.includes("bakery") ||
+    text.includes("brunch") ||
+    text.includes("market")
+  ) {
+    score += 10;
+  }
+
+  if (input.style === "foodie") score += 14;
+  if (input.style === "must see") score += 3;
+  if (input.style === "chill" || input.style === "solo reset") score += 4;
+
+  if (
+    promptIntent.hardConstraints.requiresVegetarianOptions &&
+    (text.includes("vegetarian") ||
+      text.includes("vegan") ||
+      text.includes("plant"))
+  ) {
+    score += 16;
+  }
+
+  score += food.rating ?? 0;
+
+  return score;
+}
+
+function sanitizeDestinationCatalog(
+  destination: MappedDestination,
+  input: TripInput
+): MappedDestination {
+  const promptIntent = deriveTripIntentFromPrompt(input.tripPrompt);
+  const wantsOutdoorAnchors =
+    input.style === "adventure" ||
+    input.style === "outdoors" ||
+    input.activityFocus === "hiking" ||
+    input.activityFocus === "skiing" ||
+    promptIntent.activityFocus === "hiking" ||
+    promptIntent.activityFocus === "skiing" ||
+    promptIntent.hardConstraints.activityAnchor === "summit_hike" ||
+    promptIntent.hardConstraints.activityAnchor === "ski_trip";
+
+  let hotelOptions = dedupeNamedItems(destination.hotelOptions);
+  const foodSpots = dedupeNamedItems(destination.foodSpots).sort(
+    (left, right) => rankingFoodScore(right, input) - rankingFoodScore(left, input)
+  );
+  let topActivities = dedupeNamedItems(destination.topActivities);
+
+  const nonHospitalityActivities = topActivities.filter(
+    (activity) => !isHospitalityLikeActivity(activity)
+  );
+  if (nonHospitalityActivities.length >= 2) {
+    topActivities = nonHospitalityActivities;
+  }
+
+  const specificActivities = topActivities.filter(
+    (activity) => !isBroadDestinationActivity(activity, destination)
+  );
+  if (specificActivities.length >= 2) {
+    topActivities = specificActivities;
+  }
+
+  if (wantsOutdoorAnchors) {
+    const nonFoodActivities = topActivities.filter(
+      (activity) => !isFoodForwardActivity(activity)
+    );
+    if (nonFoodActivities.length >= 2) {
+      topActivities = nonFoodActivities;
+    }
+  }
+
+  if (
+    promptIntent.activityFocus === "skiing" ||
+    promptIntent.hardConstraints.activityAnchor === "ski_trip"
+  ) {
+    const skiAnchors = topActivities.filter(isSkiLikeActivity);
+    if (skiAnchors.length > 0) {
+      const supportingActivities = topActivities.filter(
+        (activity) =>
+          !isSkiLikeActivity(activity) &&
+          !isFoodForwardActivity(activity) &&
+          !isHospitalityLikeActivity(activity)
+      );
+      topActivities = [...skiAnchors, ...supportingActivities];
+    }
+  }
+
+  if (
+    input.activityFocus === "hiking" ||
+    promptIntent.activityFocus === "hiking" ||
+    promptIntent.hardConstraints.activityAnchor === "summit_hike"
+  ) {
+    const hikeAnchors = topActivities.filter(isHikeLikeActivity);
+    const supportingScenic = topActivities.filter(
+      (activity) =>
+        !isHikeLikeActivity(activity) && isScenicSupportActivity(activity)
+    );
+
+    if (hikeAnchors.length > 0) {
+      topActivities = [...hikeAnchors, ...supportingScenic];
+    }
+  }
+
+  topActivities = dedupeNamedItems(topActivities).sort(
+    (left, right) =>
+      rankingActivityScore(right, destination, input) -
+      rankingActivityScore(left, destination, input)
+  );
+
+  const refinedRecommendation = refineTripStayRecommendation({
+    trip: {
+      ...destination,
+      hotelOptions,
+      topActivities,
+    },
+    input,
+    hotelOptions,
+    activities: topActivities,
+  });
+
+  hotelOptions = dedupeNamedItems(refinedRecommendation.hotelOptions);
+  topActivities = dedupeNamedItems(refinedRecommendation.activities);
+
+  return {
+    ...destination,
+    hotelOptions,
+    foodSpots,
+    topActivities,
+  };
 }
 
 function destinationHasRequestedActivity(
@@ -253,6 +666,14 @@ function getRequestedStyleScore(
   destination: ReturnType<typeof mapRawDestination>,
   style: TripInput["style"]
 ): number {
+  if (style === "must see") {
+    const mustSeeSignal = getMustSeeSignal(destination);
+    if (mustSeeSignal >= 5) return 3;
+    if (mustSeeSignal >= 3) return 2;
+    if (mustSeeSignal >= 1.5) return 1;
+    return 0;
+  }
+
   if (style === "hidden gems") {
     const hiddenGemSignal = getHiddenGemSignal(destination);
     if (hiddenGemSignal >= 4.5) return 3;
@@ -588,7 +1009,7 @@ export function getNoMatchDiagnostics(
   );
 
   const allDestinations = (rawDestinations as RawDestination[])
-    .map((raw) => mapRawDestination(raw, input))
+    .map((raw) => sanitizeDestinationCatalog(mapRawDestination(raw, input), input))
     .filter(
       (destination) =>
         !excludedDestinationNames.has(destination.name.trim().toLowerCase())
@@ -773,6 +1194,20 @@ function calculateStyleResolutionScore(
     } else if (rawSignal <= 1) {
       rankingReasons.push({
         label: "Food signal is thinner than ideal",
+        impact: "negative",
+      });
+    }
+  } else if (input.style === "must see") {
+    rawSignal = getMustSeeSignal(destination);
+
+    if (rawSignal >= 4) {
+      rankingReasons.push({
+        label: "Has a stronger iconic-sights signal than similar alternatives",
+        impact: "positive",
+      });
+    } else if (rawSignal <= 1) {
+      rankingReasons.push({
+        label: "Classic must-see sight coverage looks thinner than ideal",
         impact: "negative",
       });
     }
@@ -1387,26 +1822,39 @@ function calculateLiveDataScore(
     }
   }
 
-  if (input.style === "outdoors" || input.style === "adventure") {
+  if (
+    input.style === "outdoors" ||
+    input.style === "adventure" ||
+    input.style === "must see"
+  ) {
     if (summary.activityCount >= 6) {
       score += 10;
       liveStrength += 2;
       rankingReasons.push({
-        label: "Strong live activity coverage",
+        label:
+          input.style === "must see"
+            ? "Strong live attraction coverage"
+            : "Strong live activity coverage",
         impact: "positive",
       });
     } else if (summary.activityCount >= 3) {
       score += 5;
       liveStrength += 1;
       rankingReasons.push({
-        label: "Decent live activity coverage",
+        label:
+          input.style === "must see"
+            ? "Decent live attraction coverage"
+            : "Decent live activity coverage",
         impact: "positive",
       });
     } else {
       score -= 5;
       liveStrength -= 1;
       rankingReasons.push({
-        label: "Thin activity coverage",
+        label:
+          input.style === "must see"
+            ? "Thin landmark and attraction coverage"
+            : "Thin activity coverage",
         impact: "negative",
       });
     }
@@ -1415,14 +1863,20 @@ function calculateLiveDataScore(
       score += 8;
       liveStrength += 2;
       rankingReasons.push({
-        label: "High activity ratings",
+        label:
+          input.style === "must see"
+            ? "High attraction ratings"
+            : "High activity ratings",
         impact: "positive",
       });
     } else if ((summary.avgActivityRating ?? 0) >= 4.0) {
       score += 4;
       liveStrength += 1;
       rankingReasons.push({
-        label: "Solid activity ratings",
+        label:
+          input.style === "must see"
+            ? "Solid attraction ratings"
+            : "Solid activity ratings",
         impact: "positive",
       });
     }
@@ -1529,6 +1983,15 @@ function buildRankingReasons(args: {
         candidates.push(
           reasonCandidate(
             "Especially strong outdoor/adventure fit",
+            "positive",
+            1,
+            100 + resolutionSignal
+          )
+        );
+      } else if (input.style === "must see") {
+        candidates.push(
+          reasonCandidate(
+            "Especially strong must-see sights fit",
             "positive",
             1,
             100 + resolutionSignal
@@ -1764,7 +2227,9 @@ function calculateConfidence(args: {
 
   const weakLiveForRelevantStyle =
     (input.style === "foodie" && liveStrength < 1) ||
-    ((input.style === "outdoors" || input.style === "adventure") &&
+    ((input.style === "outdoors" ||
+      input.style === "adventure" ||
+      input.style === "must see") &&
       liveStrength < 1);
 
   const clearlyBadFit =
@@ -1848,7 +2313,7 @@ export function rankDestinations(
   );
 
   const destinationList = (rawDestinations as RawDestination[])
-    .map((raw) => mapRawDestination(raw, input))
+    .map((raw) => sanitizeDestinationCatalog(mapRawDestination(raw, input), input))
     .filter((destination) =>
       destinationMatchesPreference(destination, input.preferredDestination)
     )

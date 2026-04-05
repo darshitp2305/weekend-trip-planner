@@ -8,7 +8,12 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { TripPlan, TripSelectionState } from "../lib/types";
+import {
+  TripPlan,
+  TripRecheckChangeSummary,
+  TripSelectionState,
+  TripVerificationSummary,
+} from "../lib/types";
 
 type Props = {
   trip: TripPlan;
@@ -17,7 +22,10 @@ type Props = {
   budgetDelta: number | null;
   routeSummary?: string;
   onFinalize: () => Promise<void> | void;
+  onRecheck?: () => Promise<void> | void;
   finalizing: boolean;
+  rechecking?: boolean;
+  recheckSummary?: TripRecheckChangeSummary | null;
   statusMessage?: string;
 };
 
@@ -87,6 +95,54 @@ function readinessLabel(budgetDelta: number | null) {
   return "Plan is ready, but budget is over target.";
 }
 
+function verificationStatusLabel(status?: TripVerificationSummary["status"]) {
+  switch (status) {
+    case "verified":
+      return "Checked";
+    case "blocked":
+      return "Blocked";
+    case "attention_needed":
+    default:
+      return "Needs attention";
+  }
+}
+
+function verificationStatusTone(status?: TripVerificationSummary["status"]) {
+  switch (status) {
+    case "verified":
+      return "border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-100";
+    case "blocked":
+      return "border-rose-200 bg-rose-50 text-rose-900 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-100";
+    case "attention_needed":
+    default:
+      return "border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-100";
+  }
+}
+
+function verificationFreshnessLabel(freshness?: TripVerificationSummary["freshness"]) {
+  switch (freshness) {
+    case "fresh":
+      return "Fresh live checks";
+    case "aging":
+      return "Checks are aging";
+    case "stale":
+      return "Checks are stale";
+    default:
+      return "Freshness unknown";
+  }
+}
+
+function recheckSummaryTone(tone?: TripRecheckChangeSummary["tone"]) {
+  switch (tone) {
+    case "improved":
+      return "border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-100";
+    case "mixed":
+      return "border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-100";
+    default:
+      return "border-slate-200 bg-slate-50 text-slate-900 dark:border-slate-700 dark:bg-slate-800/70 dark:text-slate-100";
+  }
+}
+
 export default function FinalizeTripPanel({
   trip,
   selection,
@@ -94,7 +150,10 @@ export default function FinalizeTripPanel({
   budgetDelta,
   routeSummary,
   onFinalize,
+  onRecheck,
   finalizing,
+  rechecking = false,
+  recheckSummary,
   statusMessage,
 }: Props) {
   const router = useRouter();
@@ -103,6 +162,7 @@ export default function FinalizeTripPanel({
   const finalizedAtLabel = formatFinalizedAt(trip.finalizedAt);
   const selectedHotel = selectedHotelLabel(trip, selection);
   const selectedStopCount = countSelectedStops(selection);
+  const verification = trip.verificationSummary;
   const tripWindow = [formatDate(trip.tripStartDate), formatDate(trip.tripEndDate)]
     .filter(Boolean)
     .join(" - ");
@@ -155,18 +215,30 @@ export default function FinalizeTripPanel({
           ) : null}
         </div>
 
-        <button
-          type="button"
-          onClick={() => void onFinalize()}
-          disabled={finalizing}
-          className="inline-flex h-12 items-center justify-center rounded-2xl bg-emerald-700 px-6 text-sm font-semibold text-white transition hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-emerald-400 dark:text-slate-950 dark:hover:bg-emerald-300"
-        >
-          {finalizing
-            ? "Saving..."
-            : trip.status === "finalized"
-              ? "Update finalized trip"
-              : "Finalize this trip"}
-        </button>
+        <div className="flex flex-wrap gap-2">
+          {onRecheck ? (
+            <button
+              type="button"
+              onClick={() => void onRecheck()}
+              disabled={rechecking || finalizing}
+              className="inline-flex h-12 items-center justify-center rounded-2xl border border-slate-300 bg-white px-5 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+            >
+              {rechecking ? "Re-checking..." : "Re-check trip"}
+            </button>
+          ) : null}
+          <button
+            type="button"
+            onClick={() => void onFinalize()}
+            disabled={finalizing || rechecking}
+            className="inline-flex h-12 items-center justify-center rounded-2xl bg-emerald-700 px-6 text-sm font-semibold text-white transition hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-emerald-400 dark:text-slate-950 dark:hover:bg-emerald-300"
+          >
+            {finalizing
+              ? "Saving..."
+              : trip.status === "finalized"
+                ? "Update finalized trip"
+                : "Finalize this trip"}
+          </button>
+        </div>
       </div>
 
       <div className={`mt-5 grid gap-3 ${isDraft ? "md:grid-cols-3" : "md:grid-cols-2 xl:grid-cols-4"}`}>
@@ -179,11 +251,11 @@ export default function FinalizeTripPanel({
           </div>
         </div>
 
-        <div className="rounded-[1rem] border border-white/70 bg-white/75 p-4 dark:border-slate-700 dark:bg-slate-900/70">
-          <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
-            Current total
-          </div>
-          <div className="mt-1 text-base font-semibold text-slate-950 dark:text-slate-100">
+          <div className="rounded-[1rem] border border-white/70 bg-white/75 p-4 dark:border-slate-700 dark:bg-slate-900/70">
+            <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
+              Current total
+            </div>
+            <div className="mt-1 text-base font-semibold text-slate-950 dark:text-slate-100">
             {formatMoney(estimatedTotalCost)}
           </div>
         </div>
@@ -203,13 +275,27 @@ export default function FinalizeTripPanel({
           <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
             Trip window
           </div>
-          <div className="mt-1 text-base font-semibold text-slate-950 dark:text-slate-100">
-            {tripWindow || "Dates flexible"}
+            <div className="mt-1 text-base font-semibold text-slate-950 dark:text-slate-100">
+              {tripWindow || "Dates flexible"}
+            </div>
           </div>
-        </div>
+
+          {verification ? (
+            <div className="rounded-[1rem] border border-white/70 bg-white/75 p-4 dark:border-slate-700 dark:bg-slate-900/70">
+              <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
+                Verification
+              </div>
+              <div className="mt-1 text-base font-semibold text-slate-950 dark:text-slate-100">
+                {verification.score}/100
+              </div>
+              <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+                {verificationStatusLabel(verification.status)}
+              </p>
+            </div>
+          ) : null}
       </div>
 
-      <div className={`mt-4 grid gap-3 ${isDraft ? "lg:grid-cols-2" : "lg:grid-cols-3"}`}>
+      <div className={`mt-4 grid gap-3 ${isDraft ? "lg:grid-cols-3" : "lg:grid-cols-4"}`}>
         <div className="rounded-[1rem] border border-white/70 bg-white/75 p-4 dark:border-slate-700 dark:bg-slate-900/70">
           <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
             Budget fit
@@ -233,6 +319,19 @@ export default function FinalizeTripPanel({
           </p>
         </div>
 
+        {verification ? (
+          <div className="rounded-[1rem] border border-white/70 bg-white/75 p-4 dark:border-slate-700 dark:bg-slate-900/70">
+            <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
+              Checked coverage
+            </div>
+            <p className="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-200">
+              {verification.checkedStopCount} selected stops checked, {verification.routeLegCount} route legs reviewed, and {Math.round(
+                verification.coordinateCoverageRatio * 100
+              )}% coordinate coverage.
+            </p>
+          </div>
+        ) : null}
+
         {isDraft ? (
           <div className="rounded-[1rem] border border-white/70 bg-white/75 p-4 dark:border-slate-700 dark:bg-slate-900/70">
             <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
@@ -253,6 +352,68 @@ export default function FinalizeTripPanel({
           </div>
         )}
       </div>
+
+      {verification ? (
+        <div className={`mt-4 rounded-[1.1rem] border p-4 ${verificationStatusTone(verification.status)}`}>
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+            <div className="max-w-3xl">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.14em]">
+                Booking readiness
+              </div>
+              <p className="mt-2 text-sm leading-6">
+                {verification.status === "verified"
+                  ? "This trip has a clean verification pass based on the current selected stay and stop choices."
+                  : verification.status === "blocked"
+                    ? "At least one blocking issue still needs to be fixed before this trip is safe to finalize."
+                    : "This trip is mostly shaped, but a few checks still need attention before it feels booking-ready."}
+              </p>
+              <p className="mt-2 text-sm">
+                {verificationFreshnessLabel(verification.freshness)}. {verification.stayPriceVerified ? "Stay price is grounded." : "Stay price is still estimated."} {verification.hotelAvailabilityChecked ? "Hotel inventory was checked for the saved dates." : "Hotel inventory still needs a live check."}
+              </p>
+            </div>
+
+            <div className="rounded-[1rem] border border-current/20 bg-white/30 px-4 py-3 text-sm dark:bg-slate-950/20">
+              <div className="font-semibold">{verificationStatusLabel(verification.status)}</div>
+              <div className="mt-1">
+                {verification.issueCounts.blocking} blocking, {verification.issueCounts.risk} risk, {verification.issueCounts.warning} warning
+              </div>
+            </div>
+          </div>
+
+          {verification.issues.length > 0 ? (
+            <div className="mt-4 grid gap-3 lg:grid-cols-2">
+              {verification.issues.slice(0, 4).map((issue) => (
+                <div
+                  key={`${issue.code}-${issue.dayIndex ?? "trip"}-${issue.stopIndex ?? "na"}`}
+                  className="rounded-[1rem] border border-current/15 bg-white/35 p-4 dark:bg-slate-950/20"
+                >
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.14em]">
+                    {issue.severity}
+                  </div>
+                  <div className="mt-1 text-sm font-semibold">{issue.title}</div>
+                  <p className="mt-2 text-sm leading-6">{issue.detail}</p>
+                </div>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
+      {recheckSummary ? (
+        <div className={`mt-4 rounded-[1.1rem] border p-4 ${recheckSummaryTone(recheckSummary.tone)}`}>
+          <div className="text-[11px] font-semibold uppercase tracking-[0.14em]">
+            Latest re-check changes
+          </div>
+          <p className="mt-2 text-sm font-semibold">{recheckSummary.headline}</p>
+          <div className="mt-3 space-y-2">
+            {recheckSummary.items.map((item) => (
+              <p key={item} className="text-sm leading-6">
+                {item}
+              </p>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       {trip.status === "finalized" ? (
         <div className="mt-4 rounded-[1.1rem] border border-emerald-200 bg-white/80 p-4 dark:border-emerald-500/30 dark:bg-slate-900/75">

@@ -11,6 +11,7 @@ export type TripStyle =
   | "foodie"
   | "solo reset"
   | "adventure"
+  | "must see"
   | "hidden gems";
 
 export type ActivityFocus = "skiing" | "hiking" | "camping";
@@ -414,6 +415,47 @@ export interface TripPaymentStatus {
   userId?: string;
 }
 
+export type TripVerificationSeverity = "warning" | "risk" | "blocking";
+
+export interface TripVerificationIssue {
+  code: string;
+  severity: TripVerificationSeverity;
+  title: string;
+  detail: string;
+  dayIndex?: number;
+  stopIndex?: number;
+  stopTitle?: string;
+}
+
+export interface TripVerificationSummary {
+  status: "verified" | "attention_needed" | "blocked";
+  score: number;
+  issueCounts: {
+    warning: number;
+    risk: number;
+    blocking: number;
+  };
+  checkedStopCount: number;
+  routeLegCount: number;
+  routeLegIssueCount: number;
+  coordinateCoverageRatio: number;
+  actionLinkCoverageRatio: number;
+  freshness: "fresh" | "aging" | "stale" | "unknown";
+  stayPriceVerified: boolean;
+  hotelAvailabilityChecked: boolean;
+  budgetTarget?: number;
+  estimatedTotal?: number;
+  withinBudget?: boolean;
+  checkedAt?: string;
+  issues: TripVerificationIssue[];
+}
+
+export interface TripRecheckChangeSummary {
+  tone: "improved" | "mixed" | "unchanged";
+  headline: string;
+  items: string[];
+}
+
 export type TripDataSource =
   | "live-google-places"
   | "static-fallback"
@@ -473,6 +515,7 @@ export interface TripPlan {
   operationsNotes?: TripOperationsNote[];
   departurePlan?: TripDeparturePlan;
   paymentStatus?: TripPaymentStatus;
+  verificationSummary?: TripVerificationSummary;
   ownerUserId?: string;
   ownerEmail?: string;
 

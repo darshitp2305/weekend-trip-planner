@@ -29,6 +29,14 @@ import InteractiveItinerary from "../../../components/InteractiveItinerary";
 import ExpediaStayWidget from "../../../components/ExpediaStayWidget";
 import { syncTripPlanTiming } from "../../../lib/buildTripPlan";
 import { formatDateRange } from "../../../lib/tripDates";
+import {
+  formatSharedCurrency,
+  formatWholeCurrency,
+} from "../../../lib/priceFormatting";
+import {
+  buildTripInputFromPlan,
+  rankedDestinationFromTripPlan,
+} from "../../../lib/tripRefresh";
 import { isStartCity } from "../../../lib/startCities";
 import {
   buildDefaultSelectionState,
@@ -38,18 +46,21 @@ import {
   getCustomStopForKey,
   normalizeSelectionState,
   optimizeSelectionForBudget,
+  pickDefaultActivityForStop,
 } from "../../../lib/tripSelections";
 import { getPromptConstraintFitSummary } from "../../../lib/tripSpecificity";
 import {
   baseTripAnalytics,
   trackProductEvent,
 } from "../../../lib/productAnalytics";
+import { buildTripRecheckChangeSummary } from "../../../lib/tripRecheckDiff";
+import { verifyTripPlan } from "../../../lib/tripVerification";
 import { useViewerIdentity } from "../../../lib/viewerIdentity";
 import {
-  Activity,
   FoodSpot,
   HotelOption,
   ItineraryDayData,
+  TripRecheckChangeSummary,
   TripSelectionState,
   TripPlan,
 } from "../../../lib/types";
@@ -59,7 +70,7 @@ const TripStopMap = dynamic(() => import("../../../components/TripStopMap"), {
 });
 
 function formatMoney(value: number) {
-  return `$${Math.round(value)}`;
+  return formatWholeCurrency(value);
 }
 
 function formatDistanceMeters(distanceMeters?: number) {
@@ -247,17 +258,6 @@ function pickMatchedFood(foodSpots: FoodSpot[], stopTitle?: string) {
     .at(0);
 }
 
-function pickMatchedActivity(activities: Activity[], stopTitle?: string) {
-  return [...activities]
-    .sort((a, b) => {
-      const scoreDiff =
-        optionSortScore(a.name, stopTitle) - optionSortScore(b.name, stopTitle);
-      if (scoreDiff !== 0) return -scoreDiff;
-      return (b.rating ?? 0) - (a.rating ?? 0);
-    })
-    .at(0);
-}
-
 export default function TripPage() {
   const params = useParams<{ tripId: string }>();
   const router = useRouter();
@@ -270,6 +270,9 @@ export default function TripPage() {
   const [loading, setLoading] = useState(true);
   const [finalizeStatus, setFinalizeStatus] = useState("");
   const [finalizing, setFinalizing] = useState(false);
+  const [recheckingTrip, setRecheckingTrip] = useState(false);
+  const [recheckSummary, setRecheckSummary] =
+    useState<TripRecheckChangeSummary | null>(null);
   const [syncConflict, setSyncConflict] = useState<{
     pendingTrip: TripPlan;
     remoteTrip: TripPlan;
@@ -425,7 +428,14 @@ export default function TripPage() {
       itineraryDays,
       trip.hotelOptions ?? [],
       trip.foodSpots ?? [],
-      trip.topActivities ?? []
+      trip.topActivities ?? [],
+      {
+        tripPrompt: trip.tripPrompt,
+        fallbackCenter: {
+          latitude: trip.latitude,
+          longitude: trip.longitude,
+        },
+      }
     );
   }, [itineraryDays, trip]);
 
@@ -557,13 +567,10 @@ export default function TripPage() {
     return 0;
   }, [selectedBudget, trip]);
 
-  const estimatedBudgetPerTraveler = useMemo(() => {
-    if (estimatedTotalCost > 0 && travelerCount > 0) {
-      return Math.round(estimatedTotalCost / travelerCount);
-    }
-
-    return 0;
-  }, [estimatedTotalCost, travelerCount]);
+  const estimatedBudgetPerTravelerLabel = useMemo(
+    () => formatSharedCurrency(estimatedTotalCost, travelerCount),
+    [estimatedTotalCost, travelerCount]
+  );
 
   const budgetStatus = useMemo(() => {
     if (targetTotalBudget <= 0 || estimatedTotalCost <= 0) {
@@ -858,7 +865,16 @@ export default function TripPage() {
 
           const selectedName =
             activeSelectionState.activities[key] ??
-            pickMatchedActivity(activities, stop.title)?.name;
+            pickDefaultActivityForStop(stop, activities, {
+              day,
+              tripPrompt: trip.tripPrompt,
+              hotelName: activeSelectionState.hotelName,
+              hotels,
+              fallbackCenter: {
+                latitude: trip.latitude,
+                longitude: trip.longitude,
+              },
+            })?.name;
           const selectedActivity = activities.find(
             (activity) => activity.name === selectedName
           );
@@ -986,7 +1002,7 @@ export default function TripPage() {
     return undefined;
   }, [selectedHotel, trip]);
 
-  const persistedTrip = useMemo(() => {
+  const draftPersistedTrip = useMemo(() => {
     if (!trip) return null;
 
     return {
@@ -996,6 +1012,20 @@ export default function TripPage() {
       budgetOptimization: activeBudgetOptimization ?? trip.budgetOptimization,
     } satisfies TripPlan;
   }, [activeBudgetOptimization, activeSelectionState, selectedBudget, trip]);
+
+  const verificationSummary = useMemo(() => {
+    if (!draftPersistedTrip) return undefined;
+    return verifyTripPlan(draftPersistedTrip);
+  }, [draftPersistedTrip]);
+
+  const persistedTrip = useMemo(() => {
+    if (!draftPersistedTrip) return null;
+
+    return {
+      ...draftPersistedTrip,
+      verificationSummary,
+    } satisfies TripPlan;
+  }, [draftPersistedTrip, verificationSummary]);
 
   const routeSummaryLabel = useMemo(() => {
     const duration = formatDurationSeconds(trip?.routeSummary?.durationSeconds);
@@ -1140,6 +1170,15 @@ export default function TripPage() {
 
       try {
         const result = await saveTripPlan(persistedTrip);
+        if (!result.success) {
+          setSyncState((current) => ({
+            phase: "error",
+            message: result.error ?? "Autosave blocked until the trip is fixed.",
+            lastSavedAt: current.lastSavedAt,
+          }));
+          return;
+        }
+
         const savedAt = new Date().toISOString();
         const nextTrip = result.trip ?? persistedTrip;
 
@@ -1179,6 +1218,7 @@ export default function TripPage() {
       if (!trip) return;
 
       setFinalizeStatus("");
+      setRecheckSummary(null);
 
       setSelectionState((current) => {
         if (
@@ -1211,10 +1251,10 @@ export default function TripPage() {
         finalizedAt: new Date().toISOString(),
       };
 
-      const result = await saveTripPlan(finalizedTrip);
+      const result = await saveTripPlan(finalizedTrip, { stage: "finalize" });
 
       if (!result.success) {
-        setFinalizeStatus("Finalized trip save failed.");
+        setFinalizeStatus(result.error ?? "Finalized trip save failed.");
         return;
       }
 
@@ -1258,6 +1298,130 @@ export default function TripPage() {
     }
   }, [persistedTrip]);
 
+  const handleRecheckTrip = useCallback(async () => {
+    if (!persistedTrip) return;
+
+    try {
+      setRecheckingTrip(true);
+      setRecheckSummary(null);
+      setFinalizeStatus("Re-checking live trip data...");
+
+      const input = buildTripInputFromPlan(persistedTrip);
+      const rankedTrip = rankedDestinationFromTripPlan(persistedTrip);
+      const response = await fetch("/api/enrich-trip", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          trip: rankedTrip,
+          input,
+          forceRefresh: true,
+        }),
+      });
+
+      const data = (await response.json().catch(() => null)) as
+        | {
+            success?: boolean;
+            error?: string;
+            trip?: typeof rankedTrip | null;
+            source?: TripPlan["dataSource"];
+          }
+        | null;
+
+      if (!response.ok || !data?.trip) {
+        setFinalizeStatus(
+          data?.error ?? "Live re-check failed. Keeping the current saved data."
+        );
+        return;
+      }
+
+      const refreshedRankedTrip = data.trip;
+      const refreshedBudget = calculateSelectedBudget({
+        tripLengthDays: deriveTripLengthDays(persistedTrip),
+        travelerCount,
+        hotelOptions: refreshedRankedTrip.hotelOptions ?? [],
+        foodSpots: refreshedRankedTrip.foodSpots ?? [],
+        activities: refreshedRankedTrip.topActivities ?? [],
+        itineraryDays: persistedTrip.itineraryDays,
+        selection: activeSelectionState,
+        fallbackBreakdown: persistedTrip.budgetBreakdown,
+      });
+
+      const refreshedTripBase = syncTripPlanTiming({
+        ...persistedTrip,
+        summary: refreshedRankedTrip.summary ?? persistedTrip.summary,
+        imageUrl: refreshedRankedTrip.imageUrl ?? persistedTrip.imageUrl,
+        imageUrlLight:
+          refreshedRankedTrip.imageUrlLight ?? persistedTrip.imageUrlLight,
+        imageUrlDark:
+          refreshedRankedTrip.imageUrlDark ?? persistedTrip.imageUrlDark,
+        confidence: refreshedRankedTrip.confidence ?? persistedTrip.confidence,
+        liveDataSummary:
+          refreshedRankedTrip.liveDataSummary ?? persistedTrip.liveDataSummary,
+        rankingReasons:
+          refreshedRankedTrip.rankingReasons ?? persistedTrip.rankingReasons,
+        hotelOptions: refreshedRankedTrip.hotelOptions ?? persistedTrip.hotelOptions,
+        foodSpots: refreshedRankedTrip.foodSpots ?? persistedTrip.foodSpots,
+        topActivities:
+          refreshedRankedTrip.topActivities ?? persistedTrip.topActivities,
+        sourceCheckedAt:
+          refreshedRankedTrip.sourceCheckedAt ?? new Date().toISOString(),
+        providerStatus:
+          refreshedRankedTrip.providerStatus ?? persistedTrip.providerStatus,
+        dataSource: data.source ?? persistedTrip.dataSource,
+        budgetBreakdown: refreshedBudget ?? persistedTrip.budgetBreakdown,
+        savedSelectionState: activeSelectionState,
+      });
+
+      const refreshedTrip: TripPlan = {
+        ...refreshedTripBase,
+        verificationSummary: verifyTripPlan(refreshedTripBase),
+      };
+      const result = await saveTripPlan(refreshedTrip, {
+        stage: "save",
+      });
+
+      if (!result.success) {
+        setFinalizeStatus(result.error ?? "Trip re-check save failed.");
+        return;
+      }
+
+      const nextTrip = result.trip ?? refreshedTrip;
+      setRecheckSummary(buildTripRecheckChangeSummary(persistedTrip, nextTrip));
+      setTrip(nextTrip);
+      setSelectionState({
+        tripId: nextTrip.id,
+        selection: nextTrip.savedSelectionState ?? emptySelectionState(),
+      });
+      setSyncState(
+        buildSyncStateFromSaveResult(result, new Date().toISOString(), {
+          syncedToAccount: "Live re-check synced to your account.",
+          syncedRemotely: "Live re-check synced to the shared trip.",
+          localOnly: "Live re-check saved locally while remote sync is pending.",
+        })
+      );
+      setFinalizeStatus(
+        result.remoteSaved
+          ? "Trip re-check completed and saved."
+          : "Trip re-check completed locally. Remote sync pending."
+      );
+      trackProductEvent("trip_rechecked", {
+        ...baseTripAnalytics(nextTrip),
+        metadata: {
+          source: "finalize_panel",
+          dataSource: data.source ?? persistedTrip.dataSource,
+          verificationStatus: nextTrip.verificationSummary?.status,
+        },
+      });
+    } catch (error) {
+      console.error("Trip re-check failed:", error);
+      setFinalizeStatus("Trip re-check failed.");
+    } finally {
+      setRecheckingTrip(false);
+    }
+  }, [activeSelectionState, persistedTrip, travelerCount]);
+
   const handleTripUpdated = useCallback(
     (
       nextTrip: TripPlan,
@@ -1269,6 +1433,7 @@ export default function TripPage() {
       };
 
       setTrip(nextTrip);
+      setRecheckSummary(null);
       setSelectionState({
         tripId: nextTrip.id,
         selection: nextTrip.savedSelectionState ?? emptySelectionState(),
@@ -1469,7 +1634,6 @@ export default function TripPage() {
               tripDateRange={tripDateRange}
               routeSummary={routeSummaryLabel}
               estimatedTotalCost={estimatedTotalCost}
-              estimatedBudgetPerTraveler={estimatedBudgetPerTraveler}
               travelerCount={travelerCount}
             />
 
@@ -1636,7 +1800,7 @@ export default function TripPage() {
                       {stayPriceIsVerified ? "Selected each" : "Estimated each"}
                     </div>
                     <div className="mt-1 text-base font-semibold text-slate-950 dark:text-white">
-                      {formatMoney(estimatedBudgetPerTraveler)}
+                      {estimatedBudgetPerTravelerLabel}
                     </div>
                   </div>
 
@@ -1789,9 +1953,10 @@ export default function TripPage() {
                       onSelectionChange={handleSelectionChange}
                       onExpandedDayChange={setExpandedItineraryDayIndex}
                       onHoveredMapPinChange={setHoveredItineraryMapPinId}
+                      builderDockTargetId="trip-itinerary-builder-dock"
                     />
 
-                    <div className="self-start lg:sticky lg:top-24">
+                    <div className="order-2 self-start lg:sticky lg:top-24">
                       <TripStopMap
                         pins={itineraryMapData.pins}
                         routePaths={itineraryMapData.routePaths}
@@ -1804,6 +1969,11 @@ export default function TripPage() {
                       />
                     </div>
                   </div>
+
+                  <div
+                    id="trip-itinerary-builder-dock"
+                    className="pointer-events-none mt-5 w-full lg:sticky lg:bottom-4 lg:z-40"
+                  />
                 </div>
               ) : null}
 
@@ -1874,7 +2044,10 @@ export default function TripPage() {
                       budgetDelta={budgetDelta}
                       routeSummary={routeSummaryLabel}
                       onFinalize={handleFinalizeTrip}
+                      onRecheck={handleRecheckTrip}
                       finalizing={finalizing}
+                      rechecking={recheckingTrip}
+                      recheckSummary={recheckSummary}
                       statusMessage={finalizeStatus}
                     />
                   </div>

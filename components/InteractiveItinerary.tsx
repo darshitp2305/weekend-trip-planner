@@ -8,6 +8,7 @@
 
 import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { applyItineraryPrompt, extractDesiredText } from "../lib/itineraryPrompt";
 import {
   Activity,
@@ -29,6 +30,7 @@ import {
 } from "../lib/tripSelections";
 import { preferredHotelBookingUrl } from "../lib/expediaLinks";
 import {
+  estimatedHotelStayCost,
   hotelAvailabilityLabel,
   hotelAvailabilityPriorityFor,
   hotelAvailabilityTone,
@@ -39,6 +41,7 @@ import {
 } from "../lib/promptLimits";
 import { validateBuilderPrompt } from "../lib/promptValidation";
 import { PROMPT_TEXT_ENTRY_PROPS } from "../lib/textEntryAssist";
+import { addDaysToIsoDate, formatWeekdayAndDate } from "../lib/tripDates";
 import { sanitizeExternalNavigationUrl } from "../lib/urlSafety";
 
 type Props = {
@@ -60,6 +63,7 @@ type Props = {
   onSelectionChange?: (selection: TripSelectionState) => void;
   onExpandedDayChange?: (dayIndex: number | null) => void;
   onHoveredMapPinChange?: (pinId: string | null) => void;
+  builderDockTargetId?: string;
 };
 
 type StopOption = {
@@ -227,7 +231,9 @@ function timeWindowLabel(time?: string) {
   }
 }
 
-function timeIcon(time?: string) {
+// Legacy mojibake helpers kept in place to avoid patching the corrupted bytes directly.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function _brokenTimeIcon(time?: string) {
   switch (normalized(time)) {
     case "morning":
     case "late morning":
@@ -243,6 +249,33 @@ function timeIcon(time?: string) {
     default:
       return "•";
   }
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function _timeIconCorrupt(time?: string) {
+  const value = normalized(time);
+
+  if (
+    value === "morning" ||
+    value === "late morning" ||
+    value === "late morning to afternoon"
+  ) {
+    return "☀️";
+  }
+
+  if (value === "afternoon" || value === "late afternoon") {
+    return "⛅";
+  }
+
+  if (value === "evening") {
+    return "☾";
+  }
+
+  if (value === "night") {
+    return "✦";
+  }
+
+  return "•";
 }
 
 function stopNarrativeLabel(kind: ItineraryDayData["stops"][number]["kind"]) {
@@ -877,6 +910,7 @@ export default function InteractiveItinerary({
   onSelectionChange,
   onExpandedDayChange,
   onHoveredMapPinChange,
+  builderDockTargetId,
 }: Props) {
   // Seed the planner from the generated itinerary so each day already has a
   // sensible default hotel, food stop, and activity before the user edits it.
@@ -900,6 +934,9 @@ export default function InteractiveItinerary({
     issues: string[];
   } | null>(null);
   const [builderPromptPending, setBuilderPromptPending] = useState(false);
+  const [builderDockTarget, setBuilderDockTarget] = useState<HTMLElement | null>(
+    null
+  );
   const [expandedDayIndex, setExpandedDayIndex] = useState<number | null>(0);
   const expandedDayContentRefs = useRef<Record<number, HTMLDivElement | null>>(
     {}
@@ -921,6 +958,15 @@ export default function InteractiveItinerary({
   useEffect(() => {
     onHoveredMapPinChange?.(null);
   }, [expandedDayIndex, onHoveredMapPinChange]);
+
+  useEffect(() => {
+    if (!builderDockTargetId || typeof document === "undefined") {
+      setBuilderDockTarget(null);
+      return;
+    }
+
+    setBuilderDockTarget(document.getElementById(builderDockTargetId));
+  }, [builderDockTargetId]);
 
   useEffect(() => {
     if (!hasMountedExpandedDayRef.current) {
@@ -1096,7 +1142,6 @@ export default function InteractiveItinerary({
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-800 dark:text-emerald-100/85">
-              <span>{timeIcon(displayedTime ?? addedStop.time)}</span>
               <span>{displayedTime ?? addedStop.time ?? "Added stop"}</span>
               <span className="text-emerald-700/80 dark:text-emerald-100/55">
                 {stopNarrativeLabel(addedStop.kind)}
@@ -1213,6 +1258,8 @@ export default function InteractiveItinerary({
   }
 
   function rankedHotelOptions(stopTitle?: string) {
+    const estimatedNights = Math.max(1, days.length - 1);
+
     return [...hotels]
       .sort((a, b) => {
         const scoreDiff =
@@ -1235,6 +1282,11 @@ export default function InteractiveItinerary({
               typeof a.totalStayPrice === "number"
           );
         if (pricedDiff !== 0) return pricedDiff;
+
+        const estimatedCostDiff =
+          estimatedHotelStayCost(a, { nights: estimatedNights }) -
+          estimatedHotelStayCost(b, { nights: estimatedNights });
+        if (estimatedCostDiff !== 0) return estimatedCostDiff;
 
         return (b.rating ?? 0) - (a.rating ?? 0);
       })
@@ -1879,8 +1931,127 @@ export default function InteractiveItinerary({
     }
   }
 
+  const builderPromptComposer = (
+    <form
+      onSubmit={handleBuilderPromptApply}
+      className="pointer-events-auto w-full rounded-[1.5rem] border border-slate-200/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(243,247,252,0.98))] p-3 shadow-[0_18px_55px_rgba(148,163,184,0.14)] backdrop-blur-xl dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(13,20,34,0.96),rgba(9,15,28,0.98))] dark:shadow-[0_22px_65px_rgba(2,6,23,0.24)]"
+    >
+      <div className="flex flex-col gap-3 lg:grid lg:grid-cols-[auto_minmax(0,1fr)_auto] lg:items-center lg:gap-4">
+        <div className="flex items-center gap-2.5">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#0f766e] dark:text-cyan-200/75">
+            Edit itinerary
+          </div>
+          <BuilderPromptPill>Auto-saves</BuilderPromptPill>
+        </div>
+
+        <textarea
+          {...PROMPT_TEXT_ENTRY_PROPS}
+          value={builderPrompt}
+          onChange={(event) => setBuilderPrompt(event.target.value)}
+          maxLength={BUILDER_PROMPT_MAX_CHARS}
+          placeholder="Example: Day 2 lunch to Wild Flour Bakery."
+          className="min-h-[56px] w-full rounded-[1.15rem] border border-slate-200 bg-white px-4 py-4 text-sm leading-6 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-cyan-300/40 focus:bg-slate-50 dark:border-white/10 dark:bg-white/[0.04] dark:text-white dark:placeholder:text-slate-500 dark:focus:bg-white/[0.06] lg:min-h-[58px] lg:max-h-[58px]"
+        />
+
+        <button
+          type="submit"
+          disabled={
+            builderPromptPending ||
+            !trimmedBuilderPrompt ||
+            builderPromptTooLong
+          }
+          className="inline-flex h-11 w-full items-center justify-center rounded-full bg-slate-950 px-5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-100 lg:w-auto lg:min-w-[180px]"
+        >
+          {builderPromptPending ? "Applying..." : "Apply changes"}
+        </button>
+      </div>
+
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+        <p
+          className={
+            builderPromptTooLong
+              ? "text-xs font-medium text-rose-700 dark:text-rose-300"
+              : "text-xs text-slate-500 dark:text-slate-400"
+          }
+        >
+          {builderPromptTooLong
+            ? getPromptLimitError("Builder prompt", BUILDER_PROMPT_MAX_CHARS)
+            : "One clear edit at a time works best."}
+        </p>
+        <p
+          className={
+            builderPromptTooLong
+              ? "text-xs font-semibold text-rose-700 dark:text-rose-300"
+              : "text-xs text-slate-500 dark:text-slate-400"
+          }
+        >
+          {trimmedBuilderPrompt.length}/{BUILDER_PROMPT_MAX_CHARS}
+        </p>
+      </div>
+
+      {builderPromptFeedback ? (
+        <div
+          className={
+            builderPromptFeedback.tone === "success"
+              ? "mt-4 rounded-[1.1rem] border border-emerald-200 bg-emerald-50 px-4 py-3 dark:border-emerald-300/25 dark:bg-emerald-300/[0.08]"
+              : "mt-4 rounded-[1.1rem] border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-300/25 dark:bg-amber-300/[0.08]"
+          }
+        >
+          <div
+            className={
+              builderPromptFeedback.tone === "success"
+                ? "text-sm font-semibold text-emerald-900 dark:text-emerald-100"
+                : "text-sm font-semibold text-amber-900 dark:text-amber-100"
+            }
+          >
+            {builderPromptFeedback.title}
+          </div>
+          {builderPromptFeedback.detail ? (
+            <p
+              className={
+                builderPromptFeedback.tone === "success"
+                  ? "mt-1 text-sm leading-6 text-emerald-800 dark:text-emerald-50/95"
+                  : "mt-1 text-sm leading-6 text-amber-800 dark:text-amber-50/95"
+              }
+            >
+              {builderPromptFeedback.detail}
+            </p>
+          ) : null}
+          {builderPromptFeedback.interpretedPrompt ? (
+            <p
+              className={
+                builderPromptFeedback.tone === "success"
+                  ? "mt-2 text-xs leading-5 text-emerald-800 dark:text-emerald-100/80"
+                  : "mt-2 text-xs leading-5 text-amber-800 dark:text-amber-100/80"
+              }
+            >
+              Interpreted as: {builderPromptFeedback.interpretedPrompt}
+            </p>
+          ) : null}
+          {builderPromptFeedback.issues.length > 0 ? (
+            <div className="mt-2 space-y-1">
+              {builderPromptFeedback.issues.map((issue) => (
+                <p
+                  key={issue}
+                  className={
+                    builderPromptFeedback.tone === "success"
+                      ? "text-xs leading-5 text-emerald-800 dark:text-emerald-100/80"
+                      : "text-xs leading-5 text-amber-800 dark:text-amber-100/80"
+                  }
+                >
+                  {issue}
+                </p>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+    </form>
+  );
+
   return (
-    <section className="space-y-4">
+    <>
+      <section className="order-1 space-y-4">
       <div className="space-y-3">
         {days.map((day, dayIndex) => (
           (() => {
@@ -1902,6 +2073,9 @@ export default function InteractiveItinerary({
             const hasStay =
               dayStops.some((stop) => stop.kind === "stay") ||
               addedStops.some((stop) => stop.kind === "stay");
+            const calendarLabel = formatWeekdayAndDate(
+              addDaysToIsoDate(tripStartDate, dayIndex)
+            );
 
             return (
               <section
@@ -1924,6 +2098,11 @@ export default function InteractiveItinerary({
                       <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#0f766e] dark:text-cyan-200/75">
                         Day {dayIndex + 1}
                       </div>
+                      {calendarLabel ? (
+                        <div className="mt-1 text-[12px] font-medium text-slate-500 dark:text-slate-400">
+                          {calendarLabel}
+                        </div>
+                      ) : null}
                       <h3 className="mt-2 text-[1.35rem] font-semibold tracking-tight text-slate-950 dark:text-white">
                         {day.title ? day.title : `Day ${dayIndex + 1}`}
                       </h3>
@@ -1990,7 +2169,6 @@ export default function InteractiveItinerary({
                         <div key={`group-${key}`} className="space-y-3">
                           <div className="rounded-[1.2rem] border border-slate-200/80 bg-white/88 p-4 dark:border-white/10 dark:bg-white/[0.035]">
                             <div className="flex flex-wrap items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#0f766e] dark:text-cyan-200/75">
-                              <span>{timeIcon(displayedStopTime)}</span>
                               <span>{displayedStopTime ?? "Stay"}</span>
                               <span className="text-[#0f766e]/60 dark:text-cyan-200/45">
                                 {stopNarrativeLabel(stop.kind)}
@@ -2145,7 +2323,6 @@ export default function InteractiveItinerary({
                         <div key={`group-${key}`} className="space-y-3">
                           <div className="rounded-[1.2rem] border border-slate-200/80 bg-white/88 p-4 dark:border-white/10 dark:bg-white/[0.035]">
                             <div className="flex flex-wrap items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#0f766e] dark:text-cyan-200/75">
-                              <span>{timeIcon(displayedStopTime)}</span>
                               <span>{displayedStopTime ?? "Food"}</span>
                               <span className="text-[#0f766e]/60 dark:text-cyan-200/45">
                                 {stopNarrativeLabel(stop.kind)}
@@ -2288,7 +2465,6 @@ export default function InteractiveItinerary({
                         <div key={`group-${key}`} className="space-y-3">
                           <div className="rounded-[1.2rem] border border-slate-200/80 bg-white/88 p-4 dark:border-white/10 dark:bg-white/[0.035]">
                             <div className="flex flex-wrap items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#0f766e] dark:text-cyan-200/75">
-                              <span>{timeIcon(displayedStopTime)}</span>
                               <span>{displayedStopTime ?? "Activity"}</span>
                               <span className="text-[#0f766e]/60 dark:text-cyan-200/45">
                                 {stopNarrativeLabel(stop.kind)}
@@ -2422,7 +2598,6 @@ export default function InteractiveItinerary({
                         <div className="rounded-[1.2rem] border border-slate-200/80 bg-white/88 p-4 dark:border-white/10 dark:bg-white/[0.035]">
                           {displayedStopTime ? (
                             <div className="flex flex-wrap items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#0f766e] dark:text-cyan-200/75">
-                              <span>{timeIcon(displayedStopTime)}</span>
                               <span>{displayedStopTime}</span>
                               <span className="text-[#0f766e]/60 dark:text-cyan-200/45">
                                 {stopNarrativeLabel(stop.kind)}
@@ -2474,7 +2649,6 @@ export default function InteractiveItinerary({
                   driveBackDistance !== undefined ? (
                     <div className="rounded-[1.2rem] border border-slate-200/80 bg-white/88 p-4 dark:border-white/10 dark:bg-white/[0.035]">
                       <div className="flex flex-wrap items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#0f766e] dark:text-cyan-200/75">
-                        <span>{timeIcon("night")}</span>
                         <span>Night</span>
                         <span className="text-[#0f766e]/60 dark:text-cyan-200/45">Transfer</span>
                       </div>
@@ -2500,134 +2674,13 @@ export default function InteractiveItinerary({
         ))}
       </div>
 
-      <form
-        onSubmit={handleBuilderPromptApply}
-        className="rounded-[1.5rem] border border-slate-200/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(243,247,252,0.98))] p-4 shadow-[0_18px_50px_rgba(148,163,184,0.14)] dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(14,22,37,0.96),rgba(11,18,31,0.94))] dark:shadow-[0_18px_50px_rgba(2,6,23,0.18)]"
-      >
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-          <div>
-            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#0f766e] dark:text-cyan-200/75">
-              Edit itinerary
-            </div>
-            <h3 className="mt-2 text-xl font-semibold tracking-tight text-slate-950 dark:text-white">
-              Make a simple change
-            </h3>
-            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600 dark:text-slate-300">
-              Mention the day and the one thing you want swapped, added, or softened.
-            </p>
-          </div>
+      </section>
 
-          <BuilderPromptPill>Auto-saves</BuilderPromptPill>
-        </div>
-
-        <textarea
-          {...PROMPT_TEXT_ENTRY_PROPS}
-          value={builderPrompt}
-          onChange={(event) => setBuilderPrompt(event.target.value)}
-          maxLength={BUILDER_PROMPT_MAX_CHARS}
-          placeholder="Example: Day 2 lunch to Wild Flour Bakery."
-          className="mt-4 min-h-[88px] w-full rounded-[1.25rem] border border-slate-200 bg-white px-4 py-4 text-sm leading-6 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-cyan-300/40 focus:bg-slate-50 dark:border-white/10 dark:bg-white/[0.04] dark:text-white dark:placeholder:text-slate-500 dark:focus:bg-white/[0.06]"
-        />
-
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-          <p
-            className={
-              builderPromptTooLong
-                ? "text-xs font-medium text-rose-700 dark:text-rose-300"
-                : "text-xs text-slate-500 dark:text-slate-400"
-            }
-          >
-            {builderPromptTooLong
-              ? getPromptLimitError("Builder prompt", BUILDER_PROMPT_MAX_CHARS)
-              : "Short, explicit edits are easiest for the builder to apply cleanly."}
-          </p>
-          <p
-            className={
-              builderPromptTooLong
-                ? "text-xs font-semibold text-rose-700 dark:text-rose-300"
-                : "text-xs text-slate-500 dark:text-slate-400"
-            }
-          >
-            {trimmedBuilderPrompt.length}/{BUILDER_PROMPT_MAX_CHARS}
-          </p>
-        </div>
-
-        <div className="mt-4 flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-          <p className="max-w-3xl text-xs leading-5 text-slate-500 dark:text-slate-400">
-            Keep each request to one clear edit for the cleanest result.
-          </p>
-
-          <button
-            type="submit"
-            disabled={
-              builderPromptPending ||
-              !trimmedBuilderPrompt ||
-              builderPromptTooLong
-            }
-            className="inline-flex h-11 items-center justify-center rounded-full bg-slate-950 px-5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-slate-950 dark:hover:bg-slate-100"
-          >
-            {builderPromptPending ? "Applying..." : "Apply changes"}
-          </button>
-        </div>
-
-        {builderPromptFeedback ? (
-          <div
-            className={
-              builderPromptFeedback.tone === "success"
-                ? "mt-4 rounded-[1.1rem] border border-emerald-200 bg-emerald-50 px-4 py-3 dark:border-emerald-300/25 dark:bg-emerald-300/[0.08]"
-                : "mt-4 rounded-[1.1rem] border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-300/25 dark:bg-amber-300/[0.08]"
-            }
-          >
-            <div
-              className={
-                builderPromptFeedback.tone === "success"
-                  ? "text-sm font-semibold text-emerald-900 dark:text-emerald-100"
-                  : "text-sm font-semibold text-amber-900 dark:text-amber-100"
-              }
-            >
-              {builderPromptFeedback.title}
-            </div>
-            {builderPromptFeedback.detail ? (
-              <p
-                className={
-                  builderPromptFeedback.tone === "success"
-                    ? "mt-1 text-sm leading-6 text-emerald-800 dark:text-emerald-50/95"
-                    : "mt-1 text-sm leading-6 text-amber-800 dark:text-amber-50/95"
-                }
-              >
-                {builderPromptFeedback.detail}
-              </p>
-            ) : null}
-            {builderPromptFeedback.interpretedPrompt ? (
-              <p
-                className={
-                  builderPromptFeedback.tone === "success"
-                    ? "mt-2 text-xs leading-5 text-emerald-800 dark:text-emerald-100/80"
-                    : "mt-2 text-xs leading-5 text-amber-800 dark:text-amber-100/80"
-                }
-              >
-                Interpreted as: {builderPromptFeedback.interpretedPrompt}
-              </p>
-            ) : null}
-            {builderPromptFeedback.issues.length > 0 ? (
-              <div className="mt-2 space-y-1">
-                {builderPromptFeedback.issues.map((issue) => (
-                  <p
-                    key={issue}
-                    className={
-                      builderPromptFeedback.tone === "success"
-                        ? "text-xs leading-5 text-emerald-800 dark:text-emerald-100/80"
-                        : "text-xs leading-5 text-amber-800 dark:text-amber-100/80"
-                    }
-                  >
-                    {issue}
-                  </p>
-                ))}
-              </div>
-            ) : null}
-          </div>
-        ) : null}
-      </form>
-    </section>
+      {builderDockTarget
+        ? createPortal(builderPromptComposer, builderDockTarget)
+        : !builderDockTargetId
+          ? builderPromptComposer
+          : null}
+    </>
   );
 }

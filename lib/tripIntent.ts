@@ -372,6 +372,23 @@ export function extractRequestedActivityName(prompt?: string): string | undefine
 }
 
 function inferActivityFocus(text: string): ActivityFocus | undefined {
+  const explicitHikeIntent =
+    /\b(?:go on|want|take|plan)\s+(?:a\s+)?hike\b/i.test(text) ||
+    /\bhiking\s+trip\b/i.test(text) ||
+    /\bsignature\s+hike\b/i.test(text) ||
+    /\bmain\s+hike\b/i.test(text) ||
+    /\bhike\s+up\s+(?:a|the)\s+mountain\b/i.test(text) ||
+    /\bsummit\s+hike\b/i.test(text);
+  const summitMountainIntent =
+    /\btop\s+of\s+(?:a|the)\s+mountain\b/i.test(text) ||
+    /\bmountain\s+top\b/i.test(text) ||
+    /\bmountaintop\b/i.test(text) ||
+    /\bscenic\s+view\s+at\s+the\s+top\b/i.test(text) ||
+    /\bview\s+at\s+the\s+top\b/i.test(text) ||
+    /\bscenic\s+views?\s+at\s+the\s+top\b/i.test(text);
+  const hikeDistanceCue =
+    /\b\d{1,2}(?:\.\d)?\s*km\b/i.test(text) &&
+    /\b(hike|hiking|trail|mountain|summit|peak|ridge)\b/i.test(text);
   const skiingScore = countMatches(text, [
     "ski",
     "skiing",
@@ -416,6 +433,17 @@ function inferActivityFocus(text: string): ActivityFocus | undefined {
   const adjustedHikingScore = Math.max(0, hikingScore - negatedHikeScore * 2);
 
   if (
+    adjustedHikingScore >= 1 &&
+    (explicitHikeIntent || summitMountainIntent || hikeDistanceCue)
+  ) {
+    return "hiking";
+  }
+
+  if (summitMountainIntent && (explicitHikeIntent || hikeDistanceCue)) {
+    return "hiking";
+  }
+
+  if (
     adjustedHikingScore >= Math.max(skiingScore, campingScore) &&
     adjustedHikingScore >= 2
   ) {
@@ -440,6 +468,7 @@ function inferStyle(text: string, activityFocus?: ActivityFocus): TripStyle {
     foodie: 0,
     "solo reset": 0,
     adventure: 0,
+    "must see": 0,
     "hidden gems": 0,
   };
 
@@ -475,6 +504,10 @@ function inferStyle(text: string, activityFocus?: ActivityFocus): TripStyle {
     "low effort",
     "low effort",
     "low-effort",
+    "minimal planning friction",
+    "planning friction",
+    "cozy trip",
+    "keep the rest of the trip easy",
   ]);
 
   signals["solo reset"] += countMatches(text, [
@@ -498,6 +531,33 @@ function inferStyle(text: string, activityFocus?: ActivityFocus): TripStyle {
     "less crowded",
     "small town",
     "off the beaten path",
+  ]);
+
+  signals["must see"] += countMatches(text, [
+    "must see",
+    "must-see",
+    "must do",
+    "can t miss",
+    "cant miss",
+    "can't miss",
+    "cannot miss",
+    "top sight",
+    "top sights",
+    "main sight",
+    "main sights",
+    "main attraction",
+    "main attractions",
+    "bucket list",
+    "iconic",
+    "famous",
+    "landmark",
+    "landmarks",
+    "sightseeing",
+    "classic sights",
+    "classic spots",
+    "signature attractions",
+    "first time",
+    "first-time",
   ]);
 
   signals.outdoors += countMatches(text, [
@@ -555,6 +615,28 @@ function inferStyle(text: string, activityFocus?: ActivityFocus): TripStyle {
   if (activityFocus === "skiing") {
     signals.adventure += 3;
     signals.outdoors += 2;
+  }
+
+  if (
+    /\b(?:must[-\s]?see|can(?:not|\s+t)? miss|bucket list|iconic|famous|top sights?|main attractions?|landmarks?|sightseeing)\b/i.test(
+      text
+    )
+  ) {
+    signals["must see"] += 4;
+    signals["hidden gems"] -= 2;
+  }
+
+  if (/\bfirst[-\s]?time\b/i.test(text)) {
+    signals["must see"] += 3;
+  }
+
+  if (
+    /\bcozy\b/i.test(text) &&
+    /\b(?:easy|minimal planning friction|keep the rest of the trip easy)\b/i.test(text)
+  ) {
+    signals.chill += 3;
+    signals.outdoors -= 1;
+    signals.adventure -= 1;
   }
 
   const orderedStyles = (

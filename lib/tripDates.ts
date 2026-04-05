@@ -35,6 +35,19 @@ function getDateFromIso(value?: string): Date | undefined {
   return date;
 }
 
+function getUtcDateFromIso(value?: string): Date | undefined {
+  if (!isIsoDate(value)) return undefined;
+
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) return undefined;
+
+  const [, year, month, day] = match;
+  const date = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)));
+  if (Number.isNaN(date.getTime())) return undefined;
+
+  return date;
+}
+
 export function clampTripStartDate(
   value?: string,
   minimumDate = getTodayIsoDate()
@@ -129,15 +142,26 @@ export function deriveSeasonFromDateRange(
 }
 
 export function formatDisplayDate(value?: string): string | undefined {
-  if (!isIsoDate(value)) return undefined;
-
-  const date = new Date(`${value}T00:00:00`);
-  if (Number.isNaN(date.getTime())) return undefined;
+  const date = getUtcDateFromIso(value);
+  if (!date) return undefined;
 
   return new Intl.DateTimeFormat("en-CA", {
     month: "short",
     day: "numeric",
     year: "numeric",
+    timeZone: "UTC",
+  }).format(date);
+}
+
+export function formatWeekdayAndDate(value?: string): string | undefined {
+  const date = getUtcDateFromIso(value);
+  if (!date) return undefined;
+
+  return new Intl.DateTimeFormat("en-CA", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
   }).format(date);
 }
 

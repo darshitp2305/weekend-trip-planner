@@ -762,10 +762,15 @@ export default function AccountPanel({
         title: nextTitle,
       };
 
-      await saveTripPlan(nextTrip);
+      const result = await saveTripPlan(nextTrip);
+      if (!result.success) {
+        setStatus(result.error ?? "Failed to rename trip.");
+        return;
+      }
 
-      setLocalTrips((prev) => prev.map((item) => (item.id === trip.id ? nextTrip : item)));
-      setAccountTrips((prev) => prev.map((item) => (item.id === trip.id ? nextTrip : item)));
+      const savedTrip = result.trip ?? nextTrip;
+      setLocalTrips((prev) => prev.map((item) => (item.id === trip.id ? savedTrip : item)));
+      setAccountTrips((prev) => prev.map((item) => (item.id === trip.id ? savedTrip : item)));
       setStatus("Trip name updated.");
       cancelRenameTrip();
       await loadAccount();

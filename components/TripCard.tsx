@@ -6,6 +6,7 @@ import { type ReactNode, useState } from "react";
 import { RankedDestination, TripDataSource, TripInput } from "../lib/types";
 import { buildTripPlan, buildTripPlanPreview } from "../lib/buildTripPlan";
 import { formatDisplayText } from "../lib/displayText";
+import { formatSharedCurrency, formatWholeCurrency } from "../lib/priceFormatting";
 import { isStartCity } from "../lib/startCities";
 import { deriveTripEndDate } from "../lib/tripDates";
 import { saveTripPlan } from "../lib/tripStore";
@@ -251,7 +252,7 @@ export default function TripCard({
     fallbackBreakdown: previewPlan.budgetBreakdown,
   });
   const displayCost = displayBudget.totalExpected;
-  const perTravelerDisplay = Math.round(displayCost / travelerCount);
+  const perTravelerDisplay = formatSharedCurrency(displayCost, travelerCount);
   const itineraryPreviewItems = getItineraryPreviewItems(
     previewTrip,
     previewPlan.itineraryDays
@@ -325,7 +326,7 @@ export default function TripCard({
       const saveResult = await saveTripPlan(plan);
 
       if (!saveResult.success) {
-        throw new Error("Trip save failed.");
+        throw new Error(saveResult.error ?? "Trip save failed.");
       }
 
       trackProductEvent("trip_built", {
@@ -419,12 +420,12 @@ export default function TripCard({
         <div className="grid gap-4 md:grid-cols-3">
           <Stat
             label="Estimated total"
-            value={`$${Math.round(displayCost)}`}
+            value={formatWholeCurrency(displayCost)}
             detail={`${travelerCount} traveler${travelerCount === 1 ? "" : "s"}`}
           />
           <Stat
             label="Per traveler"
-            value={`$${perTravelerDisplay}`}
+            value={perTravelerDisplay}
             detail={budgetFitDetail(displayCost, previewPlan.safeInput.budget)}
           />
           <Stat

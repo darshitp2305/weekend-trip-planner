@@ -4,6 +4,7 @@
  */
 
 import type { BudgetOptimizationSummary } from "../lib/types";
+import { formatSharedCurrency } from "../lib/priceFormatting";
 
 type BudgetBreakdownData = {
   gas?: number;
@@ -139,10 +140,10 @@ export default function BudgetBreakdown({
     targetTotalBudget && travelerCount
       ? Math.round(targetTotalBudget / Math.max(1, travelerCount))
       : undefined;
-  const selectedPerTraveler =
+  const selectedPerTravelerLabel =
     estimatedTotalCost && travelerCount
-      ? Math.round(estimatedTotalCost / Math.max(1, travelerCount))
-      : undefined;
+      ? formatSharedCurrency(estimatedTotalCost, travelerCount)
+      : "-";
 
   return (
     <section>
@@ -213,7 +214,7 @@ export default function BudgetBreakdown({
                   Per traveler
                 </div>
                 <div className="mt-1 text-lg font-semibold text-current">
-                  {formatMoney(selectedPerTraveler)}
+                  {selectedPerTravelerLabel}
                 </div>
                 {targetPerTraveler ? (
                   <div className="mt-1 text-[11px] text-current/60">

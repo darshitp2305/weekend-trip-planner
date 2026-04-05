@@ -40,6 +40,7 @@ type CalendarDatePickerProps = {
   minDate: string;
   disabled?: boolean;
   onChange: (nextDate?: string) => void;
+  onCommitSelection?: () => void;
 };
 
 const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -153,6 +154,7 @@ function CalendarDatePicker({
   minDate,
   disabled = false,
   onChange,
+  onCommitSelection,
 }: CalendarDatePickerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -203,6 +205,13 @@ function CalendarDatePicker({
   const helperLabel = value
     ? "Selected date"
     : "Optional if you want a specific day";
+
+  function closePickerAndRestoreFocus() {
+    setIsOpen(false);
+    window.requestAnimationFrame(() => {
+      onCommitSelection?.();
+    });
+  }
 
   return (
     <div ref={containerRef} className="relative">
@@ -319,7 +328,7 @@ function CalendarDatePicker({
                     onClick={() => {
                       if (!isDisabled) {
                         onChange(iso);
-                        setIsOpen(false);
+                        closePickerAndRestoreFocus();
                       }
                     }}
                     disabled={isDisabled}
@@ -337,7 +346,7 @@ function CalendarDatePicker({
                 type="button"
                 onClick={() => {
                   onChange(undefined);
-                  setIsOpen(false);
+                  closePickerAndRestoreFocus();
                 }}
                 className="inline-flex h-10 items-center justify-center rounded-full border border-slate-200/80 bg-white/86 px-4 text-sm font-medium text-slate-600 transition hover:border-slate-300 hover:bg-white hover:text-slate-950 dark:border-white/10 dark:bg-white/6 dark:text-slate-300 dark:hover:border-white/16 dark:hover:bg-white/10 dark:hover:text-white"
               >
@@ -350,7 +359,7 @@ function CalendarDatePicker({
                   const nextDate = todayIso < minDate ? minDate : todayIso;
                   onChange(nextDate);
                   setVisibleMonth(startOfMonth(parseIsoDate(nextDate) ?? minimumDate));
-                  setIsOpen(false);
+                  closePickerAndRestoreFocus();
                 }}
                 className="inline-flex h-10 items-center justify-center rounded-full bg-slate-950 px-4 text-sm font-semibold text-white transition hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-[#f5efe5]"
               >
@@ -374,6 +383,8 @@ function formatCurrency(value: number) {
 
 function displayStyleLabel(style: TripStyle) {
   switch (style) {
+    case "must see":
+      return "Must-see sights";
     case "solo reset":
       return "Solo reset";
     case "hidden gems":
@@ -529,11 +540,14 @@ export default function TripForm({
   const messageIdRef = useRef(0);
   const chatViewportRef = useRef<HTMLDivElement | null>(null);
   const startCityInputRef = useRef<HTMLInputElement | null>(null);
+  const composerTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const startCityListboxId = useId();
 
   const previewPrompt = mode === "prompt" ? composerValue : prompt;
   const trimmedComposerValue = composerValue.trim();
-  const draft = buildConversationalDraft(previewPrompt, answers);
+  const draft = buildConversationalDraft(previewPrompt, answers, new Date(), {
+    preferPromptSignals: mode === "prompt",
+  });
   const promptValidation =
     mode === "prompt" && trimmedComposerValue.length > 0
       ? validateTripPrompt(trimmedComposerValue)
@@ -640,7 +654,9 @@ export default function TripForm({
         return;
       }
 
-      const nextDraft = buildConversationalDraft(nextPrompt, answers);
+      const nextDraft = buildConversationalDraft(nextPrompt, answers, new Date(), {
+        preferPromptSignals: true,
+      });
       const nextQuestion = getNextIntakeQuestion(nextDraft);
       const initialMessages: ChatMessage[] = [
         {
@@ -803,6 +819,17 @@ export default function TripForm({
     setErrorMessage("");
   }
 
+  function restoreComposerFocus() {
+    const composerTextarea = composerTextareaRef.current;
+    if (!composerTextarea) {
+      return;
+    }
+
+    composerTextarea.focus();
+    const selectionEnd = composerTextarea.value.length;
+    composerTextarea.setSelectionRange(selectionEnd, selectionEnd);
+  }
+
   function handleStartCitySelect(city: StartCity) {
     setComposerValue(city);
     setErrorMessage("");
@@ -957,6 +984,7 @@ export default function TripForm({
             </>
           ) : (
             <textarea
+              ref={composerTextareaRef}
               {...PROMPT_TEXT_ENTRY_PROPS}
               value={composerValue}
               onChange={(event) => setComposerValue(event.target.value)}
@@ -983,6 +1011,7 @@ export default function TripForm({
                 minDate={minimumTripDate}
                 disabled={loading}
                 onChange={handleTripDateChange}
+                onCommitSelection={restoreComposerFocus}
               />
             </div>
           ) : null}
@@ -1008,12 +1037,12 @@ export default function TripForm({
           <div className="text-sm font-medium leading-6 text-slate-700 dark:text-white/70">
             {draft.intent.preferredDestination
               ? `Destination signal detected: ${draft.intent.preferredDestination}.`
-              : "The planner will infer style and driving tolerance, then ask for any missing trip facts."}
+              : "I’ll pull the basics from your prompt and only ask follow-up questions if something important is missing."}
           </div>
           <button
             type="submit"
             disabled={loading || !submitHandler || tripPromptTooLong}
-            className="inline-flex h-12 items-center justify-center rounded-full bg-slate-950 px-6 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-white dark:text-slate-950 dark:hover:bg-[#f5efe5]"
+            className="inline-flex h-12 min-w-[9rem] shrink-0 items-center justify-center rounded-full bg-slate-950 px-6 text-sm font-semibold whitespace-nowrap text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-white dark:text-slate-950 dark:hover:bg-[#f5efe5]"
           >
             {loading
               ? "Building your trip..."

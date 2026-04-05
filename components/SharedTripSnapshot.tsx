@@ -7,7 +7,12 @@
 
 
 import { preferredHotelBookingUrl } from "../lib/expediaLinks";
-import { TripPlan, TripSelectionState } from "../lib/types";
+import { formatSharedCurrency } from "../lib/priceFormatting";
+import {
+  TripPlan,
+  TripSelectionState,
+  TripVerificationSummary,
+} from "../lib/types";
 import {
   getAddedStopsForDay,
   getCustomStopForKey,
@@ -26,7 +31,6 @@ type Props = {
   tripDateRange?: string;
   routeSummary?: string;
   estimatedTotalCost: number;
-  estimatedBudgetPerTraveler: number;
   travelerCount: number;
 };
 
@@ -96,16 +100,28 @@ function decisionGuidance(status?: TripPlan["decisionStatus"]) {
   }
 }
 
+function verificationStatusLabel(status?: TripVerificationSummary["status"]) {
+  switch (status) {
+    case "verified":
+      return "Checked";
+    case "blocked":
+      return "Blocked";
+    case "attention_needed":
+    default:
+      return "Needs attention";
+  }
+}
+
 export default function SharedTripSnapshot({
   trip,
   selection,
   tripDateRange,
   routeSummary,
   estimatedTotalCost,
-  estimatedBudgetPerTraveler,
   travelerCount,
 }: Props) {
   const normalizedSelection = normalizeSelectionState(selection);
+  const verification = trip.verificationSummary;
   const selectedHotel =
     trip.hotelOptions.find((hotel) => hotel.name === normalizedSelection.hotelName) ??
     trip.hotelOptions[0];
@@ -203,7 +219,7 @@ export default function SharedTripSnapshot({
               {formatMoney(estimatedTotalCost)}
             </div>
             <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
-              {formatMoney(estimatedBudgetPerTraveler)} per traveler for {travelerCount} traveler{travelerCount === 1 ? "" : "s"}.
+              {formatSharedCurrency(estimatedTotalCost, travelerCount)} per traveler for {travelerCount} traveler{travelerCount === 1 ? "" : "s"}.
             </p>
           </div>
 
@@ -215,6 +231,20 @@ export default function SharedTripSnapshot({
               {routeSummary ?? trip.driveTimeText}
             </div>
           </div>
+
+          {verification ? (
+            <div className="rounded-[1rem] border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/70">
+              <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
+                Verification
+              </div>
+              <div className="mt-1 text-base font-semibold text-slate-950 dark:text-slate-100">
+                {verification.score}/100
+              </div>
+              <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+                {verificationStatusLabel(verification.status)}
+              </p>
+            </div>
+          ) : null}
         </div>
 
         <div className="mt-5 rounded-[1rem] border border-amber-200 bg-amber-50 p-4 dark:border-amber-500/30 dark:bg-amber-500/10">
@@ -230,6 +260,37 @@ export default function SharedTripSnapshot({
             </p>
           ) : null}
         </div>
+
+        {verification ? (
+          <div className="mt-4 rounded-[1rem] border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/70">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
+              Booking readiness
+            </div>
+            <p className="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-200">
+              {verification.checkedStopCount} selected stops and {verification.routeLegCount} route legs were checked from the finalized plan. Coordinate coverage is {Math.round(
+                verification.coordinateCoverageRatio * 100
+              )}% and direct-link coverage is {Math.round(
+                verification.actionLinkCoverageRatio * 100
+              )}%.
+            </p>
+            {verification.issues.length > 0 ? (
+              <div className="mt-3 space-y-2">
+                {verification.issues.slice(0, 3).map((issue) => (
+                  <p
+                    key={`${issue.code}-${issue.dayIndex ?? "trip"}-${issue.stopIndex ?? "na"}`}
+                    className="text-sm leading-6 text-slate-700 dark:text-slate-200"
+                  >
+                    <span className="font-semibold">{issue.title}:</span> {issue.detail}
+                  </p>
+                ))}
+              </div>
+            ) : (
+              <p className="mt-3 text-sm leading-6 text-slate-700 dark:text-slate-200">
+                No blocking or warning issues are currently attached to this saved version.
+              </p>
+            )}
+          </div>
+        ) : null}
 
       </section>
 

@@ -357,6 +357,15 @@ export default function TripStopMap({
   );
   const [popupLayout, setPopupLayout] = useState<PopupLayout | null>(null);
 
+  const invalidateMapSize = useCallback(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    window.requestAnimationFrame(() => {
+      map.invalidateSize(false);
+    });
+  }, []);
+
   const mappedPins = useMemo(
     () =>
       spreadNearbyPins(
@@ -381,6 +390,7 @@ export default function TripStopMap({
 
   const dayList = useMemo(() => uniqueDays(mappedPins), [mappedPins]);
   const visibleStopCount = useMemo(() => displayStopCount(mappedPins), [mappedPins]);
+  const showCompactEmptyState = variant === "compact" && mappedPins.length === 0;
   const activePopupPinId = highlightedPinId ?? interactivePopupPinId;
   const activePopupPin = useMemo(
     () => mappedPins.find((pin) => pin.id === activePopupPinId) ?? null,
@@ -414,7 +424,7 @@ export default function TripStopMap({
     if (
       !mapElementRef.current ||
       mapRef.current ||
-      (mappedPins.length === 0 && !fallbackCenter)
+      (mappedPins.length === 0 && (!fallbackCenter || variant === "compact"))
     ) {
       return;
     }
@@ -441,6 +451,7 @@ export default function TripStopMap({
     mapRef.current = map;
     markersLayerRef.current = L.layerGroup().addTo(map);
     routesLayerRef.current = L.layerGroup().addTo(map);
+    invalidateMapSize();
 
     if (mappedPins.length === 0 && fallbackCenter) {
       map.setView([fallbackCenter.latitude, fallbackCenter.longitude], fallbackZoom, {
@@ -457,7 +468,45 @@ export default function TripStopMap({
       markersLayerRef.current = null;
       routesLayerRef.current = null;
     };
-  }, [clearPopupCloseTimer, fallbackCenter, fallbackZoom, mappedPins.length]);
+  }, [
+    clearPopupCloseTimer,
+    fallbackCenter,
+    fallbackZoom,
+    invalidateMapSize,
+    mappedPins.length,
+    variant,
+  ]);
+
+  useEffect(() => {
+    const mapElement = mapElementRef.current;
+    if (!mapElement) return;
+
+    invalidateMapSize();
+
+    const handleResize = () => invalidateMapSize();
+    window.addEventListener("resize", handleResize);
+
+    const resizeObserver =
+      typeof ResizeObserver === "undefined"
+        ? undefined
+        : new ResizeObserver(() => {
+            invalidateMapSize();
+          });
+
+    resizeObserver?.observe(mapElement);
+
+    return () => {
+      window.removeEventListener("resize", handleResize);
+      resizeObserver?.disconnect();
+    };
+  }, [
+    fallbackCenter?.latitude,
+    fallbackCenter?.longitude,
+    invalidateMapSize,
+    mappedPins.length,
+    mappedRoutePaths.length,
+    variant,
+  ]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -468,6 +517,7 @@ export default function TripStopMap({
       return;
     }
 
+    map.invalidateSize(false);
     markersLayer.clearLayers();
     routesLayer.clearLayers();
 
@@ -871,36 +921,6 @@ export default function TripStopMap({
           background: #eff6ff;
         }
 
-        .trip-stop-map-shell__empty {
-          display: flex;
-          height: 100%;
-          width: 100%;
-          align-items: center;
-          justify-content: center;
-          padding: 1.5rem;
-        }
-
-        .trip-stop-map-shell__empty-card {
-          max-width: 24rem;
-          border-radius: 1.35rem;
-          border: 1px dashed rgba(255, 255, 255, 0.14);
-          background: rgba(255, 255, 255, 0.04);
-          padding: 1.1rem 1.15rem;
-          text-align: center;
-        }
-
-        .trip-stop-map-shell__empty-title {
-          font-size: 0.95rem;
-          font-weight: 700;
-          color: rgba(255, 255, 255, 0.96);
-        }
-
-        .trip-stop-map-shell__empty-copy {
-          margin-top: 0.45rem;
-          font-size: 0.875rem;
-          line-height: 1.55;
-          color: rgba(226, 232, 240, 0.82);
-        }
       `}</style>
 
       {variant === "compact" ? (
@@ -927,77 +947,82 @@ export default function TripStopMap({
           </div>
 
           <div className="trip-stop-map-shell mt-4 h-[34rem] overflow-hidden rounded-[1.4rem] border border-slate-200 bg-slate-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.4)] lg:h-[42rem] xl:h-[48rem] dark:border-white/10 dark:bg-slate-900/70 dark:shadow-none">
-            <div ref={mapElementRef} className="h-full w-full" />
-            {activePopupPin && popupLayout ? (
-              <div
-                className={`trip-stop-map-shell__popup trip-stop-map-shell__popup--${popupLayout.placement}`}
-                style={{
-                  left: `${popupLayout.left}px`,
-                  top: `${popupLayout.top}px`,
-                  ...(typeof popupLayout.anchorLeft === "number"
-                    ? { ["--popup-anchor-left" as string]: `${popupLayout.anchorLeft}px` }
-                    : {}),
-                  ...(typeof popupLayout.anchorTop === "number"
-                    ? { ["--popup-anchor-top" as string]: `${popupLayout.anchorTop}px` }
-                    : {}),
-                }}
-                onMouseEnter={clearPopupCloseTimer}
-                onMouseLeave={() => schedulePopupClose(activePopupPin.id)}
-              >
-                {activePopupPin.photoUrl ? (
-                  <div className="trip-stop-popup__media">
-                    <Image
-                      src={activePopupPin.photoUrl}
-                      alt={activePopupPin.label}
-                      fill
-                      sizes="244px"
-                      unoptimized
-                      className="trip-stop-popup__image"
-                    />
+            {showCompactEmptyState ? (
+              <div className="flex h-full items-center justify-center p-6">
+                <div className="max-w-md rounded-[1.35rem] border border-slate-200 bg-white/92 px-5 py-4 text-center shadow-sm dark:border-white/10 dark:bg-slate-950/45">
+                  <div className="text-[0.95rem] font-semibold text-slate-900 dark:text-white">
+                    Map ready
                   </div>
-                ) : null}
-                <div className="trip-stop-popup__body">
-                  <div className="trip-stop-popup__eyebrow">
-                    Day {activePopupPin.day} {" / "} {TYPE_LABELS[activePopupPin.type]}
-                    {activePopupPin.isDayStart ? " / Start" : ""}
-                  </div>
-                  <div className="trip-stop-popup__header">
-                    <div className="trip-stop-popup__title">{activePopupPin.label}</div>
-                    {activePopupRating ? (
-                      <div className="trip-stop-popup__rating">
-                        {activePopupRating}/5
-                      </div>
-                    ) : null}
-                  </div>
-                  {activePopupPin.subtitle ? (
-                    <div className="trip-stop-popup__subtitle">
-                      {activePopupPin.subtitle}
-                    </div>
-                  ) : null}
-                  {activePopupPin.mapsUrl ? (
-                    <a
-                      href={activePopupPin.mapsUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="trip-stop-popup__link"
-                    >
-                      Open in maps
-                    </a>
-                  ) : null}
-                </div>
-              </div>
-            ) : null}
-            {mappedPins.length === 0 ? (
-              <div className="trip-stop-map-shell__empty">
-                <div className="trip-stop-map-shell__empty-card">
-                  <div className="trip-stop-map-shell__empty-title">Map ready</div>
-                  <div className="trip-stop-map-shell__empty-copy">
+                  <div className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
                     {emptyStateDescription ??
                       "Expand a day to focus the map on just that day's stay, meals, and activities."}
                   </div>
                 </div>
               </div>
-            ) : null}
+            ) : (
+              <>
+                <div ref={mapElementRef} className="h-full w-full" />
+                {activePopupPin && popupLayout ? (
+                  <div
+                    className={`trip-stop-map-shell__popup trip-stop-map-shell__popup--${popupLayout.placement}`}
+                    style={{
+                      left: `${popupLayout.left}px`,
+                      top: `${popupLayout.top}px`,
+                      ...(typeof popupLayout.anchorLeft === "number"
+                        ? { ["--popup-anchor-left" as string]: `${popupLayout.anchorLeft}px` }
+                        : {}),
+                      ...(typeof popupLayout.anchorTop === "number"
+                        ? { ["--popup-anchor-top" as string]: `${popupLayout.anchorTop}px` }
+                        : {}),
+                    }}
+                    onMouseEnter={clearPopupCloseTimer}
+                    onMouseLeave={() => schedulePopupClose(activePopupPin.id)}
+                  >
+                    {activePopupPin.photoUrl ? (
+                      <div className="trip-stop-popup__media">
+                        <Image
+                          src={activePopupPin.photoUrl}
+                          alt={activePopupPin.label}
+                          fill
+                          sizes="244px"
+                          unoptimized
+                          className="trip-stop-popup__image"
+                        />
+                      </div>
+                    ) : null}
+                    <div className="trip-stop-popup__body">
+                      <div className="trip-stop-popup__eyebrow">
+                        Day {activePopupPin.day} {" / "} {TYPE_LABELS[activePopupPin.type]}
+                        {activePopupPin.isDayStart ? " / Start" : ""}
+                      </div>
+                      <div className="trip-stop-popup__header">
+                        <div className="trip-stop-popup__title">{activePopupPin.label}</div>
+                        {activePopupRating ? (
+                          <div className="trip-stop-popup__rating">
+                            {activePopupRating}/5
+                          </div>
+                        ) : null}
+                      </div>
+                      {activePopupPin.subtitle ? (
+                        <div className="trip-stop-popup__subtitle">
+                          {activePopupPin.subtitle}
+                        </div>
+                      ) : null}
+                      {activePopupPin.mapsUrl ? (
+                        <a
+                          href={activePopupPin.mapsUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="trip-stop-popup__link"
+                        >
+                          Open in maps
+                        </a>
+                      ) : null}
+                    </div>
+                  </div>
+                ) : null}
+              </>
+            )}
           </div>
 
           <div className="mt-4 space-y-3 rounded-[1.2rem] border border-slate-200 bg-white/80 p-4 dark:border-white/10 dark:bg-white/5">

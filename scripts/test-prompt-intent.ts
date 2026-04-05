@@ -352,6 +352,38 @@ function buildTests(): TestResult[] {
 
   {
     const draft = buildConversationalDraft(
+      'Plan a 2-day Banff trip from Calgary for 4 travelers starting August 26, 2026. Keep the total budget under $350 per traveler. I want one scenic nearby hike, one solid local dinner, and a real overnight stay in Banff.',
+      {
+        travelerCount: 2,
+        startCity: "Edmonton",
+        tripLengthDays: 3,
+        tripStartDate: "2026-07-01",
+        season: "Summer",
+        budgetPerTraveler: 500,
+      },
+      new Date("2026-04-03T12:00:00.000Z"),
+      { preferPromptSignals: true }
+    );
+    const input = buildTripInputFromDraft(draft);
+
+    tests.push({
+      id: "PI16",
+      passed:
+        draft.startCity === "Calgary" &&
+        draft.travelerCount === 4 &&
+        draft.tripLengthDays === 2 &&
+        draft.tripStartDate === "2026-08-26" &&
+        draft.budgetPerTraveler === 350 &&
+        input?.startCity === "Calgary" &&
+        input?.tripLengthDays === 2 &&
+        input?.tripStartDate === "2026-08-26" &&
+        input?.budgetPerTraveler === 350,
+      details: `start=${draft.startCity ?? "none"} travelers=${draft.travelerCount ?? "none"} days=${draft.tripLengthDays ?? "none"} date=${draft.tripStartDate ?? "none"} budgetEach=${draft.budgetPerTraveler} inputStart=${input?.startCity ?? "none"} inputDays=${input?.tripLengthDays ?? "none"} inputDate=${input?.tripStartDate ?? "none"} inputBudget=${input?.budgetPerTraveler ?? "none"}`,
+    });
+  }
+
+  {
+    const draft = buildConversationalDraft(
       "ski trip from Calgary to Jasper for 2 days",
       {
         travelerCount: 4,
@@ -436,6 +468,38 @@ function buildTests(): TestResult[] {
       id: "PI20",
       passed: !validation.ok,
       details,
+    });
+  }
+
+  {
+    const prompt =
+      "Plan a first-time Banff weekend from Calgary for 2 people. We want the must-see sights, iconic landmarks, and classic stops more than hidden local spots.";
+    const intent = deriveTripIntentFromPrompt(prompt);
+    const startCity = extractPromptStartCity(prompt);
+    const travelers = extractPromptTravelerCount(prompt);
+
+    tests.push({
+      id: "PI21",
+      passed:
+        intent.style === "must see" &&
+        intent.preferredDestination === "Banff" &&
+        startCity === "Calgary" &&
+        travelers === 2,
+      details: `style=${intent.style} destination=${intent.preferredDestination ?? "none"} start=${startCity ?? "none"} travelers=${travelers ?? "none"}`,
+    });
+  }
+
+  {
+    const prompt =
+      "Give us a Jasper trip with the top sights and can't-miss places. We want classic sightseeing and famous landmarks, not a hidden-gems trip.";
+    const intent = deriveTripIntentFromPrompt(prompt);
+
+    tests.push({
+      id: "PI22",
+      passed:
+        intent.style === "must see" &&
+        intent.preferredDestination === "Jasper",
+      details: `style=${intent.style} destination=${intent.preferredDestination ?? "none"}`,
     });
   }
 

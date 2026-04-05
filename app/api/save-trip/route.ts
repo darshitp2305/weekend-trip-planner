@@ -19,10 +19,15 @@ import {
   sanitizeTripForPersistence,
   sanitizeTripForResponse,
 } from "../../../lib/tripSecurity";
+import {
+  TripPlanInvariantStage,
+  validateTripPlanInvariants,
+} from "../../../lib/tripInvariants";
 import { TripPlan } from "../../../lib/types";
 
 type SaveTripBody = {
   plan?: TripPlan;
+  stage?: TripPlanInvariantStage;
 };
 
 function hasMatchingEditToken(received?: string, expected?: string) {
@@ -134,6 +139,31 @@ export async function POST(request: Request) {
           editToken: existingPlan?.editToken ?? rawPlan.editToken,
         } as TripPlan)
       : mergeCollaborativeTripFields(existingPlan as TripPlan, rawPlan);
+
+    const inferredStage: TripPlanInvariantStage =
+      planWithAccess.status === "finalized" &&
+      existingPlan?.status !== "finalized"
+        ? "finalize"
+        : "save";
+    const requestedStage = body?.stage === "finalize" ? "finalize" : "save";
+    const validationStage: TripPlanInvariantStage =
+      inferredStage === "finalize" || requestedStage === "finalize"
+        ? "finalize"
+        : "save";
+    const invariantResult = validateTripPlanInvariants(planWithAccess, {
+      stage: validationStage,
+    });
+
+    if (!invariantResult.ok) {
+      return jsonNoStore(
+        {
+          success: false,
+          error: invariantResult.message ?? "Trip validation failed.",
+          issues: invariantResult.issues,
+        },
+        { status: 400 }
+      );
+    }
 
     const sharedTripPlan = sanitizeTripForPersistence({
       ...planWithAccess,

@@ -14,6 +14,7 @@ export type ProductAnalyticsEventName =
   | "trip_built"
   | "trip_saved"
   | "trip_finalized"
+  | "trip_rechecked"
   | "trip_share_opened"
   | "trip_approved"
   | "trip_booked"

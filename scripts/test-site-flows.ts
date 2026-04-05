@@ -11,6 +11,10 @@ import {
 } from "../lib/googlePlaces";
 import { rankDestinations } from "../lib/rankDestinations";
 import { deriveTripEndDate } from "../lib/tripDates";
+import {
+  optimizeSelectionForBudget,
+  pickDefaultActivityForStop,
+} from "../lib/tripSelections";
 import { RankedDestination, TripInput, TripPlan, TripStyle } from "../lib/types";
 import {
   deriveTripIntentFromPrompt,
@@ -121,6 +125,23 @@ function scoreStyle(plan: TripPlan, style: TripStyle): boolean {
   } else if (style === "chill" || style === "solo reset") {
     score += foodStops + activityStops;
     score += countKeywords(text, ["relax", "reset", "light", "scenic", "viewpoint", "cafe", "coffee", "downtime", "low-friction"]);
+  } else if (style === "must see") {
+    score += activityStops * 2;
+    score += countKeywords(text, [
+      "iconic",
+      "landmark",
+      "famous",
+      "must-see",
+      "must see",
+      "classic",
+      "sight",
+      "museum",
+      "viewpoint",
+      "lookout",
+      "gondola",
+      "waterfall",
+      "hot spring",
+    ]);
   } else if (style === "hidden gems") {
     score += activityStops;
     score += countKeywords(text, ["local", "historic", "heritage", "lookout", "scenic", "museum", "trail", "distinctive"]);
@@ -132,6 +153,7 @@ function scoreStyle(plan: TripPlan, style: TripStyle): boolean {
     outdoors: 5,
     chill: 4,
     "solo reset": 4,
+    "must see": 5,
     "hidden gems": 4,
   };
 
@@ -358,6 +380,161 @@ async function runPromptInterpretationTests(): Promise<TestResult[]> {
   const strictSummitBudgetPlan = strictSummitBudgetTopResult
     ? buildTripPlan(strictSummitBudgetTopResult, strictSummitBudgetInput, "static-ranking")
     : null;
+  const jasperSkiRankingPrompt =
+    "Plan a 3-day ski trip in Jasper for 4 people starting from Edmonton on April 3, 2026. Keep day 1 easy because of the drive, make day 2 a full ski day, and keep skiing on the morning of day 3 before heading back.";
+  const jasperSkiRankingInput = makeInput({
+    style: "adventure",
+    startCity: "Edmonton",
+    travelerCount: 4,
+    budgetPerTraveler: 300,
+    budget: 1200,
+    tripLengthDays: 3,
+    maxDriveHours: 5,
+    preferredDestination: "Jasper",
+    season: "spring",
+    tripStartDate: "2026-04-03",
+    tripPrompt: jasperSkiRankingPrompt,
+  });
+  const jasperSkiTopResult = rankDestinations(jasperSkiRankingInput, 1)[0];
+  const jasperSkiActivityTitles =
+    jasperSkiTopResult?.topActivities.map((activity) => activity.name.toLowerCase()) ?? [];
+  const requestedAnchorInput = makeInput({
+    style: "chill",
+    startCity: "Calgary",
+    travelerCount: 2,
+    budgetPerTraveler: 300,
+    budget: 600,
+    tripLengthDays: 2,
+    maxDriveHours: 5,
+    preferredDestination: "Banff",
+    tripPrompt:
+      "We're 2 people in Calgary and want a Banff overnight with one scenic hike as the main activity. Make Johnston Canyon the signature hike, keep the rest of the trip easy, and suggest a cozy trip with minimal planning friction.",
+  });
+  const requestedAnchorTopResult = rankDestinations(requestedAnchorInput, 1)[0];
+  const requestedAnchorTitles =
+    requestedAnchorTopResult?.topActivities.map((activity) => activity.name) ?? [];
+  const johnstonIndex = requestedAnchorTitles.findIndex((title) =>
+    /johnston canyon/i.test(title)
+  );
+  const nearbyBanffDefaultActivity = pickDefaultActivityForStop(
+    {
+      title: "Pick an activity",
+      description: "Choose one nearby scenic hike for the first day.",
+      kind: "activity",
+    },
+    [
+      {
+        name: "Mistaya Canyon Trail Head - Banff",
+        type: "Hiking Area",
+        costEstimate: 0,
+        rating: 4.8,
+        latitude: 51.7427,
+        longitude: -116.4333,
+      },
+      {
+        name: "Johnston Canyon",
+        type: "Hiking Area",
+        costEstimate: 0,
+        rating: 4.7,
+        latitude: 51.2447,
+        longitude: -115.8397,
+      },
+      {
+        name: "Sulphur Mountain Gondola",
+        type: "Viewpoint",
+        costEstimate: 0,
+        rating: 4.6,
+        latitude: 51.1474,
+        longitude: -115.5733,
+      },
+    ],
+    {
+      day: {
+        title: "Arrival and easy first day",
+        summary: "Keep the first afternoon simple and nearby after the drive.",
+      },
+      tripPrompt:
+        'Plan a 2-day Banff trip from Calgary for 4 travelers. I want one scenic nearby hike and a real overnight stay in Banff.',
+      hotelName: "Tunnel Mountain area stay",
+      hotels: [
+        {
+          name: "Tunnel Mountain area stay",
+          bookingLink: "https://example.com/stay",
+          latitude: 51.1765,
+          longitude: -115.5481,
+        },
+      ],
+      fallbackCenter: {
+        latitude: 51.1784,
+        longitude: -115.5708,
+      },
+    }
+  );
+  const optimizedNearbyBanffSelection = optimizeSelectionForBudget({
+    tripLengthDays: 2,
+    travelerCount: 4,
+    targetTotalBudget: 1400,
+    hotelOptions: [
+      {
+        name: "Tunnel Mountain area stay",
+        bookingLink: "https://example.com/stay",
+      },
+    ],
+    foodSpots: [],
+    activities: [
+      {
+        name: "Mistaya Canyon Trail Head - Banff",
+        type: "Hiking Area",
+        costEstimate: 0,
+        rating: 4.8,
+        latitude: 51.7427,
+        longitude: -116.4333,
+      },
+      {
+        name: "Johnston Canyon",
+        type: "Hiking Area",
+        costEstimate: 0,
+        rating: 4.7,
+        latitude: 51.2447,
+        longitude: -115.8397,
+      },
+      {
+        name: "Sulphur Mountain Gondola",
+        type: "Viewpoint",
+        costEstimate: 0,
+        rating: 4.6,
+        latitude: 51.1474,
+        longitude: -115.5733,
+      },
+    ],
+    itineraryDays: [
+      {
+        title: "Arrival and easy first day",
+        summary: "Because the drive is short, day one can include one real stop without making the trip feel rushed.",
+        stops: [
+          {
+            title: "Drive from Calgary to Banff",
+            kind: "travel",
+          },
+          {
+            title: "Pick where to stay",
+            kind: "stay",
+          },
+          {
+            title: "Pick an activity",
+            description: "Choose one nearby scenic hike for the first day.",
+            kind: "activity",
+          },
+        ],
+      },
+    ],
+    tripPrompt:
+      "Plan a 2-day Banff trip from Calgary for 4 travelers. I want one scenic nearby hike and a real overnight stay in Banff. Keep day 1 easy after the drive.",
+    fallbackCenter: {
+      latitude: 51.1784,
+      longitude: -115.5708,
+    },
+  });
   const recoveryActivityCounts = recoveryPlan
     ? recoveryPlan.itineraryDays.map(
         (day) => day.stops.filter((stop) => stop.kind === "activity").length
@@ -535,6 +712,48 @@ async function runPromptInterpretationTests(): Promise<TestResult[]> {
             homeBaseCity: strictSummitBudgetTopResult?.homeBaseCity,
           })
         : "No summit plan built, which is acceptable if no match fits",
+    },
+    {
+      id: "I32",
+      area: "ranking-catalog",
+      passed:
+        (jasperSkiTopResult?.name ?? "").toLowerCase().includes("jasper") &&
+        !jasperSkiActivityTitles.some((title) => title.includes("food crawl")),
+      details: JSON.stringify({
+        name: jasperSkiTopResult?.name,
+        topActivities: jasperSkiTopResult?.topActivities.map((activity) => activity.name),
+      }),
+    },
+    {
+      id: "I33",
+      area: "ranking-catalog",
+      passed:
+        (requestedAnchorTopResult?.name ?? "").toLowerCase().includes("banff") &&
+        johnstonIndex !== -1 &&
+        johnstonIndex <= 1,
+      details: JSON.stringify({
+        name: requestedAnchorTopResult?.name,
+        topActivities: requestedAnchorTitles,
+      }),
+    },
+    {
+      id: "I34",
+      area: "selection-defaults",
+      passed: nearbyBanffDefaultActivity?.name === "Johnston Canyon",
+      details: JSON.stringify({
+        selectedActivity: nearbyBanffDefaultActivity?.name,
+      }),
+    },
+    {
+      id: "I35",
+      area: "saved-selection-defaults",
+      passed:
+        optimizedNearbyBanffSelection.optimizedSelection.activities["day-0-stop-2"] ===
+        "Johnston Canyon",
+      details: JSON.stringify({
+        selectedActivity:
+          optimizedNearbyBanffSelection.optimizedSelection.activities["day-0-stop-2"],
+      }),
     },
   ];
 }

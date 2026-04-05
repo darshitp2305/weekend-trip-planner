@@ -49,7 +49,9 @@ export function estimateBudgetBreakdown(
         : 50;
 
   const activitiesPerTravelerPerDay =
-    input?.style === "adventure" || input?.style === "outdoors"
+    input?.style === "adventure" ||
+    input?.style === "outdoors" ||
+    input?.style === "must see"
       ? 35
       : input?.style === "foodie"
         ? 20
