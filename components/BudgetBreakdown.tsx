@@ -28,6 +28,7 @@ type Props = {
     detail: string;
   } | null;
   optimization?: BudgetOptimizationSummary;
+  variant?: "full" | "compact";
 };
 
 function formatMoney(value?: number) {
@@ -134,7 +135,9 @@ export default function BudgetBreakdown({
   travelerCount,
   fitStatus,
   optimization,
+  variant = "full",
 }: Props) {
+  const isCompact = variant === "compact";
   const optimizationTitle = optimizationHeadline(optimization);
   const targetPerTraveler =
     targetTotalBudget && travelerCount
@@ -148,16 +151,24 @@ export default function BudgetBreakdown({
   return (
     <section>
       <div className="flex flex-col gap-1">
-        <h2 className="text-xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">
-          Budget breakdown
+        <h2
+          className={`font-semibold tracking-tight text-slate-950 dark:text-slate-100 ${
+            isCompact ? "text-lg" : "text-xl"
+          }`}
+        >
+          {isCompact ? "Budget snapshot" : "Budget breakdown"}
         </h2>
         <p className="text-sm leading-5 text-slate-600 dark:text-slate-300">
-          Estimated cost split into useful buckets, plus a realistic trip range.
+          {isCompact
+            ? "Current estimate, target, and range."
+            : "Estimated cost split into useful buckets, plus a realistic trip range."}
         </p>
-        <p className="text-[12px] leading-5 text-slate-500 dark:text-slate-400">
-          Food and activity totals are planning estimates based on your current selections.
-        </p>
-        {notes.map((note) => (
+        {!isCompact ? (
+          <p className="text-[12px] leading-5 text-slate-500 dark:text-slate-400">
+            Food and activity totals are planning estimates based on your current selections.
+          </p>
+        ) : null}
+        {(isCompact ? notes.slice(0, 1) : notes).map((note) => (
           <p
             key={note}
             className="text-[12px] leading-5 text-slate-500 dark:text-slate-400"
@@ -169,12 +180,20 @@ export default function BudgetBreakdown({
 
       {fitStatus || targetTotalBudget ? (
         <div
-          className={`mt-4 rounded-[1.2rem] border px-4 py-4 ${fitToneClasses(
+          className={`mt-4 rounded-[1.2rem] border ${
+            isCompact ? "px-3 py-3" : "px-4 py-4"
+          } ${fitToneClasses(
             fitStatus?.label
           )}`}
         >
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-            <div className="max-w-xl">
+          <div
+            className={
+              isCompact
+                ? "flex flex-col gap-3"
+                : "flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between"
+            }
+          >
+            <div className={isCompact ? "min-w-0" : "max-w-xl"}>
               <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-current/70">
                 Budget fit
               </div>
@@ -182,17 +201,31 @@ export default function BudgetBreakdown({
                 {fitStatus?.label ?? "Budget target loaded"}
               </div>
               {fitStatus?.detail ? (
-                <p className="mt-1 text-sm leading-6 text-current/80">
+                <p
+                  className={`mt-1 text-sm text-current/80 ${
+                    isCompact ? "leading-5" : "leading-6"
+                  }`}
+                >
                   {fitStatus.detail}
                 </p>
               ) : (
-                <p className="mt-1 text-sm leading-6 text-current/80">
+                <p
+                  className={`mt-1 text-sm text-current/80 ${
+                    isCompact ? "leading-5" : "leading-6"
+                  }`}
+                >
                   Use the current total against your saved target to keep the draft realistic.
                 </p>
               )}
             </div>
 
-            <div className="grid gap-2 sm:grid-cols-3 lg:min-w-[360px]">
+            <div
+              className={
+                isCompact
+                  ? "grid grid-cols-2 gap-2"
+                  : "grid gap-2 sm:grid-cols-3 lg:min-w-[360px]"
+              }
+            >
               <div className="rounded-[1rem] border border-current/10 bg-white/70 px-3.5 py-3 dark:bg-slate-950/20">
                 <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-current/60">
                   Target total
@@ -209,7 +242,11 @@ export default function BudgetBreakdown({
                   {formatMoney(estimatedTotalCost)}
                 </div>
               </div>
-              <div className="rounded-[1rem] border border-current/10 bg-white/70 px-3.5 py-3 dark:bg-slate-950/20">
+              <div
+                className={`rounded-[1rem] border border-current/10 bg-white/70 px-3.5 py-3 dark:bg-slate-950/20 ${
+                  isCompact ? "col-span-2" : ""
+                }`}
+              >
                 <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-current/60">
                   Per traveler
                 </div>
@@ -225,7 +262,7 @@ export default function BudgetBreakdown({
             </div>
           </div>
 
-          {optimization && optimizationTitle ? (
+          {!isCompact && optimization && optimizationTitle ? (
             <div className="mt-4 rounded-[1rem] border border-current/10 bg-white/70 px-4 py-3.5 dark:bg-slate-950/20">
               <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-current/60">
                 Budget-fit defaults
@@ -264,7 +301,11 @@ export default function BudgetBreakdown({
         </div>
       ) : null}
 
-      <div className="mt-4 grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+      <div
+        className={`mt-4 grid gap-2.5 ${
+          isCompact ? "grid-cols-2" : "grid-cols-2 sm:grid-cols-3"
+        }`}
+      >
         <BudgetChip label="Gas" value={breakdown?.gas} />
         <BudgetChip label="Hotel" value={breakdown?.hotel} />
         <BudgetChip label="Food" value={breakdown?.food} />
@@ -276,7 +317,7 @@ export default function BudgetBreakdown({
         />
       </div>
 
-      <div className="mt-4 grid gap-2.5 md:grid-cols-3">
+      <div className={`mt-4 grid gap-2.5 ${isCompact ? "grid-cols-3" : "md:grid-cols-3"}`}>
         <TotalCard label="Low" value={breakdown?.totalLow} />
         <TotalCard label="Expected" value={breakdown?.totalExpected} featured />
         <TotalCard label="High" value={breakdown?.totalHigh} />

@@ -124,6 +124,18 @@ const KNOWN_ALLTRAILS_TRAIL_LINKS: Record<string, string> = {
     "https://www.alltrails.com/trail/canada/alberta/table-mountain--2",
   "table mountain":
     "https://www.alltrails.com/trail/canada/alberta/table-mountain--2",
+  "turtle mountain trail":
+    "https://www.alltrails.com/trail/canada/alberta/turtle-mountain-trail",
+  "turtle mountain":
+    "https://www.alltrails.com/trail/canada/alberta/turtle-mountain-trail",
+  "crowsnest mountain trail":
+    "https://www.alltrails.com/poi/canada/alberta/crowsnest-mountain",
+  "crowsnest mountain":
+    "https://www.alltrails.com/poi/canada/alberta/crowsnest-mountain",
+  "crowsnest ridge via phillips pass road":
+    "https://www.alltrails.com/trail/canada/alberta/crowsnest-ridge-route",
+  "crowsnest ridge":
+    "https://www.alltrails.com/trail/canada/alberta/crowsnest-ridge-route",
   "bear's hump hike":
     "https://www.alltrails.com/trail/canada/alberta/bears-hump",
   "bear's hump":
@@ -349,7 +361,7 @@ function isDemandingHikeText(value?: string) {
       text.includes(term)
     );
   const hikeSignal =
-    ["trail", "hike", "trailhead", "backcountry"].some((term) =>
+    ["trail", "hike", "hiking", "trailhead", "backcountry"].some((term) =>
       text.includes(term)
     );
 
@@ -365,7 +377,10 @@ function isHikeLikeActivity(value: {
     .filter(Boolean)
     .join(" ");
 
-  return isDemandingHikeText(text) || /\btrail\b|\bhike\b|\bloop\b|\btrek\b/i.test(text);
+  return (
+    isDemandingHikeText(text) ||
+    /\btrail\b|\bhike\b|\bhiking\b|\bhiking area\b|\bloop\b|\btrek\b/i.test(text)
+  );
 }
 
 function activityPrimaryLink(choice: {

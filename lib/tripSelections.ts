@@ -61,14 +61,75 @@ function matchByTitle<T extends { name?: string }>(items: T[], title?: string) {
 
 function hotelCostForSelection(
   hotel: HotelOption | undefined,
+  hotelOptions: HotelOption[],
   nights: number,
   fallbackBreakdown?: Partial<BudgetBreakdown>
 ) {
-  if (!hotel) return Number(fallbackBreakdown?.hotel ?? 0);
+  const directHotelCost = (() => {
+    if (!hotel) return undefined;
+    if (typeof hotel.totalStayPrice === "number" && hotel.totalStayPrice > 0) {
+      return hotel.totalStayPrice;
+    }
+    if (typeof hotel.pricePerNight === "number" && hotel.pricePerNight > 0) {
+      return hotel.pricePerNight * nights;
+    }
+    return undefined;
+  })();
+
+  if (directHotelCost !== undefined) {
+    return directHotelCost;
+  }
+
+  const pricedHotelFallback = hotelOptions
+    .map((option) => {
+      if (typeof option.totalStayPrice === "number" && option.totalStayPrice > 0) {
+        return option.totalStayPrice;
+      }
+      if (typeof option.pricePerNight === "number" && option.pricePerNight > 0) {
+        return option.pricePerNight * nights;
+      }
+      return undefined;
+    })
+    .filter((value): value is number => typeof value === "number" && value > 0)
+    .sort((a, b) => a - b)[0];
+  const savedFallbackHotelCost = Number(fallbackBreakdown?.hotel ?? 0);
+  const fallbackNonHotelCost =
+    Number(fallbackBreakdown?.food ?? 0) +
+    Number(fallbackBreakdown?.gas ?? 0) +
+    Number(fallbackBreakdown?.activities ?? 0);
+  const fallbackHotelLooksCorrupted =
+    pricedHotelFallback === undefined &&
+    Number.isFinite(savedFallbackHotelCost) &&
+    savedFallbackHotelCost > Math.max(2200 * nights, fallbackNonHotelCost * 8);
+  const recoveredHotelFallback =
+    fallbackHotelLooksCorrupted && fallbackNonHotelCost > 0
+      ? Math.max(180 * nights, Math.round(fallbackNonHotelCost * 0.5))
+      : undefined;
+  const stableFallbackHotelCost =
+    pricedHotelFallback ??
+    (Number.isFinite(savedFallbackHotelCost) &&
+    savedFallbackHotelCost > 0 &&
+    !fallbackHotelLooksCorrupted
+      ? savedFallbackHotelCost
+      : undefined);
+
+  if (!hotel) {
+    return stableFallbackHotelCost ?? recoveredHotelFallback ?? 0;
+  }
+
+  // Keep unpriced hotel estimates stable. Reapplying the heuristic to a prior
+  // estimated total creates a feedback loop where autosave makes the budget
+  // climb on every recompute.
+  if (pricedHotelFallback === undefined && stableFallbackHotelCost !== undefined) {
+    return Math.round(stableFallbackHotelCost);
+  }
+  if (pricedHotelFallback === undefined && recoveredHotelFallback !== undefined) {
+    return recoveredHotelFallback;
+  }
 
   return estimatedHotelStayCost(hotel, {
     nights,
-    fallbackTotalStayCost: Number(fallbackBreakdown?.hotel ?? 0),
+    fallbackTotalStayCost: stableFallbackHotelCost,
   });
 }
 
@@ -559,7 +620,12 @@ export function calculateSelectedBudget({
   const hotel =
     hasStructuredItinerary && !includesStayStop
       ? 0
-      : hotelCostForSelection(selectedHotel, nights, fallbackBreakdown);
+      : hotelCostForSelection(
+          selectedHotel,
+          hotelOptions,
+          nights,
+          fallbackBreakdown
+        );
 
   const customReplacementStops = Object.entries(safeSelection.customStops ?? {}).reduce(
     (result, [key, stop]) => {
@@ -772,6 +838,7 @@ export function optimizeSelectionForBudget(
     input.hotelOptions[0];
   const currentHotelCost = hotelCostForSelection(
     selectedHotel,
+    input.hotelOptions,
     nights,
     input.fallbackBreakdown
   );
@@ -779,8 +846,18 @@ export function optimizeSelectionForBudget(
     .filter((hotel) => hotel.availabilityStatus !== "sold_out")
     .sort((a, b) => {
       const costDiff =
-        hotelCostForSelection(a, nights, input.fallbackBreakdown) -
-        hotelCostForSelection(b, nights, input.fallbackBreakdown);
+        hotelCostForSelection(
+          a,
+          input.hotelOptions,
+          nights,
+          input.fallbackBreakdown
+        ) -
+        hotelCostForSelection(
+          b,
+          input.hotelOptions,
+          nights,
+          input.fallbackBreakdown
+        );
       if (costDiff !== 0) return costDiff;
       return (b.rating ?? 0) - (a.rating ?? 0);
     })[0];
@@ -793,7 +870,12 @@ export function optimizeSelectionForBudget(
     const savings = Math.max(
       0,
       currentHotelCost -
-        hotelCostForSelection(bestBudgetHotel, nights, input.fallbackBreakdown)
+        hotelCostForSelection(
+          bestBudgetHotel,
+          input.hotelOptions,
+          nights,
+          input.fallbackBreakdown
+        )
     );
 
     if (savings > 0) {

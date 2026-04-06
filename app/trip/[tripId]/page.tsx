@@ -29,10 +29,7 @@ import InteractiveItinerary from "../../../components/InteractiveItinerary";
 import ExpediaStayWidget from "../../../components/ExpediaStayWidget";
 import { syncTripPlanTiming } from "../../../lib/buildTripPlan";
 import { formatDateRange } from "../../../lib/tripDates";
-import {
-  formatSharedCurrency,
-  formatWholeCurrency,
-} from "../../../lib/priceFormatting";
+import { formatWholeCurrency } from "../../../lib/priceFormatting";
 import {
   buildTripInputFromPlan,
   rankedDestinationFromTripPlan,
@@ -542,19 +539,6 @@ export default function TripPage() {
     });
   }, [activeSelectionState, hotelOptions, itineraryDays, travelerCount, trip]);
 
-  const budgetPerTraveler = useMemo(() => {
-    const saved = Number(trip?.budgetPerTraveler);
-    if (Number.isFinite(saved) && saved > 0) {
-      return saved;
-    }
-
-    if (targetTotalBudget > 0 && travelerCount > 0) {
-      return Math.round(targetTotalBudget / travelerCount);
-    }
-
-    return 0;
-  }, [trip, targetTotalBudget, travelerCount]);
-
   const estimatedTotalCost = useMemo(() => {
     const fromBreakdown = Number(
       selectedBudget?.totalExpected ??
@@ -566,11 +550,6 @@ export default function TripPage() {
     }
     return 0;
   }, [selectedBudget, trip]);
-
-  const estimatedBudgetPerTravelerLabel = useMemo(
-    () => formatSharedCurrency(estimatedTotalCost, travelerCount),
-    [estimatedTotalCost, travelerCount]
-  );
 
   const budgetStatus = useMemo(() => {
     if (targetTotalBudget <= 0 || estimatedTotalCost <= 0) {
@@ -640,6 +619,7 @@ export default function TripPage() {
     const overage = Math.max(0, estimatedTotalCost - targetTotalBudget);
     const cheapestDraftStillOver =
       activeBudgetOptimization?.status === "optimized_but_over";
+    const destinationLabel = trip?.destinationName ?? trip?.name ?? "This destination";
 
     return {
       eyebrow: cheapestDraftStillOver ? "Budget reality check" : "Budget warning",
@@ -651,7 +631,7 @@ export default function TripPage() {
             overage
           )} over your ${formatMoney(
             targetTotalBudget
-          )} total target. Jasper may need a higher budget, a cheaper stay, or a different destination to fit cleanly.`
+          )} total target. ${destinationLabel} may need a higher budget, a cheaper stay, or a different destination to fit cleanly.`
         : `This draft is about ${formatMoney(overage)} over your ${formatMoney(
             targetTotalBudget
           )} total target right now. Open the builder to swap down the stay, meals, or activities before you commit to it.`,
@@ -661,6 +641,8 @@ export default function TripPage() {
     budgetStatus,
     estimatedTotalCost,
     targetTotalBudget,
+    trip?.destinationName,
+    trip?.name,
   ]);
 
   const tripMapData = useMemo(() => {
@@ -1669,17 +1651,17 @@ export default function TripPage() {
             <section className="overflow-hidden rounded-[1.75rem] border border-slate-200/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(243,247,251,0.98))] shadow-[0_24px_70px_rgba(148,163,184,0.16)] dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(15,23,42,0.96),rgba(9,15,28,0.92))] dark:shadow-[0_24px_70px_rgba(2,6,23,0.35)]">
               <div className="border-b border-slate-200/80 px-5 py-4 dark:border-white/10">
                 <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#0f766e] dark:text-cyan-200/75">
-                  Builder workspace
+                  Trip snapshot
                 </div>
                 <h2 className="mt-1 text-[1.45rem] font-semibold tracking-tight text-slate-950 dark:text-white">
-                  Plan with fewer moving parts
+                  Key planning context
                 </h2>
                 <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
-                  Keep the trip brief, budget rail, and current stay visible while you work one planning surface at a time.
+                  Just the stay, dates, trip length, and budget status for this tab.
                 </p>
               </div>
 
-              <div className="space-y-5 p-5">
+              <div className="p-5">
                 <div className="grid grid-cols-2 gap-2">
                   <div className="rounded-[1.1rem] border border-slate-200 bg-white/85 p-3 dark:border-white/10 dark:bg-white/5">
                     <div className="text-[10px] font-medium uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
@@ -1717,103 +1699,11 @@ export default function TripPage() {
                     </div>
                   </div>
                 </div>
-
-                {trip.tripPrompt ? (
-                  <div className="rounded-[1.25rem] border border-slate-200 bg-white/78 p-4 dark:border-white/10 dark:bg-slate-950/40">
-                    <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
-                      Original brief
-                    </div>
-                    <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
-                      &quot;{trip.tripPrompt}&quot;
-                    </p>
-                  </div>
-                ) : null}
-
-                {constraintFitSummary ? (
-                  <div className="rounded-[1.25rem] border border-cyan-200 bg-cyan-50 p-4 dark:border-cyan-400/20 dark:bg-cyan-400/10">
-                    <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-cyan-700 dark:text-cyan-200">
-                      Constraint check
-                    </div>
-                    <p className="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-200">
-                      {constraintFitSummary}
-                    </p>
-                  </div>
-                ) : null}
-
-                <div className="rounded-[1.25rem] border border-slate-200 bg-white/78 p-4 dark:border-white/10 dark:bg-white/5">
-                  <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
-                    Sync state
-                  </div>
-                  <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
-                    {syncState.message}
-                  </p>
-                  {syncState.lastSavedAt ? (
-                    <p className="mt-2 text-xs text-slate-500">
-                      Last saved {new Date(syncState.lastSavedAt).toLocaleString("en-CA")}
-                    </p>
-                  ) : null}
-                </div>
               </div>
             </section>
 
             <section className="overflow-hidden rounded-[1.75rem] border border-slate-200/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.92),rgba(239,245,250,0.96))] shadow-[0_24px_70px_rgba(148,163,184,0.16)] dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(15,23,42,0.92),rgba(7,12,23,0.92))] dark:shadow-[0_24px_70px_rgba(2,6,23,0.28)]">
-              <div className="border-b border-slate-200/80 px-5 py-4 dark:border-white/10">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-700 dark:text-emerald-200/75">
-                  Budget rail
-                </div>
-                <h2 className="mt-1 text-[1.45rem] font-semibold tracking-tight text-slate-950 dark:text-white">
-                  Keep spend in view
-                </h2>
-              </div>
-
-              <div className="space-y-4 p-5">
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="rounded-[1rem] border border-slate-200 bg-white/85 p-3 dark:border-white/10 dark:bg-white/5">
-                    <div className="text-[10px] font-medium uppercase tracking-[0.1em] text-slate-500 dark:text-slate-400">
-                      Travelers
-                    </div>
-                    <div className="mt-1 text-base font-semibold text-slate-950 dark:text-white">
-                      {travelerCount}
-                    </div>
-                  </div>
-
-                  <div className="rounded-[1rem] border border-slate-200 bg-white/85 p-3 dark:border-white/10 dark:bg-white/5">
-                    <div className="text-[10px] font-medium uppercase tracking-[0.1em] text-slate-500 dark:text-slate-400">
-                      Budget each
-                    </div>
-                    <div className="mt-1 text-base font-semibold text-slate-950 dark:text-white">
-                      {formatMoney(budgetPerTraveler)}
-                    </div>
-                  </div>
-
-                  <div className="rounded-[1rem] border border-slate-200 bg-white/85 p-3 dark:border-white/10 dark:bg-white/5">
-                    <div className="text-[10px] font-medium uppercase tracking-[0.1em] text-slate-500 dark:text-slate-400">
-                      Target total
-                    </div>
-                    <div className="mt-1 text-base font-semibold text-slate-950 dark:text-white">
-                      {formatMoney(targetTotalBudget)}
-                    </div>
-                  </div>
-
-                  <div className="rounded-[1rem] border border-emerald-400/20 bg-emerald-400/10 p-3">
-                    <div className="text-[10px] font-medium uppercase tracking-[0.1em] text-emerald-700 dark:text-emerald-200">
-                      {stayPriceIsVerified ? "Selected each" : "Estimated each"}
-                    </div>
-                    <div className="mt-1 text-base font-semibold text-slate-950 dark:text-white">
-                      {estimatedBudgetPerTravelerLabel}
-                    </div>
-                  </div>
-
-                  <div className="col-span-2 rounded-[1rem] border border-emerald-400/20 bg-emerald-400/10 p-3">
-                    <div className="text-[10px] font-medium uppercase tracking-[0.1em] text-emerald-700 dark:text-emerald-200">
-                      {stayPriceIsVerified ? "Selected total" : "Estimated total"}
-                    </div>
-                    <div className="mt-1 text-lg font-semibold text-slate-950 dark:text-white">
-                      {formatMoney(estimatedTotalCost)}
-                    </div>
-                  </div>
-                </div>
-
+              <div className="p-5">
                 <BudgetBreakdown
                   breakdown={selectedBudget ?? trip.budgetBreakdown}
                   notes={budgetNotes}
@@ -1822,6 +1712,7 @@ export default function TripPage() {
                   travelerCount={travelerCount}
                   fitStatus={budgetStatus}
                   optimization={activeBudgetOptimization}
+                  variant="compact"
                 />
               </div>
             </section>
@@ -1889,7 +1780,7 @@ export default function TripPage() {
                 </section>
               ) : null}
 
-              <section className="sticky top-4 z-30 overflow-hidden rounded-[1.8rem] border border-slate-200/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.88),rgba(245,249,252,0.82))] px-5 py-4 shadow-[0_26px_80px_rgba(148,163,184,0.18)] backdrop-blur-2xl dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(14,22,37,0.88),rgba(11,18,31,0.78))] dark:shadow-[0_26px_80px_rgba(2,6,23,0.3)]">
+              <section className="sticky top-4 z-[1200] overflow-hidden rounded-[1.8rem] border border-slate-200/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.88),rgba(245,249,252,0.82))] px-5 py-4 shadow-[0_26px_80px_rgba(148,163,184,0.18)] backdrop-blur-2xl dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(14,22,37,0.88),rgba(11,18,31,0.78))] dark:shadow-[0_26px_80px_rgba(2,6,23,0.3)]">
                 <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
                   <div className="min-w-0">
                     <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[#0f766e] dark:text-cyan-200/70">
@@ -1995,6 +1886,7 @@ export default function TripPage() {
                     pins={tripMapData.pins}
                     routePaths={tripMapData.routePaths}
                     missingLocationCount={tripMapData.missingLocationCount}
+                    showStopList={false}
                   />
                 </div>
               ) : null}

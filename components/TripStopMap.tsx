@@ -45,6 +45,7 @@ type Props = {
   variant?: "full" | "compact";
   emptyStateDescription?: string;
   highlightedPinId?: string | null;
+  showStopList?: boolean;
   fallbackCenter?: {
     latitude: number;
     longitude: number;
@@ -344,6 +345,7 @@ export default function TripStopMap({
   variant = "full",
   emptyStateDescription,
   highlightedPinId,
+  showStopList = true,
   fallbackCenter,
   fallbackZoom = 11,
 }: Props) {
@@ -653,8 +655,8 @@ export default function TripStopMap({
     <section
       className={
         variant === "compact"
-          ? "rounded-[1.75rem] border border-slate-200/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(243,247,251,0.98))] p-5 shadow-[0_24px_70px_rgba(148,163,184,0.16)] dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(14,22,37,0.92),rgba(11,18,31,0.88))] dark:shadow-[0_24px_70px_rgba(2,6,23,0.28)]"
-          : "rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900"
+          ? "relative z-0 rounded-[1.75rem] border border-slate-200/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.94),rgba(243,247,251,0.98))] p-5 shadow-[0_24px_70px_rgba(148,163,184,0.16)] dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(14,22,37,0.92),rgba(11,18,31,0.88))] dark:shadow-[0_24px_70px_rgba(2,6,23,0.28)]"
+          : "relative z-0 rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900"
       }
     >
       <style jsx>{`
@@ -1092,8 +1094,49 @@ export default function TripStopMap({
             </div>
           </div>
 
-          <div className="mt-5 grid items-start gap-4 xl:grid-cols-[minmax(0,1.45fr)_340px]">
-            <div className="trip-stop-map-shell h-[520px] self-start overflow-hidden rounded-[1.4rem] border border-slate-200 bg-slate-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.4)] dark:border-slate-700 dark:bg-slate-800">
+          {!showStopList ? (
+            <div className="mt-4 flex flex-wrap gap-2">
+              {(["stay", "food", "activity"] as const).map((type) => (
+                <span
+                  key={type}
+                  className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                >
+                  <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-slate-900 text-white">
+                    <span
+                      className="inline-flex h-3 w-3 items-center justify-center"
+                      dangerouslySetInnerHTML={{ __html: iconMarkup(type) }}
+                    />
+                  </span>
+                  {TYPE_LABELS[type]}
+                </span>
+              ))}
+              {dayList.map((day) => (
+                <span
+                  key={day}
+                  className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                >
+                  <span
+                    className="inline-flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold text-white"
+                    style={{ backgroundColor: colorForDay(day) }}
+                  >
+                    {day}
+                  </span>
+                  Day {day}
+                </span>
+              ))}
+            </div>
+          ) : null}
+
+          <div
+            className={`mt-5 grid items-start gap-4 ${
+              showStopList ? "xl:grid-cols-[minmax(0,1.45fr)_340px]" : ""
+            }`}
+          >
+            <div
+              className={`trip-stop-map-shell self-start overflow-hidden rounded-[1.4rem] border border-slate-200 bg-slate-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.4)] dark:border-slate-700 dark:bg-slate-800 ${
+                showStopList ? "h-[520px]" : "h-[760px] 2xl:h-[820px]"
+              }`}
+            >
               <div ref={mapElementRef} className="h-full w-full" />
               {activePopupPin && popupLayout ? (
                 <div
@@ -1156,102 +1199,104 @@ export default function TripStopMap({
               ) : null}
             </div>
 
-            <div className="flex h-[520px] flex-col gap-4">
-              <div className="rounded-[1.2rem] border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/80">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
-                  Legend
-                </div>
+            {showStopList ? (
+              <div className="flex h-[520px] flex-col gap-4">
+                <div className="rounded-[1.2rem] border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/80">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+                    Legend
+                  </div>
 
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {(["stay", "food", "activity"] as const).map((type) => (
-                    <span
-                      key={type}
-                      className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
-                    >
-                      <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-slate-900 text-white">
-                        <span
-                          className="inline-flex h-3 w-3 items-center justify-center"
-                          dangerouslySetInnerHTML={{ __html: iconMarkup(type) }}
-                        />
-                      </span>
-                      {TYPE_LABELS[type]}
-                    </span>
-                  ))}
-                </div>
-
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {dayList.map((day) => (
-                    <span
-                      key={day}
-                      className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
-                    >
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {(["stay", "food", "activity"] as const).map((type) => (
                       <span
-                        className="inline-flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold text-white"
-                        style={{ backgroundColor: colorForDay(day) }}
+                        key={type}
+                        className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
                       >
-                        {day}
-                      </span>
-                      Day {day}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              <div className="flex min-h-0 flex-1 flex-col rounded-[1.2rem] border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
-                  Selected stops
-                </div>
-
-                <div className="mt-3 min-h-0 flex-1 space-y-2.5 overflow-y-auto pr-1">
-                  {mappedPins.map((pin) => {
-                    const cardContent = (
-                      <>
-                        <div className="flex items-center gap-2">
+                        <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-slate-900 text-white">
                           <span
-                            className="inline-flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold text-white"
-                            style={{ backgroundColor: colorForDay(pin.day) }}
-                          >
-                            {pin.day}
-                          </span>
-                          <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
-                            {TYPE_LABELS[pin.type]}
-                          </div>
-                        </div>
+                            className="inline-flex h-3 w-3 items-center justify-center"
+                            dangerouslySetInnerHTML={{ __html: iconMarkup(type) }}
+                          />
+                        </span>
+                        {TYPE_LABELS[type]}
+                      </span>
+                    ))}
+                  </div>
 
-                        <div className="mt-2 text-sm font-semibold text-slate-950 dark:text-slate-100">
-                          {pin.label}
-                        </div>
-
-                        {pin.subtitle ? (
-                          <div className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">
-                            {pin.subtitle}
-                          </div>
-                        ) : null}
-                      </>
-                    );
-
-                    return pin.mapsUrl ? (
-                      <a
-                        key={pin.id}
-                        href={pin.mapsUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="block rounded-[1rem] border border-slate-200 bg-slate-50 p-3 transition hover:-translate-y-0.5 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800/80 dark:hover:bg-slate-800"
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {dayList.map((day) => (
+                      <span
+                        key={day}
+                        className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
                       >
-                        {cardContent}
-                      </a>
-                    ) : (
-                      <div
-                        key={pin.id}
-                        className="rounded-[1rem] border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/80"
-                      >
-                        {cardContent}
-                      </div>
-                    );
-                  })}
+                        <span
+                          className="inline-flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold text-white"
+                          style={{ backgroundColor: colorForDay(day) }}
+                        >
+                          {day}
+                        </span>
+                        Day {day}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex min-h-0 flex-1 flex-col rounded-[1.2rem] border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+                    Selected stops
+                  </div>
+
+                  <div className="mt-3 min-h-0 flex-1 space-y-2.5 overflow-y-auto pr-1">
+                    {mappedPins.map((pin) => {
+                      const cardContent = (
+                        <>
+                          <div className="flex items-center gap-2">
+                            <span
+                              className="inline-flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold text-white"
+                              style={{ backgroundColor: colorForDay(pin.day) }}
+                            >
+                              {pin.day}
+                            </span>
+                            <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+                              {TYPE_LABELS[pin.type]}
+                            </div>
+                          </div>
+
+                          <div className="mt-2 text-sm font-semibold text-slate-950 dark:text-slate-100">
+                            {pin.label}
+                          </div>
+
+                          {pin.subtitle ? (
+                            <div className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">
+                              {pin.subtitle}
+                            </div>
+                          ) : null}
+                        </>
+                      );
+
+                      return pin.mapsUrl ? (
+                        <a
+                          key={pin.id}
+                          href={pin.mapsUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="block rounded-[1rem] border border-slate-200 bg-slate-50 p-3 transition hover:-translate-y-0.5 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800/80 dark:hover:bg-slate-800"
+                        >
+                          {cardContent}
+                        </a>
+                      ) : (
+                        <div
+                          key={pin.id}
+                          className="rounded-[1rem] border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/80"
+                        >
+                          {cardContent}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
-            </div>
+            ) : null}
           </div>
         </>
       )}
