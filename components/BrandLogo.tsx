@@ -15,6 +15,8 @@ type BrandMarkProps = {
   className?: string;
 };
 
+type ResolvedBrandTone = Exclude<BrandTone, "auto">;
+
 function cx(...values: Array<string | undefined | false>) {
   return values.filter(Boolean).join(" ");
 }
@@ -42,7 +44,8 @@ function resolveBrandPalette(tone: BrandTone) {
     return {
       title: "text-white",
       highlight: "text-[#7decc7]",
-      horizontalShell: "",
+      horizontalShell:
+        "border-white/10 bg-[linear-gradient(180deg,rgba(10,16,27,0.8),rgba(7,12,22,0.94))] shadow-[0_18px_40px_rgba(0,0,0,0.26)] backdrop-blur-[8px]",
       markBorder: "border-white/12 shadow-[0_18px_44px_rgba(0,0,0,0.3)]",
       markInner:
         "bg-[linear-gradient(160deg,rgba(8,15,27,0.98),rgba(13,22,36,0.9))]",
@@ -59,7 +62,7 @@ function resolveBrandPalette(tone: BrandTone) {
     title: "text-slate-950 dark:text-white",
     highlight: "text-[#0c8f69] dark:text-[#7decc7]",
     horizontalShell:
-      "border-slate-800/10 bg-[linear-gradient(180deg,rgba(15,23,42,0.16),rgba(15,23,42,0.08))] shadow-[0_14px_28px_rgba(15,23,42,0.08)] backdrop-blur-[6px] dark:border-transparent dark:bg-transparent dark:shadow-none dark:backdrop-blur-0",
+      "border-slate-800/10 bg-[linear-gradient(180deg,rgba(15,23,42,0.16),rgba(15,23,42,0.08))] shadow-[0_14px_28px_rgba(15,23,42,0.08)] backdrop-blur-[6px] dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(10,16,27,0.8),rgba(7,12,22,0.94))] dark:shadow-[0_18px_40px_rgba(0,0,0,0.26)] dark:backdrop-blur-[8px]",
     markBorder:
       "border-slate-200/80 shadow-[0_16px_38px_rgba(148,163,184,0.16)] dark:border-white/12 dark:shadow-[0_18px_44px_rgba(0,0,0,0.3)]",
     markInner:
@@ -73,9 +76,10 @@ function resolveBrandPalette(tone: BrandTone) {
   };
 }
 
-export function BrandMark({ tone = "auto", className }: BrandMarkProps) {
-  const palette = resolveBrandPalette(tone);
-
+function renderBrandMark(
+  palette: ReturnType<typeof resolveBrandPalette>,
+  className?: string
+) {
   return (
     <span
       aria-hidden="true"
@@ -120,72 +124,94 @@ export function BrandMark({ tone = "auto", className }: BrandMarkProps) {
   );
 }
 
+export function BrandMark({ tone = "auto", className }: BrandMarkProps) {
+  if (tone === "auto") {
+    return (
+      <>
+        <span className="inline-flex dark:hidden">
+          {renderBrandMark(resolveBrandPalette("light"), className)}
+        </span>
+        <span className="hidden dark:inline-flex">
+          {renderBrandMark(resolveBrandPalette("dark"), className)}
+        </span>
+      </>
+    );
+  }
+
+  return renderBrandMark(resolveBrandPalette(tone), className);
+}
+
 export default function BrandLogo({
   variant = "horizontal",
   href,
   className,
   tone = "auto",
 }: BrandLogoProps) {
-  const palette = resolveBrandPalette(tone);
+  const isStacked = variant === "stacked";
 
-  if (variant === "icon") {
-    const icon = <BrandMark tone={tone} className={className} />;
+  function renderLogoContent(resolvedTone: ResolvedBrandTone) {
+    const palette = resolveBrandPalette(resolvedTone);
 
-    if (!href) {
-      return icon;
+    if (variant === "icon") {
+      return <BrandMark tone={resolvedTone} className={className} />;
     }
 
     return (
-      <Link
-        href={href}
-        aria-label="Trippify home"
-        className="inline-flex focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d9b57c]/40 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent"
+      <span
+        className={cx(
+          "group relative inline-flex transition duration-300",
+          isStacked
+            ? "flex-col items-center text-center"
+            : "items-center gap-3.5 rounded-full border px-2.5 py-1.5",
+          !isStacked && palette.horizontalShell,
+          className
+        )}
       >
-        {icon}
-      </Link>
+        <BrandMark
+          tone={resolvedTone}
+          className={isStacked ? "h-16 w-16" : "h-12 w-12"}
+        />
+        <span
+          className={cx("relative z-10 flex", isStacked ? "items-center" : "items-start")}
+        >
+          <span
+            className={cx("flex flex-col", isStacked ? "items-center" : "items-start")}
+          >
+            {isStacked ? (
+              <span className="text-[0.6rem] font-semibold uppercase tracking-[0.3em] text-[#7a4307] dark:text-[#e7c99c]">
+                Alberta weekend studio
+              </span>
+            ) : null}
+            <span
+              className={cx(
+                "font-brand font-semibold leading-none tracking-[-0.02em]",
+                palette.title,
+                isStacked ? "mt-2 text-[2.35rem]" : "text-[1.9rem]"
+              )}
+            >
+              Trippi
+              <span className={palette.highlight}>fy</span>
+            </span>
+            {isStacked ? (
+              <span className="mt-1.5 text-[0.62rem] font-semibold uppercase tracking-[0.24em] text-slate-700 dark:text-white/66">
+                Trail planner
+              </span>
+            ) : null}
+          </span>
+        </span>
+      </span>
     );
   }
 
-  const isStacked = variant === "stacked";
-
-  const content = (
-    <span
-      className={cx(
-        "group relative inline-flex transition duration-300",
-        isStacked
-          ? "flex-col items-center text-center"
-          : "items-center gap-3.5 rounded-full border px-2.5 py-1.5",
-        !isStacked && palette.horizontalShell,
-        className
-      )}
-    >
-      <BrandMark tone={tone} className={isStacked ? "h-16 w-16" : "h-12 w-12"} />
-      <span className={cx("relative z-10 flex", isStacked ? "items-center" : "items-start")}>
-        <span className={cx("flex flex-col", isStacked ? "items-center" : "items-start")}>
-          {isStacked ? (
-            <span className="text-[0.6rem] font-semibold uppercase tracking-[0.3em] text-[#7a4307] dark:text-[#e7c99c]">
-              Alberta weekend studio
-            </span>
-          ) : null}
-          <span
-            className={cx(
-              "font-brand font-semibold leading-none tracking-[-0.02em]",
-              palette.title,
-              isStacked ? "mt-2 text-[2.35rem]" : "text-[1.9rem]"
-            )}
-          >
-            Trippi
-            <span className={palette.highlight}>fy</span>
-          </span>
-          {isStacked ? (
-            <span className="mt-1.5 text-[0.62rem] font-semibold uppercase tracking-[0.24em] text-slate-700 dark:text-white/66">
-              Trail planner
-            </span>
-          ) : null}
-        </span>
-      </span>
-    </span>
-  );
+  const content =
+    tone === "auto" ? (
+      <>
+        <span className="inline-flex dark:hidden">{renderLogoContent("light")}</span>
+        <span className="hidden dark:inline-flex">{renderLogoContent("dark")}</span>
+      </>
+    ) : (
+      renderLogoContent(tone)
+    );
 
   if (!href) {
     return content;
