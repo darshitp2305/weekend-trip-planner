@@ -230,7 +230,10 @@ export async function POST(req: Request) {
       usedLiveData: pipeline.usedLiveData,
       noMatchDiagnostics:
         pipeline.finalTrips.length === 0
-          ? getNoMatchDiagnostics(resolvedInput, { excludedDestinationNames })
+          ? getNoMatchDiagnostics(resolvedInput, {
+              excludedDestinationNames,
+              additionalRawDestinations: pipeline.dynamicCandidates,
+            })
           : null,
     });
   } catch (error) {

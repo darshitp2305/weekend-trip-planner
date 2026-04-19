@@ -21,10 +21,12 @@ import {
   optimizeSelectionForBudget,
 } from "./tripSelections";
 import {
+  coffeeStopSpecificityScore,
   getRecommendedTripTitle,
   isGenericActivityDisplayName,
   normalizePlaceDisplayName,
   refineTripStayRecommendation,
+  scenicHikeSpecificityScore,
 } from "./tripSpecificity";
 import {
   deriveTripIntentFromPrompt,
@@ -511,6 +513,20 @@ function shouldGuaranteeFoodStops(input: TripInput) {
   );
 }
 
+function shouldGuaranteeActivityStops(input: TripInput) {
+  const promptIntent = deriveTripIntentFromPrompt(input.tripPrompt);
+  return (
+    input.style === "adventure" ||
+    input.style === "outdoors" ||
+    input.style === "must see" ||
+    input.style === "hidden gems" ||
+    Boolean(input.activityFocus) ||
+    Boolean(promptIntent.requestedActivityName) ||
+    Boolean(promptIntent.hardConstraints.activityAnchor) ||
+    promptIntent.softPreferences.wantsScenery
+  );
+}
+
 function hasRequestedNamedActivity(input: TripInput) {
   return Boolean(deriveTripIntentFromPrompt(input.tripPrompt).requestedActivityName);
 }
@@ -650,6 +666,17 @@ function activityMatchesRequestedName(
   );
 }
 
+function hasVisibleCoffeeIdentity(food?: FoodSpot) {
+  const text = normalizeSignalText([food?.name ?? ""]);
+
+  return (
+    text.includes("coffee") ||
+    text.includes("cafe") ||
+    text.includes("espresso") ||
+    text.includes("bakery")
+  );
+}
+
 function promptExplicitlyWantsWellness(prompt?: string) {
   const text = normalizeSignalText([prompt ?? ""]);
 
@@ -663,6 +690,18 @@ function promptExplicitlyWantsWellness(prompt?: string) {
     text.includes("thermal") ||
     text.includes("mineral pool") ||
     text.includes("nordic spa")
+  );
+}
+
+function promptExplicitlyWantsCoffee(prompt?: string) {
+  const text = normalizeSignalText([prompt ?? ""]);
+
+  return (
+    text.includes("coffee") ||
+    text.includes("cafe") ||
+    text.includes("espresso") ||
+    text.includes("latte") ||
+    text.includes("bakery")
   );
 }
 
@@ -836,6 +875,16 @@ function promptFoodConstraintScore(food: FoodSpot | undefined, input: TripInput)
     }
   }
 
+  if (promptExplicitlyWantsCoffee(input.tripPrompt)) {
+    score +=
+      text.includes("coffee") ||
+      text.includes("cafe") ||
+      text.includes("espresso") ||
+      text.includes("bakery")
+        ? 6
+        : -2;
+  }
+
   return score;
 }
 
@@ -996,6 +1045,16 @@ function promptActivityConstraintScore(
     ) {
       score -= 10;
     }
+  }
+
+  if (
+    input.activityFocus === "hiking" ||
+    promptIntent.activityFocus === "hiking" ||
+    promptIntent.hardConstraints.activityAnchor === "summit_hike" ||
+    ((input.style === "adventure" || input.style === "outdoors") &&
+      promptIntent.softPreferences.wantsScenery)
+  ) {
+    score += scenicHikeSpecificityScore(activity);
   }
 
   return score;
@@ -1219,6 +1278,7 @@ function foodScoreForMorning(food?: FoodSpot) {
   if (text.includes("restaurant")) score -= 3;
   if (text.includes("kitchen")) score -= 2;
   if (text.includes("bistro")) score -= 1;
+  score += coffeeStopSpecificityScore(food);
 
   return score;
 }
@@ -1341,6 +1401,7 @@ function foodScoreForFinalLightStop(food?: FoodSpot) {
 
   if (text.includes("bistro")) score -= 4;
   if (text.includes("kitchen")) score -= 3;
+  score += coffeeStopSpecificityScore(food);
 
   return score;
 }
@@ -2107,7 +2168,7 @@ function buildStaycationDayOne(
   ctx: BuildContext
 ): ItineraryDayData {
   const baseCoordinate = buildBaseCoordinate(trip);
-  const breakfast =
+  let breakfast =
     pickMorningFood(
       ctx,
       input,
@@ -2225,7 +2286,7 @@ function buildStaycationFinalDay(
   ctx: BuildContext
 ): ItineraryDayData {
   const baseCoordinate = buildBaseCoordinate(trip);
-  const breakfast =
+  let breakfast =
     pickLightFinalFood(
       ctx,
       input,
@@ -2464,7 +2525,7 @@ function buildGetawayFinalDay(
   const isTwoDaySummitCompromise = summitTrip && input.tripLengthDays <= 2;
   const baseCoordinate =
     toCoordinate(trip.hotelOptions?.[0]) ?? buildBaseCoordinate(trip);
-  const breakfast =
+  let breakfast =
     pickLightFinalFood(
       ctx,
       input,
@@ -2472,13 +2533,21 @@ function buildGetawayFinalDay(
       buildFoodProximity(input, baseCoordinate, baseCoordinate)
     ) ??
     (shouldGuaranteeFoodStops(input)
-      ? pickFlexibleFood(
-          ctx,
-          input,
-          new Set<string>(),
-          buildFoodProximity(input, baseCoordinate, baseCoordinate)
-        )
-      : undefined);
+       ? pickFlexibleFood(
+           ctx,
+           input,
+           new Set<string>(),
+           buildFoodProximity(input, baseCoordinate, baseCoordinate)
+         )
+       : undefined);
+  if (
+    promptExplicitlyWantsCoffee(input.tripPrompt) &&
+    breakfast &&
+    (coffeeStopSpecificityScore(breakfast) < 45 ||
+      !hasVisibleCoffeeIdentity(breakfast))
+  ) {
+    breakfast = undefined;
+  }
   const breakfastCoordinate = toCoordinate(breakfast);
   const useFinalDayAsPrimaryAnchor =
       (summitTrip || skiTrip || hasRequestedAnchor) && !ctx.primaryActivityUsed;
@@ -2538,6 +2607,18 @@ function buildGetawayFinalDay(
     !isSkiActivity(finalActivityCandidate)
       ? undefined
       : finalActivityCandidate;
+  const guaranteedFinalActivityFallback =
+    !finalActivity &&
+    !skiTrip &&
+    shouldGuaranteeActivityStops(input) &&
+    input.tripLengthDays >= 3
+      ? makeFlexibleActivityStop(
+          input,
+          trip,
+          "Late morning",
+          `One more scenic stop before leaving ${trip.name}`
+        )
+      : undefined;
 
     if ((summitTrip || skiTrip || hasRequestedAnchor) && finalActivity) {
       ctx.primaryActivityUsed = true;
@@ -2586,6 +2667,7 @@ function buildGetawayFinalDay(
         estimatedCost: activityGroupCost(finalActivity, input),
         kind: "activity" as const,
       },
+      guaranteedFinalActivityFallback,
       skiTrip &&
         !finalActivity && {
           time: "Late morning",
@@ -2721,6 +2803,17 @@ function buildMiddleDay(
           )
         : undefined);
   const secondaryActivityCoordinate = toCoordinate(secondaryActivity);
+  const guaranteedActivityFallback =
+    !mainActivity &&
+    !secondaryActivity &&
+    shouldGuaranteeActivityStops(input)
+      ? makeFlexibleActivityStop(
+          input,
+          trip,
+          "Late morning",
+          `Pick a nearby scenic anchor in ${trip.name}`
+        )
+      : undefined;
 
   const dinner =
     pickDinnerFood(
@@ -2810,6 +2903,7 @@ function buildMiddleDay(
         estimatedCost: activityGroupCost(secondaryActivity, input),
         kind: "activity" as const,
       },
+      guaranteedActivityFallback,
       dinner && {
         time: "Evening",
         title: dinner.name,

@@ -146,6 +146,34 @@ function buildTests(): TestResult[] {
   }
 
   {
+    const prompt =
+      "We're 2 people in Vancouver and want a weekend with good food and one scenic walk.";
+    const startCity = extractPromptStartCity(prompt);
+    const validation = validateTripPrompt(prompt);
+
+    tests.push({
+      id: "PI06C",
+      passed: startCity === "Vancouver" && validation.ok,
+      details: `startCity=${startCity ?? "none"} validation=${describeValidation(validation, "accepted")}`,
+    });
+  }
+
+  {
+    const prompt =
+      "I want to go on an adventure trip to Vancouver Island from Vancouver for 4 travelers over 4 days.";
+    const intent = deriveTripIntentFromPrompt(prompt);
+
+    tests.push({
+      id: "PI06D",
+      passed:
+        intent.preferredDestination === "Vancouver Island" &&
+        intent.style === "adventure" &&
+        intent.suggestedTravelerCount === 4,
+      details: `destination=${intent.preferredDestination ?? "none"} style=${intent.style} travelers=${intent.suggestedTravelerCount ?? "none"}`,
+    });
+  }
+
+  {
     const prompt = "We can't head out until 6pm and only want check-in plus dinner.";
     const departureTime = extractPromptDepartureTime(prompt);
 
@@ -500,6 +528,20 @@ function buildTests(): TestResult[] {
         intent.style === "must see" &&
         intent.preferredDestination === "Jasper",
       details: `style=${intent.style} destination=${intent.preferredDestination ?? "none"}`,
+    });
+  }
+
+  {
+    const prompt =
+      "Plan a weekend trip to Pemberton from Vancouver for 2 people with one scenic hike and good coffee.";
+    const intent = deriveTripIntentFromPrompt(prompt);
+    const validation = validateTripPrompt(prompt);
+
+    tests.push({
+      id: "PI23",
+      passed:
+        intent.preferredDestination === "Pemberton" && validation.ok,
+      details: `destination=${intent.preferredDestination ?? "none"} style=${intent.style} validation=${describeValidation(validation, "accepted")}`,
     });
   }
 

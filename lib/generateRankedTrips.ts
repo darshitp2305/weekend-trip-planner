@@ -4,15 +4,21 @@
  */
 
 import { enrichRankedTrip } from "./enrichTrip";
+import { resolveDynamicPreferredDestination } from "./dynamicDestination";
 import { reportProviderEvent } from "./providerTelemetry";
 import { rankDestinations } from "./rankDestinations";
 import { deriveTripIntentFromPrompt } from "./tripIntent";
-import { RankedDestination, TripInput } from "./types";
+import {
+  hasStrongCoffeeCandidate,
+  hasStrongScenicHikeCandidate,
+} from "./tripSpecificity";
+import { RankedDestination, RawDestination, TripInput } from "./types";
 
 type GenerateRankedTripsResult = {
   initialCandidates: RankedDestination[];
   finalTrips: RankedDestination[];
   usedLiveData: boolean;
+  dynamicCandidates: RawDestination[];
 };
 
 type RankingReason = NonNullable<RankedDestination["rankingReasons"]>[number];
@@ -932,12 +938,23 @@ export function recalculateConfidence(
 ): RankedDestination[] {
   const topScore = trips[0]?.score ?? 0;
   const promptIntent = deriveTripIntentFromPrompt(input.tripPrompt);
+  const promptText = (input.tripPrompt ?? "").toLowerCase();
   const hasHikeDistanceConstraint = Boolean(
     promptIntent.hardConstraints.hikeDistanceKmTarget
   );
   const isTwoDaySummitCompromise =
     promptIntent.hardConstraints.activityAnchor === "summit_hike" &&
     input.tripLengthDays <= 2;
+  const needsNamedHikeProof =
+    input.activityFocus === "hiking" ||
+    promptIntent.activityFocus === "hiking" ||
+    promptIntent.hardConstraints.activityAnchor === "summit_hike" ||
+    ((input.style === "adventure" || input.style === "outdoors") &&
+      promptIntent.softPreferences.wantsScenery &&
+      promptText.includes("hike"));
+  const needsCoffeeProof =
+    promptIntent.softPreferences.wantsGoodFood &&
+    /\b(coffee|cafe|espresso|latte|bakery)\b/.test(promptText);
 
   return trips.map((trip, index) => {
     let score = 0;
@@ -999,6 +1016,24 @@ export function recalculateConfidence(
       confidenceLabel = "Promising";
     }
 
+    if (
+      confidence === "high" &&
+      needsNamedHikeProof &&
+      !hasStrongScenicHikeCandidate({ topActivities: trip.topActivities })
+    ) {
+      confidence = "medium";
+      confidenceLabel = "Good match";
+    }
+
+    if (
+      confidence === "high" &&
+      needsCoffeeProof &&
+      !hasStrongCoffeeCandidate({ foodSpots: trip.foodSpots })
+    ) {
+      confidence = "medium";
+      confidenceLabel = "Good match";
+    }
+
     return {
       ...trip,
       confidence,
@@ -1017,9 +1052,13 @@ export async function generateRankedTrips(
 ): Promise<GenerateRankedTripsResult> {
   const shortlistSize = options?.shortlistSize ?? 6;
   const finalLimit = options?.finalLimit ?? 3;
+  const dynamicCandidates = [
+    await resolveDynamicPreferredDestination(input),
+  ].filter((candidate): candidate is RawDestination => candidate !== null);
 
   const initialCandidates = rankDestinations(input, shortlistSize, {
     excludedDestinationNames: options?.excludedDestinationNames,
+    additionalRawDestinations: dynamicCandidates,
   });
 
   const enrichedTrips = await mapWithConcurrencyLimit(
@@ -1062,5 +1101,6 @@ export async function generateRankedTrips(
     initialCandidates,
     finalTrips,
     usedLiveData,
+    dynamicCandidates,
   };
 }

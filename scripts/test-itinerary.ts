@@ -405,6 +405,87 @@ function evaluatePromptDinnerGuaranteeRegression(): RegressionCheck {
   };
 }
 
+function evaluateScenicHikeCoffeeRegression(): RegressionCheck {
+  const tripPrompt =
+    "Plan a 2-day outdoors trip to Banff from Calgary for 2 travelers in summer with one scenic hike, good coffee, and a budget of $500 per traveler.";
+
+  const input: TripInput = {
+    ...makeInput({
+      style: "outdoors",
+      startCity: "Calgary",
+      travelerCount: 2,
+      budgetPerTraveler: 500,
+      budget: 1000,
+      tripLengthDays: 2,
+      maxDriveHours: 5,
+      preferredDestination: "Banff",
+    }),
+    tripPrompt,
+  };
+
+  const winner = rankDestinations(input, 1)[0];
+  if (!winner) {
+    return {
+      id: "R11",
+      passed: false,
+      notes: ["No destination matched the scenic-hike-and-coffee regression case."],
+    };
+  }
+
+  const plan = buildTripPlan(winner, input, "static-ranking");
+  const activityText = plan.itineraryDays
+    .flatMap((day) => day.stops.filter((stop) => stop.kind === "activity"))
+    .flatMap((stop) => [stop.title, stop.description ?? ""])
+    .join(" ")
+    .toLowerCase();
+  const foodText = plan.itineraryDays
+    .flatMap((day) => day.stops.filter((stop) => stop.kind === "food"))
+    .flatMap((stop) => [stop.title, stop.description ?? ""])
+    .join(" ")
+    .toLowerCase();
+  const hasMorningFoodStop = plan.itineraryDays.some((day) =>
+    day.stops.some(
+      (stop) => stop.kind === "food" && (stop.time ?? "").toLowerCase().includes("morning")
+    )
+  );
+  const hasExplicitCoffeeStop = ["coffee", "cafe", "bakery", "espresso"].some((term) =>
+    foodText.includes(term)
+  );
+  const notes: string[] = [];
+
+  if (!winner.name.toLowerCase().includes("banff")) {
+    notes.push(`Expected Banff to win, got ${winner.name}.`);
+  }
+  if (
+    !["trail", "hike", "canyon", "waterfall", "ridge", "summit"].some((term) =>
+      activityText.includes(term)
+    )
+  ) {
+    notes.push("Expected the itinerary to use a real hike-like anchor, not just a generic park stop.");
+  }
+  if (!hasExplicitCoffeeStop && !(hasMorningFoodStop && winner.confidence !== "high")) {
+    notes.push(
+      "Expected either a visible coffee-style stop or a lighter-confidence fallback with a dedicated morning food slot."
+    );
+  }
+  if (foodText.includes("grab & go") || foodText.includes("grab and go")) {
+    notes.push("Expected the coffee stop to avoid generic grab-and-go wording.");
+  }
+
+  return {
+    id: "R11",
+    passed:
+      winner.name.toLowerCase().includes("banff") &&
+      ["trail", "hike", "canyon", "waterfall", "ridge", "summit"].some((term) =>
+        activityText.includes(term)
+      ) &&
+      (hasExplicitCoffeeStop || (hasMorningFoodStop && winner.confidence !== "high")) &&
+      !foodText.includes("grab & go") &&
+      !foodText.includes("grab and go"),
+    notes,
+  };
+}
+
 function evaluateSkiTripRegression(): RegressionCheck {
   const tripPrompt =
     "We're 2 people in Calgary and want a Banff overnight built around one ski day. Make skiing the main event on day 2, keep the arrival night easy with a cozy dinner, and avoid anything that makes the trip feel hectic or overplanned.";
@@ -918,6 +999,7 @@ function main() {
     evaluatePromptDrivenCanmoreRegression(),
     evaluateRequestedActivityRegression(),
     evaluatePromptDinnerGuaranteeRegression(),
+    evaluateScenicHikeCoffeeRegression(),
     evaluateSkiTripRegression(),
     evaluateMultiDaySkiTripRegression(),
     evaluateFutureDateTimingRegression(),

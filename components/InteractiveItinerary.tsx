@@ -1962,7 +1962,10 @@ export default function InteractiveItinerary({
         <textarea
           {...PROMPT_TEXT_ENTRY_PROPS}
           value={builderPrompt}
-          onChange={(event) => setBuilderPrompt(event.target.value)}
+          onChange={(event) => {
+            setBuilderPrompt(event.target.value);
+            setBuilderPromptFeedback(null);
+          }}
           maxLength={BUILDER_PROMPT_MAX_CHARS}
           placeholder="Example: Day 2 lunch to Wild Flour Bakery."
           className="min-h-[56px] w-full rounded-[1.15rem] border border-slate-200 bg-white px-4 py-4 text-sm leading-6 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-cyan-300/40 focus:bg-slate-50 dark:border-white/10 dark:bg-white/[0.04] dark:text-white dark:placeholder:text-slate-500 dark:focus:bg-white/[0.06] lg:min-h-[58px] lg:max-h-[58px]"

@@ -206,8 +206,32 @@ function buildTests(): TestResult[] {
 
     tests.push({
       id: "PG04",
+      passed: validation.ok,
+      details: describeValidation(validation, "accepted"),
+    });
+  }
+
+  {
+    const validation = validateTripPrompt(
+      "Plan a weekend trip to Seattle for two with coffee and a waterfront walk."
+    );
+
+    tests.push({
+      id: "PG04B",
       passed: !validation.ok,
       details: describeValidation(validation, "unexpectedly accepted"),
+    });
+  }
+
+  {
+    const validation = validateTripPrompt(
+      "Plan a weekend trip to Pemberton from Vancouver with one scenic hike and good coffee."
+    );
+
+    tests.push({
+      id: "PG04C",
+      passed: validation.ok,
+      details: describeValidation(validation, "accepted"),
     });
   }
 

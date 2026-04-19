@@ -22,6 +22,7 @@ import {
   PromptValidationFailureReason,
   validateTripPrompt,
 } from "../../../lib/promptValidation";
+import { resolveDynamicPreferredDestination } from "../../../lib/dynamicDestination";
 import { recalculateConfidence } from "../../../lib/generateRankedTrips";
 import { isStartCity } from "../../../lib/startCities";
 import { deriveTripEndDate, isIsoDate } from "../../../lib/tripDates";
@@ -353,7 +354,12 @@ export async function POST(req: Request) {
 
     let rankedTrips = extractRankedTripsFromBody(body);
     if (!rankedTrips || rankedTrips.length === 0) {
-      rankedTrips = rankDestinations(resolvedInput);
+      const dynamicCandidate = await resolveDynamicPreferredDestination(
+        resolvedInput
+      );
+      rankedTrips = rankDestinations(resolvedInput, 3, {
+        additionalRawDestinations: dynamicCandidate ? [dynamicCandidate] : [],
+      });
     }
     rankedTrips = recalculateConfidence(rankedTrips, resolvedInput);
 

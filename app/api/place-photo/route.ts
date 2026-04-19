@@ -16,6 +16,19 @@ const ALLOWED_GOOGLE_PHOTO_HOSTS = [
   "googleusercontent.com",
   "gstatic.com",
 ];
+const DEFAULT_MAX_WIDTH_PX = 1600;
+const DEFAULT_MAX_HEIGHT_PX = 1200;
+const MIN_DIMENSION_PX = 400;
+const MAX_DIMENSION_PX = 2400;
+
+function clampDimension(value: string | null, fallback: number) {
+  const parsed = Number.parseInt(value ?? "", 10);
+  if (!Number.isFinite(parsed)) {
+    return fallback;
+  }
+
+  return Math.max(MIN_DIMENSION_PX, Math.min(MAX_DIMENSION_PX, parsed));
+}
 
 async function fetchAllowedPhoto(url: string, redirectsRemaining = 2): Promise<Response> {
   if (!isAllowedExternalFetchUrl(url, ALLOWED_GOOGLE_PHOTO_HOSTS)) {
@@ -62,6 +75,14 @@ export async function GET(request: Request) {
 
     const { searchParams } = new URL(request.url);
     const ref = searchParams.get("ref")?.trim();
+    const maxWidthPx = clampDimension(
+      searchParams.get("w"),
+      DEFAULT_MAX_WIDTH_PX
+    );
+    const maxHeightPx = clampDimension(
+      searchParams.get("h"),
+      DEFAULT_MAX_HEIGHT_PX
+    );
 
     if (
       !ref ||
@@ -74,7 +95,7 @@ export async function GET(request: Request) {
     }
 
     const photoMetaResponse = await fetch(
-      `https://places.googleapis.com/v1/${ref}/media?maxWidthPx=900&maxHeightPx=560&skipHttpRedirect=true`,
+      `https://places.googleapis.com/v1/${ref}/media?maxWidthPx=${maxWidthPx}&maxHeightPx=${maxHeightPx}&skipHttpRedirect=true`,
       {
         headers: {
           "X-Goog-Api-Key": API_KEY,

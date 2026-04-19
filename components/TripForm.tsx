@@ -27,6 +27,10 @@ type Props = {
   onSubmit?: (input: TripInput) => Promise<void> | void;
   loading?: boolean;
   initialInput?: Partial<TripInput>;
+  promptSuggestion?: {
+    text: string;
+    token: number;
+  } | null;
 };
 
 type ChatMessage = {
@@ -512,7 +516,7 @@ function nextComposerPlaceholder(field: IntakeQuestionField | null) {
     case "budgetPerTraveler":
       return "Example: $300 each";
     default:
-      return "Describe the Alberta trip you want to take";
+      return "Describe the Canada trip you want to take";
   }
 }
 
@@ -525,6 +529,7 @@ export default function TripForm({
   onSubmit,
   loading = false,
   initialInput,
+  promptSuggestion,
 }: Props) {
   const [prompt, setPrompt] = useState(initialInput?.tripPrompt ?? "");
   const [composerValue, setComposerValue] = useState(initialInput?.tripPrompt ?? "");
@@ -602,6 +607,36 @@ export default function TripForm({
     startCityInputRef.current?.focus();
   }, [isStartCityQuestion, loading]);
 
+  useEffect(() => {
+    const nextPrompt = promptSuggestion?.text?.trim();
+    if (!nextPrompt) {
+      return;
+    }
+
+    const frameId = window.requestAnimationFrame(() => {
+      setPrompt(nextPrompt);
+      setComposerValue(nextPrompt);
+      setAnswers(buildSeedAnswers());
+      setMessages([]);
+      setPendingField(null);
+      setMode("prompt");
+      setErrorMessage("");
+      setIsStartCityInputFocused(false);
+      setActiveStartCityIndex(0);
+
+      const composerTextarea = composerTextareaRef.current;
+      if (!composerTextarea) {
+        return;
+      }
+
+      composerTextarea.focus();
+      const selectionEnd = composerTextarea.value.length;
+      composerTextarea.setSelectionRange(selectionEnd, selectionEnd);
+    });
+
+    return () => window.cancelAnimationFrame(frameId);
+  }, [promptSuggestion?.text, promptSuggestion?.token]);
+
   async function handleResolvedDraft(
     resolvedDraft: ReturnType<typeof buildConversationalDraft>,
     nextMessages: ChatMessage[]
@@ -616,7 +651,7 @@ export default function TripForm({
         {
           id: nextMessageId("assistant-ready"),
           role: "assistant",
-          text: "Perfect. Building your Alberta trip now.",
+          text: "Perfect. Building your Canada trip now.",
         },
     ]);
 
@@ -636,7 +671,7 @@ export default function TripForm({
 
     if (mode === "prompt") {
       if (!trimmedComposerValue) {
-        setErrorMessage("Start with the kind of Alberta trip you want.");
+        setErrorMessage("Start with the kind of Canada trip you want.");
         return;
       }
 
@@ -945,7 +980,7 @@ export default function TripForm({
                       <div
                         id={startCityListboxId}
                         role="listbox"
-                        aria-label="Suggested Alberta departure cities"
+                        aria-label="Suggested Canadian departure cities"
                         className="max-h-60 overflow-y-auto p-2"
                       >
                         {filteredStartCities.map((city, index) => {
@@ -987,7 +1022,10 @@ export default function TripForm({
               ref={composerTextareaRef}
               {...PROMPT_TEXT_ENTRY_PROPS}
               value={composerValue}
-              onChange={(event) => setComposerValue(event.target.value)}
+              onChange={(event) => {
+                setComposerValue(event.target.value);
+                setErrorMessage("");
+              }}
               onKeyDown={handleComposerKeyDown}
               placeholder={nextComposerPlaceholder(pendingField)}
               disabled={loading}

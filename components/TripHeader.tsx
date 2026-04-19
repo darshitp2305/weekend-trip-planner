@@ -79,6 +79,7 @@ type TripHeaderProps = {
     budgetPerTraveler?: number;
     totalBudget?: number;
     itineraryDays?: TripPlan["itineraryDays"];
+    foodSpots?: TripPlan["foodSpots"];
     topActivities?: TripPlan["topActivities"];
     estimatedCost?: number;
     budgetBreakdown?: TripPlan["budgetBreakdown"];
@@ -319,6 +320,7 @@ export default function TripHeader({ trip, shareMode = false }: TripHeaderProps)
     destination: trip.destination,
     homeBaseCity: trip.homeBaseCity,
     name: trip.name,
+    foodSpots: trip.foodSpots,
     topActivities: trip.topActivities,
     itineraryDays: trip.itineraryDays,
     savedSelectionState: trip.savedSelectionState,
@@ -396,11 +398,11 @@ export default function TripHeader({ trip, shareMode = false }: TripHeaderProps)
         <div className="p-5 sm:p-6">
         {!shareMode ? (
           <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#0f766e] dark:text-cyan-200/75">
-            Alberta trip planner
+            Canada trip planner
           </div>
         ) : null}
         <div className="flex flex-wrap items-center gap-2">
-          <Badge>{trip.province ?? "Alberta"}</Badge>
+          <Badge>{trip.province ?? "Canada"}</Badge>
           <Badge tone={trip.status === "finalized" ? "green" : "slate"}>
             {trip.status === "finalized" ? "Finalized trip" : "Draft trip"}
           </Badge>

@@ -1,11 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import Image from "next/image";
+import { useCallback, useEffect, useRef, useState } from "react";
 import AccountPanel, { type AccountPanelUser } from "../components/AccountPanel";
 import BrandLogo, { BrandMark } from "../components/BrandLogo";
 import TripCard from "../components/TripCard";
 import TripForm from "../components/TripForm";
-import rawDestinations from "../data/destinations.json";
+import rawDestinations from "../lib/destinationCatalog";
 import { trackProductEvent } from "../lib/productAnalytics";
 import { normalizeTripImageSet } from "../lib/tripImages";
 import { ProviderOutcome, RankedDestination, RawDestination, TripInput } from "../lib/types";
@@ -70,8 +71,33 @@ type FeaturedHero = {
   detail: string;
 };
 
+type PromptSuggestion = {
+  text: string;
+  token: number;
+};
+
+type HomePromptCard = {
+  id: string;
+  title: string;
+  eyebrow: string;
+  caption: string;
+  chips: string[];
+  prompt: string;
+  imageUrl: string;
+  imageUrlLight: string;
+  imageUrlDark: string;
+  imagePosition?: string;
+};
+
+type HomePromptCollections = {
+  season: "Spring" | "Summer" | "Fall" | "Winter";
+  inSeason: HomePromptCard[];
+  mustSee: HomePromptCard[];
+};
+
 const LAST_INPUT_STORAGE_KEY = "weekend-trip-last-input";
 const PAGE_STATE_STORAGE_KEY = "weekend-trip-page-state";
+const DESTINATION_SOURCE = rawDestinations as RawDestination[];
 
 function ensureTripImage(trip: RankedDestination): RankedDestination {
   const imageSet = normalizeTripImageSet(
@@ -124,7 +150,7 @@ function plannerErrorMessage(
 }
 
 function buildHeroCandidates() {
-  return (rawDestinations as RawDestination[])
+  return DESTINATION_SOURCE
     .filter(
       (destination) =>
         Boolean(
@@ -172,15 +198,292 @@ function buildHeroCandidates() {
 }
 
 const HERO_CANDIDATES = buildHeroCandidates();
-const DEFAULT_HERO_IMAGE_SET = normalizeTripImageSet({}, "Alberta");
+const DEFAULT_HERO_IMAGE_SET = normalizeTripImageSet({}, "Canada");
 const DEFAULT_HERO: FeaturedHero = HERO_CANDIDATES[0] ?? {
-  name: "Alberta",
+  name: "Canada",
   imageUrl: DEFAULT_HERO_IMAGE_SET.defaultUrl,
   imageUrlLight: DEFAULT_HERO_IMAGE_SET.lightUrl,
   imageUrlDark: DEFAULT_HERO_IMAGE_SET.darkUrl,
-  eyebrow: "Daily Alberta feature",
-  caption: "A cinematic Alberta escape, refreshed each day.",
+  eyebrow: "Daily Canada feature",
+  caption: "A cinematic Canadian escape, refreshed each day.",
   detail: "Curated for the planner",
+};
+
+function getDestinationById(destinationId: string) {
+  return DESTINATION_SOURCE.find((destination) => destination.id === destinationId);
+}
+
+function buildHomePromptCard(config: {
+  id: string;
+  destinationId: string;
+  title: string;
+  eyebrow: string;
+  caption: string;
+  chips: string[];
+  prompt: string;
+  imageUrl?: string;
+  imageUrlLight?: string;
+  imageUrlDark?: string;
+  imagePosition?: string;
+}): HomePromptCard | null {
+  const destination = getDestinationById(config.destinationId);
+  if (!destination) {
+    return null;
+  }
+
+  const imageSet = normalizeTripImageSet(
+    {
+      imageUrl:
+        config.imageUrl ??
+        config.imageUrlLight ??
+        destination.image_url_light ??
+        destination.image_url,
+      imageUrlLight:
+        config.imageUrlLight ??
+        config.imageUrl ??
+        destination.image_url_light ??
+        destination.image_url,
+      imageUrlDark:
+        config.imageUrlDark ??
+        config.imageUrlLight ??
+        config.imageUrl ??
+        destination.image_url_dark ??
+        destination.image_url_light ??
+        destination.image_url,
+    },
+    destination.name
+  );
+
+  return {
+    id: config.id,
+    title: config.title,
+    eyebrow: config.eyebrow,
+    caption: config.caption,
+    chips: config.chips,
+    prompt: config.prompt,
+    imageUrl: imageSet.defaultUrl,
+    imageUrlLight: imageSet.lightUrl,
+    imageUrlDark: imageSet.darkUrl,
+    imagePosition: config.imagePosition,
+  };
+}
+
+function compactCards(cards: Array<HomePromptCard | null>) {
+  return cards.filter((card): card is HomePromptCard => Boolean(card));
+}
+
+const HOME_PROMPT_LIBRARY: Record<
+  "Spring" | "Summer" | "Fall" | "Winter",
+  Omit<HomePromptCollections, "season">
+> = {
+  Spring: {
+    inSeason: compactCards([
+      buildHomePromptCard({
+        id: "spring-vancouver-blossoms",
+        destinationId: "vancouver_staycation_bc",
+        title: "Cherry blossom season in Vancouver",
+        eyebrow: "In season now",
+        caption:
+          "Soft pink streets, coffee stops, and long seawall walks make spring weekends feel easy to say yes to.",
+        chips: ["Spring", "Coffee", "City walks"],
+        prompt:
+          "Plan a spring Vancouver staycation around cherry blossoms, great coffee, long park walks, and one memorable dinner for 2 travelers.",
+        imageUrl: "/home-prompts/vancouver-cherry-blossom.jpg",
+        imagePosition: "center 82%",
+      }),
+      buildHomePromptCard({
+        id: "spring-victoria-gardens",
+        destinationId: "victoria_staycation_bc",
+        title: "Garden season in Victoria",
+        eyebrow: "In season now",
+        caption:
+          "Harbour light, blooming gardens, and a polished downtown make this feel like a clean spring reset.",
+        chips: ["Spring", "Gardens", "Harbour"],
+        prompt:
+          "Plan a spring Victoria weekend from Vancouver around gardens in bloom, harbour walks, good coffee, and a low-stress overnight stay for 2 travelers.",
+        imageUrl: "/home-prompts/victoria-garden-season.jpg",
+        imagePosition: "center 58%",
+      }),
+    ]),
+    mustSee: compactCards([
+      buildHomePromptCard({
+        id: "spring-tofino-shoulder",
+        destinationId: "tofino_ucluelet_bc",
+        title: "Tofino shoulder-season ocean weekend",
+        eyebrow: "Must see right now",
+        caption:
+          "Cool air, dramatic beaches, and cozy cafes make spring feel cinematic without peak-summer crowds.",
+        chips: ["Ocean", "Spring", "Cozy"],
+        prompt:
+          "Plan a spring road trip to Tofino / Ucluelet from Vancouver with dramatic beach walks, cozy cafes, ocean views, and a relaxed overnight pace for 2 travelers.",
+        imageUrl: "/home-prompts/tofino-ocean-weekend.jpg",
+        imagePosition: "center 68%",
+      }),
+      buildHomePromptCard({
+        id: "spring-squamish-hikes",
+        destinationId: "squamish_bc",
+        title: "Early hiking weekends in Squamish",
+        eyebrow: "Must see right now",
+        caption:
+          "This is the fast-payoff mountain answer when you want one scenic hike and a strong coffee stop without overcommitting.",
+        chips: ["Hiking", "Mountains", "Easy from Vancouver"],
+        prompt:
+          "Plan a spring Squamish getaway from Vancouver with one scenic hike, good coffee, mountain viewpoints, and a budget-friendly overnight for 2 travelers.",
+        imageUrl: "/home-prompts/squamish-hiking-weekend.jpg",
+        imagePosition: "center 18%",
+      }),
+    ]),
+  },
+  Summer: {
+    inSeason: compactCards([
+      buildHomePromptCard({
+        id: "summer-whistler-alpine",
+        destinationId: "whistler_bc",
+        title: "Alpine lake season in Whistler",
+        eyebrow: "In season now",
+        caption:
+          "Summer is when the lakes, gondola views, and patio energy all line up at once.",
+        chips: ["Summer", "Alpine", "Lakes"],
+        prompt:
+          "Plan a summer Whistler trip from Vancouver with an alpine lake feel, one scenic hike, good coffee, and enough wow factor for 2 travelers.",
+      }),
+      buildHomePromptCard({
+        id: "summer-niagara-patio",
+        destinationId: "niagara_on_the_lake_on",
+        title: "Patio and wine season in Niagara-on-the-Lake",
+        eyebrow: "In season now",
+        caption:
+          "This is the polished summer answer when you want gardens, wine, and walkable old-town energy.",
+        chips: ["Summer", "Wine", "Patios"],
+        prompt:
+          "Plan a summer Niagara-on-the-Lake getaway with patio meals, winery stops, garden streets, and a romantic overnight for 2 travelers.",
+      }),
+    ]),
+    mustSee: compactCards([
+      buildHomePromptCard({
+        id: "summer-tofino-beaches",
+        destinationId: "tofino_ucluelet_bc",
+        title: "Sunset beach weekends in Tofino",
+        eyebrow: "Must see right now",
+        caption:
+          "When the days stretch out, this is one of the highest-payoff coastal weekends in the planner.",
+        chips: ["Summer", "Beach", "Sunset"],
+        prompt:
+          "Plan a summer Tofino / Ucluelet trip from Vancouver with beach time, one scenic coastal walk, good coffee, and a laid-back overnight for 2 travelers.",
+      }),
+      buildHomePromptCard({
+        id: "summer-quebec-city-festival",
+        destinationId: "quebec_city_qc",
+        title: "Festival nights in Quebec City",
+        eyebrow: "Must see right now",
+        caption:
+          "Historic streets plus summer-night energy make this feel bigger than a normal city weekend.",
+        chips: ["Summer", "Old city", "Festivals"],
+        prompt:
+          "Plan a summer Quebec City weekend from Montreal with old-city wandering, great food, one standout view, and evening festival energy for 2 travelers.",
+      }),
+    ]),
+  },
+  Fall: {
+    inSeason: compactCards([
+      buildHomePromptCard({
+        id: "fall-charlevoix-colours",
+        destinationId: "charlevoix_qc",
+        title: "Fall colour season in Charlevoix",
+        eyebrow: "In season now",
+        caption:
+          "This is the classic drive-for-the-leaves answer when you want scenery to do most of the work.",
+        chips: ["Fall", "Scenic drive", "Colour"],
+        prompt:
+          "Plan a fall Charlevoix road trip from Montreal with peak colours, scenic pull-offs, cozy food stops, and one memorable overnight for 2 travelers.",
+      }),
+      buildHomePromptCard({
+        id: "fall-eastern-townships-harvest",
+        destinationId: "eastern_townships_qc",
+        title: "Harvest weekends in the Eastern Townships",
+        eyebrow: "In season now",
+        caption:
+          "Apple orchards, rolling roads, and cafe stops make this feel easy and high-reward.",
+        chips: ["Fall", "Harvest", "Cafe stops"],
+        prompt:
+          "Plan a fall Eastern Townships getaway from Montreal with harvest-season stops, cozy cafes, scenic roads, and a relaxed overnight for 2 travelers.",
+      }),
+    ]),
+    mustSee: compactCards([
+      buildHomePromptCard({
+        id: "fall-niagara-harvest",
+        destinationId: "niagara_on_the_lake_on",
+        title: "Wine harvest in Niagara-on-the-Lake",
+        eyebrow: "Must see right now",
+        caption:
+          "This is the soft-luxury fall weekend when you want vineyards, good food, and zero rough edges.",
+        chips: ["Fall", "Wine", "Romantic"],
+        prompt:
+          "Plan a fall Niagara-on-the-Lake weekend with winery stops, small-town streets, standout meals, and an easy romantic overnight for 2 travelers.",
+      }),
+      buildHomePromptCard({
+        id: "fall-quebec-city-crisp",
+        destinationId: "quebec_city_qc",
+        title: "Crisp cafe weekends in Quebec City",
+        eyebrow: "Must see right now",
+        caption:
+          "If you want atmosphere over distance, old stone streets and cool weather do the work here.",
+        chips: ["Fall", "Cafe", "City break"],
+        prompt:
+          "Plan a fall Quebec City weekend from Montreal with crisp-weather walks, great coffee, historic streets, and one standout meal for 2 travelers.",
+      }),
+    ]),
+  },
+  Winter: {
+    inSeason: compactCards([
+      buildHomePromptCard({
+        id: "winter-whistler-ski",
+        destinationId: "whistler_bc",
+        title: "Ski season in Whistler",
+        eyebrow: "In season now",
+        caption:
+          "When winter is the point, this is the easy high-confidence pick for snow payoff.",
+        chips: ["Winter", "Skiing", "Village"],
+        prompt:
+          "Plan a winter Whistler trip from Vancouver around skiing, village coffee stops, one scenic viewpoint, and a polished overnight for 2 travelers.",
+      }),
+      buildHomePromptCard({
+        id: "winter-yellowknife-aurora",
+        destinationId: "yellowknife_staycation_nt",
+        title: "Aurora season in Yellowknife",
+        eyebrow: "In season now",
+        caption:
+          "This is the dramatic winter move when you want the trip to feel unforgettable from the start.",
+        chips: ["Winter", "Aurora", "Bucket list"],
+        prompt:
+          "Plan a winter Yellowknife staycation around aurora viewing, warm coffee stops, and one memorable local experience for 2 travelers.",
+      }),
+    ]),
+    mustSee: compactCards([
+      buildHomePromptCard({
+        id: "winter-quebec-city-magic",
+        destinationId: "quebec_city_qc",
+        title: "Winter magic in Quebec City",
+        eyebrow: "Must see right now",
+        caption:
+          "Snowy old streets and cozy hotels make this one of the best atmosphere-first winter weekends.",
+        chips: ["Winter", "Old city", "Cozy"],
+        prompt:
+          "Plan a winter Quebec City weekend from Montreal with snowy old-city streets, cozy cafes, festive lights, and one memorable dinner for 2 travelers.",
+      }),
+      buildHomePromptCard({
+        id: "winter-banff-snow",
+        destinationId: "banff_ab",
+        title: "Snowy mountain weekends in Banff",
+        eyebrow: "Must see right now",
+        caption:
+          "For a winter mountain hit without guesswork, this is still one of the strongest visual payoffs in the planner.",
+        chips: ["Winter", "Mountains", "Scenic"],
+        prompt:
+          "Plan a winter Banff weekend from Calgary with snowy mountain views, a relaxing hot-pool moment, good coffee, and one easy scenic walk for 2 travelers.",
+      }),
+    ]),
+  },
 };
 
 function getFeaturedHeroForDate(referenceDate = new Date()) {
@@ -200,6 +503,110 @@ function getFeaturedHeroForDate(referenceDate = new Date()) {
   );
 
   return HERO_CANDIDATES[key % HERO_CANDIDATES.length] ?? DEFAULT_HERO;
+}
+
+function getCurrentSeason(referenceDate = new Date()) {
+  const month = Number(
+    new Intl.DateTimeFormat("en-CA", {
+      timeZone: "America/Edmonton",
+      month: "2-digit",
+    }).format(referenceDate)
+  );
+
+  if (month >= 3 && month <= 5) {
+    return "Spring";
+  }
+  if (month >= 6 && month <= 8) {
+    return "Summer";
+  }
+  if (month >= 9 && month <= 11) {
+    return "Fall";
+  }
+  return "Winter";
+}
+
+function getHomePromptCollectionsForDate(
+  referenceDate = new Date()
+): HomePromptCollections {
+  const season = getCurrentSeason(referenceDate);
+  const promptSet = HOME_PROMPT_LIBRARY[season];
+
+  return {
+    season,
+    inSeason: promptSet.inSeason,
+    mustSee: promptSet.mustSee,
+  };
+}
+
+function HomePromptCardGrid({
+  cards,
+  onSelect,
+}: {
+  cards: HomePromptCard[];
+  onSelect: (prompt: string) => void;
+}) {
+  return (
+    <div className="grid gap-4 sm:grid-cols-2">
+      {cards.map((card) => (
+        <div
+          key={card.id}
+          className="group w-full"
+        >
+          <div className="relative overflow-hidden rounded-[1.55rem] bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.03))] shadow-[0_16px_40px_rgba(148,163,184,0.12)] ring-1 ring-white/8 transition duration-300 group-hover:-translate-y-1 group-hover:shadow-[0_24px_56px_rgba(148,163,184,0.2)] group-hover:ring-[#d9b57c]/35 dark:bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.025))] dark:shadow-[0_16px_40px_rgba(0,0,0,0.22)] dark:ring-white/8 dark:group-hover:shadow-[0_24px_56px_rgba(0,0,0,0.32)] dark:group-hover:ring-[#7decc7]/24">
+            <button
+              type="button"
+              onClick={() => onSelect(card.prompt)}
+              className="block w-full appearance-none bg-transparent p-0 text-left align-top"
+            >
+              <div className="relative h-40 overflow-hidden">
+                <Image
+                  src={card.imageUrlLight}
+                  alt=""
+                  fill
+                  sizes="(max-width: 640px) 100vw, 50vw"
+                  className="absolute inset-0 object-cover transition duration-700 ease-out group-hover:scale-[1.05] dark:hidden"
+                  style={{ objectPosition: card.imagePosition ?? "center" }}
+                />
+                <Image
+                  src={card.imageUrlDark}
+                  alt=""
+                  fill
+                  sizes="(max-width: 640px) 100vw, 50vw"
+                  className="absolute inset-0 hidden object-cover transition duration-700 ease-out group-hover:scale-[1.05] dark:block"
+                  style={{ objectPosition: card.imagePosition ?? "center" }}
+                />
+                <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(8,14,23,0.16),rgba(8,14,23,0.74))] transition duration-300 group-hover:bg-[linear-gradient(180deg,rgba(8,14,23,0.08),rgba(8,14,23,0.68))]" />
+                <div className="absolute inset-x-0 bottom-0 p-4 transition duration-300 group-hover:translate-y-[-2px]">
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-white/72">
+                    {card.eyebrow}
+                  </div>
+                  <div className="mt-2 max-w-[18rem] text-[1.45rem] font-semibold leading-tight tracking-[-0.03em] text-white">
+                    {card.title}
+                  </div>
+                </div>
+              </div>
+
+              <div className="border-t border-slate-200/60 bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.02))] p-4 transition duration-300 group-hover:bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.03))] dark:border-white/8 dark:bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))] dark:group-hover:bg-[linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.03))]">
+                <p className="text-sm leading-6 text-slate-700 transition duration-300 dark:text-white/72 dark:group-hover:text-white/82">
+                  {card.caption}
+                </p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {card.chips.map((chip) => (
+                    <span
+                      key={`${card.id}-${chip}`}
+                      className="inline-flex items-center rounded-full border border-slate-200/70 bg-[#fbf7ef]/76 px-3 py-1.5 text-xs font-medium text-slate-800 transition duration-300 group-hover:border-[#d9b57c]/30 group-hover:bg-[#fff7eb]/88 dark:border-white/12 dark:bg-white/8 dark:text-white/82 dark:group-hover:border-[#7decc7]/18 dark:group-hover:bg-white/10"
+                    >
+                      {chip}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </button>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 async function enrichSelectedTrip(
@@ -310,9 +717,14 @@ export default function HomePage() {
   const [savedTripsOpen, setSavedTripsOpen] = useState(false);
   const [accountUser, setAccountUser] = useState<AccountPanelUser | null>(null);
   const [featuredHero, setFeaturedHero] = useState<FeaturedHero>(DEFAULT_HERO);
+  const [promptSuggestion, setPromptSuggestion] = useState<PromptSuggestion | null>(
+    null
+  );
+  const tripFormRef = useRef<HTMLDivElement | null>(null);
   const accountTriggerLabel = accountUser
     ? displayNameFromEmail(accountUser.email)
     : "Log in";
+  const homePromptCollections = getHomePromptCollectionsForDate();
 
   const persistPageState = useCallback(
     (nextState: StoredPageState) => {
@@ -515,10 +927,15 @@ export default function HomePage() {
 
         if (resolvedInput.preferredDestination) {
           const destinationLabel = resolvedInput.preferredDestination.trim();
+          const destinationWasNotFound =
+            diagnosticHeadline.toLowerCase().includes("could not find");
           setDestinationConstraintModal({
-            title: destinationLabel
-              ? `${destinationLabel} does not fit this trip`
-              : "This destination does not fit this trip",
+            title:
+              destinationWasNotFound && diagnosticHeadline
+                ? diagnosticHeadline
+                : destinationLabel
+                  ? `${destinationLabel} does not fit this trip`
+                  : "This destination does not fit this trip",
             reasons:
               diagnosticReasons.length > 0
                 ? diagnosticReasons.slice(0, 2)
@@ -688,6 +1105,20 @@ export default function HomePage() {
     });
   }
 
+  const handleHomePromptSelect = useCallback((promptText: string) => {
+    setPromptSuggestion({
+      text: promptText,
+      token: Date.now(),
+    });
+
+    window.requestAnimationFrame(() => {
+      tripFormRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    });
+  }, []);
+
   return (
         <main className="min-h-screen bg-[radial-gradient(circle_at_top,rgba(125,211,252,0.1),transparent_34%),linear-gradient(180deg,#edf2f7_0%,#e4ebf3_52%,#dbe3ee_100%)] text-slate-950 dark:bg-[radial-gradient(circle_at_top,rgba(17,94,117,0.16),transparent_28%),linear-gradient(180deg,#08111a_0%,#0b1420_55%,#101927_100%)] dark:text-white">
       <AccountPanel
@@ -778,43 +1209,47 @@ export default function HomePage() {
             />
           </header>
 
-          <div className="flex flex-1 items-center py-10 lg:py-14">
-            <div className="grid w-full gap-10 lg:grid-cols-[1.05fr_0.95fr] lg:items-end">
+          <div className="flex flex-1 flex-col justify-center py-10 lg:py-14">
+            <div className="grid w-full gap-10 lg:grid-cols-[minmax(0,1.05fr)_minmax(22rem,0.95fr)] lg:items-start">
               <div className="max-w-3xl">
                 <div className="relative max-w-4xl overflow-hidden rounded-[2.5rem] px-5 py-6 sm:px-6">
                   <div className="pointer-events-none absolute inset-0 rounded-[2.5rem] bg-[radial-gradient(circle_at_top_left,rgba(248,245,239,0.84),rgba(248,245,239,0.28)_42%,transparent_74%),linear-gradient(90deg,rgba(246,242,236,0.56)_0%,rgba(240,244,248,0.16)_58%,transparent_100%)] shadow-[0_18px_55px_rgba(148,163,184,0.08)] backdrop-blur-[4px] dark:hidden" />
                   <div className="relative">
                     <div className="text-[11px] font-semibold uppercase tracking-[0.26em] text-[#9b6219] dark:text-[#e7c99c]">
-                      Alberta trip planner
+                      Canada trip planner
                     </div>
-                    <h1 className="mt-5 max-w-4xl font-serif text-[3rem] leading-[0.98] tracking-[-0.045em] text-slate-950 sm:text-[4rem] lg:text-[4.7rem] dark:text-white">
+                    <h1 className="mt-5 max-w-3xl font-serif text-[3rem] leading-[0.98] tracking-[-0.045em] text-slate-950 sm:text-[4rem] lg:text-[4.75rem] dark:text-white">
                       Describe the trip you want.
                       <span className="block text-slate-800 dark:text-white/84">
                         I&apos;ll fill in the gaps.
                       </span>
                     </h1>
                     <p className="mt-5 max-w-2xl text-base font-medium leading-8 text-slate-800/95 sm:text-lg dark:text-white/76">
-                      One good prompt is enough to start. Describe the Alberta
+                      One good prompt is enough to start. Describe the Canada
                       weekend you want, and if anything essential is missing, the
                       planner will ask one focused follow-up before building the plan.
                     </p>
                   </div>
                 </div>
 
-                <div className="mt-7 max-w-xl rounded-[1.8rem] border border-slate-200/70 bg-[#f6f1e8]/48 p-5 shadow-[0_24px_70px_rgba(148,163,184,0.12)] backdrop-blur-lg dark:border-white/12 dark:bg-white/10 dark:shadow-[0_28px_80px_rgba(0,0,0,0.24)]">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500 dark:text-white/56">
-                    Daily feature
-                  </div>
-                  <div className="mt-3 text-2xl font-semibold tracking-[-0.03em] text-slate-950 dark:text-white">
-                    {featuredHero.name}
-                  </div>
-                  <p className="mt-3 text-sm font-medium leading-7 text-slate-800/90 dark:text-white/74">
-                    {featuredHero.caption}
-                  </p>
-                  <div className="mt-4 flex flex-wrap gap-2">
+                <div className="mt-7 max-w-2xl rounded-[1.8rem] border border-slate-200/70 bg-[#f6f1e8]/48 p-5 shadow-[0_24px_70px_rgba(148,163,184,0.12)] backdrop-blur-lg dark:border-white/12 dark:bg-white/10 dark:shadow-[0_28px_80px_rgba(0,0,0,0.24)]">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500 dark:text-white/56">
+                        Featured place of the day
+                      </div>
+                      <div className="mt-3 text-2xl font-semibold tracking-[-0.03em] text-slate-950 dark:text-white">
+                        {featuredHero.name}
+                      </div>
+                    </div>
                     <span className="inline-flex items-center rounded-full border border-slate-200/70 bg-[#fbf7ef]/72 px-3 py-1.5 text-xs font-medium text-slate-800 dark:border-white/12 dark:bg-white/8 dark:text-white/82">
                       {featuredHero.eyebrow}
                     </span>
+                  </div>
+                  <p className="mt-3 max-w-xl text-sm font-medium leading-7 text-slate-800/90 dark:text-white/74">
+                    {featuredHero.caption}
+                  </p>
+                  <div className="mt-4 flex flex-wrap gap-2">
                     <span className="inline-flex items-center rounded-full border border-slate-200/70 bg-[#fbf7ef]/72 px-3 py-1.5 text-xs font-medium text-slate-800 dark:border-white/12 dark:bg-white/8 dark:text-white/82">
                       {featuredHero.detail}
                     </span>
@@ -822,12 +1257,80 @@ export default function HomePage() {
                 </div>
               </div>
 
-              <TripForm
-                key={lastInput ? JSON.stringify(lastInput) : "new-trip"}
-                onGenerate={handleGenerate}
-                loading={loading}
-                initialInput={lastInput ?? undefined}
-              />
+              <div ref={tripFormRef} className="w-full max-w-xl lg:justify-self-end">
+                <TripForm
+                  key={lastInput ? JSON.stringify(lastInput) : "new-trip"}
+                  onGenerate={handleGenerate}
+                  loading={loading}
+                  initialInput={lastInput ?? undefined}
+                  promptSuggestion={promptSuggestion}
+                />
+              </div>
+            </div>
+
+            <div className="mt-12 w-full rounded-[2.2rem] border border-slate-200/70 bg-[linear-gradient(180deg,rgba(247,244,238,0.62),rgba(240,244,249,0.72))] p-6 shadow-[0_26px_70px_rgba(148,163,184,0.12)] backdrop-blur-md dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(8,14,23,0.9),rgba(10,17,28,0.96))] dark:shadow-[0_30px_80px_rgba(0,0,0,0.3)] sm:p-7">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+                <div className="max-w-3xl">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#9b6219] dark:text-[#e7c99c]">
+                    Prompt shortcuts
+                  </div>
+                  <h2 className="mt-3 text-2xl font-semibold tracking-[-0.03em] text-slate-950 dark:text-white sm:text-[2.1rem]">
+                    In season and must-see ideas that jump straight into the prompt box
+                  </h2>
+                  <p className="mt-3 text-sm leading-7 text-slate-700 dark:text-white/68 sm:text-[15px]">
+                    Click any card to preload the prompt, then tweak it if you want before you hit plan.
+                  </p>
+                </div>
+                <div className="inline-flex w-fit items-center rounded-full border border-slate-200/70 bg-[#fbf7ef]/78 px-4 py-2 text-xs font-medium text-slate-700 dark:border-white/12 dark:bg-white/8 dark:text-white/72">
+                  {homePromptCollections.season} picks
+                </div>
+              </div>
+
+              <div className="mt-8 grid gap-6 xl:grid-cols-2">
+                <section className="rounded-[1.8rem] border border-slate-200/70 bg-white/46 p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] dark:border-white/10 dark:bg-white/[0.03] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#0f766e] dark:text-[#7decc7]">
+                        In season now
+                      </div>
+                      <h3 className="mt-2 text-xl font-semibold tracking-[-0.03em] text-slate-950 dark:text-white">
+                        Seasonal trips with a clear reason to go now
+                      </h3>
+                    </div>
+                    <div className="rounded-full border border-slate-200/70 bg-[#fbf7ef]/78 px-3 py-1.5 text-xs font-medium text-slate-700 dark:border-white/12 dark:bg-white/8 dark:text-white/72">
+                      Click to fill
+                    </div>
+                  </div>
+                  <div className="mt-5">
+                    <HomePromptCardGrid
+                      cards={homePromptCollections.inSeason}
+                      onSelect={handleHomePromptSelect}
+                    />
+                  </div>
+                </section>
+
+                <section className="rounded-[1.8rem] border border-slate-200/70 bg-white/46 p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] dark:border-white/10 dark:bg-white/[0.03] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#9b6219] dark:text-[#e7c99c]">
+                        Must see right now
+                      </div>
+                      <h3 className="mt-2 text-xl font-semibold tracking-[-0.03em] text-slate-950 dark:text-white">
+                        Faster-start ideas for high-interest trips
+                      </h3>
+                    </div>
+                    <div className="rounded-full border border-slate-200/70 bg-[#fbf7ef]/78 px-3 py-1.5 text-xs font-medium text-slate-700 dark:border-white/12 dark:bg-white/8 dark:text-white/72">
+                      Click to fill
+                    </div>
+                  </div>
+                  <div className="mt-5">
+                    <HomePromptCardGrid
+                      cards={homePromptCollections.mustSee}
+                      onSelect={handleHomePromptSelect}
+                    />
+                  </div>
+                </section>
+              </div>
             </div>
           </div>
         </div>
@@ -874,7 +1377,7 @@ export default function HomePage() {
                     <div className="space-y-4">
                       <div className="rounded-2xl border border-slate-200/70 bg-[#fbf7ef]/62 px-5 py-4 text-sm text-slate-600 shadow-sm dark:border-white/10 dark:bg-white/6 dark:text-white/72">
                         Trippify is shaping your trip and pulling the strongest
-                        Alberta fit for the brief.
+                        fit for the brief.
                       </div>
                       <SkeletonTripCard />
                     </div>

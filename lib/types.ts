@@ -16,6 +16,13 @@ export type TripStyle =
 
 export type ActivityFocus = "skiing" | "hiking" | "camping";
 
+export type DriveTimeSource =
+  | "catalog_exact"
+  | "catalog_hub"
+  | "estimated_coordinates";
+
+export type DriveTimeConfidence = "high" | "medium" | "low";
+
 export interface StyleScores {
   chill: number;
   outdoors: number;
@@ -112,6 +119,8 @@ export interface Destination {
   name: string;
   province: string;
   driveHoursFromStart: number;
+  driveTimeSource?: DriveTimeSource;
+  driveTimeConfidence?: DriveTimeConfidence;
   bestSeasons: string[];
   avoidSeasons: string[];
   tripStyles: TripStyle[];
@@ -164,6 +173,8 @@ export interface RawDestination {
     type: string;
     description?: string;
     link?: string;
+    latitude?: number;
+    longitude?: number;
   }[];
   neighborhoods: {
     name: string;
@@ -175,12 +186,16 @@ export interface RawDestination {
     price_per_night?: number;
     booking_link?: string;
     description?: string;
+    latitude?: number;
+    longitude?: number;
   }[];
   food_spots?: {
     name: string;
     tags?: string[];
     link?: string;
     description?: string;
+    latitude?: number;
+    longitude?: number;
   }[];
 }
 
@@ -525,6 +540,8 @@ export interface TripPlan {
   destination?: string;
   province?: string;
   driveHoursFromStart?: number;
+  driveTimeSource?: DriveTimeSource;
+  driveTimeConfidence?: DriveTimeConfidence;
   rawVibes?: string[];
   source?: TripDataSource;
   isStaycation?: boolean;

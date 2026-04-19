@@ -179,7 +179,7 @@ export default function BrandLogo({
           >
             {isStacked ? (
               <span className="text-[0.6rem] font-semibold uppercase tracking-[0.3em] text-[#7a4307] dark:text-[#e7c99c]">
-                Alberta weekend studio
+                Canada trip studio
               </span>
             ) : null}
             <span

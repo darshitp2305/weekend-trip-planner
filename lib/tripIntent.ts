@@ -3,8 +3,9 @@
  * These helpers pull out signals like travel style, destination preferences, and departure timing so the ranking step can stay more structured.
  */
 
-import rawDestinations from "../data/destinations.json";
-import { START_CITY_OPTIONS } from "./startCities";
+import rawDestinations from "./destinationCatalog";
+import { CANADIAN_DEPARTURE_LOCATIONS } from "./canadaGeography";
+import { type StartCity } from "./startCities";
 import { ActivityFocus, RawDestination, TripStyle } from "./types";
 
 export type PromptActivityAnchor =
@@ -96,15 +97,19 @@ const COMPANION_COUNT_PATTERNS: Array<{
     additionalTravelers: 1,
   },
 ];
-const START_CITY_PATTERNS = START_CITY_OPTIONS.map((city) => ({
-  city,
-  pattern: new RegExp(
-    `\\b(?:from|in|out of|leaving|departing|starting (?:from|in)?|based in)\\s+${normalizeCityPattern(
-      city
-    )}\\b`,
-    "i"
-  ),
-}));
+const START_CITY_PATTERNS = CANADIAN_DEPARTURE_LOCATIONS.flatMap((rawLocation) => {
+  const location = rawLocation as { name: StartCity; aliases?: readonly string[] };
+
+  return [location.name, ...(location.aliases ?? [])].map((candidate) => ({
+    city: location.name,
+    pattern: new RegExp(
+      `\\b(?:from|in|out of|leaving|departing|starting (?:from|in)?|based in)\\s+${normalizeCityPattern(
+        candidate
+      )}\\b`,
+      "i"
+    ),
+  }));
+});
 const DEPARTURE_TIME_PATTERNS = [
   /\b(?:leave|leaving|depart|departing|head(?:ing)? out|set off|drive out|road trip starts?)(?:\s+[a-z]+){0,4}\s+(?:at\s+)?(?:around\s+|about\s+|roughly\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b/i,
   /\b(?:leave|leaving|depart|departing|head(?:ing)? out|set off|drive out|road trip starts?)(?:\s+[a-z]+){0,4}\s+(?:at\s+)?(?:around\s+|about\s+|roughly\s+)?(\d{1,2}):(\d{2})\b/i,
@@ -136,6 +141,37 @@ const RELATIVE_DEPARTURE_TIME_SIGNALS: Array<{
 ];
 const HIKE_DISTANCE_PATTERN =
   /(?:about|around|roughly|approx(?:imately)?)?\s*(\d{1,2}(?:\.\d)?)\s*(?:km|kilometers?|kilometres?)(?:\s*(?:long)?)?(?:\s*(?:for the )?(?:round trip|return|there and back|total))?/i;
+const DESTINATION_CANDIDATE_PATTERNS = [
+  /\b(?:trip|getaway|vacation|weekend|road trip|escape)\s+to\s+([a-z][a-z\s'-]{1,40}?)(?=(?:\s+(?:from|for|with|on|this|next|during|around|near|by|that|which|because|if|where|when|starting)\b|[,.!?]|$))/i,
+  /\b(?:visit(?:ing)?|explore|exploring|headed to|heading to|going to|stay(?:ing)? in|staying in)\s+([a-z][a-z\s'-]{1,40}?)(?=(?:\s+(?:from|for|with|on|this|next|during|around|near|by|that|which|because|if|where|when)\b|[,.!?]|$))/i,
+];
+const GENERIC_DESTINATION_TERMS = new Set([
+  "adventure",
+  "adventurous",
+  "away",
+  "camping",
+  "canada",
+  "cozy",
+  "escape",
+  "food",
+  "fun",
+  "getaway",
+  "hike",
+  "hiking",
+  "mountain",
+  "mountains",
+  "nature",
+  "quiet",
+  "relax",
+  "reset",
+  "road trip",
+  "scenic",
+  "ski",
+  "skiing",
+  "trip",
+  "vacation",
+  "weekend",
+]);
 
 function normalizeCityPattern(city: string) {
   return city.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\s+/g, "\\s+");
@@ -147,6 +183,28 @@ function normalizeText(value?: string) {
     .replace(/[^a-z0-9\s]/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function catalogDestinationMatchesQuery(query?: string): boolean {
+  const normalizedQuery = normalizeText(query);
+  if (!normalizedQuery) return false;
+
+  return (rawDestinations as RawDestination[]).some((destination) => {
+    const haystack = normalizeText(
+      [
+        destination.name,
+        destination.home_base_city,
+        destination.region,
+        ...(destination.anchor_experiences ?? []).map((item) => item.title),
+      ].join(" ")
+    );
+
+    if (!haystack) return false;
+    if (haystack.includes(normalizedQuery)) return true;
+
+    const tokens = normalizedQuery.split(" ").filter(Boolean);
+    return tokens.length > 0 && tokens.every((token) => haystack.includes(token));
+  });
 }
 
 function hasKeywordMatch(text: string, keyword: string) {
@@ -282,6 +340,27 @@ function inferPreferredDestination(prompt: string): string | undefined {
 
     if (matchesHomeBase) {
       return option.destinationName;
+    }
+  }
+
+  for (const pattern of DESTINATION_CANDIDATE_PATTERNS) {
+    const match = prompt.match(pattern);
+    const candidate = match?.[1]?.trim();
+    const normalizedCandidate = normalizeText(candidate);
+    if (
+      !candidate ||
+      !normalizedCandidate ||
+      GENERIC_DESTINATION_TERMS.has(normalizedCandidate) ||
+      normalizedCandidate === normalizeText(promptStartCity)
+    ) {
+      continue;
+    }
+
+    if (
+      catalogDestinationMatchesQuery(candidate) ||
+      normalizedCandidate.split(" ").some((token) => token.length >= 3)
+    ) {
+      return candidate.replace(/^\bthe\s+/i, "").trim();
     }
   }
 
@@ -814,7 +893,7 @@ export function extractPromptTravelerCount(prompt: string): number | null {
   return null;
 }
 
-export function extractPromptStartCity(prompt?: string) {
+export function extractPromptStartCity(prompt?: string): StartCity | undefined {
   const text = prompt?.trim();
   if (!text) return undefined;
 

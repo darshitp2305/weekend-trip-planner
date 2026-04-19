@@ -5,22 +5,33 @@ import { POST as osmRoutePost } from "../app/api/osm-route/route";
 import { GET as placePhotoGet } from "../app/api/place-photo/route";
 import { POST as rankTripsPost } from "../app/api/rank-trips/route";
 import { buildTripPlan } from "../lib/buildTripPlan";
+import destinationCatalog from "../lib/destinationCatalog";
 import {
   buildActivityTextQuery,
   buildRestaurantTextQuery,
 } from "../lib/googlePlaces";
+import { recalculateConfidence } from "../lib/generateRankedTrips";
+import { mapRawDestination } from "../lib/mapDestination";
 import { rankDestinations } from "../lib/rankDestinations";
 import { deriveTripEndDate } from "../lib/tripDates";
 import {
   optimizeSelectionForBudget,
   pickDefaultActivityForStop,
 } from "../lib/tripSelections";
-import { RankedDestination, TripInput, TripPlan, TripStyle } from "../lib/types";
+import {
+  DriveTimeConfidence,
+  DriveTimeSource,
+  RankedDestination,
+  TripInput,
+  TripPlan,
+  TripStyle,
+} from "../lib/types";
 import {
   deriveTripIntentFromPrompt,
   extractPromptBudget,
   extractPromptTravelerCount,
 } from "../lib/tripIntent";
+import { RawDestination } from "../lib/types";
 
 loadEnvConfig(process.cwd());
 
@@ -85,6 +96,39 @@ function buildPlannerCases(): TestCase[] {
     { id: "P18", input: makeInput({ style: "solo reset", startCity: "Calgary", travelerCount: 1, budgetPerTraveler: 180, budget: 180, tripLengthDays: 2, maxDriveHours: 2, strictBudget: true, includeStaycations: true }) },
     { id: "P19", input: makeInput({ style: "hidden gems", startCity: "Edmonton", budgetPerTraveler: 380, budget: 760, tripLengthDays: 4, maxDriveHours: 5 }) },
     { id: "P20", input: makeInput({ style: "adventure", startCity: "Calgary", budgetPerTraveler: 275, budget: 550, tripLengthDays: 2, maxDriveHours: 3, strictBudget: true, includeStaycations: false }) },
+    { id: "P21", input: makeInput({ style: "foodie", startCity: "Toronto", budgetPerTraveler: 260, budget: 520, tripLengthDays: 2, maxDriveHours: 2.5, strictBudget: true }) },
+    { id: "P22", input: makeInput({ style: "adventure", startCity: "Vancouver", budgetPerTraveler: 550, budget: 1100, tripLengthDays: 3, maxDriveHours: 3, includeStaycations: false }) },
+    { id: "P23", input: makeInput({ style: "chill", startCity: "Montreal", budgetPerTraveler: 280, budget: 560, tripLengthDays: 2, maxDriveHours: 3.5 }) },
+    { id: "P24", input: makeInput({ style: "foodie", startCity: "Ottawa", budgetPerTraveler: 240, budget: 480, tripLengthDays: 2, maxDriveHours: 1.5, strictBudget: true }) },
+    { id: "P25", input: makeInput({ style: "chill", startCity: "Kelowna", budgetPerTraveler: 250, budget: 500, tripLengthDays: 2, maxDriveHours: 2.5 }) },
+    { id: "P26", input: makeInput({ style: "chill", startCity: "Victoria", budgetPerTraveler: 240, budget: 480, tripLengthDays: 2, maxDriveHours: 2.5, strictBudget: true }) },
+    { id: "P27", input: makeInput({ style: "outdoors", startCity: "Winnipeg", budgetPerTraveler: 260, budget: 520, tripLengthDays: 2, maxDriveHours: 4, includeStaycations: false }) },
+    { id: "P28", input: makeInput({ style: "outdoors", startCity: "Saskatoon", budgetPerTraveler: 280, budget: 560, tripLengthDays: 2, maxDriveHours: 3.5, includeStaycations: false }) },
+    { id: "P29", input: makeInput({ style: "outdoors", startCity: "Saint John", budgetPerTraveler: 280, budget: 560, tripLengthDays: 2, maxDriveHours: 3.5, includeStaycations: false }) },
+    { id: "P30", input: makeInput({ style: "chill", startCity: "St. John's", budgetPerTraveler: 240, budget: 480, tripLengthDays: 2, maxDriveHours: 2.5, strictBudget: true }) },
+    { id: "P31", input: makeInput({ style: "foodie", startCity: "Gatineau", budgetPerTraveler: 220, budget: 440, tripLengthDays: 2, maxDriveHours: 1.5, strictBudget: true }) },
+    { id: "P32", input: makeInput({ style: "foodie", startCity: "Laval", budgetPerTraveler: 250, budget: 500, tripLengthDays: 2, maxDriveHours: 1.5, strictBudget: true }) },
+    { id: "P33", input: makeInput({ style: "chill", startCity: "Charlottetown", budgetPerTraveler: 240, budget: 480, tripLengthDays: 2, maxDriveHours: 2, strictBudget: true }) },
+    { id: "P34", input: makeInput({ style: "outdoors", startCity: "Corner Brook", budgetPerTraveler: 260, budget: 520, tripLengthDays: 2, maxDriveHours: 3, includeStaycations: false }) },
+    { id: "P35", input: makeInput({ style: "foodie", startCity: "Regina", budgetPerTraveler: 220, budget: 440, tripLengthDays: 2, maxDriveHours: 1.5, strictBudget: true }) },
+    { id: "P36", input: makeInput({ style: "chill", startCity: "Prince George", budgetPerTraveler: 220, budget: 440, tripLengthDays: 2, maxDriveHours: 2, strictBudget: true }) },
+    { id: "P37", input: makeInput({ style: "chill", startCity: "Whitehorse", budgetPerTraveler: 260, budget: 520, tripLengthDays: 2, maxDriveHours: 2.5, strictBudget: true }) },
+    { id: "P38", input: makeInput({ style: "outdoors", startCity: "Whitehorse", budgetPerTraveler: 300, budget: 600, tripLengthDays: 2, maxDriveHours: 2.5, includeStaycations: false }) },
+    { id: "P39", input: makeInput({ style: "chill", startCity: "Yellowknife", budgetPerTraveler: 280, budget: 560, tripLengthDays: 2, maxDriveHours: 2, strictBudget: true }) },
+    { id: "P40", input: makeInput({ style: "chill", startCity: "Iqaluit", budgetPerTraveler: 350, budget: 700, tripLengthDays: 2, maxDriveHours: 2, strictBudget: true }) },
+    { id: "P41", input: makeInput({ style: "chill", startCity: "Kamloops", budgetPerTraveler: 260, budget: 520, tripLengthDays: 2, maxDriveHours: 2.5 }) },
+    { id: "P42", input: makeInput({ style: "chill", startCity: "Nanaimo", budgetPerTraveler: 240, budget: 480, tripLengthDays: 2, maxDriveHours: 2.5, strictBudget: true }) },
+    { id: "P43", input: makeInput({ style: "adventure", startCity: "Vancouver", budgetPerTraveler: 1000, budget: 4000, travelerCount: 4, tripLengthDays: 4, maxDriveHours: 4, preferredDestination: "Vancouver Island", includeStaycations: false, season: "spring" }) },
+    { id: "P44", input: makeInput({ style: "adventure", startCity: "Vancouver", budgetPerTraveler: 500, budget: 1000, tripLengthDays: 3, maxDriveHours: 6, preferredDestination: "Tofino / Ucluelet", includeStaycations: false, season: "summer" }) },
+    { id: "P45", input: makeInput({ style: "chill", startCity: "Toronto", budgetPerTraveler: 320, budget: 640, tripLengthDays: 2, maxDriveHours: 3, preferredDestination: "Blue Mountains / Collingwood", season: "fall" }) },
+    { id: "P46", input: makeInput({ style: "outdoors", startCity: "Montreal", budgetPerTraveler: 420, budget: 840, tripLengthDays: 3, maxDriveHours: 3, preferredDestination: "Mont-Tremblant", includeStaycations: false, season: "summer" }) },
+    { id: "P47", input: makeInput({ style: "chill", startCity: "Winnipeg", budgetPerTraveler: 220, budget: 440, tripLengthDays: 2, maxDriveHours: 2.5, preferredDestination: "Gimli / Lake Winnipeg", strictBudget: true, season: "summer" }) },
+    { id: "P48", input: makeInput({ style: "chill", startCity: "Saint John", budgetPerTraveler: 260, budget: 520, tripLengthDays: 2, maxDriveHours: 2, preferredDestination: "St. Andrews-by-the-Sea", season: "summer" }) },
+    { id: "P49", input: makeInput({ style: "foodie", startCity: "Halifax", budgetPerTraveler: 320, budget: 640, tripLengthDays: 2, maxDriveHours: 2, preferredDestination: "Wolfville / Annapolis Valley", season: "summer" }) },
+    { id: "P50", input: makeInput({ style: "outdoors", startCity: "St. John's", budgetPerTraveler: 360, budget: 720, tripLengthDays: 3, maxDriveHours: 4, preferredDestination: "Bonavista Peninsula", includeStaycations: false, season: "summer" }) },
+    { id: "P51", input: makeInput({ style: "hidden gems", startCity: "Whitehorse", budgetPerTraveler: 340, budget: 680, tripLengthDays: 3, maxDriveHours: 6, preferredDestination: "Dawson City", includeStaycations: false, season: "summer" }) },
+    { id: "P52", input: makeInput({ style: "outdoors", startCity: "Yellowknife", budgetPerTraveler: 300, budget: 600, tripLengthDays: 2, maxDriveHours: 1.5, preferredDestination: "Ingraham Trail / Prelude Lake", includeStaycations: false, season: "summer" }) },
+    { id: "P53", input: makeInput({ style: "chill", startCity: "Iqaluit", budgetPerTraveler: 450, budget: 900, tripLengthDays: 2, maxDriveHours: 1, preferredDestination: "Sylvia Grinnell / Apex", includeStaycations: false, season: "summer" }) },
   ];
 }
 
@@ -183,6 +227,10 @@ async function runPlannerTests(): Promise<TestResult[]> {
       winner &&
       plan &&
       plan.itineraryDays.length === testCase.input.tripLengthDays &&
+      (!testCase.input.preferredDestination ||
+        winner.name
+          .toLowerCase()
+          .includes(testCase.input.preferredDestination.toLowerCase())) &&
       budgetPass(plan, testCase.input) &&
       scoreStyle(plan, testCase.input.style)
     );
@@ -194,6 +242,67 @@ async function runPlannerTests(): Promise<TestResult[]> {
       details: winner
         ? `${winner.name} | budget=${plan?.budgetBreakdown.totalExpected} | days=${plan?.itineraryDays.length}`
         : "No destination matched filters",
+    };
+  });
+}
+
+async function runDriveFallbackTests(): Promise<TestResult[]> {
+  const catalog = destinationCatalog as RawDestination[];
+  const checks = [
+    {
+      id: "D01",
+      input: makeInput({ style: "adventure", startCity: "Winnipeg", maxDriveHours: 20 }),
+      destinationId: "banff_ab",
+      expectedDriveTimeSource: "estimated_coordinates" as DriveTimeSource,
+      expectedDriveTimeConfidence: "low" as DriveTimeConfidence,
+    },
+    {
+      id: "D02",
+      input: makeInput({ style: "outdoors", startCity: "Vancouver", maxDriveHours: 20 }),
+      destinationId: "jasper_ab",
+      expectedDriveTimeSource: "estimated_coordinates" as DriveTimeSource,
+      expectedDriveTimeConfidence: "low" as DriveTimeConfidence,
+    },
+    {
+      id: "D03",
+      input: makeInput({ style: "chill", startCity: "Toronto", maxDriveHours: 20 }),
+      destinationId: "waterton_lakes_ab",
+      expectedDriveTimeSource: "estimated_coordinates" as DriveTimeSource,
+      expectedDriveTimeConfidence: "low" as DriveTimeConfidence,
+    },
+    {
+      id: "D04",
+      input: makeInput({ style: "chill", startCity: "Calgary", maxDriveHours: 8 }),
+      destinationId: "banff_ab",
+      expectedDriveTimeSource: "catalog_exact" as DriveTimeSource,
+      expectedDriveTimeConfidence: "high" as DriveTimeConfidence,
+    },
+    {
+      id: "D05",
+      input: makeInput({ style: "outdoors", startCity: "St. Albert", maxDriveHours: 8 }),
+      destinationId: "jasper_ab",
+      expectedDriveTimeSource: "catalog_hub" as DriveTimeSource,
+      expectedDriveTimeConfidence: "medium" as DriveTimeConfidence,
+    },
+  ];
+
+  return checks.map((check) => {
+    const rawDestination = catalog.find((destination) => destination.id === check.destinationId);
+    const mapped = rawDestination ? mapRawDestination(rawDestination, check.input) : null;
+    const passed = Boolean(
+      mapped &&
+        mapped.driveHoursFromStart < 999 &&
+        mapped.driveTimeSource === check.expectedDriveTimeSource &&
+        mapped.driveTimeConfidence === check.expectedDriveTimeConfidence
+    );
+
+    return {
+      id: check.id,
+      area: "drive-fallback",
+      passed,
+      details: mapped
+        ? `${mapped.name} | start=${check.input.startCity} | driveHours=${mapped.driveHoursFromStart} | source=${mapped.driveTimeSource ?? "missing"} | confidence=${mapped.driveTimeConfidence ?? "missing"}`
+        : `Missing destination ${check.destinationId}`,
     };
   });
 }
@@ -416,6 +525,38 @@ async function runPromptInterpretationTests(): Promise<TestResult[]> {
   const johnstonIndex = requestedAnchorTitles.findIndex((title) =>
     /johnston canyon/i.test(title)
   );
+  const weakConfidenceCandidate = requestedAnchorTopResult
+    ? recalculateConfidence(
+        [
+          {
+            ...requestedAnchorTopResult,
+            confidence: "high",
+            foodSpots: [
+              {
+                name: "Grab & Go - Banff",
+                tags: [],
+                category: "Restaurant",
+                rating: 4.8,
+              },
+            ],
+            topActivities: [
+              {
+                name: "One Mile Lake Park",
+                type: "Park",
+                costEstimate: 0,
+                rating: 4.8,
+              },
+            ],
+          },
+        ],
+        {
+          ...requestedAnchorInput,
+          style: "outdoors",
+          tripPrompt:
+            "Plan a 2-day outdoors trip to Banff from Calgary for 2 travelers with one scenic hike and good coffee.",
+        }
+      )[0]
+    : undefined;
   const nearbyBanffDefaultActivity = pickDefaultActivityForStop(
     {
       title: "Pick an activity",
@@ -755,6 +896,18 @@ async function runPromptInterpretationTests(): Promise<TestResult[]> {
           optimizedNearbyBanffSelection.optimizedSelection.activities["day-0-stop-2"],
       }),
     },
+    {
+      id: "I36",
+      area: "confidence-guardrails",
+      passed:
+        weakConfidenceCandidate?.confidence === "medium" ||
+        weakConfidenceCandidate?.confidence === "low",
+      details: JSON.stringify({
+        confidence: weakConfidenceCandidate?.confidence,
+        activities: weakConfidenceCandidate?.topActivities?.map((activity) => activity.name),
+        foodSpots: weakConfidenceCandidate?.foodSpots?.map((food) => food.name),
+      }),
+    },
   ];
 }
 
@@ -988,15 +1141,241 @@ async function runRouteTests(): Promise<TestResult[]> {
     details: `status=${placePhoto.status}`,
   });
 
+  const previousDynamicMapsKey = process.env.GOOGLE_MAPS_API_KEY;
+  process.env.GOOGLE_MAPS_API_KEY = previousDynamicMapsKey || "test-maps-key";
+  const dynamicInput = makeInput({
+    style: "outdoors",
+    startCity: "Vancouver",
+    preferredDestination: "Pemberton",
+    budgetPerTraveler: 500,
+    budget: 1000,
+    tripLengthDays: 3,
+    maxDriveHours: 3,
+    tripPrompt:
+      "Plan a 3-day outdoors trip to Pemberton from Vancouver for 2 travelers with one scenic hike, good coffee, and a budget of $500 per traveler.",
+  });
+  global.fetch = (async (input: string | URL, init?: RequestInit) => {
+    const url = String(input);
+
+    if (url.includes("places.googleapis.com")) {
+      const body =
+        typeof init?.body === "string" ? JSON.parse(init.body) : {};
+      const textQuery = String(body.textQuery ?? "");
+
+      if (textQuery.includes("Pemberton, Canada")) {
+        return new Response(
+          JSON.stringify({
+            places: [
+              {
+                displayName: { text: "Pemberton" },
+                formattedAddress: "Pemberton, BC, Canada",
+                location: { latitude: 50.3201, longitude: -122.8057 },
+                primaryType: "locality",
+                rating: 4.6,
+                userRatingCount: 820,
+                googleMapsUri: "https://maps.google.com/?q=Pemberton",
+                photos: [{ name: "places/pemberton/photos/main" }],
+              },
+            ],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      if (textQuery.toLowerCase().includes("top trails, lakes, parks, scenic lookouts")) {
+        return new Response(
+          JSON.stringify({
+            places: [
+              {
+                displayName: { text: "Pemberton Visitor Centre" },
+                formattedAddress: "Pemberton, BC, Canada",
+                location: { latitude: 50.3211, longitude: -122.8058 },
+                primaryType: "tourist_information_center",
+                rating: 4.2,
+                userRatingCount: 85,
+              },
+              {
+                displayName: { text: "Downtown Pemberton Plaza" },
+                formattedAddress: "Pemberton, BC, Canada",
+                location: { latitude: 50.3207, longitude: -122.8053 },
+                primaryType: "shopping_mall",
+                rating: 4.1,
+                userRatingCount: 51,
+              },
+            ],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      if (
+        textQuery.toLowerCase().includes("scenic hike") ||
+        textQuery.toLowerCase().includes("waterfall") ||
+        textQuery.toLowerCase().includes("mountain lookout") ||
+        textQuery.toLowerCase().includes("lake trail") ||
+        textQuery.toLowerCase().includes("scenic viewpoint")
+      ) {
+        return new Response(
+          JSON.stringify({
+            places: [
+              {
+                displayName: { text: "Nairn Falls Trail" },
+                formattedAddress: "Nairn Falls Provincial Park, BC, Canada",
+                location: { latitude: 50.3395, longitude: -122.7759 },
+                primaryType: "hiking_area",
+                rating: 4.8,
+                userRatingCount: 560,
+              },
+              {
+                displayName: { text: "One Mile Lake Trail" },
+                formattedAddress: "Pemberton, BC, Canada",
+                location: { latitude: 50.3165, longitude: -122.8012 },
+                primaryType: "park",
+                rating: 4.7,
+                userRatingCount: 420,
+              },
+              {
+                displayName: { text: "Joffre Lakes Viewpoint" },
+                formattedAddress: "Joffre Lakes Provincial Park, BC, Canada",
+                location: { latitude: 50.3723, longitude: -122.4931 },
+                primaryType: "tourist_attraction",
+                rating: 4.9,
+                userRatingCount: 2100,
+              },
+            ],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      if (textQuery.toLowerCase().includes("restaurant")) {
+        return new Response(
+          JSON.stringify({
+            places: [
+              {
+                displayName: { text: "Mile One Eating House" },
+                formattedAddress: "Pemberton, BC, Canada",
+                location: { latitude: 50.321, longitude: -122.806 },
+                primaryType: "restaurant",
+                rating: 4.5,
+                userRatingCount: 240,
+              },
+            ],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      if (textQuery.toLowerCase().includes("cafe")) {
+        return new Response(
+          JSON.stringify({
+            places: [
+              {
+                displayName: { text: "Mount Currie Coffee Co." },
+                formattedAddress: "Pemberton, BC, Canada",
+                location: { latitude: 50.3204, longitude: -122.8049 },
+                primaryType: "cafe",
+                rating: 4.4,
+                userRatingCount: 180,
+              },
+            ],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      if (textQuery.toLowerCase().includes("hotel")) {
+        return new Response(
+          JSON.stringify({
+            places: [
+              {
+                displayName: { text: "Pemberton Valley Lodge" },
+                formattedAddress: "Pemberton, BC, Canada",
+                location: { latitude: 50.3178, longitude: -122.8051 },
+                primaryType: "lodging",
+                rating: 4.3,
+                userRatingCount: 310,
+              },
+            ],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      return new Response(
+        JSON.stringify({ places: [] }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      );
+    }
+
+    throw new Error(`Unexpected network call: ${url}`);
+  }) as typeof fetch;
+  const dynamicRank = await rankTripsPost(
+    new Request("http://local/api/rank-trips", {
+      method: "POST",
+      body: JSON.stringify({
+        input: dynamicInput,
+      }),
+      headers: { "Content-Type": "application/json" },
+    })
+  );
+  const dynamicRankJson = await readJson(dynamicRank);
+  const dynamicWinner = dynamicRankJson.results?.[0];
+  const dynamicPlan = dynamicWinner
+    ? buildTripPlan(dynamicWinner, dynamicInput, "live-google-places")
+    : null;
+  const dynamicDayTwoActivityTitles =
+    dynamicPlan?.itineraryDays?.[1]?.stops
+      .filter((stop) => stop.kind === "activity")
+      .map((stop) => stop.title.toLowerCase()) ?? [];
+  global.fetch = originalFetch;
+  if (previousDynamicMapsKey === undefined) {
+    delete process.env.GOOGLE_MAPS_API_KEY;
+  } else {
+    process.env.GOOGLE_MAPS_API_KEY = previousDynamicMapsKey;
+  }
+  results.push({
+    id: "R32",
+    area: "dynamic-geography",
+    passed:
+      dynamicRank.status === 200 &&
+      dynamicRankJson.success === true &&
+      Array.isArray(dynamicRankJson.results) &&
+      dynamicWinner?.name === "Pemberton" &&
+      dynamicWinner?.topActivities?.some((activity: { name?: string }) =>
+        /nairn falls|one mile lake|joffre lakes/i.test(activity?.name ?? "")
+      ),
+    details: `status=${dynamicRank.status} winner=${dynamicWinner?.name ?? "none"}`,
+  });
+  results.push({
+    id: "R33",
+    area: "dynamic-itinerary",
+    passed:
+      Boolean(dynamicPlan) &&
+      countKind(dynamicPlan!, "activity") >= 2 &&
+      dynamicDayTwoActivityTitles.length >= 1 &&
+      dynamicDayTwoActivityTitles.some((title) =>
+        /nairn falls|one mile lake|joffre lakes/i.test(title)
+      ),
+    details: dynamicPlan
+      ? JSON.stringify({
+          activityCount: countKind(dynamicPlan, "activity"),
+          dayTwoActivityTitles: dynamicDayTwoActivityTitles,
+        })
+      : "No dynamic plan built",
+  });
+
   return results;
 }
 
 async function main() {
   const plannerResults = await runPlannerTests();
+  const driveFallbackResults = await runDriveFallbackTests();
   const promptInterpretationResults = await runPromptInterpretationTests();
   const routeResults = await runRouteTests();
   const allResults = [
     ...plannerResults,
+    ...driveFallbackResults,
     ...promptInterpretationResults,
     ...routeResults,
   ];

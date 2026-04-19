@@ -472,3 +472,13 @@ export async function searchHotels(
     FIELD_MASK
   );
 }
+
+export async function searchDestinationIdentity(destination: string) {
+  return placesTextSearch<{ places?: GooglePlace[] }>(
+    {
+      textQuery: `${destination}, Canada`,
+      maxResultCount: 5,
+    },
+    FIELD_MASK
+  );
+}

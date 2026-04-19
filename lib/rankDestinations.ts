@@ -3,7 +3,7 @@
  * It scores candidate trips against drive limits, budget, preferences, and trust signals, then returns presentation-ready results for the UI and APIs.
  */
 
-import rawDestinations from "../data/destinations.json";
+import rawDestinations from "./destinationCatalog";
 import {
   ActivityFocus,
   ConfidenceLevel,
@@ -18,10 +18,12 @@ import {
   deriveTripIntentFromPrompt,
 } from "./tripIntent";
 import {
+  coffeeStopSpecificityScore,
   isBroadDestinationActivity,
   isGenericActivityDisplayName,
   normalizePlaceDisplayName,
   refineTripStayRecommendation,
+  scenicHikeSpecificityScore,
 } from "./tripSpecificity";
 
 type ReasonCandidate = RankingReason & {
@@ -410,6 +412,16 @@ function rankingActivityScore(
           : 8;
   }
 
+  if (
+    input.activityFocus === "hiking" ||
+    promptIntent.activityFocus === "hiking" ||
+    promptIntent.hardConstraints.activityAnchor === "summit_hike" ||
+    ((input.style === "adventure" || input.style === "outdoors") &&
+      promptIntent.softPreferences.wantsScenery)
+  ) {
+    score += scenicHikeSpecificityScore(activity);
+  }
+
   if (isScenicSupportActivity(activity)) {
     score +=
       promptIntent.hardConstraints.requiresScenicView ||
@@ -464,6 +476,7 @@ function rankingActivityScore(
 
 function rankingFoodScore(food: FoodCandidate, input: TripInput): number {
   const promptIntent = deriveTripIntentFromPrompt(input.tripPrompt);
+  const promptText = (input.tripPrompt ?? "").toLowerCase();
   const text = foodSignalText(food);
   let score = 0;
 
@@ -489,6 +502,10 @@ function rankingFoodScore(food: FoodCandidate, input: TripInput): number {
       text.includes("plant"))
   ) {
     score += 16;
+  }
+
+  if (/\b(coffee|cafe|espresso|latte|bakery)\b/.test(promptText)) {
+    score += coffeeStopSpecificityScore(food);
   }
 
   score += food.rating ?? 0;
@@ -999,7 +1016,10 @@ function explainPreferredDestinationNoMatch(
 
 export function getNoMatchDiagnostics(
   input: TripInput,
-  options?: { excludedDestinationNames?: string[] }
+  options?: {
+    excludedDestinationNames?: string[];
+    additionalRawDestinations?: RawDestination[];
+  }
 ): NoMatchDiagnostics {
   const promptIntent = deriveTripIntentFromPrompt(input.tripPrompt);
   const excludedDestinationNames = new Set(
@@ -1008,7 +1028,12 @@ export function getNoMatchDiagnostics(
       .filter(Boolean)
   );
 
-  const allDestinations = (rawDestinations as RawDestination[])
+  const allRawDestinations = [
+    ...(rawDestinations as RawDestination[]),
+    ...(options?.additionalRawDestinations ?? []),
+  ];
+
+  const allDestinations = allRawDestinations
     .map((raw) => sanitizeDestinationCatalog(mapRawDestination(raw, input), input))
     .filter(
       (destination) =>
@@ -1022,7 +1047,7 @@ export function getNoMatchDiagnostics(
 
     if (matchedDestinations.length === 0) {
       return {
-        headline: `Trippify could not find "${input.preferredDestination.trim()}" in the current destination list.`,
+        headline: `Trippify could not find "${input.preferredDestination.trim()}" in the current destination list or live geography lookup.`,
         reasons: [
           "Try a nearby city name, a broader destination name, or leave the destination field blank to see ranked matches.",
         ],
@@ -1544,6 +1569,15 @@ function calculateDriveScore(
     matchReasons.push(`Reasonable drive from ${input.startCity}`);
   } else {
     warnings.push("Near your drive limit");
+  }
+
+  if (destination.driveTimeSource === "estimated_coordinates") {
+    warnings.push("Drive time is estimated from map coordinates");
+  } else if (
+    destination.driveTimeSource === "catalog_hub" &&
+    ratio >= 0.7
+  ) {
+    warnings.push("Drive time is based on the nearest planning hub");
   }
 
   return {
@@ -2304,7 +2338,10 @@ function calculateConfidence(args: {
 export function rankDestinations(
   input: TripInput,
   limit = 3,
-  options?: { excludedDestinationNames?: string[] }
+  options?: {
+    excludedDestinationNames?: string[];
+    additionalRawDestinations?: RawDestination[];
+  }
 ): RankedDestination[] {
   const excludedDestinationNames = new Set(
     (options?.excludedDestinationNames ?? [])
@@ -2312,7 +2349,10 @@ export function rankDestinations(
       .filter(Boolean)
   );
 
-  const destinationList = (rawDestinations as RawDestination[])
+  const destinationList = [
+    ...(rawDestinations as RawDestination[]),
+    ...(options?.additionalRawDestinations ?? []),
+  ]
     .map((raw) => sanitizeDestinationCatalog(mapRawDestination(raw, input), input))
     .filter((destination) =>
       destinationMatchesPreference(destination, input.preferredDestination)

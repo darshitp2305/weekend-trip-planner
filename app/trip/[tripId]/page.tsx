@@ -34,7 +34,10 @@ import {
   buildTripInputFromPlan,
   rankedDestinationFromTripPlan,
 } from "../../../lib/tripRefresh";
-import { isStartCity } from "../../../lib/startCities";
+import {
+  getStartCityProvinceName,
+  isStartCity,
+} from "../../../lib/startCities";
 import {
   buildDefaultSelectionState,
   calculateSelectedBudget,
@@ -189,19 +192,22 @@ function deriveTripLengthDays(trip: TripPlan | null): number {
 
 function getStartCityLabel(trip: TripPlan | null): string {
   if (isStartCity(trip?.startCity)) {
-    return `${trip.startCity}, Alberta`;
+    const province = getStartCityProvinceName(trip.startCity);
+    return province ? `${trip.startCity}, ${province}` : trip.startCity;
   }
 
   const raw = `${trip?.routeSummary?.origin?.label ?? ""} ${trip?.summary ?? ""} ${trip?.name ?? ""}`.toLowerCase();
 
   if (raw.includes("calgary")) return "Calgary, Alberta";
-  return "Edmonton, Alberta";
+  if (raw.includes("vancouver")) return "Vancouver, British Columbia";
+  if (raw.includes("toronto")) return "Toronto, Ontario";
+  return "Canada";
 }
 
 function getDestinationLabel(trip: TripPlan | null): string {
   const province = typeof trip?.province === "string" && trip.province.trim()
     ? trip.province.trim()
-    : "Alberta";
+    : "Canada";
 
   const cleanLabel = (value?: string) =>
     typeof value === "string"
@@ -228,7 +234,7 @@ function getDestinationLabel(trip: TripPlan | null): string {
     return `${name}, ${province}`;
   }
 
-  return "Banff, Alberta";
+  return "Canada";
 }
 
 function pickMatchedHotel(hotels: HotelOption[], stopTitle?: string) {

@@ -95,7 +95,7 @@ export default function SiteFooter() {
               </div>
               <BrandLogo href="/" tone="auto" />
               <p className="max-w-xl text-sm leading-7 text-slate-700 dark:text-slate-300">
-                Trip planning for Alberta weekends, scenic escapes, and better short
+                Trip planning for Canadian weekends, scenic escapes, and better short
                 getaways. Built to help travelers move from idea to a trip they can
                 actually trust and book.
               </p>

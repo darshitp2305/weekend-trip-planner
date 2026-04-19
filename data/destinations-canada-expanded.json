@@ -1,0 +1,2986 @@
+[
+  {
+    "id": "tofino_ucluelet_bc",
+    "name": "Tofino / Ucluelet",
+    "region": "British Columbia",
+    "home_base_city": "Tofino / Ucluelet",
+    "latitude": 49.0746,
+    "longitude": -125.7725,
+    "is_staycation": false,
+    "drive_time_hours_from": {
+      "vancouver": 5.5,
+      "victoria": 4.5,
+      "nanaimo": 3
+    },
+    "distance_km_from": {
+      "vancouver": 285,
+      "victoria": 320,
+      "nanaimo": 180
+    },
+    "cost_level": "high",
+    "vibes": [
+      "coast",
+      "surf",
+      "forest",
+      "scenic"
+    ],
+    "best_seasons": [
+      "spring",
+      "summer",
+      "fall",
+      "winter"
+    ],
+    "avoid_seasons": [],
+    "style_scores": {
+      "chill": 2,
+      "outdoors": 3,
+      "foodie": 1,
+      "solo reset": 2,
+      "adventure": 2
+    },
+    "anchor_experiences": [
+      {
+        "title": "Long Beach and rainforest boardwalk",
+        "type": "nature",
+        "description": "Easy west-coast payoff with beach scale and old-growth forest in the same day.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Long+Beach+Pacific+Rim"
+      },
+      {
+        "title": "Wild Pacific Trail viewpoints",
+        "type": "scenic",
+        "description": "Storm-watch or sunset energy that makes the island coast feel distinct right away.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Wild+Pacific+Trail+Ucluelet"
+      }
+    ],
+    "neighborhoods": [
+      {
+        "name": "Tofino harbour strip",
+        "reason": "Best base for cafes, short drives, and ocean access",
+        "link": "https://www.google.com/maps/search/?api=1&query=Tofino+harbour"
+      }
+    ],
+    "hotel_options": [
+      {
+        "name": "West coast lodge base",
+        "price_per_night": 320,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Hotels+Tofino",
+        "description": "Best fit if the brief wants coastal atmosphere more than city polish."
+      }
+    ],
+    "food_spots": [
+      {
+        "name": "Tofino harbour casual dining",
+        "tags": [
+          "seafood",
+          "cafes",
+          "west coast"
+        ],
+        "link": "https://www.google.com/maps/search/?api=1&query=Restaurants+Tofino",
+        "description": "Good enough density for an outdoors-first trip with strong coffee and dinner options."
+      }
+    ],
+    "image_url_light": "/destinations/theme/tofino_ucluelet_bc-light.webp",
+    "image_url_dark": "/destinations/theme/tofino_ucluelet_bc-dark.webp"
+  },
+  {
+    "id": "squamish_bc",
+    "name": "Squamish",
+    "region": "British Columbia",
+    "home_base_city": "Squamish",
+    "latitude": 49.7016,
+    "longitude": -123.1558,
+    "is_staycation": false,
+    "drive_time_hours_from": {
+      "vancouver": 1,
+      "victoria": 4.5,
+      "kamloops": 4.25
+    },
+    "distance_km_from": {
+      "vancouver": 65,
+      "victoria": 180,
+      "kamloops": 300
+    },
+    "cost_level": "mid",
+    "vibes": [
+      "mountain",
+      "adventure",
+      "waterfall",
+      "climbing"
+    ],
+    "best_seasons": [
+      "spring",
+      "summer",
+      "fall"
+    ],
+    "avoid_seasons": [
+      "winter"
+    ],
+    "style_scores": {
+      "chill": 1,
+      "outdoors": 3,
+      "foodie": 0,
+      "solo reset": 1,
+      "adventure": 3
+    },
+    "anchor_experiences": [
+      {
+        "title": "Sea to Sky Gondola viewpoint block",
+        "type": "scenic",
+        "description": "Very high payoff if the trip wants mountain drama without a huge drive.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Sea+to+Sky+Gondola"
+      },
+      {
+        "title": "Shannon Falls or Alice Lake trail time",
+        "type": "hiking",
+        "description": "Lets the trip feel active fast without needing a full alpine mission.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Shannon+Falls+Squamish"
+      }
+    ],
+    "neighborhoods": [
+      {
+        "name": "Downtown Squamish",
+        "reason": "Best practical base for trail access plus coffee and casual food",
+        "link": "https://www.google.com/maps/search/?api=1&query=Downtown+Squamish"
+      }
+    ],
+    "hotel_options": [
+      {
+        "name": "Squamish adventure hotel base",
+        "price_per_night": 230,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Hotels+Squamish",
+        "description": "Useful if the brief wants a quick mountain weekend from Vancouver."
+      }
+    ],
+    "food_spots": [
+      {
+        "name": "Downtown Squamish cafes and breweries",
+        "tags": [
+          "cafes",
+          "casual",
+          "post-hike"
+        ],
+        "link": "https://www.google.com/maps/search/?api=1&query=Restaurants+Downtown+Squamish",
+        "description": "Enough density to keep the trip easy after an active day."
+      }
+    ],
+    "image_url_light": "/destinations/theme/squamish_bc-light.webp",
+    "image_url_dark": "/destinations/theme/squamish_bc-dark.webp"
+  },
+  {
+    "id": "revelstoke_bc",
+    "name": "Revelstoke",
+    "region": "British Columbia",
+    "home_base_city": "Revelstoke",
+    "latitude": 50.9981,
+    "longitude": -118.1957,
+    "is_staycation": false,
+    "drive_time_hours_from": {
+      "kelowna": 2.5,
+      "kamloops": 2.5,
+      "vancouver": 6.5,
+      "calgary": 6
+    },
+    "distance_km_from": {
+      "kelowna": 200,
+      "kamloops": 210,
+      "vancouver": 560,
+      "calgary": 405
+    },
+    "cost_level": "mid",
+    "vibes": [
+      "mountain",
+      "powder",
+      "scenic",
+      "adventure"
+    ],
+    "best_seasons": [
+      "summer",
+      "fall",
+      "winter"
+    ],
+    "avoid_seasons": [],
+    "style_scores": {
+      "chill": 1,
+      "outdoors": 3,
+      "foodie": 0,
+      "solo reset": 1,
+      "adventure": 3
+    },
+    "anchor_experiences": [
+      {
+        "title": "Meadows in the Sky Parkway",
+        "type": "scenic",
+        "description": "Fast mountain payoff with real alpine energy once the road is open.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Meadows+in+the+Sky+Parkway"
+      },
+      {
+        "title": "Revelstoke alpine trail or gondola block",
+        "type": "hiking",
+        "description": "Strong fit if the brief wants a bigger mountain day without overthinking logistics.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Revelstoke+Mountain+Resort"
+      }
+    ],
+    "neighborhoods": [
+      {
+        "name": "Downtown Revelstoke",
+        "reason": "Best base for a simple mountain-town setup with easy dinner options",
+        "link": "https://www.google.com/maps/search/?api=1&query=Downtown+Revelstoke"
+      }
+    ],
+    "hotel_options": [
+      {
+        "name": "Revelstoke mountain hotel base",
+        "price_per_night": 235,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Hotels+Revelstoke",
+        "description": "Useful if the trip wants a real mountain town rather than a resort-only feel."
+      }
+    ],
+    "food_spots": [
+      {
+        "name": "Downtown Revelstoke casual dining",
+        "tags": [
+          "casual",
+          "cafes",
+          "mountain town"
+        ],
+        "link": "https://www.google.com/maps/search/?api=1&query=Restaurants+Revelstoke",
+        "description": "Practical food support once scenery and activity are doing most of the work."
+      }
+    ],
+    "image_url_light": "/destinations/theme/revelstoke_bc-light.webp",
+    "image_url_dark": "/destinations/theme/revelstoke_bc-dark.webp"
+  },
+  {
+    "id": "nelson_kootenay_bc",
+    "name": "Nelson / Kootenay Lake",
+    "region": "British Columbia",
+    "home_base_city": "Nelson",
+    "latitude": 49.4947,
+    "longitude": -117.2944,
+    "is_staycation": false,
+    "drive_time_hours_from": {
+      "kelowna": 4,
+      "kamloops": 5.5,
+      "calgary": 7.5
+    },
+    "distance_km_from": {
+      "kelowna": 330,
+      "kamloops": 500,
+      "calgary": 640
+    },
+    "cost_level": "mid",
+    "vibes": [
+      "lake",
+      "mountain",
+      "food",
+      "heritage"
+    ],
+    "best_seasons": [
+      "spring",
+      "summer",
+      "fall"
+    ],
+    "avoid_seasons": [
+      "winter"
+    ],
+    "style_scores": {
+      "chill": 2,
+      "outdoors": 2,
+      "foodie": 2,
+      "solo reset": 2,
+      "adventure": 1
+    },
+    "anchor_experiences": [
+      {
+        "title": "Kootenay Lake shoreline and lookout drive",
+        "type": "scenic",
+        "description": "Adds a distinct water-and-mountain payoff that feels less obvious than the big BC resort towns.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Kootenay+Lake+Nelson"
+      },
+      {
+        "title": "Nelson heritage streets and cafe block",
+        "type": "food",
+        "description": "Strong fit if the trip wants a relaxed pace with a little character and good coffee.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Downtown+Nelson+BC"
+      }
+    ],
+    "neighborhoods": [
+      {
+        "name": "Downtown Nelson",
+        "reason": "Best base for a walkable weekend that still feels scenic",
+        "link": "https://www.google.com/maps/search/?api=1&query=Downtown+Nelson+BC"
+      }
+    ],
+    "hotel_options": [
+      {
+        "name": "Heritage hotel base",
+        "price_per_night": 220,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Hotels+Nelson+BC",
+        "description": "Useful if the brief wants local character more than polished-resort energy."
+      }
+    ],
+    "food_spots": [
+      {
+        "name": "Baker Street cafes and dining",
+        "tags": [
+          "cafes",
+          "local",
+          "walkable"
+        ],
+        "link": "https://www.google.com/maps/search/?api=1&query=Baker+Street+Nelson+BC",
+        "description": "Best dense food corridor for an easy Nelson weekend."
+      }
+    ],
+    "image_url_light": "/destinations/theme/nelson_kootenay_bc-light.webp",
+    "image_url_dark": "/destinations/theme/nelson_kootenay_bc-dark.webp"
+  },
+  {
+    "id": "sunshine_coast_bc",
+    "name": "Sunshine Coast",
+    "region": "British Columbia",
+    "home_base_city": "Gibsons / Sechelt",
+    "latitude": 49.4726,
+    "longitude": -123.7546,
+    "is_staycation": false,
+    "drive_time_hours_from": {
+      "vancouver": 1.75,
+      "victoria": 4.75,
+      "nanaimo": 3.5
+    },
+    "distance_km_from": {
+      "vancouver": 95,
+      "victoria": 210,
+      "nanaimo": 140
+    },
+    "cost_level": "mid",
+    "vibes": [
+      "coast",
+      "relax",
+      "ferry",
+      "small town"
+    ],
+    "best_seasons": [
+      "spring",
+      "summer",
+      "fall"
+    ],
+    "avoid_seasons": [],
+    "style_scores": {
+      "chill": 3,
+      "outdoors": 1,
+      "foodie": 1,
+      "solo reset": 2,
+      "adventure": 0
+    },
+    "anchor_experiences": [
+      {
+        "title": "Gibsons and Sechelt shoreline wander",
+        "type": "scenic",
+        "description": "Low-friction coastal payoff if the trip wants water views without a long-haul island drive.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Gibsons+waterfront"
+      },
+      {
+        "title": "Smuggler Cove or short coast trail block",
+        "type": "hiking",
+        "description": "Adds enough outdoors signal without turning the weekend into a hard-charging trip.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Smuggler+Cove+Marine+Provincial+Park"
+      }
+    ],
+    "neighborhoods": [
+      {
+        "name": "Lower Gibsons",
+        "reason": "Best base for coffee, water access, and easier ferry-side logistics",
+        "link": "https://www.google.com/maps/search/?api=1&query=Lower+Gibsons"
+      }
+    ],
+    "hotel_options": [
+      {
+        "name": "Coast inn or lodge base",
+        "price_per_night": 225,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Hotels+Gibsons+BC",
+        "description": "Best fit if the brief wants a simple sea-and-small-town reset."
+      }
+    ],
+    "food_spots": [
+      {
+        "name": "Gibsons harbour cafes",
+        "tags": [
+          "cafes",
+          "casual",
+          "coastal"
+        ],
+        "link": "https://www.google.com/maps/search/?api=1&query=Restaurants+Gibsons+BC",
+        "description": "Good enough density for a calm food-and-view weekend."
+      }
+    ],
+    "image_url_light": "/destinations/theme/sunshine_coast_bc-light.webp",
+    "image_url_dark": "/destinations/theme/sunshine_coast_bc-dark.webp"
+  },
+  {
+    "id": "golden_yoho_bc",
+    "name": "Golden / Yoho",
+    "region": "British Columbia",
+    "home_base_city": "Golden",
+    "latitude": 51.2986,
+    "longitude": -116.9689,
+    "is_staycation": false,
+    "drive_time_hours_from": {
+      "calgary": 3,
+      "kelowna": 4,
+      "kamloops": 4.5
+    },
+    "distance_km_from": {
+      "calgary": 270,
+      "kelowna": 340,
+      "kamloops": 410
+    },
+    "cost_level": "mid",
+    "vibes": [
+      "mountain",
+      "national park",
+      "waterfall",
+      "scenic"
+    ],
+    "best_seasons": [
+      "summer",
+      "fall"
+    ],
+    "avoid_seasons": [
+      "winter"
+    ],
+    "style_scores": {
+      "chill": 1,
+      "outdoors": 3,
+      "foodie": 0,
+      "solo reset": 1,
+      "adventure": 3
+    },
+    "anchor_experiences": [
+      {
+        "title": "Emerald Lake and Yoho viewpoint loop",
+        "type": "scenic",
+        "description": "Big mountain payoff that works even when the trip only has one major day outside.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Emerald+Lake+Yoho"
+      },
+      {
+        "title": "Takakkaw Falls or short park trail block",
+        "type": "hiking",
+        "description": "Strong outdoors signal without demanding a full alpine objective.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Takakkaw+Falls"
+      }
+    ],
+    "neighborhoods": [
+      {
+        "name": "Golden town base",
+        "reason": "Best practical setup for Yoho access plus easy food and hotel logistics",
+        "link": "https://www.google.com/maps/search/?api=1&query=Golden+BC"
+      }
+    ],
+    "hotel_options": [
+      {
+        "name": "Golden mountain lodge base",
+        "price_per_night": 230,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Hotels+Golden+BC",
+        "description": "Useful if the trip wants park scenery without Banff pricing."
+      }
+    ],
+    "food_spots": [
+      {
+        "name": "Golden casual dining",
+        "tags": [
+          "casual",
+          "mountain town",
+          "easy"
+        ],
+        "link": "https://www.google.com/maps/search/?api=1&query=Restaurants+Golden+BC",
+        "description": "Practical food support once scenery is doing most of the work."
+      }
+    ],
+    "image_url_light": "/destinations/theme/golden_yoho_bc-light.webp",
+    "image_url_dark": "/destinations/theme/golden_yoho_bc-dark.webp"
+  },
+  {
+    "id": "fernie_bc",
+    "name": "Fernie",
+    "region": "British Columbia",
+    "home_base_city": "Fernie",
+    "latitude": 49.504,
+    "longitude": -115.063,
+    "is_staycation": false,
+    "drive_time_hours_from": {
+      "calgary": 3.5,
+      "lethbridge": 2.5,
+      "kelowna": 6
+    },
+    "distance_km_from": {
+      "calgary": 300,
+      "lethbridge": 215,
+      "kelowna": 510
+    },
+    "cost_level": "mid",
+    "vibes": [
+      "mountain",
+      "bike",
+      "ski",
+      "adventure"
+    ],
+    "best_seasons": [
+      "summer",
+      "fall",
+      "winter"
+    ],
+    "avoid_seasons": [
+      "spring"
+    ],
+    "style_scores": {
+      "chill": 1,
+      "outdoors": 3,
+      "foodie": 0,
+      "solo reset": 1,
+      "adventure": 3
+    },
+    "anchor_experiences": [
+      {
+        "title": "Fernie Alpine Resort viewpoint block",
+        "type": "scenic",
+        "description": "Quick mountain payoff if the trip wants visual drama without a huge route build.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Fernie+Alpine+Resort"
+      },
+      {
+        "title": "Montane or Island Lake trail time",
+        "type": "hiking",
+        "description": "Adds a real activity anchor for groups that want a more committed adventure weekend.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Montane+Trail+Fernie"
+      }
+    ],
+    "neighborhoods": [
+      {
+        "name": "Historic downtown Fernie",
+        "reason": "Best base for a real mountain-town feel with simple food access",
+        "link": "https://www.google.com/maps/search/?api=1&query=Downtown+Fernie"
+      }
+    ],
+    "hotel_options": [
+      {
+        "name": "Fernie lodge base",
+        "price_per_night": 225,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Hotels+Fernie",
+        "description": "Useful if the brief wants more adventure energy than a generic resort stop."
+      }
+    ],
+    "food_spots": [
+      {
+        "name": "Downtown Fernie casual dining",
+        "tags": [
+          "casual",
+          "post-hike",
+          "small-town"
+        ],
+        "link": "https://www.google.com/maps/search/?api=1&query=Restaurants+Fernie",
+        "description": "Enough density to keep the weekend easy after a mountain day."
+      }
+    ],
+    "image_url_light": "/destinations/theme/fernie_bc-light.webp",
+    "image_url_dark": "/destinations/theme/fernie_bc-dark.webp"
+  },
+  {
+    "id": "kingston_on",
+    "name": "Kingston",
+    "region": "Ontario",
+    "home_base_city": "Kingston",
+    "latitude": 44.2312,
+    "longitude": -76.486,
+    "is_staycation": false,
+    "drive_time_hours_from": {
+      "toronto": 2.5,
+      "ottawa": 2,
+      "montreal": 3
+    },
+    "distance_km_from": {
+      "toronto": 260,
+      "ottawa": 200,
+      "montreal": 290
+    },
+    "cost_level": "mid",
+    "vibes": [
+      "waterfront",
+      "historic",
+      "food",
+      "easy"
+    ],
+    "best_seasons": [
+      "spring",
+      "summer",
+      "fall"
+    ],
+    "avoid_seasons": [],
+    "style_scores": {
+      "chill": 2,
+      "outdoors": 1,
+      "foodie": 2,
+      "solo reset": 2,
+      "adventure": 0
+    },
+    "anchor_experiences": [
+      {
+        "title": "Kingston waterfront and fort block",
+        "type": "culture",
+        "description": "Strong place-specific payoff without a lot of moving parts.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Kingston+waterfront"
+      },
+      {
+        "title": "Downtown cafe and dinner loop",
+        "type": "food",
+        "description": "Best fit if the brief wants an easy historic-city weekend with real walkability.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Downtown+Kingston+Ontario"
+      }
+    ],
+    "neighborhoods": [
+      {
+        "name": "Downtown waterfront core",
+        "reason": "Best base for heritage sights, restaurants, and low-friction walking",
+        "link": "https://www.google.com/maps/search/?api=1&query=Downtown+Kingston+Ontario"
+      }
+    ],
+    "hotel_options": [
+      {
+        "name": "Waterfront hotel base",
+        "price_per_night": 235,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Hotels+Kingston+Ontario",
+        "description": "Useful if the brief wants a polished but not overbuilt small-city weekend."
+      }
+    ],
+    "food_spots": [
+      {
+        "name": "Downtown Kingston dining",
+        "tags": [
+          "restaurants",
+          "cafes",
+          "walkable"
+        ],
+        "link": "https://www.google.com/maps/search/?api=1&query=Restaurants+Downtown+Kingston+Ontario",
+        "description": "Dense enough to make a short weekend feel easy."
+      }
+    ],
+    "image_url_light": "/destinations/theme/kingston_on-light.webp",
+    "image_url_dark": "/destinations/theme/kingston_on-dark.webp"
+  },
+  {
+    "id": "stratford_on",
+    "name": "Stratford",
+    "region": "Ontario",
+    "home_base_city": "Stratford",
+    "latitude": 43.3701,
+    "longitude": -80.9829,
+    "is_staycation": false,
+    "drive_time_hours_from": {
+      "toronto": 2,
+      "hamilton": 1.5,
+      "london": 0.75,
+      "kitchener": 0.75,
+      "waterloo": 0.75
+    },
+    "distance_km_from": {
+      "toronto": 150,
+      "hamilton": 110,
+      "london": 60,
+      "kitchener": 50,
+      "waterloo": 50
+    },
+    "cost_level": "mid",
+    "vibes": [
+      "food",
+      "culture",
+      "small town",
+      "relax"
+    ],
+    "best_seasons": [
+      "spring",
+      "summer",
+      "fall"
+    ],
+    "avoid_seasons": [
+      "winter"
+    ],
+    "style_scores": {
+      "chill": 3,
+      "outdoors": 0,
+      "foodie": 2,
+      "solo reset": 2,
+      "adventure": 0
+    },
+    "anchor_experiences": [
+      {
+        "title": "Theatre and river walk pairing",
+        "type": "culture",
+        "description": "Makes a short weekend feel intentional without requiring much logistics.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Stratford+Theatre"
+      },
+      {
+        "title": "Cafe and restaurant block downtown",
+        "type": "food",
+        "description": "Strong fit if the brief wants a gentler food-and-culture reset.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Downtown+Stratford+Ontario"
+      }
+    ],
+    "neighborhoods": [
+      {
+        "name": "Downtown Stratford",
+        "reason": "Best walkable base for theatre, shops, and easy dining",
+        "link": "https://www.google.com/maps/search/?api=1&query=Downtown+Stratford+Ontario"
+      }
+    ],
+    "hotel_options": [
+      {
+        "name": "Boutique inn base",
+        "price_per_night": 230,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Hotels+Stratford+Ontario",
+        "description": "Best if the trip wants a softer pace and a classic Ontario small-city feel."
+      }
+    ],
+    "food_spots": [
+      {
+        "name": "Downtown Stratford dining",
+        "tags": [
+          "restaurants",
+          "cafes",
+          "walkable"
+        ],
+        "link": "https://www.google.com/maps/search/?api=1&query=Restaurants+Stratford+Ontario",
+        "description": "Enough density for an easy dinner-first weekend."
+      }
+    ],
+    "image_url_light": "/destinations/theme/stratford_on-light.webp",
+    "image_url_dark": "/destinations/theme/stratford_on-dark.webp"
+  },
+  {
+    "id": "blue_mountains_on",
+    "name": "Blue Mountains / Collingwood",
+    "region": "Ontario",
+    "home_base_city": "Collingwood / Blue Mountain Village",
+    "latitude": 44.5008,
+    "longitude": -80.2169,
+    "is_staycation": false,
+    "drive_time_hours_from": {
+      "toronto": 2.25,
+      "hamilton": 2,
+      "kitchener": 1.75,
+      "london": 3
+    },
+    "distance_km_from": {
+      "toronto": 160,
+      "hamilton": 145,
+      "kitchener": 120,
+      "london": 250
+    },
+    "cost_level": "mid",
+    "vibes": [
+      "ski",
+      "spa",
+      "scenic",
+      "easy"
+    ],
+    "best_seasons": [
+      "summer",
+      "fall",
+      "winter"
+    ],
+    "avoid_seasons": [
+      "spring"
+    ],
+    "style_scores": {
+      "chill": 2,
+      "outdoors": 2,
+      "foodie": 1,
+      "solo reset": 2,
+      "adventure": 1
+    },
+    "anchor_experiences": [
+      {
+        "title": "Village stroll and gondola or lookout block",
+        "type": "scenic",
+        "description": "High payoff if the trip wants a resort-style weekend without a flight.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Blue+Mountain+Village"
+      },
+      {
+        "title": "Scenic Caves or short ridge trail",
+        "type": "hiking",
+        "description": "Adds enough activity signal without asking the group to work too hard.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Scenic+Caves+Blue+Mountains"
+      }
+    ],
+    "neighborhoods": [
+      {
+        "name": "Blue Mountain Village",
+        "reason": "Best base for easy logistics and weekend polish",
+        "link": "https://www.google.com/maps/search/?api=1&query=Blue+Mountain+Village"
+      }
+    ],
+    "hotel_options": [
+      {
+        "name": "Village resort base",
+        "price_per_night": 260,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Hotels+Blue+Mountain+Village",
+        "description": "Useful if the brief wants a straightforward Ontario getaway with built-in weekend energy."
+      }
+    ],
+    "food_spots": [
+      {
+        "name": "Village and Collingwood dining",
+        "tags": [
+          "restaurants",
+          "casual",
+          "apres"
+        ],
+        "link": "https://www.google.com/maps/search/?api=1&query=Restaurants+Blue+Mountain+Village",
+        "description": "Good enough density for a low-friction long weekend."
+      }
+    ],
+    "image_url_light": "/destinations/theme/blue_mountains_on-light.webp",
+    "image_url_dark": "/destinations/theme/blue_mountains_on-dark.webp"
+  },
+  {
+    "id": "bruce_peninsula_on",
+    "name": "Bruce Peninsula / Tobermory",
+    "region": "Ontario",
+    "home_base_city": "Tobermory",
+    "latitude": 45.2536,
+    "longitude": -81.6645,
+    "is_staycation": false,
+    "drive_time_hours_from": {
+      "toronto": 4,
+      "hamilton": 3.25,
+      "london": 3,
+      "kitchener": 3
+    },
+    "distance_km_from": {
+      "toronto": 300,
+      "hamilton": 255,
+      "london": 275,
+      "kitchener": 240
+    },
+    "cost_level": "mid",
+    "vibes": [
+      "lake",
+      "cliffs",
+      "nature",
+      "scenic"
+    ],
+    "best_seasons": [
+      "summer",
+      "fall"
+    ],
+    "avoid_seasons": [
+      "winter",
+      "spring"
+    ],
+    "style_scores": {
+      "chill": 1,
+      "outdoors": 3,
+      "foodie": 0,
+      "solo reset": 1,
+      "adventure": 2
+    },
+    "anchor_experiences": [
+      {
+        "title": "Cyprus Lake and grotto block",
+        "type": "nature",
+        "description": "Big Ontario outdoors payoff for a group that wants distinct scenery fast.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Bruce+Peninsula+Grotto"
+      },
+      {
+        "title": "Tobermory harbour and boat-view stop",
+        "type": "scenic",
+        "description": "Adds an easy blue-water reward even if the trip is not all trail time.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Tobermory+harbour"
+      }
+    ],
+    "neighborhoods": [
+      {
+        "name": "Tobermory harbour",
+        "reason": "Best practical base for water access and simple trip logistics",
+        "link": "https://www.google.com/maps/search/?api=1&query=Tobermory+harbour"
+      }
+    ],
+    "hotel_options": [
+      {
+        "name": "Tobermory inn base",
+        "price_per_night": 240,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Hotels+Tobermory+Ontario",
+        "description": "Useful if the brief wants a real peninsula weekend rather than a day trip."
+      }
+    ],
+    "food_spots": [
+      {
+        "name": "Tobermory casual harbour dining",
+        "tags": [
+          "casual",
+          "harbour",
+          "simple"
+        ],
+        "link": "https://www.google.com/maps/search/?api=1&query=Restaurants+Tobermory+Ontario",
+        "description": "Practical food support once the water and cliffs are the main point."
+      }
+    ],
+    "image_url_light": "/destinations/theme/bruce_peninsula_on-light.webp",
+    "image_url_dark": "/destinations/theme/bruce_peninsula_on-dark.webp"
+  },
+  {
+    "id": "algonquin_park_on",
+    "name": "Algonquin Park",
+    "region": "Ontario",
+    "home_base_city": "Huntsville / Algonquin access",
+    "latitude": 45.8372,
+    "longitude": -78.3794,
+    "is_staycation": false,
+    "drive_time_hours_from": {
+      "toronto": 3.5,
+      "ottawa": 3.25,
+      "brampton": 3.75
+    },
+    "distance_km_from": {
+      "toronto": 285,
+      "ottawa": 320,
+      "brampton": 300
+    },
+    "cost_level": "mid",
+    "vibes": [
+      "lake",
+      "canoe",
+      "forest",
+      "nature"
+    ],
+    "best_seasons": [
+      "summer",
+      "fall"
+    ],
+    "avoid_seasons": [
+      "winter",
+      "spring"
+    ],
+    "style_scores": {
+      "chill": 1,
+      "outdoors": 3,
+      "foodie": 0,
+      "solo reset": 2,
+      "adventure": 2
+    },
+    "anchor_experiences": [
+      {
+        "title": "Lookout trail or lakeside trail block",
+        "type": "hiking",
+        "description": "Very reliable outdoors anchor if the brief wants a classic Ontario nature weekend.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Algonquin+Lookout+Trail"
+      },
+      {
+        "title": "Canoe or calm lake reset",
+        "type": "nature",
+        "description": "Adds the quieter forest-and-water payoff that makes Algonquin feel distinct.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Canoe+Lake+Algonquin"
+      }
+    ],
+    "neighborhoods": [
+      {
+        "name": "West gate / Huntsville approach",
+        "reason": "Best practical setup for a short park-first trip",
+        "link": "https://www.google.com/maps/search/?api=1&query=Huntsville+Ontario"
+      }
+    ],
+    "hotel_options": [
+      {
+        "name": "Lakeside lodge base",
+        "price_per_night": 255,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Algonquin+Park+lodge",
+        "description": "Best fit if the group wants a park weekend with some comfort built in."
+      }
+    ],
+    "food_spots": [
+      {
+        "name": "Huntsville casual dining",
+        "tags": [
+          "casual",
+          "cafes",
+          "practical"
+        ],
+        "link": "https://www.google.com/maps/search/?api=1&query=Restaurants+Huntsville+Ontario",
+        "description": "Useful once scenery and trail time are carrying the trip."
+      }
+    ],
+    "image_url_light": "/destinations/theme/algonquin_park_on-light.webp",
+    "image_url_dark": "/destinations/theme/algonquin_park_on-dark.webp"
+  },
+  {
+    "id": "thousand_islands_on",
+    "name": "Thousand Islands / Gananoque",
+    "region": "Ontario",
+    "home_base_city": "Gananoque",
+    "latitude": 44.331,
+    "longitude": -76.163,
+    "is_staycation": false,
+    "drive_time_hours_from": {
+      "ottawa": 1.5,
+      "toronto": 3.25,
+      "montreal": 2.5
+    },
+    "distance_km_from": {
+      "ottawa": 145,
+      "toronto": 290,
+      "montreal": 260
+    },
+    "cost_level": "mid",
+    "vibes": [
+      "waterfront",
+      "boat",
+      "scenic",
+      "relax"
+    ],
+    "best_seasons": [
+      "spring",
+      "summer",
+      "fall"
+    ],
+    "avoid_seasons": [
+      "winter"
+    ],
+    "style_scores": {
+      "chill": 3,
+      "outdoors": 1,
+      "foodie": 1,
+      "solo reset": 2,
+      "adventure": 0
+    },
+    "anchor_experiences": [
+      {
+        "title": "Boat cruise or island lookout block",
+        "type": "scenic",
+        "description": "High payoff if the brief wants water views and a different-feeling Ontario weekend.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Thousand+Islands+boat+tour+Gananoque"
+      },
+      {
+        "title": "Gananoque waterfront wander",
+        "type": "nature",
+        "description": "Adds an easy reset rhythm around the bigger scenic anchor.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Gananoque+waterfront"
+      }
+    ],
+    "neighborhoods": [
+      {
+        "name": "Gananoque harbour",
+        "reason": "Best base for cruises, water access, and simple evening plans",
+        "link": "https://www.google.com/maps/search/?api=1&query=Gananoque+harbour"
+      }
+    ],
+    "hotel_options": [
+      {
+        "name": "Harbourfront inn base",
+        "price_per_night": 220,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Hotels+Gananoque",
+        "description": "Useful if the brief wants a slow water-and-town weekend."
+      }
+    ],
+    "food_spots": [
+      {
+        "name": "Gananoque harbour dining",
+        "tags": [
+          "casual",
+          "waterfront",
+          "easy"
+        ],
+        "link": "https://www.google.com/maps/search/?api=1&query=Restaurants+Gananoque",
+        "description": "Practical food support around a scenery-first weekend."
+      }
+    ],
+    "image_url_light": "/destinations/theme/thousand_islands_on-light.webp",
+    "image_url_dark": "/destinations/theme/thousand_islands_on-dark.webp"
+  },
+  {
+    "id": "niagara_falls_on",
+    "name": "Niagara Falls",
+    "region": "Ontario",
+    "home_base_city": "Niagara Falls",
+    "latitude": 43.0896,
+    "longitude": -79.0849,
+    "is_staycation": false,
+    "drive_time_hours_from": {
+      "toronto": 1.5,
+      "hamilton": 1,
+      "mississauga": 1.25,
+      "brampton": 1.5
+    },
+    "distance_km_from": {
+      "toronto": 130,
+      "hamilton": 70,
+      "mississauga": 100,
+      "brampton": 115
+    },
+    "cost_level": "mid",
+    "vibes": [
+      "must see",
+      "waterfall",
+      "easy",
+      "weekend"
+    ],
+    "best_seasons": [
+      "spring",
+      "summer",
+      "fall",
+      "winter"
+    ],
+    "avoid_seasons": [],
+    "style_scores": {
+      "chill": 1,
+      "outdoors": 1,
+      "foodie": 1,
+      "solo reset": 1,
+      "adventure": 1
+    },
+    "anchor_experiences": [
+      {
+        "title": "Falls viewpoints and river walk",
+        "type": "scenic",
+        "description": "Very high certainty payoff when the brief wants something iconic and easy.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Niagara+Falls+viewpoint"
+      },
+      {
+        "title": "Clifton Hill or evening lights block",
+        "type": "culture",
+        "description": "Adds classic tourist-weekend energy if the group wants a louder short trip.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Clifton+Hill+Niagara+Falls"
+      }
+    ],
+    "neighborhoods": [
+      {
+        "name": "Fallsview district",
+        "reason": "Best base for short walks to the main scenic payoff",
+        "link": "https://www.google.com/maps/search/?api=1&query=Fallsview+Niagara+Falls"
+      }
+    ],
+    "hotel_options": [
+      {
+        "name": "Fallsview hotel base",
+        "price_per_night": 250,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Fallsview+hotels+Niagara+Falls",
+        "description": "Useful if the brief wants the iconic view baked into the stay."
+      }
+    ],
+    "food_spots": [
+      {
+        "name": "Fallsview and Clifton Hill dining",
+        "tags": [
+          "tourist-friendly",
+          "casual",
+          "easy"
+        ],
+        "link": "https://www.google.com/maps/search/?api=1&query=Restaurants+Niagara+Falls+Ontario",
+        "description": "Plenty of simple options for a low-friction iconic weekend."
+      }
+    ],
+    "image_url_light": "/destinations/theme/niagara_falls_on-light.webp",
+    "image_url_dark": "/destinations/theme/niagara_falls_on-dark.webp"
+  },
+  {
+    "id": "mont_tremblant_qc",
+    "name": "Mont-Tremblant",
+    "region": "Quebec",
+    "home_base_city": "Mont-Tremblant",
+    "latitude": 46.1185,
+    "longitude": -74.5962,
+    "is_staycation": false,
+    "drive_time_hours_from": {
+      "montreal": 1.75,
+      "ottawa": 2,
+      "laval": 1.75,
+      "gatineau": 2
+    },
+    "distance_km_from": {
+      "montreal": 140,
+      "ottawa": 160,
+      "laval": 150,
+      "gatineau": 160
+    },
+    "cost_level": "mid",
+    "vibes": [
+      "mountain",
+      "village",
+      "lake",
+      "spa"
+    ],
+    "best_seasons": [
+      "summer",
+      "fall",
+      "winter"
+    ],
+    "avoid_seasons": [
+      "spring"
+    ],
+    "style_scores": {
+      "chill": 2,
+      "outdoors": 2,
+      "foodie": 1,
+      "solo reset": 2,
+      "adventure": 1
+    },
+    "anchor_experiences": [
+      {
+        "title": "Pedestrian village and summit gondola viewpoint",
+        "type": "scenic",
+        "description": "Strong fit if the trip wants a polished resort-style Quebec weekend.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Mont-Tremblant+village"
+      },
+      {
+        "title": "Lake loop trail and mountain hike reset",
+        "type": "hiking",
+        "description": "Adds enough outdoors signal to keep the trip from feeling too resort-only.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Lac+Tremblant"
+      }
+    ],
+    "neighborhoods": [
+      {
+        "name": "Pedestrian village",
+        "reason": "Best base for easy logistics and a ready-made weekend feel",
+        "link": "https://www.google.com/maps/search/?api=1&query=Mont-Tremblant+pedestrian+village"
+      }
+    ],
+    "hotel_options": [
+      {
+        "name": "Village resort base",
+        "price_per_night": 255,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Hotels+Mont-Tremblant",
+        "description": "Useful if the brief wants a high-confidence Laurentians weekend."
+      }
+    ],
+    "food_spots": [
+      {
+        "name": "Village dining cluster",
+        "tags": [
+          "restaurants",
+          "walkable",
+          "easy"
+        ],
+        "link": "https://www.google.com/maps/search/?api=1&query=Restaurants+Mont-Tremblant+village",
+        "description": "Dense enough for a no-stress resort weekend."
+      }
+    ],
+    "image_url_light": "/destinations/theme/mont_tremblant_qc-light.webp",
+    "image_url_dark": "/destinations/theme/mont_tremblant_qc-dark.webp"
+  },
+  {
+    "id": "charlevoix_qc",
+    "name": "Charlevoix / Baie-Saint-Paul",
+    "region": "Quebec",
+    "home_base_city": "Baie-Saint-Paul",
+    "latitude": 47.4413,
+    "longitude": -70.4986,
+    "is_staycation": false,
+    "drive_time_hours_from": {
+      "quebec_city": 1.25,
+      "montreal": 4,
+      "sherbrooke": 4.75
+    },
+    "distance_km_from": {
+      "quebec_city": 95,
+      "montreal": 380,
+      "sherbrooke": 420
+    },
+    "cost_level": "mid",
+    "vibes": [
+      "scenic",
+      "food",
+      "arts",
+      "river"
+    ],
+    "best_seasons": [
+      "summer",
+      "fall",
+      "winter"
+    ],
+    "avoid_seasons": [
+      "spring"
+    ],
+    "style_scores": {
+      "chill": 3,
+      "outdoors": 1,
+      "foodie": 2,
+      "solo reset": 2,
+      "adventure": 0
+    },
+    "anchor_experiences": [
+      {
+        "title": "St. Lawrence lookouts and village streets",
+        "type": "scenic",
+        "description": "Big visual payoff with a softer pace than Quebec's resort mountains.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Baie-Saint-Paul+viewpoint"
+      },
+      {
+        "title": "Baie-Saint-Paul galleries and cafe block",
+        "type": "food",
+        "description": "Strong fit if the trip brief leans scenic, local, and slower.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Baie-Saint-Paul+restaurants"
+      }
+    ],
+    "neighborhoods": [
+      {
+        "name": "Baie-Saint-Paul core",
+        "reason": "Best base for walkability and easy access to Charlevoix drives",
+        "link": "https://www.google.com/maps/search/?api=1&query=Baie-Saint-Paul"
+      }
+    ],
+    "hotel_options": [
+      {
+        "name": "Charlevoix inn base",
+        "price_per_night": 245,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Hotels+Baie-Saint-Paul",
+        "description": "Best fit if the trip wants scenic Quebec without a high-complexity route."
+      }
+    ],
+    "food_spots": [
+      {
+        "name": "Baie-Saint-Paul dining cluster",
+        "tags": [
+          "cafes",
+          "local",
+          "walkable"
+        ],
+        "link": "https://www.google.com/maps/search/?api=1&query=Restaurants+Baie-Saint-Paul",
+        "description": "Good enough density for a scenic-food weekend."
+      }
+    ],
+    "image_url_light": "/destinations/theme/charlevoix_qc-light.webp",
+    "image_url_dark": "/destinations/theme/charlevoix_qc-dark.webp"
+  },
+  {
+    "id": "eastern_townships_qc",
+    "name": "Eastern Townships",
+    "region": "Quebec",
+    "home_base_city": "Magog",
+    "latitude": 45.266,
+    "longitude": -72.145,
+    "is_staycation": false,
+    "drive_time_hours_from": {
+      "montreal": 1.5,
+      "sherbrooke": 0.5,
+      "laval": 2,
+      "quebec_city": 2.5
+    },
+    "distance_km_from": {
+      "montreal": 125,
+      "sherbrooke": 45,
+      "laval": 145,
+      "quebec_city": 250
+    },
+    "cost_level": "mid",
+    "vibes": [
+      "lake",
+      "food",
+      "wine",
+      "relax"
+    ],
+    "best_seasons": [
+      "spring",
+      "summer",
+      "fall"
+    ],
+    "avoid_seasons": [
+      "winter"
+    ],
+    "style_scores": {
+      "chill": 3,
+      "outdoors": 1,
+      "foodie": 2,
+      "solo reset": 2,
+      "adventure": 0
+    },
+    "anchor_experiences": [
+      {
+        "title": "Lake Memphremagog and Magog boardwalk",
+        "type": "scenic",
+        "description": "Low-effort water-and-town payoff for a weekend that wants calm rather than intensity.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Lake+Memphremagog+Magog"
+      },
+      {
+        "title": "Townships winery and cafe route",
+        "type": "food",
+        "description": "Best fit if the brief wants a soft food-and-scenery weekend from Montreal.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Eastern+Townships+wineries"
+      }
+    ],
+    "neighborhoods": [
+      {
+        "name": "Magog waterfront",
+        "reason": "Best base for lake access plus easy dining and a slower pace",
+        "link": "https://www.google.com/maps/search/?api=1&query=Magog+waterfront"
+      }
+    ],
+    "hotel_options": [
+      {
+        "name": "Lakefront inn base",
+        "price_per_night": 235,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Hotels+Magog",
+        "description": "Useful if the trip wants an easy Quebec lakeside reset."
+      }
+    ],
+    "food_spots": [
+      {
+        "name": "Magog dining and wine stops",
+        "tags": [
+          "restaurants",
+          "wine",
+          "walkable"
+        ],
+        "link": "https://www.google.com/maps/search/?api=1&query=Restaurants+Magog",
+        "description": "Enough density to keep a chill weekend simple."
+      }
+    ],
+    "image_url_light": "/destinations/theme/eastern_townships_qc-light.webp",
+    "image_url_dark": "/destinations/theme/eastern_townships_qc-dark.webp"
+  },
+  {
+    "id": "saguenay_fjord_qc",
+    "name": "Saguenay / Fjord",
+    "region": "Quebec",
+    "home_base_city": "La Baie / Saguenay",
+    "latitude": 48.352,
+    "longitude": -70.878,
+    "is_staycation": false,
+    "drive_time_hours_from": {
+      "quebec_city": 2.5,
+      "montreal": 4.5
+    },
+    "distance_km_from": {
+      "quebec_city": 210,
+      "montreal": 470
+    },
+    "cost_level": "mid",
+    "vibes": [
+      "fjord",
+      "scenic",
+      "nature",
+      "quiet"
+    ],
+    "best_seasons": [
+      "summer",
+      "fall"
+    ],
+    "avoid_seasons": [
+      "winter",
+      "spring"
+    ],
+    "style_scores": {
+      "chill": 2,
+      "outdoors": 3,
+      "foodie": 0,
+      "solo reset": 2,
+      "adventure": 1
+    },
+    "anchor_experiences": [
+      {
+        "title": "Fjord viewpoints and shoreline drive",
+        "type": "scenic",
+        "description": "High-conviction scenery if the brief wants something in Quebec that feels visibly different.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Saguenay+Fjord+viewpoint"
+      },
+      {
+        "title": "Short fjord trail or park stop",
+        "type": "hiking",
+        "description": "Adds just enough activity for an outdoors-first weekend without overcomplicating it.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Parc+national+du+Fjord-du-Saguenay"
+      }
+    ],
+    "neighborhoods": [
+      {
+        "name": "La Baie waterfront",
+        "reason": "Best practical base for fjord views and easier access to the main scenic stops",
+        "link": "https://www.google.com/maps/search/?api=1&query=La+Baie+Saguenay"
+      }
+    ],
+    "hotel_options": [
+      {
+        "name": "Fjord-view inn base",
+        "price_per_night": 220,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Hotels+Saguenay+Quebec",
+        "description": "Useful if the trip wants fjord scenery with a simple home base."
+      }
+    ],
+    "food_spots": [
+      {
+        "name": "La Baie casual dining",
+        "tags": [
+          "casual",
+          "local",
+          "simple"
+        ],
+        "link": "https://www.google.com/maps/search/?api=1&query=Restaurants+La+Baie+Saguenay",
+        "description": "Practical food support once the fjord is the main draw."
+      }
+    ],
+    "image_url_light": "/destinations/theme/saguenay_fjord_qc-light.webp",
+    "image_url_dark": "/destinations/theme/saguenay_fjord_qc-dark.webp"
+  },
+  {
+    "id": "tadoussac_qc",
+    "name": "Tadoussac",
+    "region": "Quebec",
+    "home_base_city": "Tadoussac",
+    "latitude": 48.144,
+    "longitude": -69.718,
+    "is_staycation": false,
+    "drive_time_hours_from": {
+      "quebec_city": 2.75,
+      "montreal": 5
+    },
+    "distance_km_from": {
+      "quebec_city": 215,
+      "montreal": 475
+    },
+    "cost_level": "mid",
+    "vibes": [
+      "coast",
+      "whales",
+      "scenic",
+      "quiet"
+    ],
+    "best_seasons": [
+      "summer",
+      "fall"
+    ],
+    "avoid_seasons": [
+      "winter",
+      "spring"
+    ],
+    "style_scores": {
+      "chill": 2,
+      "outdoors": 2,
+      "foodie": 0,
+      "solo reset": 2,
+      "adventure": 1
+    },
+    "anchor_experiences": [
+      {
+        "title": "Bay viewpoints and whale-watch waterfront",
+        "type": "scenic",
+        "description": "Strong fit if the trip wants a coastal Quebec weekend with a real sense of place.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Tadoussac+bay+viewpoint"
+      },
+      {
+        "title": "Dunes or short nature trail block",
+        "type": "nature",
+        "description": "Adds enough outdoors signal without making the whole trip about distance hiking.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Tadoussac+dunes"
+      }
+    ],
+    "neighborhoods": [
+      {
+        "name": "Tadoussac village core",
+        "reason": "Best base for the harbour, viewpoints, and easy walking",
+        "link": "https://www.google.com/maps/search/?api=1&query=Tadoussac+Quebec"
+      }
+    ],
+    "hotel_options": [
+      {
+        "name": "Harbour inn base",
+        "price_per_night": 235,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Hotels+Tadoussac",
+        "description": "Useful if the brief wants a compact scenic town with coastal payoff."
+      }
+    ],
+    "food_spots": [
+      {
+        "name": "Tadoussac village dining",
+        "tags": [
+          "casual",
+          "coastal",
+          "small-town"
+        ],
+        "link": "https://www.google.com/maps/search/?api=1&query=Restaurants+Tadoussac",
+        "description": "Practical food support around a scenery-first weekend."
+      }
+    ],
+    "image_url_light": "/destinations/theme/tadoussac_qc-light.webp",
+    "image_url_dark": "/destinations/theme/tadoussac_qc-dark.webp"
+  },
+  {
+    "id": "mauricie_np_qc",
+    "name": "Mauricie National Park",
+    "region": "Quebec",
+    "home_base_city": "Shawinigan / Saint-Alexis-des-Monts",
+    "latitude": 46.566,
+    "longitude": -72.95,
+    "is_staycation": false,
+    "drive_time_hours_from": {
+      "montreal": 2.25,
+      "quebec_city": 1.75,
+      "trois_rivieres": 0.75
+    },
+    "distance_km_from": {
+      "montreal": 190,
+      "quebec_city": 170,
+      "trois_rivieres": 60
+    },
+    "cost_level": "mid",
+    "vibes": [
+      "lake",
+      "forest",
+      "canoe",
+      "nature"
+    ],
+    "best_seasons": [
+      "summer",
+      "fall"
+    ],
+    "avoid_seasons": [
+      "winter",
+      "spring"
+    ],
+    "style_scores": {
+      "chill": 1,
+      "outdoors": 3,
+      "foodie": 0,
+      "solo reset": 2,
+      "adventure": 1
+    },
+    "anchor_experiences": [
+      {
+        "title": "Parkway lookouts and lake stops",
+        "type": "scenic",
+        "description": "Reliable forest-and-water payoff for a weekend that wants classic Quebec park energy.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Mauricie+National+Park+lookout"
+      },
+      {
+        "title": "Short trail or canoe block",
+        "type": "hiking",
+        "description": "Adds a real outdoors anchor without forcing a hard effort weekend.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Mauricie+National+Park+trails"
+      }
+    ],
+    "neighborhoods": [
+      {
+        "name": "Shawinigan approach",
+        "reason": "Best practical base if the trip wants the park plus straightforward food and stay logistics",
+        "link": "https://www.google.com/maps/search/?api=1&query=Shawinigan+Quebec"
+      }
+    ],
+    "hotel_options": [
+      {
+        "name": "Lakeside lodge base",
+        "price_per_night": 220,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Mauricie+National+Park+lodge",
+        "description": "Useful if the brief wants a nature-first weekend with some comfort built in."
+      }
+    ],
+    "food_spots": [
+      {
+        "name": "Shawinigan casual dining",
+        "tags": [
+          "casual",
+          "practical",
+          "simple"
+        ],
+        "link": "https://www.google.com/maps/search/?api=1&query=Restaurants+Shawinigan",
+        "description": "Practical food support once the park is doing most of the work."
+      }
+    ],
+    "image_url_light": "/destinations/theme/mauricie_np_qc-light.webp",
+    "image_url_dark": "/destinations/theme/mauricie_np_qc-dark.webp"
+  },
+  {
+    "id": "gimli_lake_winnipeg_mb",
+    "name": "Gimli / Lake Winnipeg",
+    "region": "Manitoba",
+    "home_base_city": "Gimli",
+    "latitude": 50.6336,
+    "longitude": -96.99,
+    "is_staycation": false,
+    "drive_time_hours_from": {
+      "winnipeg": 1.25,
+      "brandon": 4
+    },
+    "distance_km_from": {
+      "winnipeg": 95,
+      "brandon": 340
+    },
+    "cost_level": "low_mid",
+    "vibes": [
+      "lake",
+      "beach",
+      "relax",
+      "small town"
+    ],
+    "best_seasons": [
+      "summer",
+      "fall"
+    ],
+    "avoid_seasons": [
+      "winter",
+      "spring"
+    ],
+    "style_scores": {
+      "chill": 3,
+      "outdoors": 1,
+      "foodie": 0,
+      "solo reset": 2,
+      "adventure": 0
+    },
+    "anchor_experiences": [
+      {
+        "title": "Harbourfront and lakeside beach reset",
+        "type": "scenic",
+        "description": "Easy lake weekend payoff close enough to Winnipeg that it still feels doable.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Gimli+harbour"
+      },
+      {
+        "title": "Boardwalk and small-town cafe block",
+        "type": "food",
+        "description": "Best fit if the brief wants a simple prairie-lake change of pace.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Gimli+restaurants"
+      }
+    ],
+    "neighborhoods": [
+      {
+        "name": "Gimli harbour",
+        "reason": "Best base for water access and a compact weekend feel",
+        "link": "https://www.google.com/maps/search/?api=1&query=Gimli+harbour"
+      }
+    ],
+    "hotel_options": [
+      {
+        "name": "Lakefront inn base",
+        "price_per_night": 195,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Hotels+Gimli+Manitoba",
+        "description": "Useful if the trip wants a short lake weekend rather than a city stay."
+      }
+    ],
+    "food_spots": [
+      {
+        "name": "Gimli harbour dining",
+        "tags": [
+          "casual",
+          "lakefront",
+          "easy"
+        ],
+        "link": "https://www.google.com/maps/search/?api=1&query=Restaurants+Gimli+Manitoba",
+        "description": "Practical food support around a quiet Lake Winnipeg weekend."
+      }
+    ],
+    "image_url_light": "/destinations/theme/gimli_lake_winnipeg_mb-light.webp",
+    "image_url_dark": "/destinations/theme/gimli_lake_winnipeg_mb-dark.webp"
+  },
+  {
+    "id": "whiteshell_mb",
+    "name": "Whiteshell",
+    "region": "Manitoba",
+    "home_base_city": "Falcon Lake",
+    "latitude": 49.693,
+    "longitude": -95.321,
+    "is_staycation": false,
+    "drive_time_hours_from": {
+      "winnipeg": 1.75,
+      "brandon": 4.75
+    },
+    "distance_km_from": {
+      "winnipeg": 150,
+      "brandon": 420
+    },
+    "cost_level": "mid",
+    "vibes": [
+      "lake",
+      "forest",
+      "canoe",
+      "nature"
+    ],
+    "best_seasons": [
+      "summer",
+      "fall"
+    ],
+    "avoid_seasons": [
+      "winter",
+      "spring"
+    ],
+    "style_scores": {
+      "chill": 1,
+      "outdoors": 3,
+      "foodie": 0,
+      "solo reset": 2,
+      "adventure": 1
+    },
+    "anchor_experiences": [
+      {
+        "title": "Falcon Lake beach and paddle block",
+        "type": "nature",
+        "description": "Strong easy-outdoors payoff if the group wants lake time more than city time.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Falcon+Lake+Manitoba"
+      },
+      {
+        "title": "Short rock-and-pine trail",
+        "type": "hiking",
+        "description": "Adds a distinct Canadian Shield feel without overcomplicating the weekend.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Whiteshell+Provincial+Park+trail"
+      }
+    ],
+    "neighborhoods": [
+      {
+        "name": "Falcon Lake",
+        "reason": "Best practical base for a quick Whiteshell weekend",
+        "link": "https://www.google.com/maps/search/?api=1&query=Falcon+Lake+Manitoba"
+      }
+    ],
+    "hotel_options": [
+      {
+        "name": "Falcon Lake lodge base",
+        "price_per_night": 210,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Hotels+Falcon+Lake+Manitoba",
+        "description": "Useful if the trip wants a nature-first weekend with minimal extra logistics."
+      }
+    ],
+    "food_spots": [
+      {
+        "name": "Falcon Lake casual dining",
+        "tags": [
+          "casual",
+          "lodge",
+          "simple"
+        ],
+        "link": "https://www.google.com/maps/search/?api=1&query=Restaurants+Falcon+Lake+Manitoba",
+        "description": "Practical once the lakes and trails are the main point."
+      }
+    ],
+    "image_url_light": "/destinations/theme/whiteshell_mb-light.webp",
+    "image_url_dark": "/destinations/theme/whiteshell_mb-dark.webp"
+  },
+  {
+    "id": "moose_jaw_staycation_sk",
+    "name": "Moose Jaw Staycation",
+    "region": "Saskatchewan",
+    "home_base_city": "Moose Jaw",
+    "latitude": 50.3938,
+    "longitude": -105.5519,
+    "is_staycation": true,
+    "drive_time_hours_from": {
+      "moose_jaw": 0,
+      "regina": 0.75,
+      "saskatoon": 2.5
+    },
+    "distance_km_from": {
+      "moose_jaw": 0,
+      "regina": 72,
+      "saskatoon": 230
+    },
+    "cost_level": "low_mid",
+    "vibes": [
+      "spa",
+      "historic",
+      "easy",
+      "small city"
+    ],
+    "best_seasons": [
+      "spring",
+      "summer",
+      "fall",
+      "winter"
+    ],
+    "avoid_seasons": [],
+    "style_scores": {
+      "chill": 2,
+      "outdoors": 0,
+      "foodie": 1,
+      "solo reset": 2,
+      "adventure": 0
+    },
+    "anchor_experiences": [
+      {
+        "title": "Temple Gardens spa and pool block",
+        "type": "relax",
+        "description": "High-conviction reset payoff if the brief wants low effort more than scenery miles.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Temple+Gardens+Moose+Jaw"
+      },
+      {
+        "title": "Historic downtown and tunnels area wander",
+        "type": "culture",
+        "description": "Adds enough place-specific character to keep the weekend from feeling generic.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Downtown+Moose+Jaw"
+      }
+    ],
+    "neighborhoods": [
+      {
+        "name": "Downtown Moose Jaw",
+        "reason": "Best base for the spa, historic core, and easy food access",
+        "link": "https://www.google.com/maps/search/?api=1&query=Downtown+Moose+Jaw"
+      }
+    ],
+    "hotel_options": [
+      {
+        "name": "Central spa hotel base",
+        "price_per_night": 180,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Hotels+Moose+Jaw",
+        "description": "Useful if the brief wants a true low-effort Saskatchewan reset."
+      }
+    ],
+    "food_spots": [
+      {
+        "name": "Downtown Moose Jaw dining",
+        "tags": [
+          "casual",
+          "central",
+          "easy"
+        ],
+        "link": "https://www.google.com/maps/search/?api=1&query=Restaurants+Downtown+Moose+Jaw",
+        "description": "Enough density for a straightforward overnight or two-night stay."
+      }
+    ],
+    "image_url_light": "/destinations/theme/moose_jaw_staycation_sk-light.webp",
+    "image_url_dark": "/destinations/theme/moose_jaw_staycation_sk-dark.webp"
+  },
+  {
+    "id": "grasslands_np_sk",
+    "name": "Grasslands National Park",
+    "region": "Saskatchewan",
+    "home_base_city": "Val Marie",
+    "latitude": 49.2401,
+    "longitude": -107.7281,
+    "is_staycation": false,
+    "drive_time_hours_from": {
+      "regina": 4,
+      "moose_jaw": 3.25
+    },
+    "distance_km_from": {
+      "regina": 340,
+      "moose_jaw": 285
+    },
+    "cost_level": "mid",
+    "vibes": [
+      "prairie",
+      "dark sky",
+      "wildlife",
+      "scenic"
+    ],
+    "best_seasons": [
+      "summer",
+      "fall"
+    ],
+    "avoid_seasons": [
+      "winter",
+      "spring"
+    ],
+    "style_scores": {
+      "chill": 1,
+      "outdoors": 3,
+      "foodie": 0,
+      "solo reset": 2,
+      "adventure": 2
+    },
+    "anchor_experiences": [
+      {
+        "title": "Prairie lookout and bison block",
+        "type": "nature",
+        "description": "Distinctive big-sky payoff that feels unlike the mountain-heavy Canada set.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Grasslands+National+Park"
+      },
+      {
+        "title": "Dark-sky sunset or stargazing stop",
+        "type": "scenic",
+        "description": "Strong fit if the brief wants atmosphere and open-landscape reward more than crowds.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Grasslands+National+Park+stargazing"
+      }
+    ],
+    "neighborhoods": [
+      {
+        "name": "Val Marie",
+        "reason": "Best practical base for a short park weekend",
+        "link": "https://www.google.com/maps/search/?api=1&query=Val+Marie+Saskatchewan"
+      }
+    ],
+    "hotel_options": [
+      {
+        "name": "Prairie lodge base",
+        "price_per_night": 205,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Hotels+Val+Marie+Saskatchewan",
+        "description": "Useful if the trip wants a true park overnight rather than a long day trip."
+      }
+    ],
+    "food_spots": [
+      {
+        "name": "Val Marie casual dining",
+        "tags": [
+          "casual",
+          "small-town",
+          "simple"
+        ],
+        "link": "https://www.google.com/maps/search/?api=1&query=Restaurants+Val+Marie+Saskatchewan",
+        "description": "Practical food support once the prairie landscape is the main event."
+      }
+    ],
+    "image_url_light": "/destinations/theme/grasslands_np_sk-light.webp",
+    "image_url_dark": "/destinations/theme/grasslands_np_sk-dark.webp"
+  },
+  {
+    "id": "st_andrews_nb",
+    "name": "St. Andrews-by-the-Sea",
+    "region": "New Brunswick",
+    "home_base_city": "St. Andrews-by-the-Sea",
+    "latitude": 45.0732,
+    "longitude": -67.0521,
+    "is_staycation": false,
+    "drive_time_hours_from": {
+      "saint_john": 1.5,
+      "fredericton": 1.5,
+      "moncton": 2.75
+    },
+    "distance_km_from": {
+      "saint_john": 110,
+      "fredericton": 130,
+      "moncton": 250
+    },
+    "cost_level": "mid",
+    "vibes": [
+      "coast",
+      "small town",
+      "food",
+      "relax"
+    ],
+    "best_seasons": [
+      "spring",
+      "summer",
+      "fall"
+    ],
+    "avoid_seasons": [
+      "winter"
+    ],
+    "style_scores": {
+      "chill": 3,
+      "outdoors": 1,
+      "foodie": 2,
+      "solo reset": 2,
+      "adventure": 0
+    },
+    "anchor_experiences": [
+      {
+        "title": "Harbour walk and island viewpoints",
+        "type": "scenic",
+        "description": "Strong fit if the trip wants a polished Atlantic small-town weekend.",
+        "link": "https://www.google.com/maps/search/?api=1&query=St+Andrews+harbour"
+      },
+      {
+        "title": "Town core cafes and dinner block",
+        "type": "food",
+        "description": "Adds easy coastal-town charm without needing a lot of extra planning.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Restaurants+St+Andrews+NB"
+      }
+    ],
+    "neighborhoods": [
+      {
+        "name": "Waterfront core",
+        "reason": "Best base for harbour access and walkable dining",
+        "link": "https://www.google.com/maps/search/?api=1&query=Waterfront+St+Andrews+NB"
+      }
+    ],
+    "hotel_options": [
+      {
+        "name": "Harbour inn base",
+        "price_per_night": 230,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Hotels+St+Andrews+NB",
+        "description": "Useful if the brief wants the kind of Atlantic weekend that feels compact and polished."
+      }
+    ],
+    "food_spots": [
+      {
+        "name": "Waterfront St. Andrews dining",
+        "tags": [
+          "coastal",
+          "restaurants",
+          "walkable"
+        ],
+        "link": "https://www.google.com/maps/search/?api=1&query=Restaurants+St+Andrews+NB",
+        "description": "Good density for a slower food-and-view weekend."
+      }
+    ],
+    "image_url_light": "/destinations/theme/st_andrews_nb-light.webp",
+    "image_url_dark": "/destinations/theme/st_andrews_nb-dark.webp"
+  },
+  {
+    "id": "hopewell_rocks_nb",
+    "name": "Hopewell Rocks",
+    "region": "New Brunswick",
+    "home_base_city": "Alma / Hopewell Cape",
+    "latitude": 45.8192,
+    "longitude": -64.5772,
+    "is_staycation": false,
+    "drive_time_hours_from": {
+      "moncton": 0.5,
+      "fredericton": 2,
+      "saint_john": 2
+    },
+    "distance_km_from": {
+      "moncton": 45,
+      "fredericton": 170,
+      "saint_john": 155
+    },
+    "cost_level": "mid",
+    "vibes": [
+      "bay of fundy",
+      "coast",
+      "scenic",
+      "nature"
+    ],
+    "best_seasons": [
+      "spring",
+      "summer",
+      "fall"
+    ],
+    "avoid_seasons": [
+      "winter"
+    ],
+    "style_scores": {
+      "chill": 1,
+      "outdoors": 3,
+      "foodie": 0,
+      "solo reset": 1,
+      "adventure": 1
+    },
+    "anchor_experiences": [
+      {
+        "title": "Tidal floor and sea-stack block",
+        "type": "scenic",
+        "description": "Very strong Atlantic payoff if the brief wants something iconic and visibly different.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Hopewell+Rocks"
+      },
+      {
+        "title": "Fundy trail or coast stop",
+        "type": "nature",
+        "description": "Adds enough outdoors signal to make the weekend feel like a real getaway.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Fundy+National+Park"
+      }
+    ],
+    "neighborhoods": [
+      {
+        "name": "Alma / Fundy access",
+        "reason": "Best practical base for tides, viewpoints, and a short coast weekend",
+        "link": "https://www.google.com/maps/search/?api=1&query=Alma+New+Brunswick"
+      }
+    ],
+    "hotel_options": [
+      {
+        "name": "Fundy coast lodge base",
+        "price_per_night": 220,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Hotels+Alma+New+Brunswick",
+        "description": "Useful if the trip wants a scenic Bay of Fundy weekend rather than a quick photo stop."
+      }
+    ],
+    "food_spots": [
+      {
+        "name": "Alma casual dining",
+        "tags": [
+          "casual",
+          "coastal",
+          "simple"
+        ],
+        "link": "https://www.google.com/maps/search/?api=1&query=Restaurants+Alma+New+Brunswick",
+        "description": "Practical food support around a scenery-first Fundy trip."
+      }
+    ],
+    "image_url_light": "/destinations/theme/hopewell_rocks_nb-light.webp",
+    "image_url_dark": "/destinations/theme/hopewell_rocks_nb-dark.webp"
+  },
+  {
+    "id": "lunenburg_south_shore_ns",
+    "name": "Lunenburg / South Shore",
+    "region": "Nova Scotia",
+    "home_base_city": "Lunenburg",
+    "latitude": 44.3789,
+    "longitude": -64.3123,
+    "is_staycation": false,
+    "drive_time_hours_from": {
+      "halifax": 1.25
+    },
+    "distance_km_from": {
+      "halifax": 105
+    },
+    "cost_level": "mid",
+    "vibes": [
+      "coast",
+      "historic",
+      "food",
+      "small town"
+    ],
+    "best_seasons": [
+      "spring",
+      "summer",
+      "fall"
+    ],
+    "avoid_seasons": [
+      "winter"
+    ],
+    "style_scores": {
+      "chill": 3,
+      "outdoors": 1,
+      "foodie": 2,
+      "solo reset": 2,
+      "adventure": 0
+    },
+    "anchor_experiences": [
+      {
+        "title": "Lunenburg waterfront and heritage streets",
+        "type": "culture",
+        "description": "High-confidence Atlantic coastal-town payoff with almost no friction.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Lunenburg+waterfront"
+      },
+      {
+        "title": "Mahone Bay coastal drive and cafes",
+        "type": "food",
+        "description": "Best fit if the trip wants an easy Nova Scotia road-trip feel without long distances.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Mahone+Bay+Nova+Scotia"
+      }
+    ],
+    "neighborhoods": [
+      {
+        "name": "Lunenburg harbour",
+        "reason": "Best base for heritage charm and walkable dining",
+        "link": "https://www.google.com/maps/search/?api=1&query=Lunenburg+harbour"
+      }
+    ],
+    "hotel_options": [
+      {
+        "name": "Harbour inn base",
+        "price_per_night": 235,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Hotels+Lunenburg+Nova+Scotia",
+        "description": "Useful if the brief wants a scenic Atlantic weekend with immediate place feel."
+      }
+    ],
+    "food_spots": [
+      {
+        "name": "Harbourfront dining",
+        "tags": [
+          "coastal",
+          "restaurants",
+          "walkable"
+        ],
+        "link": "https://www.google.com/maps/search/?api=1&query=Restaurants+Lunenburg+Nova+Scotia",
+        "description": "Good enough density for a softer food-and-view weekend."
+      }
+    ],
+    "image_url_light": "/destinations/theme/lunenburg_south_shore_ns-light.webp",
+    "image_url_dark": "/destinations/theme/lunenburg_south_shore_ns-dark.webp"
+  },
+  {
+    "id": "wolfville_annapolis_ns",
+    "name": "Wolfville / Annapolis Valley",
+    "region": "Nova Scotia",
+    "home_base_city": "Wolfville",
+    "latitude": 45.0919,
+    "longitude": -64.365,
+    "is_staycation": false,
+    "drive_time_hours_from": {
+      "halifax": 1.25
+    },
+    "distance_km_from": {
+      "halifax": 100
+    },
+    "cost_level": "mid",
+    "vibes": [
+      "wine",
+      "food",
+      "valley",
+      "relax"
+    ],
+    "best_seasons": [
+      "spring",
+      "summer",
+      "fall"
+    ],
+    "avoid_seasons": [
+      "winter"
+    ],
+    "style_scores": {
+      "chill": 3,
+      "outdoors": 1,
+      "foodie": 2,
+      "solo reset": 2,
+      "adventure": 0
+    },
+    "anchor_experiences": [
+      {
+        "title": "Valley winery and cider route",
+        "type": "food",
+        "description": "Strong fit if the brief wants a slower scenic-food weekend near Halifax.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Wolfville+wineries"
+      },
+      {
+        "title": "Lookoff or dykeland scenic stop",
+        "type": "scenic",
+        "description": "Adds enough landscape payoff without turning the weekend into a big road trip.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Lookoff+Nova+Scotia"
+      }
+    ],
+    "neighborhoods": [
+      {
+        "name": "Wolfville core",
+        "reason": "Best base for walkability and an easy valley-weekend feel",
+        "link": "https://www.google.com/maps/search/?api=1&query=Downtown+Wolfville"
+      }
+    ],
+    "hotel_options": [
+      {
+        "name": "Valley inn base",
+        "price_per_night": 220,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Hotels+Wolfville",
+        "description": "Useful if the brief wants food, wine, and scenery without high complexity."
+      }
+    ],
+    "food_spots": [
+      {
+        "name": "Wolfville dining and cafes",
+        "tags": [
+          "cafes",
+          "wine",
+          "walkable"
+        ],
+        "link": "https://www.google.com/maps/search/?api=1&query=Restaurants+Wolfville",
+        "description": "Enough density for an easy Annapolis Valley weekend."
+      }
+    ],
+    "image_url_light": "/destinations/theme/wolfville_annapolis_ns-light.webp",
+    "image_url_dark": "/destinations/theme/wolfville_annapolis_ns-dark.webp"
+  },
+  {
+    "id": "northumberland_shore_ns",
+    "name": "Northumberland Shore",
+    "region": "Nova Scotia",
+    "home_base_city": "Pictou / New Glasgow",
+    "latitude": 45.6753,
+    "longitude": -62.7092,
+    "is_staycation": false,
+    "drive_time_hours_from": {
+      "halifax": 1.75,
+      "sydney": 3.25
+    },
+    "distance_km_from": {
+      "halifax": 170,
+      "sydney": 290
+    },
+    "cost_level": "mid",
+    "vibes": [
+      "beach",
+      "coast",
+      "quiet",
+      "small town"
+    ],
+    "best_seasons": [
+      "summer",
+      "fall"
+    ],
+    "avoid_seasons": [
+      "winter",
+      "spring"
+    ],
+    "style_scores": {
+      "chill": 3,
+      "outdoors": 1,
+      "foodie": 0,
+      "solo reset": 2,
+      "adventure": 0
+    },
+    "anchor_experiences": [
+      {
+        "title": "Warm-water beach and shoreline reset",
+        "type": "scenic",
+        "description": "Easy coastal payoff if the brief wants a quieter Atlantic weekend than Halifax.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Northumberland+Shore+Nova+Scotia"
+      },
+      {
+        "title": "Pictou harbour wander",
+        "type": "culture",
+        "description": "Adds enough small-town character to make the weekend feel intentional.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Pictou+harbour"
+      }
+    ],
+    "neighborhoods": [
+      {
+        "name": "Pictou harbour",
+        "reason": "Best base for a simple north-shore weekend with food and water access",
+        "link": "https://www.google.com/maps/search/?api=1&query=Pictou+harbour"
+      }
+    ],
+    "hotel_options": [
+      {
+        "name": "Harbour inn base",
+        "price_per_night": 205,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Hotels+Pictou+Nova+Scotia",
+        "description": "Useful if the trip wants a compact Nova Scotia coast reset."
+      }
+    ],
+    "food_spots": [
+      {
+        "name": "Pictou casual dining",
+        "tags": [
+          "casual",
+          "harbour",
+          "simple"
+        ],
+        "link": "https://www.google.com/maps/search/?api=1&query=Restaurants+Pictou+Nova+Scotia",
+        "description": "Practical food support for a small-town beach weekend."
+      }
+    ],
+    "image_url_light": "/destinations/theme/northumberland_shore_ns-light.webp",
+    "image_url_dark": "/destinations/theme/northumberland_shore_ns-dark.webp"
+  },
+  {
+    "id": "pei_north_shore_pe",
+    "name": "PEI North Shore / Cavendish",
+    "region": "Prince Edward Island",
+    "home_base_city": "Cavendish / North Rustico",
+    "latitude": 46.486,
+    "longitude": -63.389,
+    "is_staycation": false,
+    "drive_time_hours_from": {
+      "charlottetown": 0.5,
+      "moncton": 3
+    },
+    "distance_km_from": {
+      "charlottetown": 40,
+      "moncton": 190
+    },
+    "cost_level": "mid",
+    "vibes": [
+      "beach",
+      "coast",
+      "family",
+      "relax"
+    ],
+    "best_seasons": [
+      "summer",
+      "fall"
+    ],
+    "avoid_seasons": [
+      "winter",
+      "spring"
+    ],
+    "style_scores": {
+      "chill": 3,
+      "outdoors": 1,
+      "foodie": 0,
+      "solo reset": 2,
+      "adventure": 0
+    },
+    "anchor_experiences": [
+      {
+        "title": "Cavendish beach and dunes block",
+        "type": "nature",
+        "description": "Strong PEI summer payoff if the trip wants classic island-coast energy.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Cavendish+Beach"
+      },
+      {
+        "title": "North Rustico harbour stop",
+        "type": "scenic",
+        "description": "Adds an easy fishing-village feel without more route complexity.",
+        "link": "https://www.google.com/maps/search/?api=1&query=North+Rustico+harbour"
+      }
+    ],
+    "neighborhoods": [
+      {
+        "name": "North Rustico / Cavendish",
+        "reason": "Best base for beaches, easy drives, and simple evening plans",
+        "link": "https://www.google.com/maps/search/?api=1&query=North+Rustico+PEI"
+      }
+    ],
+    "hotel_options": [
+      {
+        "name": "North shore inn base",
+        "price_per_night": 215,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Hotels+Cavendish+PEI",
+        "description": "Useful if the trip wants a true island-coast weekend rather than only Charlottetown."
+      }
+    ],
+    "food_spots": [
+      {
+        "name": "North Rustico harbour dining",
+        "tags": [
+          "casual",
+          "seafood",
+          "coastal"
+        ],
+        "link": "https://www.google.com/maps/search/?api=1&query=Restaurants+North+Rustico+PEI",
+        "description": "Good enough density for a beach-led PEI weekend."
+      }
+    ],
+    "image_url_light": "/destinations/theme/pei_north_shore_pe-light.webp",
+    "image_url_dark": "/destinations/theme/pei_north_shore_pe-dark.webp"
+  },
+  {
+    "id": "bonavista_peninsula_nl",
+    "name": "Bonavista Peninsula",
+    "region": "Newfoundland and Labrador",
+    "home_base_city": "Bonavista / Trinity",
+    "latitude": 48.649,
+    "longitude": -53.114,
+    "is_staycation": false,
+    "drive_time_hours_from": {
+      "st_john_s": 3.5
+    },
+    "distance_km_from": {
+      "st_john_s": 315
+    },
+    "cost_level": "mid",
+    "vibes": [
+      "coast",
+      "scenic",
+      "historic",
+      "quiet"
+    ],
+    "best_seasons": [
+      "summer",
+      "fall"
+    ],
+    "avoid_seasons": [
+      "winter",
+      "spring"
+    ],
+    "style_scores": {
+      "chill": 2,
+      "outdoors": 2,
+      "foodie": 0,
+      "solo reset": 2,
+      "adventure": 1
+    },
+    "anchor_experiences": [
+      {
+        "title": "Cape Bonavista cliff trail and lighthouse viewpoint",
+        "type": "scenic",
+        "description": "Big coastal payoff if the brief wants Atlantic drama without a city feel.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Cape+Bonavista+Lighthouse"
+      },
+      {
+        "title": "Skerwink Trail coastal hike",
+        "type": "hiking",
+        "description": "Adds a more committed outdoors anchor so the peninsula feels like a real scenic getaway.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Skerwink+Trail"
+      }
+    ],
+    "neighborhoods": [
+      {
+        "name": "Trinity / Bonavista corridor",
+        "reason": "Best base for coastal lookouts and easier food options",
+        "link": "https://www.google.com/maps/search/?api=1&query=Bonavista+Newfoundland"
+      }
+    ],
+    "hotel_options": [
+      {
+        "name": "Coastal inn base",
+        "price_per_night": 225,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Hotels+Bonavista+Newfoundland",
+        "description": "Useful if the trip wants the Newfoundland coast as the main point."
+      }
+    ],
+    "food_spots": [
+      {
+        "name": "Bonavista and Trinity casual dining",
+        "tags": [
+          "casual",
+          "coastal",
+          "small-town"
+        ],
+        "link": "https://www.google.com/maps/search/?api=1&query=Restaurants+Bonavista+Newfoundland",
+        "description": "Practical food support around a scenery-first peninsula weekend."
+      }
+    ],
+    "image_url_light": "/destinations/theme/bonavista_peninsula_nl-light.webp",
+    "image_url_dark": "/destinations/theme/bonavista_peninsula_nl-dark.webp"
+  },
+  {
+    "id": "twillingate_nl",
+    "name": "Twillingate",
+    "region": "Newfoundland and Labrador",
+    "home_base_city": "Twillingate",
+    "latitude": 49.649,
+    "longitude": -54.768,
+    "is_staycation": false,
+    "drive_time_hours_from": {
+      "st_john_s": 5,
+      "corner_brook": 5.5
+    },
+    "distance_km_from": {
+      "st_john_s": 430,
+      "corner_brook": 455
+    },
+    "cost_level": "mid",
+    "vibes": [
+      "coast",
+      "iceberg",
+      "scenic",
+      "quiet"
+    ],
+    "best_seasons": [
+      "spring",
+      "summer"
+    ],
+    "avoid_seasons": [
+      "winter",
+      "fall"
+    ],
+    "style_scores": {
+      "chill": 2,
+      "outdoors": 1,
+      "foodie": 0,
+      "solo reset": 2,
+      "adventure": 1
+    },
+    "anchor_experiences": [
+      {
+        "title": "Long Point lighthouse and coast views",
+        "type": "scenic",
+        "description": "High payoff if the trip wants iceberg-or-coast energy that feels unmistakably Newfoundland.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Long+Point+Lighthouse+Twillingate"
+      },
+      {
+        "title": "Harbour and cliffside wander",
+        "type": "nature",
+        "description": "Adds enough movement and place feel without making the trip demanding.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Twillingate+harbour"
+      }
+    ],
+    "neighborhoods": [
+      {
+        "name": "Twillingate harbour",
+        "reason": "Best practical base for a short coast-focused weekend",
+        "link": "https://www.google.com/maps/search/?api=1&query=Twillingate+harbour"
+      }
+    ],
+    "hotel_options": [
+      {
+        "name": "Harbour inn base",
+        "price_per_night": 220,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Hotels+Twillingate",
+        "description": "Useful if the brief wants a scenic Newfoundland coast trip with a compact home base."
+      }
+    ],
+    "food_spots": [
+      {
+        "name": "Twillingate casual dining",
+        "tags": [
+          "casual",
+          "coastal",
+          "simple"
+        ],
+        "link": "https://www.google.com/maps/search/?api=1&query=Restaurants+Twillingate",
+        "description": "Practical food support around a view-first outport weekend."
+      }
+    ],
+    "image_url_light": "/destinations/theme/twillingate_nl-light.webp",
+    "image_url_dark": "/destinations/theme/twillingate_nl-dark.webp"
+  },
+  {
+    "id": "terra_nova_np_nl",
+    "name": "Terra Nova National Park",
+    "region": "Newfoundland and Labrador",
+    "home_base_city": "Terra Nova / Eastport access",
+    "latitude": 48.55,
+    "longitude": -53.93,
+    "is_staycation": false,
+    "drive_time_hours_from": {
+      "st_john_s": 2.75,
+      "corner_brook": 5.75
+    },
+    "distance_km_from": {
+      "st_john_s": 240,
+      "corner_brook": 520
+    },
+    "cost_level": "mid",
+    "vibes": [
+      "forest",
+      "coast",
+      "nature",
+      "quiet"
+    ],
+    "best_seasons": [
+      "summer",
+      "fall"
+    ],
+    "avoid_seasons": [
+      "winter",
+      "spring"
+    ],
+    "style_scores": {
+      "chill": 1,
+      "outdoors": 3,
+      "foodie": 0,
+      "solo reset": 2,
+      "adventure": 1
+    },
+    "anchor_experiences": [
+      {
+        "title": "Coastal trail and lookout block",
+        "type": "hiking",
+        "description": "Strong fit if the trip wants Newfoundland scenery without a harder long-haul route.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Terra+Nova+National+Park+trail"
+      },
+      {
+        "title": "Quiet bay and forest reset",
+        "type": "nature",
+        "description": "Adds the calm coastal-park payoff that makes this feel different from a town stay.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Terra+Nova+National+Park"
+      }
+    ],
+    "neighborhoods": [
+      {
+        "name": "Eastport / park access",
+        "reason": "Best practical base for park time plus simpler overnight logistics",
+        "link": "https://www.google.com/maps/search/?api=1&query=Eastport+Newfoundland"
+      }
+    ],
+    "hotel_options": [
+      {
+        "name": "Park lodge base",
+        "price_per_night": 220,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Terra+Nova+National+Park+lodge",
+        "description": "Useful if the trip wants a true park weekend instead of a road-day stop."
+      }
+    ],
+    "food_spots": [
+      {
+        "name": "Eastport casual dining",
+        "tags": [
+          "casual",
+          "practical",
+          "simple"
+        ],
+        "link": "https://www.google.com/maps/search/?api=1&query=Restaurants+Eastport+Newfoundland",
+        "description": "Practical food support around a park-first weekend."
+      }
+    ],
+    "image_url_light": "/destinations/theme/terra_nova_np_nl-light.webp",
+    "image_url_dark": "/destinations/theme/terra_nova_np_nl-dark.webp"
+  },
+  {
+    "id": "dawson_city_yt",
+    "name": "Dawson City",
+    "region": "Yukon",
+    "home_base_city": "Dawson City",
+    "latitude": 64.0601,
+    "longitude": -139.4333,
+    "is_staycation": false,
+    "drive_time_hours_from": {
+      "whitehorse": 5.5
+    },
+    "distance_km_from": {
+      "whitehorse": 535
+    },
+    "cost_level": "mid",
+    "vibes": [
+      "northern",
+      "historic",
+      "river",
+      "distinctive"
+    ],
+    "best_seasons": [
+      "summer",
+      "fall"
+    ],
+    "avoid_seasons": [
+      "winter",
+      "spring"
+    ],
+    "style_scores": {
+      "chill": 1,
+      "outdoors": 1,
+      "foodie": 0,
+      "solo reset": 2,
+      "adventure": 1
+    },
+    "anchor_experiences": [
+      {
+        "title": "Historic boardwalk and gold-rush core",
+        "type": "culture",
+        "description": "Very strong place signal if the trip wants a northern destination that feels unlike anywhere else.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Dawson+City+Yukon"
+      },
+      {
+        "title": "Yukon River and Midnight Dome viewpoint",
+        "type": "scenic",
+        "description": "Adds a clear scenic payoff without demanding a full expedition setup.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Midnight+Dome+Dawson+City"
+      }
+    ],
+    "neighborhoods": [
+      {
+        "name": "Historic Dawson core",
+        "reason": "Best base for the town feel and short scenic drives",
+        "link": "https://www.google.com/maps/search/?api=1&query=Historic+Dawson+City"
+      }
+    ],
+    "hotel_options": [
+      {
+        "name": "Historic inn base",
+        "price_per_night": 220,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Hotels+Dawson+City",
+        "description": "Useful if the brief wants a northern road-trip destination with real character."
+      }
+    ],
+    "food_spots": [
+      {
+        "name": "Dawson City casual dining",
+        "tags": [
+          "casual",
+          "local",
+          "small-town"
+        ],
+        "link": "https://www.google.com/maps/search/?api=1&query=Restaurants+Dawson+City",
+        "description": "Practical food support once the town and views are doing the heavy lifting."
+      }
+    ],
+    "image_url_light": "/destinations/theme/dawson_city_yt-light.webp",
+    "image_url_dark": "/destinations/theme/dawson_city_yt-dark.webp"
+  },
+  {
+    "id": "ingraham_trail_nt",
+    "name": "Ingraham Trail / Prelude Lake",
+    "region": "Northwest Territories",
+    "home_base_city": "Prelude Lake",
+    "latitude": 62.555,
+    "longitude": -113.836,
+    "is_staycation": false,
+    "drive_time_hours_from": {
+      "yellowknife": 0.5
+    },
+    "distance_km_from": {
+      "yellowknife": 35
+    },
+    "cost_level": "mid",
+    "vibes": [
+      "northern",
+      "lake",
+      "scenic",
+      "quiet"
+    ],
+    "best_seasons": [
+      "summer",
+      "fall",
+      "winter"
+    ],
+    "avoid_seasons": [],
+    "style_scores": {
+      "chill": 2,
+      "outdoors": 2,
+      "foodie": 0,
+      "solo reset": 2,
+      "adventure": 1
+    },
+    "anchor_experiences": [
+      {
+        "title": "Prelude Lake and granite shoreline reset",
+        "type": "nature",
+        "description": "Strong nearby wilderness payoff if the trip wants Yellowknife scenery without staying fully in town.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Prelude+Lake+Territorial+Park"
+      },
+      {
+        "title": "Aurora-view or quiet-lake evening block",
+        "type": "scenic",
+        "description": "Best fit if the brief wants northern atmosphere more than urban plans.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Ingraham+Trail+Yellowknife"
+      }
+    ],
+    "neighborhoods": [
+      {
+        "name": "Prelude Lake corridor",
+        "reason": "Best base for a short wilderness-feeling Yellowknife getaway",
+        "link": "https://www.google.com/maps/search/?api=1&query=Prelude+Lake+Territorial+Park"
+      }
+    ],
+    "hotel_options": [
+      {
+        "name": "Lake lodge base",
+        "price_per_night": 235,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Prelude+Lake+Territorial+Park",
+        "description": "Useful if the brief wants a northern lake stay rather than a town hotel."
+      }
+    ],
+    "food_spots": [
+      {
+        "name": "Yellowknife dinner before the lake",
+        "tags": [
+          "practical",
+          "casual",
+          "northern"
+        ],
+        "link": "https://www.google.com/maps/search/?api=1&query=Restaurants+Yellowknife",
+        "description": "Best practical food move for a short Ingraham Trail weekend."
+      }
+    ],
+    "image_url_light": "/destinations/theme/ingraham_trail_nt-light.webp",
+    "image_url_dark": "/destinations/theme/ingraham_trail_nt-dark.webp"
+  },
+  {
+    "id": "sylvia_grinnell_apex_nu",
+    "name": "Sylvia Grinnell / Apex",
+    "region": "Nunavut",
+    "home_base_city": "Apex / Iqaluit edge",
+    "latitude": 63.7294,
+    "longitude": -68.4694,
+    "is_staycation": false,
+    "drive_time_hours_from": {
+      "iqaluit": 0.25
+    },
+    "distance_km_from": {
+      "iqaluit": 8
+    },
+    "cost_level": "high",
+    "vibes": [
+      "arctic",
+      "scenic",
+      "quiet",
+      "nature"
+    ],
+    "best_seasons": [
+      "summer",
+      "fall",
+      "winter"
+    ],
+    "avoid_seasons": [],
+    "style_scores": {
+      "chill": 2,
+      "outdoors": 2,
+      "foodie": 0,
+      "solo reset": 2,
+      "adventure": 1
+    },
+    "anchor_experiences": [
+      {
+        "title": "Sylvia Grinnell park trail and tundra viewpoint",
+        "type": "hiking",
+        "description": "Clear Arctic landscape payoff for a weekend that wants more scenery than town time.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Sylvia+Grinnell+Territorial+Park"
+      },
+      {
+        "title": "Apex shoreline walk and bay viewpoint",
+        "type": "scenic",
+        "description": "Adds a short, distinct northern-coast feeling without requiring a bigger route.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Apex+Nunavut"
+      }
+    ],
+    "neighborhoods": [
+      {
+        "name": "Apex / park edge",
+        "reason": "Best base for a very short nature-first Iqaluit getaway",
+        "link": "https://www.google.com/maps/search/?api=1&query=Apex+Nunavut"
+      }
+    ],
+    "hotel_options": [
+      {
+        "name": "Iqaluit hotel base",
+        "price_per_night": 320,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Hotels+Iqaluit",
+        "description": "Useful if the brief wants Arctic scenery while keeping the overnight simple."
+      }
+    ],
+    "food_spots": [
+      {
+        "name": "Iqaluit casual dining before or after the park",
+        "tags": [
+          "casual",
+          "practical",
+          "simple"
+        ],
+        "link": "https://www.google.com/maps/search/?api=1&query=Restaurants+Iqaluit",
+        "description": "Practical food support around a short local nature weekend."
+      }
+    ],
+    "image_url_light": "/destinations/theme/sylvia_grinnell_apex_nu-light.webp",
+    "image_url_dark": "/destinations/theme/sylvia_grinnell_apex_nu-dark.webp"
+  }
+]

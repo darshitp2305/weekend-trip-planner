@@ -528,7 +528,7 @@ export function getRetryCopy(field: IntakeQuestionField) {
     case "travelerCount":
       return "I need a traveler count between 1 and 12.";
     case "startCity":
-      return "I can work with Alberta starting cities like Edmonton, Calgary, Red Deer, or Lethbridge.";
+      return "I can work with Canadian departure cities like Vancouver, Calgary, Toronto, Montreal, or Halifax.";
     case "tripTiming":
       return "Try something like June, this summer, next weekend, or 2026-06-14.";
     case "tripLengthDays":
@@ -706,14 +706,14 @@ function describeTripSubject(draft: ConversationalDraft) {
     case "hidden gems":
       return "hidden-gems trip";
     default:
-      return "Alberta trip";
+      return "Canada trip";
   }
 }
 
 function buildStructuredTripPrompt(draft: ConversationalDraft) {
   const destination = draft.intent.preferredDestination
     ? ` in ${draft.intent.preferredDestination}`
-    : " in Alberta";
+    : " in Canada";
   const origin = draft.startCity ? ` from ${draft.startCity}` : "";
   const groupAndLength =
     draft.travelerCount && draft.tripLengthDays

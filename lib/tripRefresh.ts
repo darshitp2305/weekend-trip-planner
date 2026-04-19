@@ -139,7 +139,7 @@ export function rankedDestinationFromTripPlan(plan: TripPlan): RankedDestination
 
   return {
     name: plan.destinationName || plan.name || "Trip",
-    province: plan.province || plan.region || "Alberta",
+    province: plan.province || plan.region || "Canada",
     driveHoursFromStart: Number(
       asFiniteNumber(plan.driveHoursFromStart) ??
         (typeof plan.routeSummary?.durationSeconds === "number"

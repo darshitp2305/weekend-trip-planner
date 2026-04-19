@@ -4,13 +4,14 @@
  */
 
 import { RankedDestination, TripInput } from "./types";
+import { PLANNER_COUNTRY_NAME } from "./canadaGeography";
 import { deriveTripIntentFromPrompt } from "./tripIntent";
 
 export function buildTripPrompt(input: TripInput, trips: RankedDestination[]) {
   const promptIntent = deriveTripIntentFromPrompt(input.tripPrompt);
 
   return `
-You are a practical Alberta trip planner.
+You are a practical ${PLANNER_COUNTRY_NAME} trip planner.
 
 Use ONLY the provided destination data.
 Do not invent destinations, businesses, restaurants, hotels, attractions, prices, or drive times.

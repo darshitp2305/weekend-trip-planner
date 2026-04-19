@@ -1,4 +1,9 @@
-import rawDestinations from "../data/destinations.json";
+import rawDestinations from "./destinationCatalog";
+import {
+  getCanadianGeographyPhrases,
+  isCanadianProvinceOrTerritory,
+  PLANNER_COUNTRY_NAME,
+} from "./canadaGeography";
 import {
   extractPromptTiming,
   extractPromptTripLengthDays,
@@ -48,6 +53,8 @@ const GENERIC_LOCATION_TERMS = new Set([
   "adventurous",
   "alberta",
   "away",
+  "canada",
+  "canadian",
   "camp",
   "camping",
   "celebrate",
@@ -88,6 +95,34 @@ const GENERIC_LOCATION_TERMS = new Set([
   "weekend",
   "winter",
 ]);
+const FOREIGN_DESTINATION_HINTS = new Set([
+  "seattle",
+  "portland",
+  "san francisco",
+  "los angeles",
+  "new york",
+  "las vegas",
+  "chicago",
+  "hawaii",
+  "oregon",
+  "washington",
+  "california",
+  "montana",
+  "idaho",
+  "wyoming",
+  "utah",
+  "arizona",
+  "usa",
+  "u s a",
+  "united states",
+  "mexico",
+  "iceland",
+  "japan",
+  "europe",
+  "paris",
+  "london",
+  "rome",
+]);
 
 function normalizeText(value?: string) {
   return (value ?? "")
@@ -120,7 +155,11 @@ function hasLikelyNoise(prompt: string) {
 }
 
 function buildSupportedLocationPhrases() {
-  const supported = new Set<string>(["alberta", "rockies", "canadian rockies"]);
+  const supported = new Set<string>(
+    getCanadianGeographyPhrases().map((phrase) => normalizeText(phrase))
+  );
+  supported.add("rockies");
+  supported.add("canadian rockies");
 
   for (const city of START_CITY_OPTIONS) {
     supported.add(normalizeText(city));
@@ -155,6 +194,25 @@ function isSupportedLocationPhrase(candidate: string) {
   );
 }
 
+function isLikelyForeignDestination(candidate: string, prompt: string) {
+  const normalizedCandidate = normalizeText(candidate);
+  const normalizedPrompt = normalizeText(prompt);
+
+  if (FOREIGN_DESTINATION_HINTS.has(normalizedCandidate)) {
+    return true;
+  }
+
+  if (Array.from(FOREIGN_DESTINATION_HINTS).some((term) => normalizedPrompt.includes(term))) {
+    return true;
+  }
+
+  if (isSupportedLocationPhrase(candidate) || isCanadianProvinceOrTerritory(candidate)) {
+    return false;
+  }
+
+  return /\b(?:usa|united states|international|outside canada)\b/i.test(prompt);
+}
+
 function findUnsupportedDestinationMention(prompt: string) {
   for (const pattern of DESTINATION_CANDIDATE_PATTERNS) {
     const match = prompt.match(pattern);
@@ -172,7 +230,7 @@ function findUnsupportedDestinationMention(prompt: string) {
       continue;
     }
 
-    if (!isSupportedLocationPhrase(candidate)) {
+    if (isLikelyForeignDestination(candidate, prompt)) {
       return match?.[1]?.trim() ?? candidate;
     }
   }
@@ -205,7 +263,7 @@ export function validateTripPrompt(prompt: string): PromptValidationResult {
     return {
       ok: false,
       reason: "empty",
-      message: "Describe the Alberta trip you want before I can plan it.",
+      message: "Describe the trip you want before I can plan it.",
     };
   }
 
@@ -223,7 +281,7 @@ export function validateTripPrompt(prompt: string): PromptValidationResult {
     return {
       ok: false,
       reason: "unsupported_destination",
-      message: `${unsupportedDestination} is outside the Alberta trip planner right now. Try an Alberta destination or describe the kind of Alberta trip you want instead.`,
+      message: `${unsupportedDestination} is outside the current ${PLANNER_COUNTRY_NAME} planner coverage. Try a destination in ${PLANNER_COUNTRY_NAME} or describe the kind of trip you want instead.`,
     };
   }
 

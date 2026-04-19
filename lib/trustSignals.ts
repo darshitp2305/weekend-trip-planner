@@ -5,6 +5,8 @@
 
 import {
   ConfidenceLevel,
+  DriveTimeConfidence,
+  DriveTimeSource,
   LiveDataSummary,
   ProviderOutcome,
   ProviderStatusSummary,
@@ -18,6 +20,11 @@ type TrustSourceLike = {
   createdAt?: string;
   sourceCheckedAt?: string;
   providerStatus?: ProviderStatusSummary;
+};
+
+type DriveTimeSignalLike = {
+  driveTimeSource?: DriveTimeSource;
+  driveTimeConfidence?: DriveTimeConfidence;
 };
 
 function providerOutcomeLabel(
@@ -91,6 +98,32 @@ export function tripConfidenceLabel(confidence?: ConfidenceLevel) {
       return "Lower confidence";
     default:
       return "Trip plan";
+  }
+}
+
+export function driveTimeSourceLabel(item: DriveTimeSignalLike) {
+  switch (item.driveTimeSource) {
+    case "catalog_exact":
+      return "Exact route";
+    case "catalog_hub":
+      return "Hub-based route";
+    case "estimated_coordinates":
+      return "Estimated route";
+    default:
+      return "Drive time";
+  }
+}
+
+export function driveTimeTrustNote(item: DriveTimeSignalLike) {
+  switch (item.driveTimeSource) {
+    case "catalog_exact":
+      return "Exact catalog drive data.";
+    case "catalog_hub":
+      return "Based on the nearest planning hub.";
+    case "estimated_coordinates":
+      return "Estimated from map coordinates.";
+    default:
+      return null;
   }
 }
 

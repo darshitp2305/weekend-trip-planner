@@ -4,6 +4,8 @@
     "name": "Edmonton Staycation",
     "region": "Alberta",
     "home_base_city": "Edmonton",
+    "latitude": 53.5461,
+    "longitude": -113.4938,
     "is_staycation": true,
     "image_url": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Skyline_Edmonton_Alberta_Canada_04A.jpg",
     "drive_time_hours_from": {
@@ -111,6 +113,8 @@
     "name": "Elk Island National Park",
     "region": "Alberta",
     "home_base_city": "Fort Saskatchewan (area)",
+    "latitude": 53.6734,
+    "longitude": -112.8645,
     "is_staycation": false,
     "image_url": "https://commons.wikimedia.org/wiki/Special:Redirect/file/.Bison_in_Elk_Island_National_Park_05.jpg",
     "drive_time_hours_from": {
@@ -197,6 +201,8 @@
     "name": "Banff",
     "region": "Alberta",
     "home_base_city": "Banff",
+    "latitude": 51.1784,
+    "longitude": -115.5708,
     "is_staycation": false,
     "image_url": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Lake_Louise%2C_Canada%2C_Banff.jpg",
     "drive_time_hours_from": {
@@ -323,6 +329,8 @@
     "name": "Canmore",
     "region": "Alberta",
     "home_base_city": "Canmore",
+    "latitude": 51.0884,
+    "longitude": -115.3506,
     "is_staycation": false,
     "image_url": "https://commons.wikimedia.org/wiki/Special:Redirect/file/1canmore.jpg",
     "drive_time_hours_from": {
@@ -426,6 +434,8 @@
     "name": "Kananaskis (K-Country)",
     "region": "Alberta",
     "home_base_city": "Kananaskis Village (area)",
+    "latitude": 50.9274,
+    "longitude": -115.1354,
     "is_staycation": false,
     "image_url": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Barrier%20Lake%20Kananaskis%20country%20Alberta%20Canada%20%2811020261543%29.jpg",
     "drive_time_hours_from": {
@@ -512,6 +522,8 @@
     "name": "Jasper",
     "region": "Alberta",
     "home_base_city": "Jasper",
+    "latitude": 52.8737,
+    "longitude": -118.0814,
     "is_staycation": false,
     "image_url": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Jasper_National_Park_Pyramid_Lake.jpg",
     "drive_time_hours_from": {
@@ -598,6 +610,8 @@
     "name": "Sylvan Lake",
     "region": "Alberta",
     "home_base_city": "Sylvan Lake",
+    "latitude": 52.311,
+    "longitude": -114.0838,
     "is_staycation": false,
     "image_url": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Sylvan%20Lake%202014%20Beach.jpg",
     "drive_time_hours_from": {
@@ -683,6 +697,8 @@
     "name": "Drumheller",
     "region": "Alberta",
     "home_base_city": "Drumheller",
+    "latitude": 51.4637,
+    "longitude": -112.7101,
     "is_staycation": false,
     "image_url": "https://commons.wikimedia.org/wiki/Special:Redirect/file/A%20life%20in%20the%20dessert%20of%20Drumheller%20Alberta%20Canada.jpg",
     "drive_time_hours_from": {
@@ -770,6 +786,8 @@
     "name": "Red Deer",
     "region": "Alberta",
     "home_base_city": "Red Deer",
+    "latitude": 52.2681,
+    "longitude": -113.8112,
     "is_staycation": false,
     "image_url": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Gaetz%20Lake%20Migratory%20Bird%20Sanctuary%2C%20Alberta2.jpg",
     "drive_time_hours_from": {
@@ -855,6 +873,8 @@
     "name": "Nordegg + Abraham Lake",
     "region": "Alberta",
     "home_base_city": "Nordegg",
+    "latitude": 52.4756,
+    "longitude": -116.0766,
     "is_staycation": false,
     "image_url": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Abraham%20Lake%2C%20Alberta%2C%20Canada3.jpg",
     "drive_time_hours_from": {
@@ -941,6 +961,8 @@
     "name": "Calgary Staycation",
     "region": "Alberta",
     "home_base_city": "Calgary",
+    "latitude": 51.0447,
+    "longitude": -114.0719,
     "is_staycation": true,
     "image_url": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Calgary_panorama.jpg",
     "drive_time_hours_from": {
@@ -1047,6 +1069,8 @@
     "name": "Waterton Lakes",
     "region": "Alberta",
     "home_base_city": "Waterton Park",
+    "latitude": 49.0504,
+    "longitude": -113.9118,
     "is_staycation": false,
     "image_url": "https://commons.wikimedia.org/wiki/Special:Redirect/file/WatertonMountains.jpg",
     "drive_time_hours_from": {
@@ -1134,6 +1158,8 @@
     "name": "Slave Lake",
     "region": "Alberta",
     "home_base_city": "Slave Lake",
+    "latitude": 55.2834,
+    "longitude": -114.769,
     "is_staycation": false,
     "image_url": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Mainstreet_Alberta_Slave_Lake_3986.jpg",
     "drive_time_hours_from": {
@@ -1220,6 +1246,8 @@
     "name": "Cypress Hills",
     "region": "Alberta",
     "home_base_city": "Cypress Hills Interprovincial Park",
+    "latitude": 49.6551,
+    "longitude": -110.1075,
     "is_staycation": false,
     "image_url": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Elkwater_Lake_2020.jpg",
     "drive_time_hours_from": {
@@ -1307,6 +1335,8 @@
     "name": "Lac La Biche",
     "region": "Alberta",
     "home_base_city": "Lac La Biche",
+    "latitude": 54.7706,
+    "longitude": -111.9776,
     "is_staycation": false,
     "image_url": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Sunset%20at%20Lac%20La%20Biche.jpg",
     "drive_time_hours_from": {
@@ -1394,6 +1424,8 @@
     "name": "Medicine Hat",
     "region": "Alberta",
     "home_base_city": "Medicine Hat",
+    "latitude": 50.0405,
+    "longitude": -110.6761,
     "is_staycation": false,
     "image_url": "https://commons.wikimedia.org/wiki/Special:Redirect/file/St.%20Patrick%27s%20Roman%20Catholic%20Church%20Medicine%20Hat.JPG",
     "drive_time_hours_from": {
@@ -1481,6 +1513,8 @@
     "name": "Grande Cache",
     "region": "Alberta",
     "home_base_city": "Grande Cache",
+    "latitude": 53.8887,
+    "longitude": -119.1181,
     "is_staycation": false,
     "image_url": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Grande%20Cache%2C%20Alberta%20%2835779380475%29.jpg",
     "drive_time_hours_from": {
@@ -1568,6 +1602,8 @@
     "name": "Cold Lake",
     "region": "Alberta",
     "home_base_city": "Cold Lake",
+    "latitude": 54.4648,
+    "longitude": -110.1822,
     "is_staycation": false,
     "image_url": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Cold%20Lake%20featuring%20Kinosoo%20Beach.jpg",
     "drive_time_hours_from": {
@@ -1654,6 +1690,8 @@
     "name": "Peace River",
     "region": "Alberta",
     "home_base_city": "Peace River",
+    "latitude": 56.2372,
+    "longitude": -117.291,
     "is_staycation": false,
     "image_url": "https://commons.wikimedia.org/wiki/Special:Redirect/file/The%20Peace%20River%20in%20Peace%20River.jpg",
     "drive_time_hours_from": {
@@ -1741,6 +1779,8 @@
     "name": "Writing-on-Stone",
     "region": "Alberta",
     "home_base_city": "Milk River (area)",
+    "latitude": 49.0691,
+    "longitude": -111.6209,
     "is_staycation": false,
     "image_url": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Writing-on-Stone%20Provincial%20Park%20%286022736800%29.jpg",
     "drive_time_hours_from": {
@@ -1828,6 +1868,8 @@
     "name": "Pincher Creek",
     "region": "Alberta",
     "home_base_city": "Pincher Creek",
+    "latitude": 49.4928,
+    "longitude": -113.9519,
     "is_staycation": false,
     "image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/Lundbreck%20Falls%20Alberta%20Canada%20%2834517228624%29.jpg",
     "drive_time_hours_from": {
@@ -1915,6 +1957,8 @@
     "name": "Crowsnest Pass",
     "region": "Alberta",
     "home_base_city": "Blairmore / Coleman",
+    "latitude": 49.6378,
+    "longitude": -114.4896,
     "is_staycation": false,
     "image_url": "https://commons.wikimedia.org/wiki/Special:FilePath/2025-06-04-184701%20CAN%20Alberta%20International%20Border%20Region%20%28Cardston%29%201364.8.jpg",
     "drive_time_hours_from": {

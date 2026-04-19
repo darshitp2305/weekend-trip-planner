@@ -1,0 +1,2371 @@
+[
+  {
+    "id": "toronto_staycation_on",
+    "name": "Toronto Staycation",
+    "region": "Ontario",
+    "home_base_city": "Toronto",
+    "is_staycation": true,
+    "drive_time_hours_from": {
+      "toronto": 0,
+      "hamilton": 1,
+      "mississauga": 0.5,
+      "brampton": 0.75,
+      "ottawa": 4.75
+    },
+    "distance_km_from": {
+      "toronto": 0,
+      "hamilton": 70,
+      "mississauga": 30,
+      "brampton": 45,
+      "ottawa": 450
+    },
+    "cost_level": "high",
+    "vibes": [
+      "food",
+      "culture",
+      "city",
+      "nightlife"
+    ],
+    "best_seasons": [
+      "spring",
+      "summer",
+      "fall",
+      "winter"
+    ],
+    "avoid_seasons": [],
+    "style_scores": {
+      "chill": 1,
+      "outdoors": 0,
+      "foodie": 3,
+      "solo reset": 1,
+      "adventure": 0
+    },
+    "anchor_experiences": [
+      {
+        "title": "Kensington Market and Queen West food crawl",
+        "type": "food",
+        "description": "Dense restaurant and cafe options that make a short urban weekend feel easy and rewarding.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Kensington+Market+Toronto"
+      },
+      {
+        "title": "AGO or ROM culture block",
+        "type": "culture",
+        "description": "Reliable indoor anchor with a strong city-trip payoff.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Royal+Ontario+Museum+Toronto"
+      },
+      {
+        "title": "Toronto Islands skyline walk",
+        "type": "scenic",
+        "description": "Low-friction city-nature reset with iconic skyline views.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Toronto+Islands"
+      }
+    ],
+    "neighborhoods": [
+      {
+        "name": "Queen West",
+        "reason": "Walkable mix of restaurants, bars, and design-forward hotel options",
+        "link": "https://www.google.com/maps/search/?api=1&query=Queen+Street+West+Toronto"
+      },
+      {
+        "name": "Yorkville",
+        "reason": "Best fit for a polished, higher-end staycation feel",
+        "link": "https://www.google.com/maps/search/?api=1&query=Yorkville+Toronto"
+      }
+    ],
+    "hotel_options": [
+      {
+        "name": "Ace Hotel Toronto",
+        "price_per_night": 320,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Ace+Hotel+Toronto",
+        "description": "Strong fit if the trip is food-forward and design-led."
+      },
+      {
+        "name": "The Anndore House",
+        "price_per_night": 265,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=The+Anndore+House+Toronto",
+        "description": "Good central base with an easier price point than luxury downtown options."
+      }
+    ],
+    "food_spots": [
+      {
+        "name": "Kensington Market",
+        "tags": [
+          "food crawl",
+          "cafes",
+          "casual"
+        ],
+        "link": "https://www.google.com/maps/search/?api=1&query=Kensington+Market+Toronto",
+        "description": "Best dense neighborhood pick if the trip brief mentions variety and coffee."
+      },
+      {
+        "name": "Queen West",
+        "tags": [
+          "restaurants",
+          "cocktails",
+          "walkable"
+        ],
+        "link": "https://www.google.com/maps/search/?api=1&query=Queen+Street+West+Toronto",
+        "description": "Easy higher-energy dinner and drinks zone."
+      }
+    ],
+    "image_url_light": "/destinations/theme/toronto_staycation_on-light.webp",
+    "image_url_dark": "/destinations/theme/toronto_staycation_on-dark.webp"
+  },
+  {
+    "id": "prince_edward_county_on",
+    "name": "Prince Edward County",
+    "region": "Ontario",
+    "home_base_city": "Picton",
+    "is_staycation": false,
+    "drive_time_hours_from": {
+      "toronto": 2.5,
+      "ottawa": 2.75,
+      "kingston": 1,
+      "montreal": 4.25
+    },
+    "distance_km_from": {
+      "toronto": 220,
+      "ottawa": 240,
+      "kingston": 85,
+      "montreal": 390
+    },
+    "cost_level": "mid",
+    "vibes": [
+      "food",
+      "wine",
+      "relax",
+      "scenic"
+    ],
+    "best_seasons": [
+      "spring",
+      "summer",
+      "fall"
+    ],
+    "avoid_seasons": [
+      "winter"
+    ],
+    "style_scores": {
+      "chill": 3,
+      "outdoors": 1,
+      "foodie": 3,
+      "solo reset": 2,
+      "adventure": 0
+    },
+    "anchor_experiences": [
+      {
+        "title": "Winery and cider route",
+        "type": "food",
+        "description": "Classic county payoff for an easygoing couple or friend trip.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Prince+Edward+County+wineries"
+      },
+      {
+        "title": "Sandbanks beach and dune walk",
+        "type": "nature",
+        "description": "Simple scenic anchor that adds real outdoor value without much effort.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Sandbanks+Provincial+Park"
+      }
+    ],
+    "neighborhoods": [
+      {
+        "name": "Picton",
+        "reason": "Best practical base for restaurants and county driving",
+        "link": "https://www.google.com/maps/search/?api=1&query=Picton+Ontario"
+      }
+    ],
+    "hotel_options": [
+      {
+        "name": "Drake Devonshire",
+        "price_per_night": 360,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Drake+Devonshire+Prince+Edward+County",
+        "description": "Signature splurge stay if the brief leans polished and food-led."
+      },
+      {
+        "name": "Merrill House",
+        "price_per_night": 290,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Merrill+House+Picton",
+        "description": "Strong boutique pick for a slower county weekend."
+      }
+    ],
+    "food_spots": [
+      {
+        "name": "Picton main street restaurants",
+        "tags": [
+          "restaurants",
+          "wine bars",
+          "walkable"
+        ],
+        "link": "https://www.google.com/maps/search/?api=1&query=Restaurants+Picton+Ontario",
+        "description": "Best low-friction dinner cluster for the county."
+      }
+    ],
+    "image_url_light": "/destinations/theme/prince_edward_county_on-light.webp",
+    "image_url_dark": "/destinations/theme/prince_edward_county_on-dark.webp"
+  },
+  {
+    "id": "niagara_on_the_lake_on",
+    "name": "Niagara-on-the-Lake",
+    "region": "Ontario",
+    "home_base_city": "Niagara-on-the-Lake",
+    "is_staycation": false,
+    "drive_time_hours_from": {
+      "toronto": 1.75,
+      "hamilton": 1.25,
+      "mississauga": 1.5,
+      "ottawa": 4.75
+    },
+    "distance_km_from": {
+      "toronto": 130,
+      "hamilton": 75,
+      "mississauga": 110,
+      "ottawa": 460
+    },
+    "cost_level": "mid",
+    "vibes": [
+      "food",
+      "wine",
+      "romantic",
+      "historic"
+    ],
+    "best_seasons": [
+      "spring",
+      "summer",
+      "fall"
+    ],
+    "avoid_seasons": [],
+    "style_scores": {
+      "chill": 3,
+      "outdoors": 0,
+      "foodie": 3,
+      "solo reset": 1,
+      "adventure": 0
+    },
+    "anchor_experiences": [
+      {
+        "title": "Historic old town stroll",
+        "type": "culture",
+        "description": "Classic low-effort anchor with strong small-town charm.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Niagara-on-the-Lake+Old+Town"
+      },
+      {
+        "title": "Winery tasting route",
+        "type": "food",
+        "description": "High payoff if the trip brief wants a polished food-and-drink weekend.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Niagara-on-the-Lake+wineries"
+      }
+    ],
+    "neighborhoods": [
+      {
+        "name": "Old Town",
+        "reason": "Best walkable base for heritage streets and restaurants",
+        "link": "https://www.google.com/maps/search/?api=1&query=Old+Town+Niagara-on-the-Lake"
+      }
+    ],
+    "hotel_options": [
+      {
+        "name": "Prince of Wales",
+        "price_per_night": 300,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Prince+of+Wales+Niagara-on-the-Lake",
+        "description": "Best fit if the brief leans classic and romantic."
+      }
+    ],
+    "food_spots": [
+      {
+        "name": "Old Town dining cluster",
+        "tags": [
+          "restaurants",
+          "wine",
+          "walkable"
+        ],
+        "link": "https://www.google.com/maps/search/?api=1&query=Restaurants+Niagara-on-the-Lake",
+        "description": "Dense enough for an easy dinner-first weekend."
+      }
+    ],
+    "image_url_light": "/destinations/theme/niagara_on_the_lake_on-light.webp",
+    "image_url_dark": "/destinations/theme/niagara_on_the_lake_on-dark.webp"
+  },
+  {
+    "id": "vancouver_staycation_bc",
+    "name": "Vancouver Staycation",
+    "region": "British Columbia",
+    "home_base_city": "Vancouver",
+    "is_staycation": true,
+    "drive_time_hours_from": {
+      "vancouver": 0,
+      "victoria": 3.5,
+      "kelowna": 4,
+      "kamloops": 4.25,
+      "nanaimo": 2
+    },
+    "distance_km_from": {
+      "vancouver": 0,
+      "victoria": 115,
+      "kelowna": 390,
+      "kamloops": 355,
+      "nanaimo": 60
+    },
+    "cost_level": "high",
+    "vibes": [
+      "food",
+      "nature",
+      "city",
+      "scenic"
+    ],
+    "best_seasons": [
+      "spring",
+      "summer",
+      "fall"
+    ],
+    "avoid_seasons": [],
+    "style_scores": {
+      "chill": 2,
+      "outdoors": 2,
+      "foodie": 3,
+      "solo reset": 2,
+      "adventure": 1
+    },
+    "anchor_experiences": [
+      {
+        "title": "Seawall and Stanley Park ride or walk",
+        "type": "nature",
+        "description": "Strong scenic payoff without adding much complexity.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Stanley+Park+Seawall+Vancouver"
+      },
+      {
+        "title": "Mount Pleasant or Gastown food run",
+        "type": "food",
+        "description": "Easy density for coffee, dinner, and a more design-forward urban feel.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Mount+Pleasant+Vancouver+restaurants"
+      }
+    ],
+    "neighborhoods": [
+      {
+        "name": "Mount Pleasant",
+        "reason": "Best fit for coffee, restaurants, and a less tourist-heavy feel",
+        "link": "https://www.google.com/maps/search/?api=1&query=Mount+Pleasant+Vancouver"
+      },
+      {
+        "name": "Coal Harbour",
+        "reason": "Best polished base if the brief leans scenic and easier",
+        "link": "https://www.google.com/maps/search/?api=1&query=Coal+Harbour+Vancouver"
+      }
+    ],
+    "hotel_options": [
+      {
+        "name": "Loden Hotel",
+        "price_per_night": 365,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Loden+Hotel+Vancouver",
+        "description": "Strong premium base if the brief wants a polished city escape."
+      },
+      {
+        "name": "OPUS Vancouver",
+        "price_per_night": 320,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=OPUS+Vancouver",
+        "description": "Great fit for a food-and-neighborhood-led weekend."
+      }
+    ],
+    "food_spots": [
+      {
+        "name": "Mount Pleasant",
+        "tags": [
+          "cafes",
+          "restaurants",
+          "walkable"
+        ],
+        "link": "https://www.google.com/maps/search/?api=1&query=Mount+Pleasant+Vancouver+coffee",
+        "description": "Best neighborhood if the brief mentions good coffee and easy food density."
+      }
+    ],
+    "image_url_light": "/destinations/theme/vancouver_staycation_bc-light.webp",
+    "image_url_dark": "/destinations/theme/vancouver_staycation_bc-dark.webp"
+  },
+  {
+    "id": "whistler_bc",
+    "name": "Whistler",
+    "region": "British Columbia",
+    "home_base_city": "Whistler Village",
+    "is_staycation": false,
+    "drive_time_hours_from": {
+      "vancouver": 2,
+      "victoria": 5.5,
+      "kelowna": 4.5,
+      "kamloops": 4
+    },
+    "distance_km_from": {
+      "vancouver": 120,
+      "victoria": 280,
+      "kelowna": 390,
+      "kamloops": 300
+    },
+    "cost_level": "high",
+    "vibes": [
+      "nature",
+      "adventure",
+      "mountain",
+      "food",
+      "winter_fun"
+    ],
+    "best_seasons": [
+      "winter",
+      "summer",
+      "fall"
+    ],
+    "avoid_seasons": [],
+    "style_scores": {
+      "chill": 1,
+      "outdoors": 3,
+      "foodie": 1,
+      "solo reset": 1,
+      "adventure": 3
+    },
+    "anchor_experiences": [
+      {
+        "title": "Peak 2 Peak and alpine viewpoints",
+        "type": "gondola",
+        "description": "High-payoff mountain anchor with strong must-see energy.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Peak+2+Peak+Whistler"
+      },
+      {
+        "title": "Lost Lake or valley trail reset",
+        "type": "nature",
+        "description": "Easier active option if the brief wants outdoor value without full-send effort.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Lost+Lake+Whistler"
+      }
+    ],
+    "neighborhoods": [
+      {
+        "name": "Whistler Village",
+        "reason": "Best practical base for lift access, restaurants, and easy walking",
+        "link": "https://www.google.com/maps/search/?api=1&query=Whistler+Village"
+      }
+    ],
+    "hotel_options": [
+      {
+        "name": "Nita Lake Lodge",
+        "price_per_night": 330,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Nita+Lake+Lodge+Whistler",
+        "description": "Good fit if the brief leans mountain but still wants calmer evenings."
+      }
+    ],
+    "food_spots": [
+      {
+        "name": "Whistler Village restaurants",
+        "tags": [
+          "restaurants",
+          "walkable",
+          "apres"
+        ],
+        "link": "https://www.google.com/maps/search/?api=1&query=Restaurants+Whistler+Village",
+        "description": "Dense enough to keep the trip easy after outdoor anchors."
+      }
+    ],
+    "image_url_light": "/destinations/theme/whistler_bc-light.webp",
+    "image_url_dark": "/destinations/theme/whistler_bc-dark.webp"
+  },
+  {
+    "id": "montreal_staycation_qc",
+    "name": "Montreal Staycation",
+    "region": "Quebec",
+    "home_base_city": "Montreal",
+    "latitude": 45.5017,
+    "longitude": -73.5673,
+    "is_staycation": true,
+    "drive_time_hours_from": {
+      "montreal": 0,
+      "ottawa": 2.25,
+      "quebec_city": 3,
+      "laval": 0.5,
+      "gatineau": 2.25
+    },
+    "distance_km_from": {
+      "montreal": 0,
+      "ottawa": 200,
+      "quebec_city": 255,
+      "laval": 30,
+      "gatineau": 200
+    },
+    "cost_level": "mid",
+    "vibes": [
+      "food",
+      "culture",
+      "city",
+      "nightlife"
+    ],
+    "best_seasons": [
+      "spring",
+      "summer",
+      "fall",
+      "winter"
+    ],
+    "avoid_seasons": [],
+    "style_scores": {
+      "chill": 1,
+      "outdoors": 0,
+      "foodie": 3,
+      "solo reset": 1,
+      "adventure": 0
+    },
+    "anchor_experiences": [
+      {
+        "title": "Old Montreal wander",
+        "type": "culture",
+        "description": "Easy architecture-and-cafe anchor with a strong city-break payoff.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Old+Montreal"
+      },
+      {
+        "title": "Plateau and Mile End food loop",
+        "type": "food",
+        "description": "Best dense neighborhood option if the brief mentions bakeries, coffee, and dinner.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Mile+End+Montreal+coffee"
+      },
+      {
+        "title": "Jean-Talon Market snack run",
+        "type": "food",
+        "description": "Adds another high-signal food anchor if the weekend is mainly about eating well.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Jean-Talon+Market+Montreal"
+      }
+    ],
+    "neighborhoods": [
+      {
+        "name": "Plateau",
+        "reason": "Best for coffee density and neighborhood feel",
+        "link": "https://www.google.com/maps/search/?api=1&query=Plateau+Montreal"
+      }
+    ],
+    "hotel_options": [
+      {
+        "name": "Hotel William Gray",
+        "price_per_night": 315,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Hotel+William+Gray+Montreal",
+        "description": "Great fit for a polished old-city stay."
+      }
+    ],
+    "food_spots": [
+      {
+        "name": "Mile End and Plateau",
+        "tags": [
+          "cafes",
+          "bakeries",
+          "restaurants"
+        ],
+        "link": "https://www.google.com/maps/search/?api=1&query=Mile+End+Montreal+restaurants",
+        "description": "Best neighborhood pair if food and coffee are central to the brief."
+      },
+      {
+        "name": "Jean-Talon Market",
+        "tags": [
+          "market",
+          "snacks",
+          "foodie"
+        ],
+        "link": "https://www.google.com/maps/search/?api=1&query=Jean-Talon+Market+Montreal",
+        "description": "Useful if the trip wants a stronger food-first signature stop."
+      }
+    ],
+    "image_url_light": "/destinations/theme/montreal_staycation_qc-light.webp",
+    "image_url_dark": "/destinations/theme/montreal_staycation_qc-dark.webp"
+  },
+  {
+    "id": "quebec_city_qc",
+    "name": "Quebec City",
+    "region": "Quebec",
+    "home_base_city": "Quebec City",
+    "is_staycation": false,
+    "drive_time_hours_from": {
+      "montreal": 2.75,
+      "ottawa": 4.5,
+      "quebec_city": 0,
+      "laval": 2.75
+    },
+    "distance_km_from": {
+      "montreal": 255,
+      "ottawa": 445,
+      "quebec_city": 0,
+      "laval": 255
+    },
+    "cost_level": "mid",
+    "vibes": [
+      "historic",
+      "culture",
+      "food",
+      "romantic"
+    ],
+    "best_seasons": [
+      "spring",
+      "summer",
+      "fall",
+      "winter"
+    ],
+    "avoid_seasons": [],
+    "style_scores": {
+      "chill": 2,
+      "outdoors": 0,
+      "foodie": 2,
+      "solo reset": 1,
+      "adventure": 0
+    },
+    "anchor_experiences": [
+      {
+        "title": "Old Quebec and Terrasse Dufferin",
+        "type": "culture",
+        "description": "High-payoff historic core with a real must-see feel.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Terrasse+Dufferin+Quebec+City"
+      },
+      {
+        "title": "Petit-Champlain and bistro night",
+        "type": "food",
+        "description": "Compact and atmospheric evening anchor for a short getaway.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Petit+Champlain+Quebec+City"
+      }
+    ],
+    "neighborhoods": [
+      {
+        "name": "Old Quebec",
+        "reason": "Best walkable base if the brief wants maximum atmosphere",
+        "link": "https://www.google.com/maps/search/?api=1&query=Old+Quebec"
+      }
+    ],
+    "hotel_options": [
+      {
+        "name": "Auberge Saint-Antoine",
+        "price_per_night": 295,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Auberge+Saint-Antoine+Quebec+City",
+        "description": "Strong fit for a polished historic weekend."
+      }
+    ],
+    "food_spots": [
+      {
+        "name": "Old Quebec dining core",
+        "tags": [
+          "bistros",
+          "walkable",
+          "historic"
+        ],
+        "link": "https://www.google.com/maps/search/?api=1&query=Restaurants+Old+Quebec",
+        "description": "Compact enough to keep the trip easy on foot."
+      }
+    ],
+    "image_url_light": "/destinations/theme/quebec_city_qc-light.webp",
+    "image_url_dark": "/destinations/theme/quebec_city_qc-dark.webp"
+  },
+  {
+    "id": "halifax_staycation_ns",
+    "name": "Halifax Staycation",
+    "region": "Nova Scotia",
+    "home_base_city": "Halifax",
+    "is_staycation": true,
+    "drive_time_hours_from": {
+      "halifax": 0,
+      "moncton": 2.5,
+      "fredericton": 4,
+      "charlottetown": 4.5
+    },
+    "distance_km_from": {
+      "halifax": 0,
+      "moncton": 260,
+      "fredericton": 430,
+      "charlottetown": 330
+    },
+    "cost_level": "mid",
+    "vibes": [
+      "food",
+      "waterfront",
+      "culture",
+      "relax"
+    ],
+    "best_seasons": [
+      "spring",
+      "summer",
+      "fall"
+    ],
+    "avoid_seasons": [],
+    "style_scores": {
+      "chill": 2,
+      "outdoors": 1,
+      "foodie": 2,
+      "solo reset": 2,
+      "adventure": 0
+    },
+    "anchor_experiences": [
+      {
+        "title": "Waterfront boardwalk stroll",
+        "type": "scenic",
+        "description": "Simple high-payoff harbor anchor for an easy weekend.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Halifax+Waterfront"
+      },
+      {
+        "title": "North End coffee and dinner loop",
+        "type": "food",
+        "description": "Best fit if the brief wants a lighter urban food trip.",
+        "link": "https://www.google.com/maps/search/?api=1&query=North+End+Halifax+restaurants"
+      }
+    ],
+    "neighborhoods": [
+      {
+        "name": "Downtown waterfront",
+        "reason": "Best practical base for a short first Halifax trip",
+        "link": "https://www.google.com/maps/search/?api=1&query=Downtown+Halifax"
+      }
+    ],
+    "hotel_options": [
+      {
+        "name": "Muir",
+        "price_per_night": 330,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Muir+Halifax",
+        "description": "Best fit for a polished waterfront stay."
+      },
+      {
+        "name": "The Sutton Place Hotel Halifax",
+        "price_per_night": 255,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Sutton+Place+Hotel+Halifax",
+        "description": "Strong central option with easier pricing."
+      }
+    ],
+    "food_spots": [
+      {
+        "name": "North End Halifax",
+        "tags": [
+          "restaurants",
+          "cafes",
+          "neighborhood"
+        ],
+        "link": "https://www.google.com/maps/search/?api=1&query=North+End+Halifax",
+        "description": "Best area if the brief mentions good food with a local feel."
+      }
+    ],
+    "image_url_light": "/destinations/theme/halifax_staycation_ns-light.webp",
+    "image_url_dark": "/destinations/theme/halifax_staycation_ns-dark.webp"
+  },
+  {
+    "id": "cabot_trail_ns",
+    "name": "Cabot Trail",
+    "region": "Nova Scotia",
+    "home_base_city": "Baddeck / Ingonish",
+    "is_staycation": false,
+    "drive_time_hours_from": {
+      "halifax": 4.75,
+      "moncton": 4.5,
+      "fredericton": 6.25
+    },
+    "distance_km_from": {
+      "halifax": 430,
+      "moncton": 410,
+      "fredericton": 590
+    },
+    "cost_level": "mid",
+    "vibes": [
+      "scenic",
+      "nature",
+      "road trip",
+      "adventure"
+    ],
+    "best_seasons": [
+      "summer",
+      "fall"
+    ],
+    "avoid_seasons": [
+      "winter"
+    ],
+    "style_scores": {
+      "chill": 1,
+      "outdoors": 3,
+      "foodie": 0,
+      "solo reset": 1,
+      "adventure": 2
+    },
+    "anchor_experiences": [
+      {
+        "title": "Skyline Trail or coastal viewpoint pull-offs",
+        "type": "nature",
+        "description": "Strong scenic payoff that clearly feels like a getaway.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Skyline+Trail+Cape+Breton"
+      },
+      {
+        "title": "Cabot Trail drive loop",
+        "type": "scenic",
+        "description": "Classic road-trip anchor with big visual payoff all day long.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Cabot+Trail+Nova+Scotia"
+      }
+    ],
+    "neighborhoods": [
+      {
+        "name": "Baddeck",
+        "reason": "Practical base for splitting the trail into a relaxed weekend",
+        "link": "https://www.google.com/maps/search/?api=1&query=Baddeck+Nova+Scotia"
+      }
+    ],
+    "hotel_options": [
+      {
+        "name": "Inverary Resort",
+        "price_per_night": 210,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Inverary+Resort+Baddeck",
+        "description": "Useful mid-range base for a scenic Cape Breton weekend."
+      }
+    ],
+    "food_spots": [
+      {
+        "name": "Baddeck harbor dining",
+        "tags": [
+          "seafood",
+          "casual",
+          "scenic"
+        ],
+        "link": "https://www.google.com/maps/search/?api=1&query=Restaurants+Baddeck+Nova+Scotia",
+        "description": "Simple food anchor that pairs well with a trail-heavy weekend."
+      }
+    ],
+    "image_url_light": "/destinations/theme/cabot_trail_ns-light.webp",
+    "image_url_dark": "/destinations/theme/cabot_trail_ns-dark.webp"
+  },
+  {
+    "id": "ottawa_staycation_on",
+    "name": "Ottawa Staycation",
+    "region": "Ontario",
+    "home_base_city": "Ottawa",
+    "latitude": 45.4215,
+    "longitude": -75.6972,
+    "is_staycation": true,
+    "drive_time_hours_from": {
+      "ottawa": 0,
+      "gatineau": 0.25,
+      "montreal": 2.25,
+      "kingston": 2
+    },
+    "distance_km_from": {
+      "ottawa": 0,
+      "gatineau": 10,
+      "montreal": 200,
+      "kingston": 195
+    },
+    "cost_level": "mid",
+    "vibes": [
+      "culture",
+      "food",
+      "city",
+      "walkable"
+    ],
+    "best_seasons": [
+      "spring",
+      "summer",
+      "fall",
+      "winter"
+    ],
+    "avoid_seasons": [],
+    "style_scores": {
+      "chill": 1,
+      "outdoors": 0,
+      "foodie": 2,
+      "solo reset": 1,
+      "adventure": 0
+    },
+    "anchor_experiences": [
+      {
+        "title": "ByWard Market and coffee crawl",
+        "type": "food",
+        "description": "Compact and easy if the brief wants a lighter city weekend with good food.",
+        "link": "https://www.google.com/maps/search/?api=1&query=ByWard+Market+Ottawa"
+      },
+      {
+        "title": "Rideau Canal and Parliament district walk",
+        "type": "culture",
+        "description": "Reliable city anchor with strong first-visit payoff.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Rideau+Canal+Ottawa"
+      }
+    ],
+    "neighborhoods": [
+      {
+        "name": "ByWard Market",
+        "reason": "Best fit for food density and an easy walkable stay",
+        "link": "https://www.google.com/maps/search/?api=1&query=ByWard+Market+Ottawa"
+      }
+    ],
+    "hotel_options": [
+      {
+        "name": "ByWard Market boutique hotel base",
+        "price_per_night": 240,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Hotels+ByWard+Market+Ottawa",
+        "description": "Useful if the trip is meant to feel central and low-effort."
+      }
+    ],
+    "food_spots": [
+      {
+        "name": "ByWard Market",
+        "tags": [
+          "restaurants",
+          "cafes",
+          "walkable"
+        ],
+        "link": "https://www.google.com/maps/search/?api=1&query=Restaurants+ByWard+Market+Ottawa",
+        "description": "Best dense neighborhood option for a quick food-led reset."
+      }
+    ],
+    "image_url_light": "/destinations/theme/ottawa_staycation_on-light.webp",
+    "image_url_dark": "/destinations/theme/ottawa_staycation_on-dark.webp"
+  },
+  {
+    "id": "muskoka_on",
+    "name": "Muskoka",
+    "region": "Ontario",
+    "home_base_city": "Bracebridge / Huntsville",
+    "is_staycation": false,
+    "drive_time_hours_from": {
+      "toronto": 2.25,
+      "hamilton": 2.75,
+      "ottawa": 4.75,
+      "mississauga": 2.5,
+      "brampton": 2.25
+    },
+    "distance_km_from": {
+      "toronto": 210,
+      "hamilton": 250,
+      "ottawa": 430,
+      "mississauga": 210,
+      "brampton": 195
+    },
+    "cost_level": "mid",
+    "vibes": [
+      "lake",
+      "relax",
+      "scenic",
+      "cabin"
+    ],
+    "best_seasons": [
+      "summer",
+      "fall"
+    ],
+    "avoid_seasons": [
+      "spring"
+    ],
+    "style_scores": {
+      "chill": 3,
+      "outdoors": 2,
+      "foodie": 1,
+      "solo reset": 2,
+      "adventure": 0
+    },
+    "anchor_experiences": [
+      {
+        "title": "Lakefront dock morning or sunset",
+        "type": "relax",
+        "description": "Big reset energy without much planning friction.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Muskoka+lakefront"
+      },
+      {
+        "title": "Short scenic trail or lookout stop",
+        "type": "nature",
+        "description": "Adds outdoor payoff without turning the whole trip into a hiking brief.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Muskoka+lookout"
+      }
+    ],
+    "neighborhoods": [
+      {
+        "name": "Bracebridge",
+        "reason": "Practical base with easy dining and lake access",
+        "link": "https://www.google.com/maps/search/?api=1&query=Bracebridge+Ontario"
+      }
+    ],
+    "hotel_options": [
+      {
+        "name": "Lakeside resort base",
+        "price_per_night": 275,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Lakeside+resort+Muskoka",
+        "description": "Best fit if the trip wants cabin-or-lodge energy rather than a city stay."
+      }
+    ],
+    "food_spots": [
+      {
+        "name": "Bracebridge and Huntsville casual dining",
+        "tags": [
+          "casual",
+          "local",
+          "low-friction"
+        ],
+        "link": "https://www.google.com/maps/search/?api=1&query=Restaurants+Bracebridge+Ontario",
+        "description": "Practical food option if the trip is more about the lake than restaurant density."
+      }
+    ],
+    "image_url_light": "/destinations/theme/muskoka_on-light.webp",
+    "image_url_dark": "/destinations/theme/muskoka_on-dark.webp"
+  },
+  {
+    "id": "victoria_staycation_bc",
+    "name": "Victoria Staycation",
+    "region": "British Columbia",
+    "home_base_city": "Victoria",
+    "latitude": 48.4284,
+    "longitude": -123.3656,
+    "is_staycation": true,
+    "drive_time_hours_from": {
+      "victoria": 0,
+      "nanaimo": 1.75,
+      "vancouver": 3.5
+    },
+    "distance_km_from": {
+      "victoria": 0,
+      "nanaimo": 110,
+      "vancouver": 115
+    },
+    "cost_level": "mid",
+    "vibes": [
+      "food",
+      "waterfront",
+      "walkable",
+      "relax"
+    ],
+    "best_seasons": [
+      "spring",
+      "summer",
+      "fall"
+    ],
+    "avoid_seasons": [],
+    "style_scores": {
+      "chill": 3,
+      "outdoors": 1,
+      "foodie": 2,
+      "solo reset": 2,
+      "adventure": 0
+    },
+    "anchor_experiences": [
+      {
+        "title": "Inner Harbour stroll",
+        "type": "scenic",
+        "description": "Strong polished-city payoff that still feels easy and calm.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Inner+Harbour+Victoria"
+      },
+      {
+        "title": "James Bay and downtown cafe loop",
+        "type": "food",
+        "description": "Good density for coffee, brunch, and a lighter urban weekend.",
+        "link": "https://www.google.com/maps/search/?api=1&query=James+Bay+Victoria+coffee"
+      }
+    ],
+    "neighborhoods": [
+      {
+        "name": "Inner Harbour",
+        "reason": "Best base for first-time walkability and easy sightseeing",
+        "link": "https://www.google.com/maps/search/?api=1&query=Inner+Harbour+Victoria"
+      }
+    ],
+    "hotel_options": [
+      {
+        "name": "Inner Harbour hotel base",
+        "price_per_night": 255,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Hotels+Inner+Harbour+Victoria",
+        "description": "Useful if the brief wants a polished but low-friction stay."
+      }
+    ],
+    "food_spots": [
+      {
+        "name": "Downtown and James Bay",
+        "tags": [
+          "cafes",
+          "brunch",
+          "walkable"
+        ],
+        "link": "https://www.google.com/maps/search/?api=1&query=Restaurants+Downtown+Victoria",
+        "description": "Best zone if the trip brief mentions coffee and easy neighborhood wandering."
+      }
+    ],
+    "image_url_light": "/destinations/theme/victoria_staycation_bc-light.webp",
+    "image_url_dark": "/destinations/theme/victoria_staycation_bc-dark.webp"
+  },
+  {
+    "id": "vancouver_island_bc",
+    "name": "Vancouver Island",
+    "region": "British Columbia",
+    "home_base_city": "Victoria / Sooke",
+    "latitude": 48.4284,
+    "longitude": -123.3656,
+    "is_staycation": false,
+    "drive_time_hours_from": {
+      "victoria": 0.5,
+      "nanaimo": 2,
+      "vancouver": 3.5
+    },
+    "distance_km_from": {
+      "victoria": 40,
+      "nanaimo": 120,
+      "vancouver": 115
+    },
+    "cost_level": "mid",
+    "vibes": [
+      "coast",
+      "adventure",
+      "forest",
+      "road trip"
+    ],
+    "best_seasons": [
+      "spring",
+      "summer",
+      "fall"
+    ],
+    "avoid_seasons": [],
+    "style_scores": {
+      "chill": 2,
+      "outdoors": 3,
+      "foodie": 1,
+      "solo reset": 2,
+      "adventure": 3
+    },
+    "anchor_experiences": [
+      {
+        "title": "Juan de Fuca coastal hike",
+        "type": "hiking",
+        "description": "Big ocean payoff and true west-coast adventure energy without needing a full expedition setup.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Juan+de+Fuca+Trail"
+      },
+      {
+        "title": "East Sooke bluff walk",
+        "type": "scenic",
+        "description": "Reliable cliff-and-ocean payoff for a shorter active day with a strong view reward.",
+        "link": "https://www.google.com/maps/search/?api=1&query=East+Sooke+Park"
+      },
+      {
+        "title": "Pacific Marine Road day drive",
+        "type": "road trip",
+        "description": "Useful if the group wants the island-road-trip feel instead of staying inside one urban pocket.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Pacific+Marine+Road+British+Columbia"
+      }
+    ],
+    "neighborhoods": [
+      {
+        "name": "Victoria / Sooke corridor",
+        "reason": "Best base for ferry access, ocean hikes, and easier logistics from Vancouver",
+        "link": "https://www.google.com/maps/search/?api=1&query=Sooke+British+Columbia"
+      },
+      {
+        "name": "Cowichan Valley detour",
+        "reason": "Good add-on for scenic driving, cafes, and a softer food stop between adventure blocks",
+        "link": "https://www.google.com/maps/search/?api=1&query=Cowichan+Valley+British+Columbia"
+      }
+    ],
+    "hotel_options": [
+      {
+        "name": "South Island lodge base",
+        "price_per_night": 265,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Hotels+Sooke+British+Columbia",
+        "description": "Best fit if the group wants coastal access and an outdoors-first base."
+      }
+    ],
+    "food_spots": [
+      {
+        "name": "Victoria and Sooke casual food stops",
+        "tags": [
+          "cafes",
+          "casual",
+          "road trip"
+        ],
+        "link": "https://www.google.com/maps/search/?api=1&query=Restaurants+Sooke+British+Columbia",
+        "description": "Good enough food support for an adventure-first island trip without turning it into a foodie weekend."
+      }
+    ],
+    "image_url_light": "/destinations/theme/vancouver_island_bc-light.webp",
+    "image_url_dark": "/destinations/theme/vancouver_island_bc-dark.webp"
+  },
+  {
+    "id": "okanagan_kelowna_bc",
+    "name": "Okanagan / Kelowna",
+    "region": "British Columbia",
+    "home_base_city": "Kelowna",
+    "latitude": 49.888,
+    "longitude": -119.496,
+    "is_staycation": false,
+    "drive_time_hours_from": {
+      "kelowna": 0,
+      "kamloops": 2,
+      "vancouver": 4,
+      "victoria": 5.75,
+      "nanaimo": 5.25
+    },
+    "distance_km_from": {
+      "kelowna": 0,
+      "kamloops": 170,
+      "vancouver": 390,
+      "victoria": 470,
+      "nanaimo": 440
+    },
+    "cost_level": "mid",
+    "vibes": [
+      "lake",
+      "wine",
+      "sunny",
+      "food"
+    ],
+    "best_seasons": [
+      "spring",
+      "summer",
+      "fall"
+    ],
+    "avoid_seasons": [
+      "winter"
+    ],
+    "style_scores": {
+      "chill": 3,
+      "outdoors": 1,
+      "foodie": 2,
+      "solo reset": 2,
+      "adventure": 0
+    },
+    "anchor_experiences": [
+      {
+        "title": "Lakeside beach or boardwalk reset",
+        "type": "nature",
+        "description": "Easy sunshine-and-water payoff for a short getaway.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Kelowna+waterfront"
+      },
+      {
+        "title": "Winery and patio route",
+        "type": "food",
+        "description": "Best fit if the trip wants a slower food-and-drink rhythm.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Kelowna+wineries"
+      }
+    ],
+    "neighborhoods": [
+      {
+        "name": "Downtown Kelowna",
+        "reason": "Best easy base if you want food plus lake access",
+        "link": "https://www.google.com/maps/search/?api=1&query=Downtown+Kelowna"
+      }
+    ],
+    "hotel_options": [
+      {
+        "name": "Waterfront hotel base",
+        "price_per_night": 245,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Waterfront+hotel+Kelowna",
+        "description": "Strong fit if the trip wants a polished summer-weekend feel."
+      }
+    ],
+    "food_spots": [
+      {
+        "name": "Downtown Kelowna dining",
+        "tags": [
+          "patios",
+          "restaurants",
+          "walkable"
+        ],
+        "link": "https://www.google.com/maps/search/?api=1&query=Restaurants+Downtown+Kelowna",
+        "description": "Best dense option for keeping the trip easy after winery or lake stops."
+      }
+    ],
+    "image_url_light": "/destinations/theme/okanagan_kelowna_bc-light.webp",
+    "image_url_dark": "/destinations/theme/okanagan_kelowna_bc-dark.webp"
+  },
+  {
+    "id": "winnipeg_staycation_mb",
+    "name": "Winnipeg Staycation",
+    "region": "Manitoba",
+    "home_base_city": "Winnipeg",
+    "is_staycation": true,
+    "drive_time_hours_from": {
+      "winnipeg": 0,
+      "brandon": 2.5
+    },
+    "distance_km_from": {
+      "winnipeg": 0,
+      "brandon": 215
+    },
+    "cost_level": "low_mid",
+    "vibes": [
+      "culture",
+      "food",
+      "city",
+      "family"
+    ],
+    "best_seasons": [
+      "spring",
+      "summer",
+      "fall",
+      "winter"
+    ],
+    "avoid_seasons": [],
+    "style_scores": {
+      "chill": 1,
+      "outdoors": 0,
+      "foodie": 2,
+      "solo reset": 1,
+      "adventure": 0
+    },
+    "anchor_experiences": [
+      {
+        "title": "The Forks and river walk",
+        "type": "culture",
+        "description": "Easy city anchor with enough energy for a short staycation.",
+        "link": "https://www.google.com/maps/search/?api=1&query=The+Forks+Winnipeg"
+      },
+      {
+        "title": "Exchange District dinner and coffee",
+        "type": "food",
+        "description": "Useful if the brief wants a simpler food-led city weekend.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Exchange+District+Winnipeg"
+      }
+    ],
+    "neighborhoods": [
+      {
+        "name": "The Forks / Exchange District",
+        "reason": "Best central pairing for culture and food density",
+        "link": "https://www.google.com/maps/search/?api=1&query=Exchange+District+Winnipeg"
+      }
+    ],
+    "hotel_options": [
+      {
+        "name": "Downtown Winnipeg hotel base",
+        "price_per_night": 190,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Downtown+Winnipeg+hotels",
+        "description": "Best if the trip wants a compact central weekend."
+      }
+    ],
+    "food_spots": [
+      {
+        "name": "Exchange District",
+        "tags": [
+          "restaurants",
+          "cafes",
+          "central"
+        ],
+        "link": "https://www.google.com/maps/search/?api=1&query=Restaurants+Exchange+District+Winnipeg",
+        "description": "Best dense zone for an easy dinner-first plan."
+      }
+    ],
+    "image_url_light": "/destinations/theme/winnipeg_staycation_mb-light.webp",
+    "image_url_dark": "/destinations/theme/winnipeg_staycation_mb-dark.webp"
+  },
+  {
+    "id": "riding_mountain_mb",
+    "name": "Riding Mountain National Park",
+    "region": "Manitoba",
+    "home_base_city": "Wasagaming",
+    "is_staycation": false,
+    "drive_time_hours_from": {
+      "winnipeg": 3.25,
+      "brandon": 1.25
+    },
+    "distance_km_from": {
+      "winnipeg": 265,
+      "brandon": 95
+    },
+    "cost_level": "mid",
+    "vibes": [
+      "nature",
+      "lake",
+      "wildlife",
+      "relax"
+    ],
+    "best_seasons": [
+      "summer",
+      "fall"
+    ],
+    "avoid_seasons": [
+      "winter"
+    ],
+    "style_scores": {
+      "chill": 2,
+      "outdoors": 3,
+      "foodie": 0,
+      "solo reset": 2,
+      "adventure": 1
+    },
+    "anchor_experiences": [
+      {
+        "title": "Lakeside trail and beach time",
+        "type": "nature",
+        "description": "Easy outdoor payoff if the brief wants scenery without a hard-charging adventure schedule.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Wasagaming+beach"
+      },
+      {
+        "title": "Wildlife drive or lookout stop",
+        "type": "scenic",
+        "description": "Adds a distinct park feel with relatively low effort.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Riding+Mountain+National+Park+lookout"
+      }
+    ],
+    "neighborhoods": [
+      {
+        "name": "Wasagaming",
+        "reason": "Best practical base inside the park area",
+        "link": "https://www.google.com/maps/search/?api=1&query=Wasagaming+Manitoba"
+      }
+    ],
+    "hotel_options": [
+      {
+        "name": "Wasagaming lodge base",
+        "price_per_night": 210,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Hotels+Wasagaming+Manitoba",
+        "description": "Useful for a simple park weekend without a lot of moving parts."
+      }
+    ],
+    "food_spots": [
+      {
+        "name": "Wasagaming casual dining",
+        "tags": [
+          "casual",
+          "park town",
+          "simple"
+        ],
+        "link": "https://www.google.com/maps/search/?api=1&query=Restaurants+Wasagaming+Manitoba",
+        "description": "Practical food option once the park is the main point of the trip."
+      }
+    ],
+    "image_url_light": "/destinations/theme/riding_mountain_mb-light.webp",
+    "image_url_dark": "/destinations/theme/riding_mountain_mb-dark.webp"
+  },
+  {
+    "id": "saskatoon_staycation_sk",
+    "name": "Saskatoon Staycation",
+    "region": "Saskatchewan",
+    "home_base_city": "Saskatoon",
+    "is_staycation": true,
+    "drive_time_hours_from": {
+      "saskatoon": 0,
+      "prince_albert": 1.75,
+      "regina": 2.75
+    },
+    "distance_km_from": {
+      "saskatoon": 0,
+      "prince_albert": 145,
+      "regina": 260
+    },
+    "cost_level": "low_mid",
+    "vibes": [
+      "food",
+      "river",
+      "culture",
+      "easy"
+    ],
+    "best_seasons": [
+      "spring",
+      "summer",
+      "fall"
+    ],
+    "avoid_seasons": [],
+    "style_scores": {
+      "chill": 1,
+      "outdoors": 1,
+      "foodie": 2,
+      "solo reset": 1,
+      "adventure": 0
+    },
+    "anchor_experiences": [
+      {
+        "title": "Meewasin river trail walk",
+        "type": "nature",
+        "description": "Simple city-nature anchor with low planning overhead.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Meewasin+Trail+Saskatoon"
+      },
+      {
+        "title": "Broadway or Riversdale dinner run",
+        "type": "food",
+        "description": "Best fit if the brief wants a casual urban weekend with good coffee and food.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Broadway+Saskatoon+restaurants"
+      }
+    ],
+    "neighborhoods": [
+      {
+        "name": "Broadway",
+        "reason": "Best neighborhood if the trip brief leans cafes and local spots",
+        "link": "https://www.google.com/maps/search/?api=1&query=Broadway+Saskatoon"
+      }
+    ],
+    "hotel_options": [
+      {
+        "name": "Downtown Saskatoon hotel base",
+        "price_per_night": 185,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Downtown+Saskatoon+hotels",
+        "description": "Useful if you want a compact city stay with river access."
+      }
+    ],
+    "food_spots": [
+      {
+        "name": "Broadway and Riversdale",
+        "tags": [
+          "cafes",
+          "restaurants",
+          "local"
+        ],
+        "link": "https://www.google.com/maps/search/?api=1&query=Restaurants+Broadway+Saskatoon",
+        "description": "Best local-density option for a short weekend."
+      }
+    ],
+    "image_url_light": "/destinations/theme/saskatoon_staycation_sk-light.webp",
+    "image_url_dark": "/destinations/theme/saskatoon_staycation_sk-dark.webp"
+  },
+  {
+    "id": "prince_albert_np_sk",
+    "name": "Prince Albert National Park",
+    "region": "Saskatchewan",
+    "home_base_city": "Waskesiu",
+    "is_staycation": false,
+    "drive_time_hours_from": {
+      "saskatoon": 2.5,
+      "prince_albert": 1.25,
+      "regina": 4.75
+    },
+    "distance_km_from": {
+      "saskatoon": 230,
+      "prince_albert": 95,
+      "regina": 470
+    },
+    "cost_level": "mid",
+    "vibes": [
+      "lake",
+      "nature",
+      "wildlife",
+      "forest"
+    ],
+    "best_seasons": [
+      "summer",
+      "fall"
+    ],
+    "avoid_seasons": [
+      "winter"
+    ],
+    "style_scores": {
+      "chill": 2,
+      "outdoors": 3,
+      "foodie": 0,
+      "solo reset": 2,
+      "adventure": 1
+    },
+    "anchor_experiences": [
+      {
+        "title": "Waskesiu lakefront reset",
+        "type": "nature",
+        "description": "Strong relaxed-outdoors payoff if the brief wants water and forest energy.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Waskesiu+Lake"
+      },
+      {
+        "title": "Short forest trail or scenic drive",
+        "type": "scenic",
+        "description": "Adds real park value without needing an aggressive hiking plan.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Prince+Albert+National+Park+trails"
+      }
+    ],
+    "neighborhoods": [
+      {
+        "name": "Waskesiu",
+        "reason": "Best practical base for a short park trip",
+        "link": "https://www.google.com/maps/search/?api=1&query=Waskesiu+Saskatchewan"
+      }
+    ],
+    "hotel_options": [
+      {
+        "name": "Waskesiu lodge base",
+        "price_per_night": 215,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Hotels+Waskesiu+Saskatchewan",
+        "description": "Useful if the park itself is the whole point of the weekend."
+      }
+    ],
+    "food_spots": [
+      {
+        "name": "Waskesiu casual dining",
+        "tags": [
+          "casual",
+          "simple",
+          "park town"
+        ],
+        "link": "https://www.google.com/maps/search/?api=1&query=Restaurants+Waskesiu+Saskatchewan",
+        "description": "Practical once outdoor time is doing most of the work."
+      }
+    ],
+    "image_url_light": "/destinations/theme/prince_albert_np_sk-light.webp",
+    "image_url_dark": "/destinations/theme/prince_albert_np_sk-dark.webp"
+  },
+  {
+    "id": "fundy_coast_nb",
+    "name": "Fundy Coast",
+    "region": "New Brunswick",
+    "home_base_city": "Saint John / St. Martins",
+    "is_staycation": false,
+    "drive_time_hours_from": {
+      "saint_john": 0.5,
+      "fredericton": 1.5,
+      "moncton": 2,
+      "halifax": 4.5
+    },
+    "distance_km_from": {
+      "saint_john": 45,
+      "fredericton": 125,
+      "moncton": 165,
+      "halifax": 430
+    },
+    "cost_level": "mid",
+    "vibes": [
+      "coast",
+      "nature",
+      "scenic",
+      "road trip"
+    ],
+    "best_seasons": [
+      "summer",
+      "fall"
+    ],
+    "avoid_seasons": [
+      "winter"
+    ],
+    "style_scores": {
+      "chill": 2,
+      "outdoors": 3,
+      "foodie": 0,
+      "solo reset": 2,
+      "adventure": 1
+    },
+    "anchor_experiences": [
+      {
+        "title": "Fundy sea cliffs and beach walk",
+        "type": "nature",
+        "description": "Very strong scenic payoff for a relatively simple coastal weekend.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Fundy+Trail+Parkway"
+      },
+      {
+        "title": "Fundy Trail Parkway lookouts",
+        "type": "scenic",
+        "description": "Classic drive-and-viewpoint anchor for a short Atlantic road trip.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Fundy+Trail+Parkway"
+      }
+    ],
+    "neighborhoods": [
+      {
+        "name": "St. Martins",
+        "reason": "Best small-base option if the trip is centered on the coast",
+        "link": "https://www.google.com/maps/search/?api=1&query=St.+Martins+New+Brunswick"
+      }
+    ],
+    "hotel_options": [
+      {
+        "name": "Coastal inn or lodge base",
+        "price_per_night": 210,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Hotels+St.+Martins+New+Brunswick",
+        "description": "Practical base when the coast and parkway are the actual draw."
+      }
+    ],
+    "food_spots": [
+      {
+        "name": "Saint John seafood and casual dining",
+        "tags": [
+          "seafood",
+          "casual",
+          "waterfront"
+        ],
+        "link": "https://www.google.com/maps/search/?api=1&query=Restaurants+Saint+John+New+Brunswick",
+        "description": "Useful if the trip wants one reliable dinner anchor on either end of the coast day."
+      }
+    ],
+    "image_url_light": "/destinations/theme/fundy_coast_nb-light.webp",
+    "image_url_dark": "/destinations/theme/fundy_coast_nb-dark.webp"
+  },
+  {
+    "id": "st_johns_staycation_nl",
+    "name": "St. John's Staycation",
+    "region": "Newfoundland and Labrador",
+    "home_base_city": "St. John's",
+    "latitude": 47.5615,
+    "longitude": -52.7126,
+    "is_staycation": true,
+    "drive_time_hours_from": {
+      "st_john_s": 0,
+      "corner_brook": 7.5
+    },
+    "distance_km_from": {
+      "st_john_s": 0,
+      "corner_brook": 690
+    },
+    "cost_level": "mid",
+    "vibes": [
+      "coast",
+      "food",
+      "colorful",
+      "culture"
+    ],
+    "best_seasons": [
+      "spring",
+      "summer",
+      "fall"
+    ],
+    "avoid_seasons": [],
+    "style_scores": {
+      "chill": 2,
+      "outdoors": 1,
+      "foodie": 2,
+      "solo reset": 2,
+      "adventure": 0
+    },
+    "anchor_experiences": [
+      {
+        "title": "Signal Hill and harbor views",
+        "type": "scenic",
+        "description": "Classic visual payoff for a first St. John's weekend.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Signal+Hill+St.+John%27s"
+      },
+      {
+        "title": "Downtown and Jellybean Row wander",
+        "type": "culture",
+        "description": "Easy urban anchor with strong place-specific character.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Jellybean+Row+St.+John%27s"
+      }
+    ],
+    "neighborhoods": [
+      {
+        "name": "Downtown",
+        "reason": "Best fit if the trip wants walkability, pubs, and harbor access",
+        "link": "https://www.google.com/maps/search/?api=1&query=Downtown+St.+John%27s"
+      }
+    ],
+    "hotel_options": [
+      {
+        "name": "Downtown St. John's hotel base",
+        "price_per_night": 220,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Downtown+St.+John%27s+hotels",
+        "description": "Useful if the brief wants a low-friction urban weekend with coastal views."
+      }
+    ],
+    "food_spots": [
+      {
+        "name": "Downtown St. John's",
+        "tags": [
+          "seafood",
+          "pubs",
+          "walkable"
+        ],
+        "link": "https://www.google.com/maps/search/?api=1&query=Restaurants+Downtown+St.+John%27s",
+        "description": "Best dense zone for a dinner-led staycation."
+      }
+    ],
+    "image_url_light": "/destinations/theme/st_johns_staycation_nl-light.webp",
+    "image_url_dark": "/destinations/theme/st_johns_staycation_nl-dark.webp"
+  },
+  {
+    "id": "charlottetown_staycation_pe",
+    "name": "Charlottetown Staycation",
+    "region": "Prince Edward Island",
+    "home_base_city": "Charlottetown",
+    "latitude": 46.2382,
+    "longitude": -63.1311,
+    "is_staycation": true,
+    "drive_time_hours_from": {
+      "charlottetown": 0,
+      "moncton": 2.75,
+      "fredericton": 4.5
+    },
+    "distance_km_from": {
+      "charlottetown": 0,
+      "moncton": 175,
+      "fredericton": 320
+    },
+    "cost_level": "mid",
+    "vibes": [
+      "coast",
+      "food",
+      "walkable",
+      "historic"
+    ],
+    "best_seasons": [
+      "spring",
+      "summer",
+      "fall"
+    ],
+    "avoid_seasons": [
+      "winter"
+    ],
+    "style_scores": {
+      "chill": 3,
+      "outdoors": 0,
+      "foodie": 2,
+      "solo reset": 2,
+      "adventure": 0
+    },
+    "anchor_experiences": [
+      {
+        "title": "Victoria Row and harbor walk",
+        "type": "food",
+        "description": "Easy compact downtown anchor for a low-friction island weekend.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Victoria+Row+Charlottetown"
+      },
+      {
+        "title": "Waterfront and historic core wander",
+        "type": "culture",
+        "description": "Adds strong place-specific payoff without needing a long driving day.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Charlottetown+waterfront"
+      }
+    ],
+    "neighborhoods": [
+      {
+        "name": "Downtown Charlottetown",
+        "reason": "Best fit if the trip wants walkability and easy dining",
+        "link": "https://www.google.com/maps/search/?api=1&query=Downtown+Charlottetown"
+      }
+    ],
+    "hotel_options": [
+      {
+        "name": "Harborfront hotel base",
+        "price_per_night": 225,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Hotels+Downtown+Charlottetown",
+        "description": "Useful if the brief wants an easy island-capital stay without a lot of logistics."
+      }
+    ],
+    "food_spots": [
+      {
+        "name": "Victoria Row",
+        "tags": [
+          "restaurants",
+          "patios",
+          "walkable"
+        ],
+        "link": "https://www.google.com/maps/search/?api=1&query=Victoria+Row+Charlottetown",
+        "description": "Best dense option for a short food-led staycation."
+      }
+    ],
+    "image_url_light": "/destinations/theme/charlottetown_staycation_pe-light.webp",
+    "image_url_dark": "/destinations/theme/charlottetown_staycation_pe-dark.webp"
+  },
+  {
+    "id": "gros_morne_nl",
+    "name": "Gros Morne",
+    "region": "Newfoundland and Labrador",
+    "home_base_city": "Rocky Harbour",
+    "latitude": 49.6206,
+    "longitude": -57.9203,
+    "is_staycation": false,
+    "drive_time_hours_from": {
+      "corner_brook": 1.75,
+      "st_john_s": 8.5
+    },
+    "distance_km_from": {
+      "corner_brook": 145,
+      "st_john_s": 700
+    },
+    "cost_level": "mid",
+    "vibes": [
+      "coast",
+      "nature",
+      "scenic",
+      "adventure"
+    ],
+    "best_seasons": [
+      "summer",
+      "fall"
+    ],
+    "avoid_seasons": [
+      "winter"
+    ],
+    "style_scores": {
+      "chill": 1,
+      "outdoors": 3,
+      "foodie": 0,
+      "solo reset": 2,
+      "adventure": 2
+    },
+    "anchor_experiences": [
+      {
+        "title": "Tablelands or coastal viewpoint stop",
+        "type": "nature",
+        "description": "Distinctive, high-payoff scenery that clearly feels like a real getaway.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Tablelands+Gros+Morne"
+      },
+      {
+        "title": "Western Brook Pond style fjord scenery",
+        "type": "scenic",
+        "description": "Big visual payoff if the trip wants must-see Atlantic nature.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Western+Brook+Pond+Gros+Morne"
+      }
+    ],
+    "neighborhoods": [
+      {
+        "name": "Rocky Harbour",
+        "reason": "Best practical base for a short Gros Morne weekend",
+        "link": "https://www.google.com/maps/search/?api=1&query=Rocky+Harbour+Newfoundland"
+      }
+    ],
+    "hotel_options": [
+      {
+        "name": "Rocky Harbour lodge base",
+        "price_per_night": 220,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Hotels+Rocky+Harbour+Newfoundland",
+        "description": "Useful if the park and scenery are doing most of the work."
+      }
+    ],
+    "food_spots": [
+      {
+        "name": "Rocky Harbour casual dining",
+        "tags": [
+          "seafood",
+          "casual",
+          "park town"
+        ],
+        "link": "https://www.google.com/maps/search/?api=1&query=Restaurants+Rocky+Harbour+Newfoundland",
+        "description": "Practical food option around a scenery-first trip."
+      }
+    ],
+    "image_url_light": "/destinations/theme/gros_morne_nl-light.webp",
+    "image_url_dark": "/destinations/theme/gros_morne_nl-dark.webp"
+  },
+  {
+    "id": "regina_staycation_sk",
+    "name": "Regina Staycation",
+    "region": "Saskatchewan",
+    "home_base_city": "Regina",
+    "latitude": 50.4452,
+    "longitude": -104.6189,
+    "is_staycation": true,
+    "drive_time_hours_from": {
+      "regina": 0,
+      "moose_jaw": 0.75,
+      "saskatoon": 2.75
+    },
+    "distance_km_from": {
+      "regina": 0,
+      "moose_jaw": 70,
+      "saskatoon": 260
+    },
+    "cost_level": "low_mid",
+    "vibes": [
+      "culture",
+      "food",
+      "easy",
+      "city"
+    ],
+    "best_seasons": [
+      "spring",
+      "summer",
+      "fall",
+      "winter"
+    ],
+    "avoid_seasons": [],
+    "style_scores": {
+      "chill": 1,
+      "outdoors": 0,
+      "foodie": 2,
+      "solo reset": 1,
+      "adventure": 0
+    },
+    "anchor_experiences": [
+      {
+        "title": "Wascana Lake walk",
+        "type": "scenic",
+        "description": "Simple city-nature anchor for a low-planning staycation.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Wascana+Lake+Regina"
+      },
+      {
+        "title": "Warehouse District dinner run",
+        "type": "food",
+        "description": "Good fit if the brief wants a casual dinner-led city reset.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Warehouse+District+Regina"
+      },
+      {
+        "title": "Cathedral coffee and brunch loop",
+        "type": "food",
+        "description": "Adds a more explicitly food-led daytime anchor for a short city weekend.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Cathedral+Regina+coffee"
+      }
+    ],
+    "neighborhoods": [
+      {
+        "name": "Warehouse District",
+        "reason": "Best local option for food and an easy evening out",
+        "link": "https://www.google.com/maps/search/?api=1&query=Warehouse+District+Regina"
+      }
+    ],
+    "hotel_options": [
+      {
+        "name": "Downtown Regina hotel base",
+        "price_per_night": 180,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Downtown+Regina+hotels",
+        "description": "Useful if the trip wants a compact, practical city stay."
+      }
+    ],
+    "food_spots": [
+      {
+        "name": "Warehouse District",
+        "tags": [
+          "restaurants",
+          "cafes",
+          "casual"
+        ],
+        "link": "https://www.google.com/maps/search/?api=1&query=Restaurants+Warehouse+District+Regina",
+        "description": "Best food density if the trip is more about ease than sightseeing."
+      },
+      {
+        "name": "Cathedral",
+        "tags": [
+          "brunch",
+          "cafes",
+          "local"
+        ],
+        "link": "https://www.google.com/maps/search/?api=1&query=Restaurants+Cathedral+Regina",
+        "description": "Useful if the brief wants a coffee-and-brunch heavy city reset."
+      }
+    ],
+    "image_url_light": "/destinations/theme/regina_staycation_sk-light.webp",
+    "image_url_dark": "/destinations/theme/regina_staycation_sk-dark.webp"
+  },
+  {
+    "id": "prince_george_staycation_bc",
+    "name": "Prince George Staycation",
+    "region": "British Columbia",
+    "home_base_city": "Prince George",
+    "latitude": 53.9171,
+    "longitude": -122.7497,
+    "is_staycation": true,
+    "drive_time_hours_from": {
+      "prince_george": 0
+    },
+    "distance_km_from": {
+      "prince_george": 0
+    },
+    "cost_level": "low_mid",
+    "vibes": [
+      "nature",
+      "easy",
+      "local",
+      "reset"
+    ],
+    "best_seasons": [
+      "spring",
+      "summer",
+      "fall"
+    ],
+    "avoid_seasons": [],
+    "style_scores": {
+      "chill": 2,
+      "outdoors": 1,
+      "foodie": 0,
+      "solo reset": 2,
+      "adventure": 0
+    },
+    "anchor_experiences": [
+      {
+        "title": "Forest-for-the-World or riverside trail stop",
+        "type": "nature",
+        "description": "Low-friction northern BC reset if you want outdoors without a major drive.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Forest+for+the+World+Prince+George"
+      }
+    ],
+    "neighborhoods": [
+      {
+        "name": "Downtown / river area",
+        "reason": "Best simple base for a compact weekend",
+        "link": "https://www.google.com/maps/search/?api=1&query=Downtown+Prince+George"
+      }
+    ],
+    "hotel_options": [
+      {
+        "name": "Downtown Prince George hotel base",
+        "price_per_night": 175,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Downtown+Prince+George+hotels",
+        "description": "Useful if the brief wants a local reset more than a destination sprint."
+      }
+    ],
+    "food_spots": [
+      {
+        "name": "Downtown Prince George",
+        "tags": [
+          "casual",
+          "cafes",
+          "local"
+        ],
+        "link": "https://www.google.com/maps/search/?api=1&query=Restaurants+Downtown+Prince+George",
+        "description": "Practical food option for a low-friction staycation."
+      }
+    ],
+    "image_url_light": "/destinations/theme/prince_george_staycation_bc-light.webp",
+    "image_url_dark": "/destinations/theme/prince_george_staycation_bc-dark.webp"
+  },
+  {
+    "id": "whitehorse_staycation_yt",
+    "name": "Whitehorse Staycation",
+    "region": "Yukon",
+    "home_base_city": "Whitehorse",
+    "latitude": 60.7212,
+    "longitude": -135.0568,
+    "is_staycation": true,
+    "drive_time_hours_from": {
+      "whitehorse": 0
+    },
+    "distance_km_from": {
+      "whitehorse": 0
+    },
+    "cost_level": "mid",
+    "vibes": [
+      "nature",
+      "northern",
+      "reset",
+      "scenic"
+    ],
+    "best_seasons": [
+      "summer",
+      "fall",
+      "winter"
+    ],
+    "avoid_seasons": [],
+    "style_scores": {
+      "chill": 2,
+      "outdoors": 2,
+      "foodie": 0,
+      "solo reset": 2,
+      "adventure": 1
+    },
+    "anchor_experiences": [
+      {
+        "title": "Yukon River walk or scenic lookout",
+        "type": "scenic",
+        "description": "Easy northern-city payoff without needing a long expedition drive.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Yukon+River+Whitehorse"
+      }
+    ],
+    "neighborhoods": [
+      {
+        "name": "Downtown Whitehorse",
+        "reason": "Best simple base for a short Yukon reset",
+        "link": "https://www.google.com/maps/search/?api=1&query=Downtown+Whitehorse"
+      }
+    ],
+    "hotel_options": [
+      {
+        "name": "Downtown Whitehorse hotel base",
+        "price_per_night": 230,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Downtown+Whitehorse+hotels",
+        "description": "Useful if the brief wants a northern weekend without adding complexity."
+      }
+    ],
+    "food_spots": [
+      {
+        "name": "Downtown Whitehorse",
+        "tags": [
+          "local",
+          "cafes",
+          "casual"
+        ],
+        "link": "https://www.google.com/maps/search/?api=1&query=Restaurants+Downtown+Whitehorse",
+        "description": "Compact food option for a city-based Yukon weekend."
+      }
+    ],
+    "image_url_light": "/destinations/theme/whitehorse_staycation_yt-light.webp",
+    "image_url_dark": "/destinations/theme/whitehorse_staycation_yt-dark.webp"
+  },
+  {
+    "id": "kluane_yt",
+    "name": "Kluane",
+    "region": "Yukon",
+    "home_base_city": "Haines Junction",
+    "latitude": 60.75,
+    "longitude": -137.51,
+    "is_staycation": false,
+    "drive_time_hours_from": {
+      "whitehorse": 1.75
+    },
+    "distance_km_from": {
+      "whitehorse": 155
+    },
+    "cost_level": "mid",
+    "vibes": [
+      "mountain",
+      "nature",
+      "scenic",
+      "adventure"
+    ],
+    "best_seasons": [
+      "summer",
+      "fall"
+    ],
+    "avoid_seasons": [
+      "winter"
+    ],
+    "style_scores": {
+      "chill": 1,
+      "outdoors": 3,
+      "foodie": 0,
+      "solo reset": 1,
+      "adventure": 2
+    },
+    "anchor_experiences": [
+      {
+        "title": "Mountain and lake viewpoints around Kluane",
+        "type": "nature",
+        "description": "Big northern scenery payoff that clearly feels like a real getaway.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Kluane+National+Park"
+      },
+      {
+        "title": "Kathleen Lake shoreline trail",
+        "type": "nature",
+        "description": "Useful half-day outdoor anchor if the brief wants a more active park weekend.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Kathleen+Lake+Yukon"
+      },
+      {
+        "title": "Haines Junction mountain viewpoint stop",
+        "type": "scenic",
+        "description": "Adds another easy scenic activity without turning the trip into a technical hiking mission.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Haines+Junction+viewpoint"
+      }
+    ],
+    "neighborhoods": [
+      {
+        "name": "Haines Junction",
+        "reason": "Best practical base for a short Kluane trip",
+        "link": "https://www.google.com/maps/search/?api=1&query=Haines+Junction+Yukon"
+      }
+    ],
+    "hotel_options": [
+      {
+        "name": "Haines Junction lodge base",
+        "price_per_night": 240,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Hotels+Haines+Junction+Yukon",
+        "description": "Useful when the scenery is the core of the weekend."
+      }
+    ],
+    "food_spots": [
+      {
+        "name": "Haines Junction casual dining",
+        "tags": [
+          "simple",
+          "casual",
+          "gateway town"
+        ],
+        "link": "https://www.google.com/maps/search/?api=1&query=Restaurants+Haines+Junction+Yukon",
+        "description": "Practical food option around a nature-first trip."
+      }
+    ],
+    "image_url_light": "/destinations/theme/kluane_yt-light.webp",
+    "image_url_dark": "/destinations/theme/kluane_yt-dark.webp"
+  },
+  {
+    "id": "yellowknife_staycation_nt",
+    "name": "Yellowknife Staycation",
+    "region": "Northwest Territories",
+    "home_base_city": "Yellowknife",
+    "latitude": 62.454,
+    "longitude": -114.3718,
+    "is_staycation": true,
+    "drive_time_hours_from": {
+      "yellowknife": 0
+    },
+    "distance_km_from": {
+      "yellowknife": 0
+    },
+    "cost_level": "mid",
+    "vibes": [
+      "northern",
+      "scenic",
+      "aurora",
+      "lake"
+    ],
+    "best_seasons": [
+      "fall",
+      "winter",
+      "spring"
+    ],
+    "avoid_seasons": [],
+    "style_scores": {
+      "chill": 2,
+      "outdoors": 1,
+      "foodie": 0,
+      "solo reset": 2,
+      "adventure": 1
+    },
+    "anchor_experiences": [
+      {
+        "title": "Great Slave Lake and northern lights angle",
+        "type": "scenic",
+        "description": "High-payoff northern-city experience even on a short timeline.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Great+Slave+Lake+Yellowknife"
+      }
+    ],
+    "neighborhoods": [
+      {
+        "name": "Old Town",
+        "reason": "Best fit if the trip wants character and lake access",
+        "link": "https://www.google.com/maps/search/?api=1&query=Old+Town+Yellowknife"
+      }
+    ],
+    "hotel_options": [
+      {
+        "name": "Yellowknife lakefront hotel base",
+        "price_per_night": 245,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Hotels+Yellowknife",
+        "description": "Useful if the brief wants a short northern experience without a road trip."
+      }
+    ],
+    "food_spots": [
+      {
+        "name": "Old Town and downtown Yellowknife",
+        "tags": [
+          "local",
+          "casual",
+          "small-city"
+        ],
+        "link": "https://www.google.com/maps/search/?api=1&query=Restaurants+Yellowknife",
+        "description": "Practical food support for a scenery-first northern stay."
+      }
+    ],
+    "image_url_light": "/destinations/theme/yellowknife_staycation_nt-light.webp",
+    "image_url_dark": "/destinations/theme/yellowknife_staycation_nt-dark.webp"
+  },
+  {
+    "id": "iqaluit_staycation_nu",
+    "name": "Iqaluit Staycation",
+    "region": "Nunavut",
+    "home_base_city": "Iqaluit",
+    "latitude": 63.7467,
+    "longitude": -68.517,
+    "is_staycation": true,
+    "drive_time_hours_from": {
+      "iqaluit": 0
+    },
+    "distance_km_from": {
+      "iqaluit": 0
+    },
+    "cost_level": "high",
+    "vibes": [
+      "northern",
+      "culture",
+      "scenic",
+      "remote"
+    ],
+    "best_seasons": [
+      "spring",
+      "summer",
+      "fall"
+    ],
+    "avoid_seasons": [],
+    "style_scores": {
+      "chill": 2,
+      "outdoors": 1,
+      "foodie": 0,
+      "solo reset": 2,
+      "adventure": 1
+    },
+    "anchor_experiences": [
+      {
+        "title": "Frobisher Bay views and tundra-edge walk",
+        "type": "scenic",
+        "description": "Distinctive Arctic payoff even on a simple local weekend.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Frobisher+Bay+Iqaluit"
+      }
+    ],
+    "neighborhoods": [
+      {
+        "name": "Central Iqaluit",
+        "reason": "Best practical base for a short local stay",
+        "link": "https://www.google.com/maps/search/?api=1&query=Iqaluit+Nunavut"
+      }
+    ],
+    "hotel_options": [
+      {
+        "name": "Central Iqaluit hotel base",
+        "price_per_night": 320,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Hotels+Iqaluit",
+        "description": "Useful if the brief wants a northern reset anchored in town."
+      }
+    ],
+    "food_spots": [
+      {
+        "name": "Central Iqaluit casual dining",
+        "tags": [
+          "casual",
+          "local",
+          "simple"
+        ],
+        "link": "https://www.google.com/maps/search/?api=1&query=Restaurants+Iqaluit",
+        "description": "Practical food support around a town-based Arctic weekend."
+      }
+    ],
+    "image_url_light": "/destinations/theme/iqaluit_staycation_nu-light.webp",
+    "image_url_dark": "/destinations/theme/iqaluit_staycation_nu-dark.webp"
+  }
+]

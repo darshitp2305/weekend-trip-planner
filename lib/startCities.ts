@@ -3,40 +3,31 @@
  * These utilities centralize shared business logic so routes, pages, and components can reuse the same behavior instead of re-implementing it.
  */
 
-export const START_CITY_OPTIONS = [
-  "Edmonton",
-  "Calgary",
-  "Red Deer",
-  "Lethbridge",
-  "Medicine Hat",
-  "Grande Prairie",
-  "Fort McMurray",
-  "Airdrie",
-  "St. Albert",
-  "Sherwood Park",
-] as const;
+import {
+  CANADIAN_DEPARTURE_LOCATIONS,
+  getDepartureLocation,
+  getProvinceNameByCode,
+  type StartCityName,
+} from "./canadaGeography";
 
-export type StartCity = (typeof START_CITY_OPTIONS)[number];
+export const START_CITY_OPTIONS = Object.freeze(
+  CANADIAN_DEPARTURE_LOCATIONS.map((location) => location.name)
+) as readonly StartCityName[];
 
-const PLANNING_HUB_BY_CITY: Record<StartCity, "Edmonton" | "Calgary"> = {
-  Edmonton: "Edmonton",
-  Calgary: "Calgary",
-  "Red Deer": "Calgary",
-  Lethbridge: "Calgary",
-  "Medicine Hat": "Calgary",
-  "Grande Prairie": "Edmonton",
-  "Fort McMurray": "Edmonton",
-  Airdrie: "Calgary",
-  "St. Albert": "Edmonton",
-  "Sherwood Park": "Edmonton",
-};
+export type StartCity = StartCityName;
+
+const START_CITY_SET = new Set<string>(START_CITY_OPTIONS);
 
 export function isStartCity(value: unknown): value is StartCity {
-  return START_CITY_OPTIONS.includes(value as StartCity);
+  return typeof value === "string" && START_CITY_SET.has(value);
 }
 
 export function getPlanningHubForStartCity(
   startCity: StartCity
-): "Edmonton" | "Calgary" {
-  return PLANNING_HUB_BY_CITY[startCity];
+): "edmonton" | "calgary" | undefined {
+  return getDepartureLocation(startCity)?.routingOriginKey;
+}
+
+export function getStartCityProvinceName(startCity: StartCity): string | undefined {
+  return getProvinceNameByCode(getDepartureLocation(startCity)?.provinceCode);
 }

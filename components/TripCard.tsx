@@ -24,6 +24,7 @@ import {
   normalizeTripImageSet,
 } from "../lib/tripImages";
 import {
+  driveTimeTrustNote,
   tripConfidenceLabel,
   tripSourceLabel,
   tripSourceTone,
@@ -253,6 +254,7 @@ export default function TripCard({
   });
   const displayCost = displayBudget.totalExpected;
   const perTravelerDisplay = formatSharedCurrency(displayCost, travelerCount);
+  const driveTrustDetail = driveTimeTrustNote(previewTrip);
   const itineraryPreviewItems = getItineraryPreviewItems(
     previewTrip,
     previewPlan.itineraryDays
@@ -291,6 +293,7 @@ export default function TripCard({
     destination: previewTrip.name,
     homeBaseCity: previewTrip.homeBaseCity,
     name: previewTrip.name,
+    foodSpots: previewTrip.foodSpots,
     topActivities: previewTrip.topActivities,
   });
   const titleContext = getRecommendationContextLabel(
@@ -431,7 +434,9 @@ export default function TripCard({
           <Stat
             label="Drive and fit"
             value={previewPlan.driveTimeText}
-            detail={strengthLabel(previewTrip.styleMatchStrength)}
+            detail={[strengthLabel(previewTrip.styleMatchStrength), driveTrustDetail]
+              .filter(Boolean)
+              .join(" · ")}
           />
         </div>
 

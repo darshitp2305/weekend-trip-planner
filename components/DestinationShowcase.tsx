@@ -7,7 +7,7 @@
 
 
 import { useEffect, useState } from "react";
-import rawDestinations from "../data/destinations.json";
+import rawDestinations from "../lib/destinationCatalog";
 import { formatDisplayTag, formatDisplayText } from "../lib/displayText";
 import { normalizeTripImageSet } from "../lib/tripImages";
 import { RawDestination } from "../lib/types";
@@ -58,10 +58,10 @@ function buildCaption(destination: RawDestination) {
   }
 
   if (vibeText) {
-    return `A ${vibeText} Alberta ${destination.is_staycation ? "staycation" : "getaway"} from the planner database.`;
+    return `A ${vibeText} Canadian ${destination.is_staycation ? "staycation" : "getaway"} from the planner database.`;
   }
 
-  return `A real Alberta place already in the planner database.`;
+  return `A real Canadian place already in the planner database.`;
 }
 
 function buildTripTypeLabel(destination: RawDestination) {

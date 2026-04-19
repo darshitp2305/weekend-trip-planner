@@ -5,6 +5,7 @@
 
 import {
   Activity,
+  FoodSpot,
   HotelOption,
   ItineraryDayData,
   TripInput,
@@ -23,6 +24,7 @@ type RecommendationTripLike = {
   longitude?: number;
   hotelOptions?: HotelOption[];
   topActivities?: Activity[];
+  foodSpots?: FoodSpot[];
   savedSelectionState?: TripSelectionState;
 };
 
@@ -41,6 +43,7 @@ type PromptSummaryTripLike = Pick<
   | "destinationName"
   | "homeBaseCity"
   | "name"
+  | "foodSpots"
   | "topActivities"
   | "savedSelectionState"
 > & {
@@ -139,6 +142,24 @@ export function isGenericActivityDisplayName(value?: string) {
 
 function signalText(parts: Array<string | undefined>) {
   return normalized(parts.filter(Boolean).join(" "));
+}
+
+function foodSignalText(
+  food?: Pick<FoodSpot, "name" | "tags" | "category" | "shortDescription"> | null
+) {
+  return signalText([
+    food?.name,
+    ...(food?.tags ?? []),
+    food?.category,
+    food?.shortDescription,
+  ]);
+}
+
+function promptExplicitlyWantsCoffee(prompt?: string) {
+  const text = normalized(prompt);
+  if (!text) return false;
+
+  return /\b(coffee|cafe|espresso|latte|americano|bakery)\b/.test(text);
 }
 
 function toRadians(value: number) {
@@ -274,7 +295,11 @@ export function isBroadDestinationActivity(
   return false;
 }
 
-function hikeSpecificityScore(activity: Activity) {
+export function scenicHikeSpecificityScore(
+  activity?: Pick<Activity, "name" | "type" | "shortDescription" | "rating"> | null
+) {
+  if (!activity) return Number.NEGATIVE_INFINITY;
+
   const text = signalText([activity.name, activity.type, activity.shortDescription]);
   let score = 0;
   const summitSignal = ["summit", "peak", "ridge", "scramble", "alpine", "mountain"].filter(
@@ -283,30 +308,107 @@ function hikeSpecificityScore(activity: Activity) {
   const hikeSignal = ["trail", "hike", "loop", "backcountry", "scramble"].filter((term) =>
     text.includes(term)
   ).length;
-  const scenicSignal = ["lookout", "viewpoint", "view", "scenic", "panorama"].filter((term) =>
-    text.includes(term)
-  ).length;
+  const scenicSignal = [
+    "scenic",
+    "view",
+    "viewpoint",
+    "lookout",
+    "panorama",
+    "lake",
+    "waterfall",
+    "canyon",
+  ].filter((term) => text.includes(term)).length;
 
-  if (isGenericActivityDisplayName(activity.name)) score -= 80;
-
-  if (text.includes("summit")) score += 80;
-  if (text.includes("peak")) score += 72;
-  if (text.includes("ridge")) score += 64;
-  if (text.includes("scramble")) score += 56;
-  if (text.includes("alpine")) score += 48;
-  if (text.includes("trail")) score += 30;
-  if (text.includes("hike")) score += 26;
-  if (text.includes("lookout")) score += 18;
-  if (text.includes("viewpoint")) score += 16;
-  if (text.includes("mountain")) score += 16;
-  if (text.includes("trailhead")) score -= 8;
-  if (text.endsWith("national park") || text.endsWith("provincial park")) score -= 30;
+  if (isGenericActivityDisplayName(activity.name)) score -= 120;
+  if (text.includes("summit")) score += 90;
+  if (text.includes("peak")) score += 84;
+  if (text.includes("ridge")) score += 72;
+  if (text.includes("scramble")) score += 62;
+  if (text.includes("alpine")) score += 54;
+  if (text.includes("trail")) score += 38;
+  if (text.includes("hike")) score += 34;
+  if (text.includes("loop")) score += 24;
+  if (text.includes("waterfall")) score += 18;
+  if (text.includes("canyon")) score += 18;
+  if (text.includes("lake")) score += 12;
+  if (text.includes("viewpoint")) score -= 24;
+  if (text.includes("trailhead")) score -= 16;
+  if (text.includes("dog beach")) score -= 120;
+  if (text.includes("beach") && hikeSignal === 0) score -= 80;
+  if (text.includes("park") && hikeSignal === 0) score -= 48;
+  if (text.endsWith("national park") || text.endsWith("provincial park")) score -= 42;
   if (summitSignal >= 1 && hikeSignal >= 1) score += 42;
-  if (summitSignal >= 1 && hikeSignal === 0 && scenicSignal >= 1) score -= 26;
-  if (scenicSignal >= 2 && hikeSignal === 0) score -= 18;
+  if (hikeSignal >= 1 && scenicSignal >= 1) score += 28;
+  if (scenicSignal >= 2 && hikeSignal === 0) score -= 36;
   if (typeof activity.rating === "number") score += activity.rating * 4;
 
   return score;
+}
+
+export function bestScenicHikeCandidate(
+  trip: Pick<RecommendationTripLike, "topActivities">
+) {
+  return [...(trip.topActivities ?? [])].sort(
+    (a, b) => scenicHikeSpecificityScore(b) - scenicHikeSpecificityScore(a)
+  )[0];
+}
+
+export function hasStrongScenicHikeCandidate(
+  trip: Pick<RecommendationTripLike, "topActivities">
+) {
+  return scenicHikeSpecificityScore(bestScenicHikeCandidate(trip)) >= 70;
+}
+
+export function coffeeStopSpecificityScore(
+  food?: Pick<FoodSpot, "name" | "tags" | "category" | "shortDescription" | "rating"> | null
+) {
+  if (!food) return Number.NEGATIVE_INFINITY;
+
+  const text = foodSignalText(food);
+  let score = 0;
+
+  if (
+    text.includes("general store") ||
+    text.includes("convenience") ||
+    text.includes("convenience store") ||
+    text.includes("grocery") ||
+    text.includes("supermarket") ||
+    text.includes("gas station") ||
+    text.includes("liquor store")
+  ) {
+    score -= 90;
+  }
+
+  if (text.includes("grab go") || text.includes("grab & go")) score -= 30;
+  if (text.includes("coffee")) score += 48;
+  if (text.includes("cafe")) score += 42;
+  if (text.includes("espresso") || text.includes("roastery")) score += 36;
+  if (text.includes("bakery")) score += 24;
+  if (text.includes("brunch")) score += 12;
+  if (text.includes("restaurant") && !text.includes("coffee") && !text.includes("cafe")) {
+    score -= 16;
+  }
+  if (typeof food.rating === "number") score += food.rating * 4;
+
+  return score;
+}
+
+export function bestCoffeeCandidate(
+  trip: Pick<RecommendationTripLike, "foodSpots">
+) {
+  return [...(trip.foodSpots ?? [])].sort(
+    (a, b) => coffeeStopSpecificityScore(b) - coffeeStopSpecificityScore(a)
+  )[0];
+}
+
+export function hasStrongCoffeeCandidate(
+  trip: Pick<RecommendationTripLike, "foodSpots">
+) {
+  return coffeeStopSpecificityScore(bestCoffeeCandidate(trip)) >= 45;
+}
+
+function hikeSpecificityScore(activity: Activity) {
+  return scenicHikeSpecificityScore(activity);
 }
 
 function campingStayScore(
@@ -588,6 +690,36 @@ export function getPromptAwareTripSummary(trip: PromptSummaryTripLike) {
     return isTwoDayCompromise
       ? `${baseName} now centers the trip around ${anchorName} as the main hike, with an easy arrival night, a lighter final-day flow, and ${mealClause}.${distanceClause}`
       : `${baseName} now uses ${anchorName} as the main hike anchor, with recovery-friendly pacing and ${mealClause}.${distanceClause}`;
+  }
+
+  const wantsHikingBrief =
+    promptIntent.activityFocus === "hiking" ||
+    promptIntent.hardConstraints.activityAnchor === "summit_hike" ||
+    ((trip.tripPrompt?.toLowerCase().includes("hike") ?? false) &&
+      promptIntent.softPreferences.wantsScenery);
+  if (wantsHikingBrief && promptIntent.hardConstraints.activityAnchor !== "summit_hike") {
+    const namedHike = bestScenicHikeCandidate({
+      topActivities: (trip as RecommendationTripLike).topActivities,
+    });
+    const coffeeStop = bestCoffeeCandidate({
+      foodSpots: (trip as RecommendationTripLike).foodSpots,
+    });
+    const namedHikeText =
+      namedHike?.name?.trim() && scenicHikeSpecificityScore(namedHike) >= 55
+        ? normalizePlaceDisplayName(namedHike.name)
+        : "one named scenic hike";
+    const coffeeClause =
+      promptExplicitlyWantsCoffee(trip.tripPrompt) &&
+      coffeeStop?.name?.trim() &&
+      coffeeStopSpecificityScore(coffeeStop) >= 45
+        ? `, plus a real coffee stop at ${normalizePlaceDisplayName(coffeeStop.name)}`
+        : promptExplicitlyWantsCoffee(trip.tripPrompt)
+          ? ", with a coffee stop still needing a more convincing pick"
+          : "";
+
+    return isTwoDayCompromise
+      ? `${baseName} now keeps the trip centered on ${namedHikeText} as the main scenic hike${coffeeClause}, with an easy arrival and a lighter drive-back finish.`
+      : `${baseName} now uses ${namedHikeText} as the main scenic hike${coffeeClause}, with the rest of the plan paced around a simpler mountain weekend.`;
   }
 
   if (promptIntent.activityFocus === "skiing") {

@@ -4,7 +4,7 @@
  */
 
 import { RankedDestination } from "../lib/types";
-import { tripConfidenceLabel } from "../lib/trustSignals";
+import { driveTimeSourceLabel, tripConfidenceLabel } from "../lib/trustSignals";
 
 function strengthLabel(strength: RankedDestination["styleMatchStrength"]) {
   switch (strength) {
@@ -63,9 +63,11 @@ function Pill({
 function StatBlock({
   label,
   value,
+  detail,
 }: {
   label: string;
   value: string;
+  detail?: string;
 }) {
   return (
     <div className="rounded-xl bg-slate-50 px-3 py-2">
@@ -73,6 +75,9 @@ function StatBlock({
         {label}
       </div>
       <div className="mt-1 text-sm font-semibold text-slate-950">{value}</div>
+      {detail ? (
+        <div className="mt-1 text-xs text-slate-500">{detail}</div>
+      ) : null}
     </div>
   );
 }
@@ -136,6 +141,7 @@ export default function CompareTrips({
                 <StatBlock
                   label="Drive"
                   value={`${trip.driveHoursFromStart}h`}
+                  detail={driveTimeSourceLabel(trip)}
                 />
                 <StatBlock
                   label="Expected cost"
