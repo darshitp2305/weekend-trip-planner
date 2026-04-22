@@ -299,16 +299,68 @@ function isFoodForwardActivity(activity?: ActivityCandidate): boolean {
 function isHospitalityLikeActivity(activity?: ActivityCandidate): boolean {
   const text = activitySignalText(activity);
 
+  return /\b(?:hotel|resort|lodge|inn|motel|suite|suites|accommodation|hostel)\b/.test(
+    text
+  );
+}
+
+function promptRequestsOneEasyScenicHike(input: TripInput) {
+  const promptIntent = deriveTripIntentFromPrompt(input.tripPrompt);
+  const promptText = normalizeActivityName(input.tripPrompt);
+  if (!promptText || promptIntent.hardConstraints.activityAnchor === "summit_hike") {
+    return false;
+  }
+
+  const wantsHike =
+    input.activityFocus === "hiking" ||
+    promptIntent.activityFocus === "hiking" ||
+    /\b(?:hike|hiking|trail|lake walk|walk)\b/.test(promptText);
+  const asksForOneHike =
+    /\b(?:one|1|single)\b(?:\s+\w+){0,8}\s+\b(?:hike|hiking|trail|lake walk|walk)\b/.test(promptText) ||
+    /\b(?:hike|hiking|trail|lake walk|walk)\b(?:\s+\w+){0,8}\s+\b(?:one|1|single)\b/.test(promptText);
+  const wantsGentlePacing =
+    promptIntent.softPreferences.wantsLowEffort ||
+    promptIntent.softPreferences.wantsRecoveryDays ||
+    /\b(?:beginner friendly|easy|relaxing|relax|no packed schedule|not packed|not hectic|not overplanned)\b/.test(
+      promptText
+    );
+
+  return wantsHike && asksForOneHike && wantsGentlePacing;
+}
+
+function isBridgeOnlyActivity(activity?: ActivityCandidate) {
+  const text = activitySignalText(activity);
+
   return (
-    text.includes("hotel") ||
-    text.includes("resort") ||
-    text.includes("lodge") ||
-    text.includes("inn") ||
-    text.includes("motel") ||
-    text.includes("suite") ||
-    text.includes("suites") ||
-    text.includes("accommodation") ||
-    text.includes("hostel")
+    text.includes("bridge") &&
+    !text.includes("trail") &&
+    !text.includes("hike") &&
+    !text.includes("walk") &&
+    !text.includes("lake") &&
+    !text.includes("boardwalk")
+  );
+}
+
+function isEasyScenicActivity(activity?: ActivityCandidate) {
+  const text = activitySignalText(activity);
+
+  if (
+    isBridgeOnlyActivity(activity) ||
+    isHospitalityLikeActivity(activity) ||
+    isFoodForwardActivity(activity)
+  ) {
+    return false;
+  }
+
+  return (
+    text.includes("trail") ||
+    text.includes("hike") ||
+    text.includes("lake") ||
+    text.includes("boardwalk") ||
+    text.includes("walk") ||
+    text.includes("loop") ||
+    text.includes("falls") ||
+    text.includes("canyon")
   );
 }
 
@@ -587,6 +639,18 @@ function sanitizeDestinationCatalog(
     if (hikeAnchors.length > 0) {
       topActivities = [...hikeAnchors, ...supportingScenic];
     }
+  }
+
+  if (promptRequestsOneEasyScenicHike(input)) {
+    const nonBridgeActivities = topActivities.filter(
+      (activity) => !isBridgeOnlyActivity(activity)
+    );
+    const easyScenicActivities = nonBridgeActivities.filter(isEasyScenicActivity);
+
+    topActivities =
+      easyScenicActivities.length > 0
+        ? [...easyScenicActivities, ...nonBridgeActivities]
+        : nonBridgeActivities;
   }
 
   topActivities = dedupeNamedItems(topActivities).sort(
@@ -880,6 +944,21 @@ function tinyDeterministicTieBreaker(name: string): number {
   return (total % 97) / 1000;
 }
 
+function isPreferredDestinationBudgetNearMiss(
+  input: TripInput,
+  estimatedCost: number
+): boolean {
+  if (!input.preferredDestination?.trim() || !input.strictBudget || input.budget <= 0) {
+    return false;
+  }
+
+  const overBudget = estimatedCost - input.budget;
+  if (overBudget <= 0) return false;
+
+  const preferredDestinationTolerance = Math.max(150, input.budget * 0.2);
+  return overBudget <= preferredDestinationTolerance;
+}
+
 function passesHardFilters(
   destination: MappedDestination,
   input: TripInput,
@@ -899,7 +978,11 @@ function passesHardFilters(
     return { passed: false, reason: `Poor fit for ${input.season}` };
   }
 
-  if (input.strictBudget && estimatedCost > input.budget) {
+  if (
+    input.strictBudget &&
+    estimatedCost > input.budget &&
+    !isPreferredDestinationBudgetNearMiss(input, estimatedCost)
+  ) {
     return {
       passed: false,
       reason: `Exceeds your strict budget by about ${formatMoney(
@@ -990,7 +1073,11 @@ function explainPreferredDestinationNoMatch(
       reasons.add(`${destination.name} is marked as a poor fit for ${input.season}`);
     }
 
-    if (input.strictBudget && estimatedCost > input.budget) {
+    if (
+      input.strictBudget &&
+      estimatedCost > input.budget &&
+      !isPreferredDestinationBudgetNearMiss(input, estimatedCost)
+    ) {
       reasons.add(
         `${destination.name} is estimated around ${formatMoney(estimatedCost)}, above your strict ${formatMoney(input.budget)} budget`
       );

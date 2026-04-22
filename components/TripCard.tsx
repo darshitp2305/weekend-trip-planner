@@ -20,7 +20,7 @@ import {
 } from "../lib/tripSpecificity";
 import { trackProductEvent } from "../lib/productAnalytics";
 import {
-  getFallbackImageUrl,
+  normalizeTripImageUrl,
   normalizeTripImageSet,
 } from "../lib/tripImages";
 import {
@@ -280,10 +280,10 @@ export default function TripCard({
     displayTitle
   );
   const lightHeroImageUrl = imageFailures.light
-    ? getFallbackImageUrl(displayTitle)
+    ? normalizeTripImageUrl(undefined, displayTitle)
     : heroImageSet.lightUrl;
   const darkHeroImageUrl = imageFailures.dark
-    ? getFallbackImageUrl(displayTitle)
+    ? normalizeTripImageUrl(undefined, displayTitle)
     : heroImageSet.darkUrl;
   const displaySummary = getPromptAwareTripSummary({
     summary: previewTrip.aiSummary ?? previewTrip.summary,

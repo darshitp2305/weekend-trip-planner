@@ -65,6 +65,7 @@ function buildActivityPreferenceQueries(options: {
   hardConstraints: PromptHardConstraints;
   softPreferences: PromptSoftPreferences;
   requestedActivityName?: string;
+  explicitWellness?: boolean;
 }): string[] {
   const queries: string[] = [];
   const style = options.style.trim().toLowerCase();
@@ -79,10 +80,16 @@ function buildActivityPreferenceQueries(options: {
     style === "outdoors" ||
     style === "adventure"
   ) {
-    queries.push("scenic hike");
-    queries.push("waterfall trail");
-    queries.push("mountain lookout");
-    queries.push("lake trail");
+    if (options.softPreferences.wantsLowEffort) {
+      queries.push("beginner friendly scenic hike");
+      queries.push("easy lake walk");
+      queries.push("boardwalk");
+    } else {
+      queries.push("scenic hike");
+      queries.push("waterfall trail");
+      queries.push("mountain lookout");
+      queries.push("lake trail");
+    }
   }
 
   if (options.activityFocus === "camping") {
@@ -109,7 +116,29 @@ function buildActivityPreferenceQueries(options: {
     queries.push("scenic viewpoint");
   }
 
-  return dedupeTextValues(queries).slice(0, 5);
+  if (options.explicitWellness) {
+    queries.push("spa");
+    queries.push("wellness");
+    queries.push("nordic spa");
+  }
+
+  return dedupeTextValues(queries).slice(0, 7);
+}
+
+function promptExplicitlyWantsWellness(prompt?: string) {
+  const text = (prompt ?? "").toLowerCase();
+
+  return (
+    text.includes("spa") ||
+    text.includes("wellness") ||
+    text.includes("hot spring") ||
+    text.includes("hot springs") ||
+    text.includes("sauna") ||
+    text.includes("bathhouse") ||
+    text.includes("thermal") ||
+    text.includes("mineral pool") ||
+    text.includes("nordic spa")
+  );
 }
 
 export async function fetchPlacesProviderData(options: {
@@ -130,6 +159,7 @@ export async function fetchPlacesProviderData(options: {
     hardConstraints: promptIntent.hardConstraints,
     softPreferences: promptIntent.softPreferences,
     requestedActivityName: promptIntent.requestedActivityName,
+    explicitWellness: promptExplicitlyWantsWellness(options.tripPrompt),
   });
 
   const [restaurantsRes, cafesRes, activityResults, hotelsRes] =

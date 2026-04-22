@@ -26,6 +26,14 @@ const DESTINATION_LOCAL_FALLBACKS: Record<string, string> = {
   coleman: "/destinations/crowsnest-pass-hero.svg",
 };
 
+const DESTINATION_CURATED_LOCAL_IMAGES: Record<string, string> = {
+  squamish: "/home-prompts/squamish-hiking-weekend.jpg",
+  tofino: "/home-prompts/tofino-ocean-weekend.jpg",
+  ucluelet: "/home-prompts/tofino-ocean-weekend.jpg",
+  "vancouver staycation": "/home-prompts/vancouver-cherry-blossom.jpg",
+  "victoria staycation": "/home-prompts/victoria-garden-season.jpg",
+};
+
 const DESTINATION_CURATED_IMAGE_FALLBACKS: Record<string, string> = {
   crowsnest:
     "https://upload.wikimedia.org/wikipedia/commons/d/d3/Crowsnest_Mountain_-_August_2011.JPG",
@@ -57,6 +65,21 @@ function getDestinationLocalFallback(name?: string) {
   return null;
 }
 
+function getDestinationCuratedLocalImage(name?: string) {
+  const key = normalized(name).toLowerCase();
+  if (!key) return null;
+
+  for (const [pattern, assetPath] of Object.entries(
+    DESTINATION_CURATED_LOCAL_IMAGES
+  )) {
+    if (key.includes(pattern)) {
+      return assetPath;
+    }
+  }
+
+  return null;
+}
+
 function getDestinationCuratedFallback(name?: string) {
   const key = normalized(name).toLowerCase();
   if (!key) return null;
@@ -80,6 +103,11 @@ function isKnownPlaceholderUrl(url?: string) {
     value.includes("/destinations/crowsnest-pass-hero.svg") ||
     value.includes("data:image/svg+xml")
   );
+}
+
+function isGeneratedThemeImageUrl(url?: string) {
+  const value = normalized(url).toLowerCase();
+  return value.includes("/destinations/theme/");
 }
 
 function isWikimediaRedirectImageUrl(url?: string) {
@@ -138,7 +166,15 @@ export function isProbablyRenderableImageUrl(value?: string) {
 
 export function normalizeTripImageUrl(value?: string, fallbackName?: string) {
   const url = normalized(value);
+  const curatedLocalImage = getDestinationCuratedLocalImage(fallbackName);
   const curatedFallback = getDestinationCuratedFallback(fallbackName);
+
+  if (
+    curatedLocalImage &&
+    (isKnownPlaceholderUrl(url) || isGeneratedThemeImageUrl(url) || !url)
+  ) {
+    return curatedLocalImage;
+  }
 
   if (isKnownPlaceholderUrl(url) && curatedFallback) {
     return curatedFallback;

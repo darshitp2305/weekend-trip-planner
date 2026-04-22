@@ -241,19 +241,25 @@
         "title": "Banff Ave stroll + shops",
         "type": "culture",
         "description": "Easy first stop that gives instant destination feel.",
-        "link": "https://www.google.com/maps/search/?api=1&query=Banff+Avenue"
+        "link": "https://www.google.com/maps/search/?api=1&query=Banff+Avenue",
+        "latitude": 51.1762,
+        "longitude": -115.5708
       },
       {
         "title": "Sulphur Mountain gondola / viewpoint",
         "type": "scenic",
         "description": "Premium scenic anchor with obvious payoff.",
-        "link": "https://www.google.com/maps/search/?api=1&query=Banff+Gondola"
+        "link": "https://www.google.com/maps/search/?api=1&query=Banff+Gondola",
+        "latitude": 51.1487,
+        "longitude": -115.5558
       },
       {
         "title": "Johnston Canyon to Upper Falls",
         "type": "nature",
         "description": "Signature Banff-area canyon hike with an easy-to-understand trail objective and strong scenic payoff.",
-        "link": "https://www.google.com/maps/search/?api=1&query=Johnston+Canyon+to+Upper+Falls"
+        "link": "https://www.google.com/maps/search/?api=1&query=Johnston+Canyon+to+Upper+Falls",
+        "latitude": 51.2455,
+        "longitude": -115.8392
       },
       {
         "title": "Banff Sunshine Village ski day",
@@ -277,7 +283,9 @@
         "title": "Upper Hot Springs soak",
         "type": "hot_springs",
         "description": "Classic relaxation stop that rounds out the trip.",
-        "link": "https://www.google.com/maps/search/?api=1&query=Banff+Upper+Hot+Springs"
+        "link": "https://www.google.com/maps/search/?api=1&query=Banff+Upper+Hot+Springs",
+        "latitude": 51.1511,
+        "longitude": -115.5607
       }
     ],
     "neighborhoods": [
@@ -314,6 +322,7 @@
         "name": "Banff Ave casual stops",
         "tags": [
           "cafés",
+          "coffee",
           "quick meals",
           "central"
         ],
@@ -373,8 +382,34 @@
       {
         "title": "Grassi Lakes (seasonal)",
         "type": "nature",
-        "description": "Reliable scenic hike with strong effort-to-payoff ratio.",
-        "link": "https://www.google.com/maps/search/?api=1&query=Grassi+Lakes+Trail"
+        "description": "Short beginner-friendly lake hike with strong effort-to-payoff ratio; check seasonal trail and parking guidance before you go.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Grassi+Lakes+Trail",
+        "latitude": 51.0706,
+        "longitude": -115.4002
+      },
+      {
+        "title": "Policeman's Creek Boardwalk",
+        "type": "nature",
+        "description": "Easy creekside boardwalk and mountain-view walk from town, good when the brief asks for beginner-friendly scenery without a steep summit.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Policemans+Creek+Boardwalk+Canmore",
+        "latitude": 51.0874,
+        "longitude": -115.3511
+      },
+      {
+        "title": "Quarry Lake Park loop",
+        "type": "lakes",
+        "description": "Low-effort lake walk close to Canmore with mountain views and an easy recovery-day feel.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Quarry+Lake+Park+Canmore",
+        "latitude": 51.0834,
+        "longitude": -115.3837
+      },
+      {
+        "title": "One Wellness Canmore",
+        "type": "spa",
+        "description": "In-town spa and wellness recovery stop for massage, sauna-style downtime, or a relaxed post-hike reset.",
+        "link": "https://www.google.com/maps/search/?api=1&query=One+Wellness+Canmore",
+        "latitude": 51.0858,
+        "longitude": -115.3418
       },
       {
         "title": "Scenic viewpoints + short hikes",

@@ -4,6 +4,7 @@
  */
 
 import {
+  Activity,
   HotelOption,
   RankedDestination,
   RankingReason,
@@ -95,6 +96,117 @@ function activityMatchesRequestedName(
     normalizedActivity.includes(normalizedRequestedActivity) ||
     normalizedRequestedActivity.includes(normalizedActivity)
   );
+}
+
+function promptRequestsOneEasyScenicHike(input: TripInput) {
+  const promptIntent = deriveTripIntentFromPrompt(input.tripPrompt);
+  const promptText = normalizeActivityName(input.tripPrompt);
+  if (!promptText || promptIntent.hardConstraints.activityAnchor === "summit_hike") {
+    return false;
+  }
+
+  const wantsHike =
+    input.activityFocus === "hiking" ||
+    promptIntent.activityFocus === "hiking" ||
+    /\b(?:hike|hiking|trail|lake walk|walk)\b/.test(promptText);
+  const asksForOneHike =
+    /\b(?:one|1|single)\b(?:\s+\w+){0,8}\s+\b(?:hike|hiking|trail|lake walk|walk)\b/.test(promptText) ||
+    /\b(?:hike|hiking|trail|lake walk|walk)\b(?:\s+\w+){0,8}\s+\b(?:one|1|single)\b/.test(promptText);
+  const wantsGentlePacing =
+    promptIntent.softPreferences.wantsLowEffort ||
+    promptIntent.softPreferences.wantsRecoveryDays ||
+    /\b(?:beginner friendly|easy|relaxing|relax|no packed schedule|not packed|not hectic|not overplanned)\b/.test(
+      promptText
+    );
+
+  return wantsHike && asksForOneHike && wantsGentlePacing;
+}
+
+function promptExplicitlyWantsWellness(prompt?: string) {
+  const text = normalizeText(prompt);
+
+  return (
+    text.includes("spa") ||
+    text.includes("wellness") ||
+    text.includes("hot spring") ||
+    text.includes("hot springs") ||
+    text.includes("sauna") ||
+    text.includes("bathhouse") ||
+    text.includes("thermal") ||
+    text.includes("mineral pool") ||
+    text.includes("nordic spa")
+  );
+}
+
+function activitySignalText(
+  activity?: Pick<Activity, "name" | "type" | "shortDescription">
+) {
+  return normalizeActivityName(
+    [activity?.type, activity?.name, activity?.shortDescription]
+      .filter(Boolean)
+      .join(" ")
+  );
+}
+
+function isBridgeOnlyActivity(
+  activity?: Pick<Activity, "name" | "type" | "shortDescription">
+) {
+  const text = activitySignalText(activity);
+
+  return (
+    text.includes("bridge") &&
+    !text.includes("trail") &&
+    !text.includes("hike") &&
+    !text.includes("walk") &&
+    !text.includes("lake") &&
+    !text.includes("boardwalk")
+  );
+}
+
+function isPromptMatchedEasyScenicActivity(
+  activity?: Pick<Activity, "name" | "type" | "shortDescription">
+) {
+  const text = activitySignalText(activity);
+
+  if (
+    isBridgeOnlyActivity(activity) ||
+    text.includes("spa") ||
+    text.includes("wellness") ||
+    text.includes("hotel") ||
+    text.includes("restaurant") ||
+    text.includes("cafe") ||
+    text.includes("coffee")
+  ) {
+    return false;
+  }
+
+  return (
+    text.includes("trail") ||
+    text.includes("hike") ||
+    text.includes("lake") ||
+    text.includes("boardwalk") ||
+    text.includes("walk") ||
+    text.includes("loop") ||
+    text.includes("falls") ||
+    text.includes("canyon")
+  );
+}
+
+function shapeActivitiesForPrompt(activities: Activity[], input: TripInput) {
+  if (!promptRequestsOneEasyScenicHike(input)) {
+    return activities;
+  }
+
+  const nonBridgeActivities = activities.filter(
+    (activity) => !isBridgeOnlyActivity(activity)
+  );
+  const easyScenicActivities = nonBridgeActivities.filter(
+    isPromptMatchedEasyScenicActivity
+  );
+
+  return easyScenicActivities.length > 0
+    ? dedupeByName([...easyScenicActivities, ...nonBridgeActivities]).slice(0, 12)
+    : nonBridgeActivities.slice(0, 12);
 }
 
 function mergeNamedPlaces<T extends { name?: string }>(
@@ -939,6 +1051,7 @@ async function fetchSerpApiHotelInventory(options: {
 
 function createEnrichCacheKey(trip: RankedDestination, input: TripInput) {
   return JSON.stringify({
+    plannerVersion: "canmore-quality-v3",
     name: trip.name,
     province: trip.province,
     startCity: input.startCity,
@@ -1119,6 +1232,8 @@ export async function enrichRankedTrip(
           tripPrompt: input.tripPrompt,
           tripStartDate: input.tripStartDate,
           tripEndDate: input.tripEndDate,
+          latitude: trip.latitude,
+          longitude: trip.longitude,
         }),
         fetchHotelsDotComHotelData({
           destination: hotelDestinationQuery,
@@ -1201,13 +1316,21 @@ export async function enrichRankedTrip(
         : trip.foodSpots;
 
     const promptIntent = deriveTripIntentFromPrompt(input.tripPrompt);
+    const shouldPreserveCuratedActivities =
+      promptRequestsOneEasyScenicHike(input) ||
+      promptExplicitlyWantsWellness(input.tripPrompt);
     const mergedActivities =
       liveActivities.length > 0
         ? promptIntent.hardConstraints.activityAnchor === "summit_hike" ||
-          Boolean(promptIntent.requestedActivityName)
+          Boolean(promptIntent.requestedActivityName) ||
+          shouldPreserveCuratedActivities
           ? mergeNamedPlaces(
-              liveActivities,
-              (trip.topActivities ?? []).filter(hasName),
+              shouldPreserveCuratedActivities
+                ? (trip.topActivities ?? []).filter(hasName)
+                : liveActivities,
+              shouldPreserveCuratedActivities
+                ? liveActivities
+                : (trip.topActivities ?? []).filter(hasName),
               12
             )
           : liveActivities.slice(0, 12)
@@ -1252,8 +1375,12 @@ export async function enrichRankedTrip(
       liveHotels as Array<{ rating?: number }>,
       hasLiveResults
     );
-    const promptFit = evaluateLivePromptFit(
+    const promptShapedActivities = shapeActivitiesForPrompt(
       mergedActivities,
+      input
+    );
+    const promptFit = evaluateLivePromptFit(
+      promptShapedActivities,
       mergedFoodSpots,
       input
     );
@@ -1299,7 +1426,7 @@ export async function enrichRankedTrip(
       ...trip,
       score: Math.round((trip.score + promptFit.scoreAdjustment) * 100) / 100,
       foodSpots: mergedFoodSpots,
-      topActivities: mergedActivities,
+      topActivities: promptShapedActivities,
       hotelOptions: mergedHotels as HotelOption[],
       liveDataSummary,
       sourceCheckedAt,

@@ -8,10 +8,12 @@ import {
   FoodSpot,
   HotelOption,
   ItineraryDayData,
+  RawDestination,
   TripInput,
   TripSelectionState,
 } from "./types";
 import { deriveTripIntentFromPrompt } from "./tripIntent";
+import rawDestinations from "./destinationCatalog";
 
 type RecommendationTripLike = {
   title?: string;
@@ -55,6 +57,66 @@ type PromptSummaryTripLike = Pick<
 
 function normalized(value?: string) {
   return (value ?? "").trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+const CATALOG_DESTINATION_LABELS = Array.from(
+  new Set(
+    (rawDestinations as RawDestination[])
+      .flatMap((destination) => [
+        destination.name,
+        destination.home_base_city,
+      ])
+      .map(normalized)
+      .filter((label) => label.length >= 4)
+  )
+);
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function destinationLabelsForTrip(trip: RecommendationTripLike) {
+  return [
+    trip.destinationName,
+    trip.destination,
+    trip.name,
+    trip.homeBaseCity,
+    trip.title,
+  ]
+    .map(normalized)
+    .filter(Boolean);
+}
+
+function activityMentionsDifferentDestinationContext(
+  activity: Pick<Activity, "name" | "shortDescription" | "type"> | undefined,
+  trip: RecommendationTripLike
+) {
+  const text = signalText([activity?.name, activity?.type, activity?.shortDescription]);
+  if (!text) return false;
+
+  const allowedLabels = destinationLabelsForTrip(trip);
+  for (const label of CATALOG_DESTINATION_LABELS) {
+    if (
+      allowedLabels.some(
+        (allowedLabel) =>
+          allowedLabel === label ||
+          allowedLabel.includes(label) ||
+          label.includes(allowedLabel)
+      )
+    ) {
+      continue;
+    }
+
+    const contextPattern = new RegExp(
+      `\\b(?:around|near|in|at|through|base(?:d)? in)\\s+${escapeRegExp(label)}\\b|\\b${escapeRegExp(label)}\\s+(?:national|provincial|territorial)\\s+park\\b`,
+      "i"
+    );
+    if (contextPattern.test(text)) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 function isSkiLikeText(value?: string) {
@@ -327,12 +389,15 @@ export function scenicHikeSpecificityScore(
   if (text.includes("alpine")) score += 54;
   if (text.includes("trail")) score += 38;
   if (text.includes("hike")) score += 34;
+  if (text.includes("boardwalk")) score += 32;
   if (text.includes("loop")) score += 24;
   if (text.includes("waterfall")) score += 18;
   if (text.includes("canyon")) score += 18;
   if (text.includes("lake")) score += 12;
+  if (text.includes("creek")) score += 8;
   if (text.includes("viewpoint")) score -= 24;
   if (text.includes("trailhead")) score -= 16;
+  if (text.includes("bridge") && hikeSignal === 0 && !text.includes("walk")) score -= 48;
   if (text.includes("dog beach")) score -= 120;
   if (text.includes("beach") && hikeSignal === 0) score -= 80;
   if (text.includes("park") && hikeSignal === 0) score -= 48;
@@ -705,7 +770,12 @@ export function getPromptAwareTripSummary(trip: PromptSummaryTripLike) {
       foodSpots: (trip as RecommendationTripLike).foodSpots,
     });
     const namedHikeText =
-      namedHike?.name?.trim() && scenicHikeSpecificityScore(namedHike) >= 55
+      namedHike?.name?.trim() &&
+      scenicHikeSpecificityScore(namedHike) >= 55 &&
+      !activityMentionsDifferentDestinationContext(
+        namedHike,
+        trip as RecommendationTripLike
+      )
         ? normalizePlaceDisplayName(namedHike.name)
         : "one named scenic hike";
     const coffeeClause =

@@ -721,6 +721,8 @@ export default function HomePage() {
     null
   );
   const tripFormRef = useRef<HTMLDivElement | null>(null);
+  const tripResultRef = useRef<HTMLElement | null>(null);
+  const shouldAutoScrollTripRef = useRef(false);
   const accountTriggerLabel = accountUser
     ? displayNameFromEmail(accountUser.email)
     : "Log in";
@@ -802,6 +804,34 @@ export default function HomePage() {
     persistPageState({});
   }, [persistPageState, restored]);
 
+  useEffect(() => {
+    if (
+      !shouldAutoScrollTripRef.current ||
+      loading ||
+      waitingForTripText ||
+      !currentTrip ||
+      typeof window === "undefined"
+    ) {
+      return;
+    }
+
+    const tripResult = tripResultRef.current;
+    if (!tripResult) return;
+
+    shouldAutoScrollTripRef.current = false;
+
+    window.requestAnimationFrame(() => {
+      const prefersReducedMotion = window.matchMedia(
+        "(prefers-reduced-motion: reduce)"
+      ).matches;
+
+      tripResult.scrollIntoView({
+        behavior: prefersReducedMotion ? "auto" : "smooth",
+        block: "start",
+      });
+    });
+  }, [currentTrip, loading, waitingForTripText]);
+
   async function handleGenerate(
     input: TripInput,
     options?: {
@@ -814,6 +844,7 @@ export default function HomePage() {
     setLastInput(input);
     setAiStatusMessage("");
     setDestinationConstraintModal(null);
+    shouldAutoScrollTripRef.current = true;
 
     const excludedDestinationNames = dedupeDestinationNames(
       options?.excludedDestinationNames ?? []
@@ -871,6 +902,7 @@ export default function HomePage() {
           "I couldn't build that trip yet. Try rewording the request and try again."
         );
         console.error("/api/rank-trips failed:", rankResponse.status, rankData);
+        shouldAutoScrollTripRef.current = false;
         setCurrentTrip(null);
         if (shouldResetShownDestinationNames) {
           setShownDestinationNames([]);
@@ -906,6 +938,7 @@ export default function HomePage() {
           return;
         }
 
+        shouldAutoScrollTripRef.current = false;
         setCurrentTrip(null);
         setShownDestinationNames([]);
 
@@ -1073,6 +1106,7 @@ export default function HomePage() {
       }
     } catch (error) {
       console.error("Trip generation failed:", error);
+      shouldAutoScrollTripRef.current = false;
       setCurrentTrip(null);
       if (shouldResetShownDestinationNames) {
         setShownDestinationNames([]);
@@ -1337,7 +1371,10 @@ export default function HomePage() {
       </section>
 
       {(aiStatusMessage || waitingForTripText || currentTrip) ? (
-        <section className="relative z-20 -mt-12 px-5 pb-20 sm:px-8 lg:px-10">
+        <section
+          ref={tripResultRef}
+          className="relative z-20 -mt-12 scroll-mt-6 px-5 pb-20 sm:px-8 lg:px-10"
+        >
           <div className="mx-auto max-w-6xl rounded-[2.6rem] border border-slate-200/70 bg-[linear-gradient(180deg,rgba(247,244,238,0.68)_0%,rgba(240,244,249,0.76)_100%)] p-6 text-slate-950 shadow-[0_30px_80px_rgba(148,163,184,0.1)] backdrop-blur-md sm:p-8 dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(8,14,23,0.94)_0%,rgba(10,17,28,0.98)_100%)] dark:text-white dark:shadow-[0_35px_90px_rgba(0,0,0,0.32)]">
             {aiStatusMessage ? (
               <div className="rounded-2xl border border-slate-200/70 bg-[#fbf7ef]/66 px-5 py-4 text-sm text-slate-600 dark:border-white/10 dark:bg-white/6 dark:text-white/76">

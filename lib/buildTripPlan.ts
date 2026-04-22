@@ -531,11 +531,121 @@ function hasRequestedNamedActivity(input: TripInput) {
   return Boolean(deriveTripIntentFromPrompt(input.tripPrompt).requestedActivityName);
 }
 
+function promptRequestsOneEasyScenicHike(input: TripInput) {
+  const promptIntent = deriveTripIntentFromPrompt(input.tripPrompt);
+  const promptText = normalizeActivityName(input.tripPrompt);
+  if (!promptText || promptIntent.hardConstraints.activityAnchor === "summit_hike") {
+    return false;
+  }
+
+  const wantsHike =
+    input.activityFocus === "hiking" ||
+    promptIntent.activityFocus === "hiking" ||
+    /\b(?:hike|hiking|trail|lake walk|walk)\b/.test(promptText);
+  const asksForOneHike =
+    /\b(?:one|1|single)\b(?:\s+\w+){0,8}\s+\b(?:hike|hiking|trail|lake walk|walk)\b/.test(promptText) ||
+    /\b(?:hike|hiking|trail|lake walk|walk)\b(?:\s+\w+){0,8}\s+\b(?:one|1|single)\b/.test(promptText);
+  const wantsGentlePacing =
+    promptIntent.softPreferences.wantsLowEffort ||
+    promptIntent.softPreferences.wantsRecoveryDays ||
+    /\b(?:beginner friendly|easy|relaxing|relax|no packed schedule|not packed|not hectic|not overplanned)\b/.test(
+      promptText
+    );
+
+  return wantsHike && asksForOneHike && wantsGentlePacing;
+}
+
+function beginnerScenicHikeScore(activity: ActivitySpot | undefined) {
+  const text = normalizedActivitySignals(activity);
+  let score = 0;
+
+  if (text.includes("easy")) score += 34;
+  if (text.includes("beginner")) score += 34;
+  if (text.includes("short")) score += 18;
+  if (text.includes("waterfall")) score += 24;
+  if (text.includes("falls")) score += 18;
+  if (text.includes("canyon")) score += 18;
+  if (text.includes("boardwalk")) score += 24;
+  if (text.includes("creek")) score += 14;
+  if (text.includes("river")) score += 12;
+  if (text.includes("lake")) score += 22;
+  if (text.includes("loop")) score += 16;
+  if (text.includes("shoreline")) score += 16;
+  if (text.includes("walk")) score += 12;
+  if (text.includes("scenic")) score += 10;
+
+  if (text.includes("steep") || text.includes("steeper")) score -= 52;
+  if (text.includes("summit")) score -= 44;
+  if (text.includes("scramble")) score -= 44;
+  if (text.includes("ridge")) score -= 28;
+  if (text.includes("peak")) score -= 28;
+  if (text.includes("mountain trail")) score -= 24;
+  if (text.includes("backcountry")) score -= 24;
+  if (
+    text.includes("bridge") &&
+    !text.includes("trail") &&
+    !text.includes("walk") &&
+    !text.includes("lake") &&
+    !text.includes("boardwalk")
+  ) {
+    score -= 44;
+  }
+
+  return score;
+}
+
+function isBridgeOnlyActivity(activity: ActivitySpot | undefined) {
+  const text = normalizedActivitySignals(activity);
+
+  return (
+    text.includes("bridge") &&
+    !text.includes("trail") &&
+    !text.includes("hike") &&
+    !text.includes("walk") &&
+    !text.includes("lake") &&
+    !text.includes("boardwalk")
+  );
+}
+
+function isCredibleEasyScenicHikeActivity(activity: ActivitySpot | undefined) {
+  if (!activity) return false;
+  if (isWellnessActivity(activity) || isFoodForwardActivity(activity)) return false;
+  if (isHospitalityLikeActivity(activity) || isBridgeOnlyActivity(activity)) return false;
+
+  return (
+    scenicHikeSpecificityScore(activity) >= 24 &&
+    beginnerScenicHikeScore(activity) >= 8
+  );
+}
+
+function shapeActivitiesForPrompt(
+  activities: ActivitySpot[],
+  input: TripInput
+) {
+  if (!promptRequestsOneEasyScenicHike(input)) {
+    return activities;
+  }
+
+  const nonBridgeActivities = activities.filter(
+    (activity) => !isBridgeOnlyActivity(activity)
+  );
+  const credibleEasyScenicActivities = nonBridgeActivities.filter(
+    isCredibleEasyScenicHikeActivity
+  );
+
+  return credibleEasyScenicActivities.length > 0
+    ? dedupeByName([...credibleEasyScenicActivities, ...nonBridgeActivities])
+    : nonBridgeActivities;
+}
+
 function reservedHikeAnchorScore(activity: ActivitySpot | undefined, input: TripInput) {
   return (
     activityAnchorScore(activity) +
     styleActivityScore(activity, input) +
-    promptActivityConstraintScore(activity, input)
+    promptActivityConstraintScore(activity, input) +
+    (promptRequestsOneEasyScenicHike(input)
+      ? beginnerScenicHikeScore(activity)
+      : 0)
   );
 }
 
@@ -546,10 +656,12 @@ function reservePrimaryActivity(
   remainingActivities: ActivitySpot[];
   reservedPrimaryActivity?: ActivitySpot;
 } {
+  const oneEasyScenicHike = promptRequestsOneEasyScenicHike(input);
   if (
     !isSummitHikeTrip(input) &&
     !isSkiTrip(input) &&
-    !hasRequestedNamedActivity(input)
+    !hasRequestedNamedActivity(input) &&
+    !oneEasyScenicHike
   ) {
     return {
       remainingActivities: activities,
@@ -561,9 +673,13 @@ function reservePrimaryActivity(
         (activity) =>
           isSkiActivity(activity) && !isFoodForwardActivity(activity)
       )
+    : oneEasyScenicHike
+      ? activities.filter(
+          (activity) => isCredibleEasyScenicHikeActivity(activity)
+        )
     : activities;
 
-  if (isSkiTrip(input) && reservationPool.length === 0) {
+  if ((isSkiTrip(input) || oneEasyScenicHike) && reservationPool.length === 0) {
     return {
       remainingActivities: activities,
     };
@@ -578,7 +694,7 @@ function reservePrimaryActivity(
   if (
     !reservedPrimaryActivity ||
     reservedHikeAnchorScore(reservedPrimaryActivity, input) <
-      (isSkiTrip(input) ? 14 : 18)
+      (isSkiTrip(input) ? 14 : oneEasyScenicHike ? 20 : 18)
   ) {
     return {
       remainingActivities: activities,
@@ -760,16 +876,8 @@ function isSkiActivity(activity?: ActivitySpot) {
 function isHospitalityLikeActivity(activity?: ActivitySpot) {
   const text = normalizedActivitySignals(activity);
 
-  return (
-    text.includes("hotel") ||
-    text.includes("resort") ||
-    text.includes("lodge") ||
-    text.includes("inn") ||
-    text.includes("motel") ||
-    text.includes("suite") ||
-    text.includes("suites") ||
-    text.includes("accommodation") ||
-    text.includes("hostel")
+  return /\b(?:hotel|resort|lodge|inn|motel|suite|suites|accommodation|hostel)\b/.test(
+    text
   );
 }
 
@@ -1798,6 +1906,25 @@ function pickAnchorActivity(
   );
 }
 
+function pickEasyScenicHikeActivity(
+  ctx: BuildContext,
+  input: TripInput,
+  blockedNames: Set<string> = new Set<string>(),
+  proximity?: ProximityOptions
+) {
+  return popBestItem(
+    ctx.remainingActivities,
+    ctx.previousDayActivityNames,
+    blockedNames,
+    (activity) =>
+      isCredibleEasyScenicHikeActivity(activity)
+        ? reservedHikeAnchorScore(activity, input)
+        : -100,
+    20,
+    proximity
+  );
+}
+
 function pickSecondaryActivity(
   ctx: BuildContext,
   input: TripInput,
@@ -1875,6 +2002,30 @@ function pickRelaxActivity(
   );
 }
 
+function pickWellnessActivity(
+  ctx: BuildContext,
+  input: TripInput,
+  blockedNames: Set<string> = new Set<string>(),
+  proximity?: ProximityOptions
+) {
+  return popBestItem(
+    ctx.remainingActivities,
+    ctx.previousDayActivityNames,
+    blockedNames,
+    (activity) =>
+      isWellnessActivity(activity)
+        ? relaxActivityScore(activity, input) + 28
+        : -50,
+    8,
+    proximity
+      ? {
+          ...proximity,
+          keepUnknownCoordinates: true,
+        }
+      : { keepUnknownCoordinates: true }
+  );
+}
+
 function compactStops<T>(items: Array<T | undefined | false | null>): T[] {
   return items.filter(Boolean) as T[];
 }
@@ -1891,6 +2042,12 @@ function middleDayTitle(
 
   if (!isStaycation && isSkiTrip(input)) {
     return dayNumber === 2 ? "Full ski day" : `Ski day ${dayNumber}`;
+  }
+
+  if (!isStaycation && promptRequestsOneEasyScenicHike(input) && dayNumber === 2) {
+    return promptExplicitlyWantsWellness(input.tripPrompt)
+      ? "Scenic hike and hot springs day"
+      : "Scenic hike day";
   }
 
   if (!isStaycation && prefersRecoveryDays(input) && dayNumber > 2) {
@@ -1922,6 +2079,12 @@ function middleDaySummary(
     return totalDays <= 3
       ? "Use the middle of the trip for a full ski day instead of burning the best snow window on logistics."
       : `Keep day ${dayNumber} focused on lift time while the trip is still at full energy.`;
+  }
+
+  if (!isStaycation && promptRequestsOneEasyScenicHike(input) && dayNumber === 2) {
+    return promptExplicitlyWantsWellness(input.tripPrompt)
+      ? "Use the first full day for one beginner-friendly scenic hike, then make the recovery stop the relaxing payoff."
+      : "Use the first full day for one beginner-friendly scenic hike, then keep the rest of the weekend light.";
   }
 
   if (!isStaycation && prefersRecoveryDays(input) && dayNumber > 2) {
@@ -2168,7 +2331,7 @@ function buildStaycationDayOne(
   ctx: BuildContext
 ): ItineraryDayData {
   const baseCoordinate = buildBaseCoordinate(trip);
-  let breakfast =
+  const breakfast =
     pickMorningFood(
       ctx,
       input,
@@ -2286,7 +2449,7 @@ function buildStaycationFinalDay(
   ctx: BuildContext
 ): ItineraryDayData {
   const baseCoordinate = buildBaseCoordinate(trip);
-  let breakfast =
+  const breakfast =
     pickLightFinalFood(
       ctx,
       input,
@@ -2390,6 +2553,7 @@ function buildGetawayDayOne(
 ): ItineraryDayData {
   const summitTrip = isSummitHikeTrip(input);
   const recoveryDays = prefersRecoveryDays(input);
+  const oneEasyScenicHike = promptRequestsOneEasyScenicHike(input);
   const hotel = trip.hotelOptions?.[0];
   const baseCoordinate = toCoordinate(hotel) ?? buildBaseCoordinate(trip);
   const arrivalTiming = getArrivalDayTiming(trip, input);
@@ -2414,6 +2578,8 @@ function buildGetawayDayOne(
   const arrivalActivity =
     arrivalTiming?.includeArrivalActivity === false
       ? undefined
+      : oneEasyScenicHike && input.tripLengthDays >= 3
+        ? undefined
       : summitTrip && input.tripLengthDays >= 3
         ? undefined
         : recoveryDays
@@ -2457,6 +2623,8 @@ function buildGetawayDayOne(
       })
     : summitTrip && input.tripLengthDays >= 3
       ? "Arrive, settle in, and save the signature hike for the first full day."
+      : oneEasyScenicHike && input.tripLengthDays >= 3
+        ? "Arrive, settle in, and save the one planned scenic hike for the first full day."
       : input.style === "must see"
         ? "Arrive, settle in, and save the biggest classic sights for the first full day instead of rushing them on arrival."
       : input.style === "hidden gems"
@@ -2521,6 +2689,7 @@ function buildGetawayFinalDay(
   const summitTrip = isSummitHikeTrip(input);
   const skiTrip = isSkiTrip(input);
   const hasRequestedAnchor = hasRequestedNamedActivity(input);
+  const oneEasyScenicHike = promptRequestsOneEasyScenicHike(input);
   const recoveryDays = prefersRecoveryDays(input);
   const isTwoDaySummitCompromise = summitTrip && input.tripLengthDays <= 2;
   const baseCoordinate =
@@ -2550,20 +2719,45 @@ function buildGetawayFinalDay(
   }
   const breakfastCoordinate = toCoordinate(breakfast);
   const useFinalDayAsPrimaryAnchor =
-      (summitTrip || skiTrip || hasRequestedAnchor) && !ctx.primaryActivityUsed;
+      (summitTrip || skiTrip || hasRequestedAnchor || oneEasyScenicHike) &&
+      !ctx.primaryActivityUsed;
   const finalActivityCandidate =
     useFinalDayAsPrimaryAnchor
       ? claimReservedPrimaryActivity(ctx) ??
-        pickAnchorActivity(
-          ctx,
-          input,
-          new Set<string>(),
-          buildActivityProximity(
-            input,
-            breakfastCoordinate ?? baseCoordinate,
-            baseCoordinate
-          )
-        )
+        (oneEasyScenicHike
+          ? pickEasyScenicHikeActivity(
+              ctx,
+              input,
+              new Set<string>(),
+              buildActivityProximity(
+                input,
+                breakfastCoordinate ?? baseCoordinate,
+                baseCoordinate
+              )
+            )
+          : pickAnchorActivity(
+              ctx,
+              input,
+              new Set<string>(),
+              buildActivityProximity(
+                input,
+                breakfastCoordinate ?? baseCoordinate,
+                baseCoordinate
+              )
+            ))
+      : oneEasyScenicHike
+        ? promptExplicitlyWantsWellness(input.tripPrompt)
+          ? pickWellnessActivity(
+              ctx,
+              input,
+              new Set<string>(),
+              buildActivityProximity(
+                input,
+                breakfastCoordinate ?? baseCoordinate,
+                baseCoordinate
+              )
+            )
+          : undefined
       : recoveryDays
         ? pickRelaxActivity(
             ctx,
@@ -2610,6 +2804,7 @@ function buildGetawayFinalDay(
   const guaranteedFinalActivityFallback =
     !finalActivity &&
     !skiTrip &&
+    !oneEasyScenicHike &&
     shouldGuaranteeActivityStops(input) &&
     input.tripLengthDays >= 3
       ? makeFlexibleActivityStop(
@@ -2620,7 +2815,7 @@ function buildGetawayFinalDay(
         )
       : undefined;
 
-    if ((summitTrip || skiTrip || hasRequestedAnchor) && finalActivity) {
+    if ((summitTrip || skiTrip || hasRequestedAnchor || oneEasyScenicHike) && finalActivity) {
       ctx.primaryActivityUsed = true;
     }
 
@@ -2702,7 +2897,9 @@ function buildMiddleDay(
 ): ItineraryDayData {
   const summitTrip = isSummitHikeTrip(input);
   const skiTrip = isSkiTrip(input);
+  const oneEasyScenicHike = promptRequestsOneEasyScenicHike(input);
   const recoveryDays = prefersRecoveryDays(input);
+  const explicitWellness = promptExplicitlyWantsWellness(input.tripPrompt);
   const baseCoordinate =
     toCoordinate(trip.hotelOptions?.[0]) ?? buildBaseCoordinate(trip);
   const breakfast =
@@ -2725,6 +2922,8 @@ function buildMiddleDay(
   const mainActivityCandidate =
     summitTrip && ctx.reservedPrimaryActivity
       ? claimReservedPrimaryActivity(ctx)
+      : oneEasyScenicHike && ctx.reservedPrimaryActivity
+        ? claimReservedPrimaryActivity(ctx)
       : repeatedSkiActivity
         ? repeatedSkiActivity
       : recoveryDays && summitTrip && ctx.primaryActivityUsed
@@ -2738,26 +2937,37 @@ function buildMiddleDay(
               baseCoordinate
             )
           )
-        : pickAnchorActivity(
-            ctx,
-            input,
-            new Set<string>(),
-            buildActivityProximity(
+        : oneEasyScenicHike
+          ? pickEasyScenicHikeActivity(
+              ctx,
               input,
-              breakfastCoordinate ?? baseCoordinate,
-              baseCoordinate
+              new Set<string>(),
+              buildActivityProximity(
+                input,
+                breakfastCoordinate ?? baseCoordinate,
+                baseCoordinate
+              )
             )
-          ) ??
-          pickFlexibleActivity(
-            ctx,
-            input,
-            new Set<string>(),
-            buildActivityProximity(
+          : pickAnchorActivity(
+              ctx,
               input,
-              breakfastCoordinate ?? baseCoordinate,
-              baseCoordinate
-            )
-          );
+              new Set<string>(),
+              buildActivityProximity(
+                input,
+                breakfastCoordinate ?? baseCoordinate,
+                baseCoordinate
+              )
+            ) ??
+            pickFlexibleActivity(
+              ctx,
+              input,
+              new Set<string>(),
+              buildActivityProximity(
+                input,
+                breakfastCoordinate ?? baseCoordinate,
+                baseCoordinate
+              )
+            );
   const mainActivity =
     skiTrip &&
     mainActivityCandidate &&
@@ -2765,7 +2975,7 @@ function buildMiddleDay(
       ? undefined
       : mainActivityCandidate;
 
-  if (summitTrip && mainActivity) {
+  if ((summitTrip || oneEasyScenicHike) && mainActivity) {
     ctx.primaryActivityUsed = true;
   }
 
@@ -2773,10 +2983,22 @@ function buildMiddleDay(
 
   const buildLightDay =
     skiTrip ||
+    oneEasyScenicHike ||
     (dayNumber % 2 === 0 && totalDays >= 5) ||
     (summitTrip && recoveryDays);
-  const secondaryActivity = buildLightDay
-    ? undefined
+  const secondaryActivity = explicitWellness && mainActivity
+    ? pickWellnessActivity(
+        ctx,
+        input,
+        new Set([itemName(mainActivity)]),
+        buildActivityProximity(
+          input,
+          mainActivityCoordinate ?? breakfastCoordinate ?? baseCoordinate,
+          baseCoordinate
+        )
+      )
+    : buildLightDay
+      ? undefined
     : pickSecondaryActivity(
         ctx,
         input,
@@ -3441,8 +3663,12 @@ export function buildTripPlanPreview(
       fallbackTotalStayCost: trip.budgetBreakdown?.hotel,
     }
   );
-  const candidateActivities = withDistanceCap(
+  const promptShapedActivities = shapeActivitiesForPrompt(
     trip.topActivities ?? [],
+    safeInput
+  );
+  const candidateActivities = withDistanceCap(
+    promptShapedActivities,
     toCoordinate(candidateHotels[0]) ?? baseCoordinate,
     activityDistanceCapKm,
     4
@@ -3475,12 +3701,25 @@ export function buildTripPlanPreview(
           activityMatchesRequestedName(activity.name, requestedActivityName)
         )
       : undefined;
+  const promptPreservedActivities = dedupeByName([
+    ...(requestedActivity ? [requestedActivity] : []),
+    ...(promptExplicitlyWantsWellness(safeInput.tripPrompt)
+      ? initialRecommendation.activities.filter((activity) =>
+          isWellnessActivity(activity)
+        )
+      : []),
+  ]);
   const preservedActivities =
-    requestedActivity &&
-    !filteredActivities.some((activity) =>
-      activityMatchesRequestedName(activity.name, requestedActivityName)
-    )
-      ? dedupeByName([requestedActivity, ...filteredActivities])
+    promptPreservedActivities.length > 0
+      ? dedupeByName([
+          ...promptPreservedActivities.filter(
+            (preservedActivity) =>
+              !filteredActivities.some(
+                (activity) => itemName(activity) === itemName(preservedActivity)
+              )
+          ),
+          ...filteredActivities,
+        ])
       : filteredActivities;
   const finalRecommendation = refineTripStayRecommendation({
     trip,

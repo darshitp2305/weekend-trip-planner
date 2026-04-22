@@ -25,6 +25,8 @@ import SharedTripSnapshot from "../../../components/SharedTripSnapshot";
 import TripFeedbackPanel from "../../../components/TripFeedbackPanel";
 import TripActions from "../../../components/TripActions";
 import TripOperationsPanel from "../../../components/TripOperationsPanel";
+import TripMustHavesPanel from "../../../components/TripMustHavesPanel";
+import TripSummaryPdfButton from "../../../components/TripSummaryPdfButton";
 import InteractiveItinerary from "../../../components/InteractiveItinerary";
 import ExpediaStayWidget from "../../../components/ExpediaStayWidget";
 import { syncTripPlanTiming } from "../../../lib/buildTripPlan";
@@ -136,6 +138,7 @@ type TripSyncSaveMessages = {
 
 type BuilderWorkspaceTab =
   | "itinerary"
+  | "mustHaves"
   | "map"
   | "booking"
   | "finalize"
@@ -1063,6 +1066,11 @@ export default function TripPage() {
           description: "Edit the day-by-day plan",
         },
         {
+          id: "mustHaves" as const,
+          label: "Must-haves",
+          description: "Pack the destination-specific essentials",
+        },
+        {
           id: "map" as const,
           label: "Map",
           description: "See routes and chosen stops",
@@ -1786,7 +1794,7 @@ export default function TripPage() {
                 </section>
               ) : null}
 
-              <section className="sticky top-4 z-[1200] overflow-hidden rounded-[1.8rem] border border-slate-200/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.88),rgba(245,249,252,0.82))] px-5 py-4 shadow-[0_26px_80px_rgba(148,163,184,0.18)] backdrop-blur-2xl dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(14,22,37,0.88),rgba(11,18,31,0.78))] dark:shadow-[0_26px_80px_rgba(2,6,23,0.3)]">
+              <section className="sticky top-4 z-[1200] rounded-[1.8rem] border border-slate-200/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.88),rgba(245,249,252,0.82))] px-5 py-4 shadow-[0_26px_80px_rgba(148,163,184,0.18)] backdrop-blur-2xl dark:border-white/10 dark:bg-[linear-gradient(180deg,rgba(14,22,37,0.88),rgba(11,18,31,0.78))] dark:shadow-[0_26px_80px_rgba(2,6,23,0.3)]">
                 <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
                   <div className="min-w-0">
                     <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[#0f766e] dark:text-cyan-200/70">
@@ -1797,27 +1805,41 @@ export default function TripPage() {
                     </p>
                   </div>
 
-                  <div className="-mx-1 overflow-x-auto px-1 pb-1 xl:max-w-[62%]">
-                    <div className="flex min-w-max items-center gap-2">
-                      {workspaceTabs.map((tab) => {
-                        const isActive = activeWorkspaceTab === tab.id;
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start xl:max-w-[72%] xl:justify-end">
+                    <div className="-mx-2 overflow-x-auto px-2 py-2">
+                      <div className="flex min-w-max items-center gap-2">
+                        {workspaceTabs.map((tab) => {
+                          const isActive = activeWorkspaceTab === tab.id;
 
-                        return (
-                          <button
-                            key={tab.id}
-                            type="button"
-                            onClick={() => setActiveWorkspaceTab(tab.id)}
-                            className={`inline-flex h-11 items-center rounded-full border px-4 text-sm font-medium transition ${
-                              isActive
-                                ? "border-[#d9b57c]/45 bg-[#fff6e7] text-[#8a5b18] shadow-[0_0_0_1px_rgba(217,181,124,0.16)] dark:bg-[#d9b57c]/16 dark:text-[#fff4de]"
-                                : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-950 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:border-white/18 dark:hover:bg-white/8 dark:hover:text-white"
-                            }`}
-                          >
-                            {tab.label}
-                          </button>
-                        );
-                      })}
+                          return (
+                            <button
+                              key={tab.id}
+                              type="button"
+                              onClick={() => setActiveWorkspaceTab(tab.id)}
+                              className={`inline-flex h-11 items-center rounded-full border px-4 text-sm font-medium transition ${
+                                isActive
+                                  ? "border-[#d9b57c]/45 bg-[#fff6e7] text-[#8a5b18] shadow-[0_0_0_1px_rgba(217,181,124,0.16)] dark:bg-[#d9b57c]/16 dark:text-[#fff4de]"
+                                  : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-950 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:border-white/18 dark:hover:bg-white/8 dark:hover:text-white"
+                              }`}
+                            >
+                              {tab.label}
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
+
+                    <TripSummaryPdfButton
+                      trip={persistedTrip ?? trip}
+                      selection={activeSelectionState}
+                      mapData={tripMapData}
+                      tripDateRange={tripDateRange}
+                      routeSummary={routeSummaryLabel}
+                      estimatedTotalCost={estimatedTotalCost}
+                      targetTotalBudget={targetTotalBudget}
+                      selectedBudget={selectedBudget}
+                      className="shrink-0 px-0 py-2 sm:px-2"
+                    />
                   </div>
                 </div>
               </section>
@@ -1872,6 +1894,10 @@ export default function TripPage() {
                     className="pointer-events-none mt-5 w-full lg:sticky lg:bottom-4 lg:z-40"
                   />
                 </div>
+              ) : null}
+
+              {activeWorkspaceTab === "mustHaves" ? (
+                <TripMustHavesPanel trip={persistedTrip ?? trip} />
               ) : null}
 
               {activeWorkspaceTab === "map" ? (

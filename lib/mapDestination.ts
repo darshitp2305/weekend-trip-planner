@@ -197,6 +197,8 @@ function estimateActivityCost(type: string): number {
       return 70;
     case "hot_springs":
       return 20;
+    case "spa":
+      return 65;
     case "museum":
       return 25;
     case "food":

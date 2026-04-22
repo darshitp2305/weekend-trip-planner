@@ -60,9 +60,9 @@ export type PromptBudgetMatch = {
 type StyleSignals = Record<TripStyle, number>;
 
 const APPROXIMATE_PER_TRAVELER_BUDGET_PATTERN =
-  /(?:budget(?:\s+of|\s+is)?\s*)?(?:around|about|roughly|approx(?:imately)?)\s*\$?\s*(\d{2,5})\s*(?:cad|dollars?)?\s*(?:each|per person|per traveler|per traveller|pp)\b/i;
+  /(?:budget(?:\s+of|\s+is)?\s*)?(?:around|about|roughly|approx(?:imately)?)\s*\$?\s*(\d{2,5})\s*(?:cad|dollars?)?\s*(?:each|per[-\s]?person|per[-\s]?traveler|per[-\s]?traveller|pp)\b/i;
 const EXACT_PER_TRAVELER_BUDGET_PATTERN =
-  /(?:budget(?:\s+of|\s+is)?\s*)?\$?\s*(\d{2,5})\s*(?:cad|dollars?)?\s*(?:each|per person|per traveler|per traveller|pp)\b/i;
+  /(?:budget(?:\s+of|\s+is)?\s*)?\$?\s*(\d{2,5})\s*(?:cad|dollars?)?\s*(?:each|per[-\s]?person|per[-\s]?traveler|per[-\s]?traveller|pp)\b/i;
 const APPROXIMATE_GROUP_BUDGET_PATTERN =
   /(?:our\s+)?(?:total|overall|trip|weekend|all[\s-]?in)?\s*budget(?:\s+of|\s+is)?\s*(?:around|about|roughly|approx(?:imately)?)\s*\$?\s*(\d{2,5})\s*(?:cad|dollars?)?(?=\b|[.!?,]|$)(?:\s*(?:total|overall|for the trip|for this trip|for the weekend|all in|between us|for us|for both of us|for all of us)\b)?/i;
 const EXACT_GROUP_BUDGET_PATTERN =
@@ -373,6 +373,35 @@ type NamedActivityCandidate = {
   searchPhrases: string[];
 };
 
+const GENERIC_ACTIVITY_SEARCH_PHRASES = new Set([
+  "adventure",
+  "beach",
+  "canyon",
+  "cafe",
+  "coffee",
+  "dinner",
+  "forest",
+  "food",
+  "lake",
+  "lakes",
+  "lookout",
+  "mountain",
+  "mountains",
+  "park",
+  "parks",
+  "scenic",
+  "shops",
+  "stroll",
+  "trail",
+  "trails",
+  "view",
+  "views",
+  "viewpoint",
+  "viewpoints",
+  "waterfall",
+  "waterfalls",
+]);
+
 function buildActivitySearchPhrases(name: string) {
   const normalizedName = normalizeText(name);
   const phrases = new Set<string>();
@@ -380,6 +409,7 @@ function buildActivitySearchPhrases(name: string) {
   const addPhrase = (value?: string) => {
     const normalizedValue = normalizeText(value);
     if (!normalizedValue || normalizedValue.length < 6) return;
+    if (GENERIC_ACTIVITY_SEARCH_PHRASES.has(normalizedValue)) return;
     phrases.add(normalizedValue);
   };
 
@@ -1017,9 +1047,36 @@ function inferHardConstraints(
     dietaryPreference
   );
   const hikeDistance = extractHikeDistanceKm(prompt, activityFocus);
+  const avoidsSummitStyleHike =
+    activityFocus === "hiking" &&
+    countMatches(normalizedPrompt, [
+      "avoid summit",
+      "avoid summits",
+      "avoid steep summit",
+      "avoid steep summits",
+      "avoid peak",
+      "avoid peaks",
+      "avoid scramble",
+      "avoid scrambles",
+      "no summit",
+      "no summits",
+      "no peak",
+      "no peaks",
+      "no scramble",
+      "no scrambles",
+      "not a summit",
+      "not summit",
+      "skip summit",
+      "skip summits",
+      "avoid steep hike",
+      "avoid steep hikes",
+      "no steep hike",
+      "no steep hikes",
+    ]) >= 1;
 
   const wantsSummitStyleHike =
     activityFocus === "hiking" &&
+    !avoidsSummitStyleHike &&
     (
       countMatches(normalizedPrompt, [
         "summit",
@@ -1126,7 +1183,17 @@ function inferSoftPreferences(
         "low-effort",
         "easy",
         "easygoing",
+        "beginner friendly",
+        "beginner-friendly",
         "light",
+        "lighter",
+        "no packed schedule",
+        "not packed",
+        "not overpacked",
+        "not hectic",
+        "avoid hectic",
+        "avoid overplanned",
+        "not overplanned",
         "not too much planning",
         "simple",
         "low key",

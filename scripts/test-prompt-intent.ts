@@ -2,6 +2,7 @@ import { loadEnvConfig } from "@next/env";
 import {
   buildConversationalDraft,
   buildTripInputFromDraft,
+  getNextIntakeQuestion,
 } from "../lib/conversationalPlanner";
 import { mergePromptParametersIntoTripInput } from "../lib/openAiPromptParameters";
 import {
@@ -217,6 +218,45 @@ function buildTests(): TestResult[] {
         travelerCount === 3 &&
         intent.preferredDestination === "Jasper",
       details: `budget=${budget?.amount ?? "none"} scope=${budget?.scope ?? "none"} approx=${budget?.approximate ?? "none"} travelers=${travelerCount ?? "none"} destination=${intent.preferredDestination ?? "none"}`,
+    });
+  }
+
+  {
+    const prompt =
+      "Plan a 3-day mountain weekend from Calgary to Banff in early summer for 2 travelers with a $450 per-person budget. We want one scenic but beginner-friendly hike, good coffee each morning, a relaxing hot springs or spa moment, and no packed schedule.";
+    const budget = extractPromptBudget(prompt);
+    const draft = buildConversationalDraft(prompt, {}, new Date("2026-04-19"), {
+      preferPromptSignals: true,
+    });
+    const nextQuestion = getNextIntakeQuestion(draft);
+
+    tests.push({
+      id: "PI09B",
+      passed:
+        budget?.amount === 450 &&
+        budget.scope === "per_traveler" &&
+        draft.intent.requestedActivityName === undefined &&
+        draft.hasExplicitBudget &&
+        draft.budgetPerTraveler === 450 &&
+        nextQuestion === null,
+      details: `budget=${budget?.amount ?? "none"} scope=${budget?.scope ?? "none"} requested=${draft.intent.requestedActivityName ?? "none"} explicit=${draft.hasExplicitBudget} draftBudget=${draft.budgetPerTraveler} next=${nextQuestion ?? "none"}`,
+    });
+  }
+
+  {
+    const prompt =
+      "Plan a 3-day relaxed mountain weekend from Calgary to Canmore in early summer for 2 travelers with a $400 per-person budget. We want one beginner-friendly scenic hike or lake walk, good coffee each morning, one relaxing spa or hot springs-style recovery stop, and no packed schedule. Keep drives between stops short, avoid steep summit hikes, include practical parking or shuttle advice, and make sure the must-haves include layers, water, sun protection, and bear spray.";
+    const intent = deriveTripIntentFromPrompt(prompt);
+
+    tests.push({
+      id: "PI09C",
+      passed:
+        intent.preferredDestination === "Canmore" &&
+        intent.activityFocus === "hiking" &&
+        intent.hardConstraints.activityAnchor === undefined &&
+        intent.suggestedBudgetPerTraveler === 400 &&
+        intent.strictBudget === true,
+      details: `destination=${intent.preferredDestination ?? "none"} activity=${intent.activityFocus ?? "none"} anchor=${intent.hardConstraints.activityAnchor ?? "none"} budgetEach=${intent.suggestedBudgetPerTraveler ?? "none"} strict=${intent.strictBudget}`,
     });
   }
 

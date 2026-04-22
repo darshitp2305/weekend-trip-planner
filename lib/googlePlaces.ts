@@ -408,7 +408,9 @@ export function buildActivityTextQuery(
     activityFocus === "skiing"
       ? "ski resorts, ski hills, lift-access skiing, chairlifts, gondolas, and nordic skiing"
       : activityFocus === "hiking"
-        ? hardConstraints?.requiresScenicView
+        ? softPreferences?.wantsLowEffort
+          ? "easy scenic walks, beginner-friendly hiking trails, lake loops, boardwalks, and short canyon walks"
+          : hardConstraints?.requiresScenicView
           ? "scenic hiking trails, lookouts, mountain walks, lakes, and canyons"
           : "hiking trails, lakes, canyons, ridge walks, and scenic lookouts"
         : activityFocus === "camping"

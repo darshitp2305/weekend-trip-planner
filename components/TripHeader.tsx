@@ -8,7 +8,7 @@ import { useState } from "react";
 import { formatDisplayTag, formatDisplayText } from "../lib/displayText";
 import { getTripMomentumSummary, getTripUrgencyLevel } from "../lib/tripMomentum";
 import {
-  getFallbackImageUrl,
+  normalizeTripImageUrl,
   normalizeTripImageSet,
 } from "../lib/tripImages";
 import {
@@ -343,10 +343,10 @@ export default function TripHeader({ trip, shareMode = false }: TripHeaderProps)
   const lightImageKey = `${trip.imageUrlLight ?? trip.imageUrl ?? ""}:${title}:light`;
   const darkImageKey = `${trip.imageUrlDark ?? trip.imageUrlLight ?? trip.imageUrl ?? ""}:${title}:dark`;
   const lightHeroImageUrl = failedImageKeys.light === lightImageKey
-    ? getFallbackImageUrl(title)
+    ? normalizeTripImageUrl(undefined, title)
     : imageSet.lightUrl;
   const darkHeroImageUrl = failedImageKeys.dark === darkImageKey
-    ? getFallbackImageUrl(title)
+    ? normalizeTripImageUrl(undefined, title)
     : imageSet.darkUrl;
 
   const finalizedDateLabel = formatFinalizedAt(trip.finalizedAt);

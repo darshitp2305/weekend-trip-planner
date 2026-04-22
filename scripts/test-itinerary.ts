@@ -989,6 +989,388 @@ function evaluateFarOnlyActivityFallbackRegression(): RegressionCheck {
   };
 }
 
+function evaluateBanffGentleHikeWellnessRegression(): RegressionCheck {
+  const tripPrompt =
+    "Plan a 3-day mountain weekend from Calgary to Banff in early summer for 2 travelers with a $450 per-person budget. We want one scenic but beginner-friendly hike, good coffee each morning, a relaxing hot springs or spa moment, and no packed schedule. Keep driving between stops short, include practical parking or shuttle advice, and make sure the builder catches must-have items like bear spray, layers, water, and a park pass.";
+
+  const input: TripInput = {
+    ...makeInput({
+      style: "outdoors",
+      startCity: "Calgary",
+      travelerCount: 2,
+      budgetPerTraveler: 450,
+      budget: 900,
+      tripLengthDays: 3,
+      maxDriveHours: 4,
+      maxDriveMinutesBetweenStops: 45,
+      preferredDestination: "Banff",
+    }),
+    activityFocus: "hiking",
+    tripPrompt,
+  };
+
+  const winner = rankDestinations(input, 1)[0];
+  if (!winner) {
+    return {
+      id: "R12",
+      passed: false,
+      notes: ["No destination matched the gentle Banff hike and hot springs case."],
+    };
+  }
+
+  const plan = buildTripPlan(winner, input, "static-ranking");
+  const itineraryText = joinedItineraryText(plan);
+  const activityStops = plan.itineraryDays.flatMap((day) =>
+    day.stops.filter((stop) => stop.kind === "activity")
+  );
+  const arrivalActivities =
+    plan.itineraryDays[0]?.stops.filter((stop) => stop.kind === "activity") ?? [];
+  const summary = getPromptAwareTripSummary({
+    name: "Banff",
+    destinationName: "Banff",
+    homeBaseCity: "Banff",
+    tripPrompt,
+    tripLengthDays: 3,
+    topActivities: [
+      {
+        name: "Kluane Ridge Trail",
+        type: "Hiking Area",
+        costEstimate: 0,
+        shortDescription: "A summit trail through Kluane National Park.",
+        rating: 5,
+      },
+      {
+        name: "Johnston Canyon to Upper Falls",
+        type: "nature",
+        costEstimate: 0,
+        shortDescription: "Signature Banff-area canyon hike with a strong scenic payoff.",
+        rating: 4.8,
+      },
+    ],
+    foodSpots: winner.foodSpots,
+  });
+  const liveLikePlan = buildTripPlan(
+    {
+      ...winner,
+      hotelOptions: [
+        {
+          name: "Best Western Plus Banff International Lodge",
+          bookingLink: "https://example.com/banff-hotel",
+          latitude: 51.1814,
+          longitude: -115.5664,
+        },
+      ],
+      foodSpots: [
+        {
+          name: "Mountain Folk Coffee Co.",
+          tags: ["Cafe", "coffee"],
+          category: "Cafe",
+          rating: 4.6,
+          latitude: 51.178,
+          longitude: -115.571,
+        },
+        {
+          name: "The Fat Ox of Banff",
+          tags: ["Restaurant"],
+          category: "Restaurant",
+          rating: 4.5,
+          latitude: 51.1801,
+          longitude: -115.5676,
+        },
+      ],
+      topActivities: [
+        {
+          name: "Silverton Falls",
+          type: "Scenic Spot",
+          costEstimate: 0,
+          rating: 4.6,
+          shortDescription: "Waterfall trail near Banff National Park.",
+          latitude: 51.248,
+          longitude: -115.842,
+        },
+        {
+          name: "Banff Upper Hot Springs",
+          type: "Public bath",
+          costEstimate: 32,
+          rating: 4.2,
+          shortDescription: "Classic relaxing hot springs soak near Banff.",
+          latitude: 51.1511,
+          longitude: -115.5607,
+        },
+        {
+          name: "Sulphur Mountain Trail",
+          type: "Hiking Area",
+          costEstimate: 0,
+          rating: 4.8,
+          shortDescription: "Steeper Banff hiking trail to mountain viewpoints.",
+          latitude: 51.148,
+          longitude: -115.556,
+        },
+      ],
+    },
+    input,
+    "live-google-places"
+  );
+  const liveLikeText = joinedItineraryText(liveLikePlan);
+  const liveLikeActivityStops = liveLikePlan.itineraryDays.flatMap((day) =>
+    day.stops.filter((stop) => stop.kind === "activity")
+  );
+  const notes: string[] = [];
+
+  if (!winner.name.toLowerCase().includes("banff")) {
+    notes.push(`Expected Banff to win, got ${winner.name}.`);
+  }
+  if (!/hot spring|hot springs|spa/.test(itineraryText)) {
+    notes.push("Expected the explicit hot springs or spa request to show up in the itinerary.");
+  }
+  if (activityStops.length > 2) {
+    notes.push(`Expected the no-packed-schedule brief to stay near two activity stops, got ${activityStops.length}.`);
+  }
+  if (arrivalActivities.length > 0) {
+    notes.push("Expected arrival day to stay light and save the hike for the full day.");
+  }
+  if ((summary ?? "").toLowerCase().includes("kluane")) {
+    notes.push("Expected Banff summary copy to reject off-destination Kluane hike language.");
+  }
+  if ((summary ?? "").toLowerCase().includes("exchange district")) {
+    notes.push("Expected food/coffee wording to avoid becoming a fake requested hike anchor.");
+  }
+  if (liveLikeText.includes("sulphur mountain trail")) {
+    notes.push("Expected the beginner-friendly one-hike live-like plan to prefer the gentler waterfall hike over Sulphur Mountain Trail.");
+  }
+  if (liveLikeActivityStops.length > 2) {
+    notes.push(`Expected the live-like one-hike plan to stay near two activity stops, got ${liveLikeActivityStops.length}.`);
+  }
+
+  return {
+    id: "R12",
+    passed:
+      winner.name.toLowerCase().includes("banff") &&
+      /hot spring|hot springs|spa/.test(itineraryText) &&
+      activityStops.length <= 2 &&
+      arrivalActivities.length === 0 &&
+      !(summary ?? "").toLowerCase().includes("kluane") &&
+      !(summary ?? "").toLowerCase().includes("exchange district") &&
+      liveLikeText.includes("silverton falls") &&
+      !liveLikeText.includes("sulphur mountain trail") &&
+      liveLikeActivityStops.length <= 2,
+    notes,
+  };
+}
+
+function evaluatePreferredDestinationBudgetNearMissRegression(): RegressionCheck {
+  const tripPrompt =
+    "Plan a 3-day relaxed mountain weekend from Calgary to Canmore in early summer for 2 travelers with a $400 per-person budget. We want one beginner-friendly scenic hike or lake walk, good coffee each morning, one relaxing spa or hot springs-style recovery stop, and no packed schedule. Keep drives between stops short, avoid steep summit hikes, include practical parking or shuttle advice, and make sure the must-haves include layers, water, sun protection, and bear spray.";
+
+  const input: TripInput = {
+    ...makeInput({
+      style: "outdoors",
+      startCity: "Calgary",
+      travelerCount: 2,
+      budgetPerTraveler: 400,
+      budget: 800,
+      tripLengthDays: 3,
+      maxDriveHours: 2,
+      maxDriveMinutesBetweenStops: 45,
+      preferredDestination: "Canmore",
+      strictBudget: true,
+    }),
+    activityFocus: "hiking",
+    tripPrompt,
+  };
+
+  const winner = rankDestinations(input, 1)[0];
+  const notes: string[] = [];
+
+  if (!winner) {
+    return {
+      id: "R13",
+      passed: false,
+      notes: ["Expected the preferred Canmore near-budget case to return a ranked destination instead of showing a destination-blocked modal."],
+    };
+  }
+
+  if (!winner.name.toLowerCase().includes("canmore")) {
+    notes.push(`Expected Canmore to remain selected, got ${winner.name}.`);
+  }
+  if (winner.estimatedCost <= input.budget) {
+    notes.push("Expected this regression to exercise the small over-budget path.");
+  }
+  if (!winner.warnings.some((warning) => warning.toLowerCase().includes("budget"))) {
+    notes.push("Expected the trip to keep a budget warning instead of hiding the overage.");
+  }
+  const cardSummary = getPromptAwareTripSummary({
+    summary: winner.aiSummary ?? winner.summary,
+    tripPrompt,
+    tripLengthDays: input.tripLengthDays,
+    destinationName: winner.name,
+    destination: winner.name,
+    homeBaseCity: winner.homeBaseCity,
+    name: winner.name,
+    foodSpots: winner.foodSpots,
+    topActivities: winner.topActivities,
+  })?.toLowerCase();
+
+  const liveLikePlan = buildTripPlan(
+    {
+      ...winner,
+      hotelOptions: [
+        {
+          name: "Canmore Inn & Suites",
+          bookingLink: "https://example.com/canmore-hotel",
+          latitude: 51.0959,
+          longitude: -115.3587,
+        },
+      ],
+      foodSpots: [
+        {
+          name: "Eclipse Coffee Roasters",
+          tags: ["Cafe", "coffee"],
+          category: "Cafe",
+          rating: 4.5,
+          latitude: 51.097,
+          longitude: -115.356,
+        },
+        {
+          name: "Blondies Cafe",
+          tags: ["Coffee Shop", "Cafe"],
+          category: "Coffee Shop",
+          rating: 4.5,
+          latitude: 51.092,
+          longitude: -115.359,
+        },
+        {
+          name: "Communitea Cafe",
+          tags: ["Restaurant"],
+          category: "Restaurant",
+          rating: 4.6,
+          latitude: 51.089,
+          longitude: -115.357,
+        },
+      ],
+      topActivities: [
+        {
+          name: "Canmore Engine Bridge",
+          type: "Bridge",
+          costEstimate: 0,
+          rating: 4.8,
+          shortDescription: "Bridge near downtown Canmore.",
+          latitude: 51.083,
+          longitude: -115.367,
+        },
+        {
+          name: "Grassi Lakes Trail",
+          type: "Hiking Area",
+          costEstimate: 0,
+          rating: 4.8,
+          shortDescription: "Short beginner-friendly lake hike near Canmore.",
+          latitude: 51.0706,
+          longitude: -115.4002,
+        },
+        {
+          name: "One Wellness Canmore",
+          type: "Spa",
+          costEstimate: 65,
+          rating: 4.6,
+          shortDescription: "In-town spa and wellness recovery stop.",
+          latitude: 51.0858,
+          longitude: -115.3418,
+        },
+      ],
+    },
+    input,
+    "live-google-places"
+  );
+  const liveLikeText = joinedItineraryText(liveLikePlan);
+  const liveLikeActivityStops = liveLikePlan.itineraryDays.flatMap((day) =>
+    day.stops.filter((stop) => stop.kind === "activity")
+  );
+  const thinLivePlan = buildTripPlan(
+    {
+      ...winner,
+      hotelOptions: [
+        {
+          name: "Canmore Inn & Suites",
+          bookingLink: "https://example.com/canmore-hotel",
+          latitude: 51.0959,
+          longitude: -115.3587,
+        },
+      ],
+      foodSpots: [
+        {
+          name: "Eclipse Coffee Roasters",
+          tags: ["Cafe", "coffee"],
+          category: "Cafe",
+          rating: 4.5,
+          latitude: 51.097,
+          longitude: -115.356,
+        },
+      ],
+      topActivities: [
+        {
+          name: "Canmore Engine Bridge",
+          type: "Bridge",
+          costEstimate: 0,
+          rating: 4.8,
+          shortDescription: "Bridge near downtown Canmore.",
+          latitude: 51.083,
+          longitude: -115.367,
+        },
+        {
+          name: "Everwild Canmore - Nordic Spa & Hotel",
+          type: "Hotel",
+          costEstimate: 65,
+          rating: 4.5,
+          shortDescription: "Hotel and nordic spa in Canmore.",
+          latitude: 51.092,
+          longitude: -115.341,
+        },
+      ],
+    },
+    input,
+    "live-google-places"
+  );
+  const thinLiveText = joinedItineraryText(thinLivePlan);
+
+  if (!/grassi lakes trail|policeman's creek boardwalk|quarry lake park loop/.test(liveLikeText)) {
+    notes.push("Expected the live-like Canmore plan to use a real beginner-friendly hike or lake walk.");
+  }
+  if (!/one wellness canmore|spa|wellness|hot spring|hot springs/.test(liveLikeText)) {
+    notes.push("Expected the live-like Canmore plan to include a real spa or wellness recovery stop.");
+  }
+  if (liveLikeText.includes("canmore engine bridge")) {
+    notes.push("Expected the live-like Canmore plan not to treat Canmore Engine Bridge as the main scenic hike.");
+  }
+  if (thinLiveText.includes("canmore engine bridge")) {
+    notes.push("Expected thin live results not to fall back to Canmore Engine Bridge as the scenic hike.");
+  }
+  if (!/grassi lakes|policeman's creek boardwalk|quarry lake park loop/.test(cardSummary ?? "")) {
+    notes.push("Expected the recommendation card summary to name a real easy scenic hike or lake walk.");
+  }
+  if ((cardSummary ?? "").includes("canmore engine bridge")) {
+    notes.push("Expected the recommendation card summary not to name Canmore Engine Bridge as the scenic hike.");
+  }
+  if (liveLikeActivityStops.length > 2) {
+    notes.push(`Expected the no-packed-schedule Canmore plan to stay near two activity stops, got ${liveLikeActivityStops.length}.`);
+  }
+
+  return {
+    id: "R13",
+    passed:
+      winner.name.toLowerCase().includes("canmore") &&
+      winner.estimatedCost > input.budget &&
+      winner.warnings.some((warning) => warning.toLowerCase().includes("budget")) &&
+      /grassi lakes trail|policeman's creek boardwalk|quarry lake park loop/.test(liveLikeText) &&
+      /one wellness canmore|spa|wellness|hot spring|hot springs/.test(liveLikeText) &&
+      !liveLikeText.includes("canmore engine bridge") &&
+      !thinLiveText.includes("canmore engine bridge") &&
+      /grassi lakes|policeman's creek boardwalk|quarry lake park loop/.test(cardSummary ?? "") &&
+      !(cardSummary ?? "").includes("canmore engine bridge") &&
+      liveLikeActivityStops.length <= 2,
+    notes,
+  };
+}
+
 function main() {
   const cases = buildCases();
   const evaluations = cases.map((testCase) => {
@@ -1007,6 +1389,8 @@ function main() {
     evaluateDistanceCappedActivityRegression(),
     evaluatePlanPersistenceRegression(),
     evaluateFarOnlyActivityFallbackRegression(),
+    evaluateBanffGentleHikeWellnessRegression(),
+    evaluatePreferredDestinationBudgetNearMissRegression(),
   ];
 
   const passCount = evaluations.filter(
