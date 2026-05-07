@@ -55,6 +55,24 @@
         "type": "culture",
         "description": "Easy indoor anchor if weather turns or you want a slower pace.",
         "link": "https://www.google.com/maps/search/?api=1&query=Art+Gallery+of+Alberta"
+      },
+      {
+        "title": "Muttart Conservatory and river valley gardens",
+        "type": "culture",
+        "description": "Distinct low-friction indoor/outdoor anchor with a real Edmonton sense of place.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Muttart+Conservatory+Edmonton"
+      },
+      {
+        "title": "124 Street gallery and cafe walk",
+        "type": "food",
+        "description": "Walkable local strip that adds a different food-and-culture area from Whyte Ave or downtown.",
+        "link": "https://www.google.com/maps/search/?api=1&query=124+Street+Edmonton+cafes"
+      },
+      {
+        "title": "Ritchie Market and Mill Creek Ravine walk",
+        "type": "food",
+        "description": "South-central cafe-and-ravine pairing that gives a longer Edmonton staycation another distinct local block.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Ritchie+Market+Mill+Creek+Ravine+Edmonton"
       }
     ],
     "neighborhoods": [
@@ -103,6 +121,26 @@
         ],
         "link": "https://www.google.com/maps/search/?api=1&query=104+Street+Edmonton",
         "description": "Good central food option if you stay downtown."
+      },
+      {
+        "name": "124 Street / Brewery District",
+        "tags": [
+          "cafes",
+          "restaurants",
+          "walkable"
+        ],
+        "link": "https://www.google.com/maps/search/?api=1&query=124+Street+Brewery+District+Edmonton+restaurants",
+        "description": "Useful third food area for a longer Edmonton staycation."
+      },
+      {
+        "name": "Ritchie Market / Mill Creek",
+        "tags": [
+          "cafes",
+          "casual",
+          "neighborhood"
+        ],
+        "link": "https://www.google.com/maps/search/?api=1&query=Ritchie+Market+Edmonton+restaurants",
+        "description": "Another local food area that pairs naturally with an easy ravine walk."
       }
     ],
     "image_url_light": "/destinations/theme/edmonton_staycation_ab-light.webp",
@@ -1047,6 +1085,18 @@
         "type": "scenic",
         "description": "Optional add-on if you want more nature without rebuilding the trip.",
         "link": "https://www.google.com/maps/search/?api=1&query=Kananaskis+viewpoints"
+      },
+      {
+        "title": "Prince's Island Park and Eau Claire path",
+        "type": "scenic",
+        "description": "Easy central river walk that gives a calmer counterweight to food and nightlife stops.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Prince's+Island+Park+Calgary"
+      },
+      {
+        "title": "Esker Foundation and Inglewood walk",
+        "type": "culture",
+        "description": "Distinct gallery-and-neighborhood block that works well as a slower local day.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Esker+Foundation+Inglewood+Calgary"
       }
     ],
     "neighborhoods": [
@@ -1094,6 +1144,16 @@
         ],
         "link": "https://www.google.com/maps/search/?api=1&query=Kensington+Calgary+restaurants",
         "description": "Good daytime food/café anchor with a more relaxed pace."
+      },
+      {
+        "name": "Inglewood / Ramsay",
+        "tags": [
+          "restaurants",
+          "cafes",
+          "local"
+        ],
+        "link": "https://www.google.com/maps/search/?api=1&query=Inglewood+Ramsay+Calgary+restaurants",
+        "description": "Useful third food area for a longer Calgary staycation."
       }
     ],
     "image_url_light": "/destinations/theme/calgary_staycation_ab-light.webp",

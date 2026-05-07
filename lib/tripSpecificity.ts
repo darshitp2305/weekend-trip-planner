@@ -199,6 +199,14 @@ export function isGenericActivityDisplayName(value?: string) {
     return name.split(" ").length <= 3;
   }
 
+  if (
+    /\b(?:second local day|flexible local day|low key final day|low-key final day|classic sights day|museum or gallery stop|easy low drive weekend reset)\b/.test(
+      name
+    )
+  ) {
+    return true;
+  }
+
   return false;
 }
 
@@ -222,6 +230,20 @@ function promptExplicitlyWantsCoffee(prompt?: string) {
   if (!text) return false;
 
   return /\b(coffee|cafe|espresso|latte|americano|bakery)\b/.test(text);
+}
+
+function promptRequestsCoffeeEachMorning(prompt?: string) {
+  const text = normalized(prompt);
+  if (!text) return false;
+
+  return (
+    text.includes("coffee each morning") ||
+    text.includes("coffee every morning") ||
+    text.includes("good coffee each morning") ||
+    text.includes("great coffee each morning") ||
+    text.includes("coffee on both mornings") ||
+    text.includes("coffee both mornings")
+  );
 }
 
 function toRadians(value: number) {
@@ -363,6 +385,7 @@ export function scenicHikeSpecificityScore(
   if (!activity) return Number.NEGATIVE_INFINITY;
 
   const text = signalText([activity.name, activity.type, activity.shortDescription]);
+  const nameText = signalText([activity.name]);
   let score = 0;
   const summitSignal = ["summit", "peak", "ridge", "scramble", "alpine", "mountain"].filter(
     (term) => text.includes(term)
@@ -396,6 +419,23 @@ export function scenicHikeSpecificityScore(
   if (text.includes("lake")) score += 12;
   if (text.includes("creek")) score += 8;
   if (text.includes("viewpoint")) score -= 24;
+  if (
+    (nameText.includes("viewpoint") ||
+      nameText.includes("view point") ||
+      nameText.includes("lookout") ||
+      nameText.includes("vista")) &&
+    ![
+      "trail",
+      "hike",
+      "loop",
+      "walk",
+      "coast trail",
+      "coastal trail",
+      "bluff",
+    ].some((term) => text.includes(term))
+  ) {
+    score -= 70;
+  }
   if (text.includes("trailhead")) score -= 16;
   if (text.includes("bridge") && hikeSignal === 0 && !text.includes("walk")) score -= 48;
   if (text.includes("dog beach")) score -= 120;
@@ -633,6 +673,241 @@ function findSkiAnchorName(trip: PromptSummaryTripLike, baseName: string) {
   return normalizePlaceDisplayName(skiAnchor?.name ?? `${baseName} ski day`);
 }
 
+function findItineraryScenicActivityName(trip: PromptSummaryTripLike) {
+  const activityStops = trip.itineraryDays
+    ?.flatMap((day, dayIndex) =>
+      day.stops
+        .filter((stop) => stop.kind === "activity")
+        .map((stop) => ({ day, dayIndex, stop }))
+    ) ?? [];
+
+  const scored = activityStops
+    .map(({ day, dayIndex, stop }) => {
+      const title = normalizePlaceDisplayName(stop.title);
+      const text = normalized([stop.title, stop.description, stop.time].filter(Boolean).join(" "));
+      const dayText = normalized([day.title, day.summary].filter(Boolean).join(" "));
+      let score = 0;
+
+      if (!title || isGenericActivityDisplayName(title)) score -= 80;
+      if (dayText.includes("scenic hike day")) score += 60;
+      if (dayText.includes("main scenic hike")) score += 44;
+      if (dayText.includes("first full day")) score += 24;
+      if (dayIndex === 1) score += 10;
+      if (dayText.includes("final") || dayText.includes("drive back")) score -= 38;
+      if (text.includes("hike")) score += 40;
+      if (text.includes("trail")) score += 34;
+      if (text.includes("walk")) score += 30;
+      if (text.includes("boardwalk")) score += 28;
+      if (text.includes("lake")) score += 26;
+      if (text.includes("creek")) score += 18;
+      if (text.includes("canyon")) score += 18;
+      if (text.includes("falls") || text.includes("waterfall")) score += 18;
+      if (text.includes("scenic")) score += 14;
+      if (text.includes("viewpoint") || text.includes("lookout")) score += 12;
+      if (text.includes("summit") || text.includes("scramble")) score -= 30;
+
+      return { title, score };
+    })
+    .filter((item) => item.title)
+    .sort((left, right) => right.score - left.score);
+
+  return scored[0]?.score && scored[0].score >= 12 ? scored[0].title : undefined;
+}
+
+function countMorningCoffeeStops(trip: PromptSummaryTripLike) {
+  const coffeeFriendlyMorningPattern =
+    /\b(coffee|cafe|espresso|latte|americano|bakery|bagel|breakfast|brunch|roaster|roasters|tea)\b/;
+
+  return (
+    trip.itineraryDays?.filter((day) =>
+      day.stops.some((stop) => {
+        if (stop.kind !== "food") return false;
+
+        const stopText = normalized(
+          [stop.time, stop.title, stop.description].filter(Boolean).join(" ")
+        );
+        return (
+          stopText.includes("morning") &&
+          coffeeFriendlyMorningPattern.test(stopText)
+        );
+      })
+    ).length ?? 0
+  );
+}
+
+function findFinalDayRelaxedScenicStopName(trip: PromptSummaryTripLike) {
+  const finalDay = trip.itineraryDays?.at(-1);
+  if (!finalDay) return undefined;
+
+  const scored = finalDay.stops
+    .filter((stop) => stop.kind === "activity")
+    .map((stop) => {
+      const title = normalizePlaceDisplayName(stop.title);
+      const text = normalized([stop.title, stop.description, stop.time].filter(Boolean).join(" "));
+      let score = 0;
+
+      if (!title || isGenericActivityDisplayName(title)) score -= 80;
+      if (text.includes("relaxed")) score += 28;
+      if (text.includes("boardwalk")) score += 36;
+      if (text.includes("waterfront") || text.includes("shoreline")) score += 28;
+      if (text.includes("viewpoint") || text.includes("lookout") || text.includes("overlook")) {
+        score += 24;
+      }
+      if (text.includes("lake") || text.includes("river") || text.includes("creek")) {
+        score += 20;
+      }
+      if (text.includes("park")) score += 12;
+      if (text.includes("trailhead") || text.includes("summit") || text.includes("scramble")) {
+        score -= 40;
+      }
+
+      return { title, score };
+    })
+    .filter((item) => item.title)
+    .sort((left, right) => right.score - left.score);
+
+  return scored[0]?.score && scored[0].score >= 16 ? scored[0].title : undefined;
+}
+
+function promptRequestsQuietCulturalTrip(prompt?: string) {
+  const text = normalized(prompt);
+  if (!text) return false;
+
+  const geographySignal = /\b(prairie|prairies|badlands|badland)\b/.test(text);
+  const cultureSignal =
+    /\b(museum|main street|local museum|small town|small town main street|historic downtown|downtown)\b/.test(
+      text
+    );
+  const sunsetSignal =
+    /\b(sunset|sunset viewpoint|sunset view|easy sunset|viewpoint|lookout|overlook)\b/.test(
+      text
+    );
+  const outdoorsHikingBrief =
+    /\b(hike|hiking|trail|mountain|lake|waterfront|shoreline)\b/.test(text);
+  const explicitCulturalSignal =
+    geographySignal || cultureSignal || promptRequestsScenicDrive(prompt);
+  const quietSignal =
+    /\b(quiet|unhurried|unrushed|slow|slow paced|slow-paced|low key|low-key|avoid filler|practical|not packed)\b/.test(
+      text
+    );
+
+  return (
+    quietSignal &&
+    (explicitCulturalSignal || (sunsetSignal && !outdoorsHikingBrief))
+  );
+}
+
+function promptRequestsScenicDrive(prompt?: string) {
+  const text = normalized(prompt);
+  if (!text) return false;
+
+  return /\b(scenic drive|driving loop|loop drive|badlands drive|prairie drive)\b/.test(
+    text
+  );
+}
+
+function findCulturalAnchorStopName(trip: PromptSummaryTripLike) {
+  const activityStops = trip.itineraryDays
+    ?.flatMap((day, dayIndex) =>
+      day.stops
+        .filter((stop) => stop.kind === "activity")
+        .map((stop) => ({ day, dayIndex, stop }))
+    ) ?? [];
+
+  const scored = activityStops
+    .map(({ day, dayIndex, stop }) => {
+      const title = normalizePlaceDisplayName(stop.title);
+      const text = normalized([stop.title, stop.description, stop.time].filter(Boolean).join(" "));
+      const dayText = normalized([day.title, day.summary].filter(Boolean).join(" "));
+      let score = 0;
+
+      if (!title || isGenericActivityDisplayName(title)) score -= 80;
+      if (dayIndex === 1) score += 18;
+      if (dayText.includes("museum") || dayText.includes("main street")) score += 28;
+      if (text.includes("museum")) score += 64;
+      if (text.includes("historic") || text.includes("heritage")) score += 26;
+      if (text.includes("main street") || text.includes("downtown")) score += 28;
+      if (text.includes("memorial") || text.includes("interpretive")) score += 12;
+      if (text.includes("lookout") || text.includes("viewpoint") || text.includes("overlook")) {
+        score -= 10;
+      }
+      if (text.includes("beach") || text.includes("shoreline")) score -= 14;
+      if (text.includes("park") && !text.includes("museum")) score -= 18;
+
+      return { title, score };
+    })
+    .filter((item) => item.title)
+    .sort((left, right) => right.score - left.score);
+
+  return scored[0]?.score && scored[0].score >= 16 ? scored[0].title : undefined;
+}
+
+function findSunsetViewpointStopName(trip: PromptSummaryTripLike) {
+  const activityStops = trip.itineraryDays
+    ?.flatMap((day, dayIndex) =>
+      day.stops
+        .filter((stop) => stop.kind === "activity")
+        .map((stop) => ({ day, dayIndex, stop }))
+    ) ?? [];
+
+  const scored = activityStops
+    .map(({ day, dayIndex, stop }) => {
+      const title = normalizePlaceDisplayName(stop.title);
+      const text = normalized([stop.title, stop.description, stop.time].filter(Boolean).join(" "));
+      const dayText = normalized([day.title, day.summary].filter(Boolean).join(" "));
+      let score = 0;
+
+      if (!title || isGenericActivityDisplayName(title)) score -= 80;
+      if (dayIndex >= 2) score += 18;
+      if (dayText.includes("sunset")) score += 18;
+      if (text.includes("sunset")) score += 36;
+      if (text.includes("viewpoint") || text.includes("lookout") || text.includes("overlook")) {
+        score += 34;
+      }
+      if (text.includes("view") || text.includes("scenic")) score += 18;
+      if (text.includes("beach") || text.includes("river") || text.includes("riverside")) {
+        score += 20;
+      }
+      if (text.includes("park")) score += 10;
+      if (text.includes("museum") || text.includes("historic") || text.includes("heritage")) {
+        score -= 18;
+      }
+
+      return { title, score };
+    })
+    .filter((item) => item.title)
+    .sort((left, right) => right.score - left.score);
+
+  return scored[0]?.score && scored[0].score >= 16 ? scored[0].title : undefined;
+}
+
+function findLowKeyDinnerStopName(trip: PromptSummaryTripLike) {
+  const foodStops = trip.itineraryDays
+    ?.flatMap((day) => day.stops.filter((stop) => stop.kind === "food")) ?? [];
+
+  const scored = foodStops
+    .map((stop) => {
+      const title = normalizePlaceDisplayName(stop.title);
+      const text = normalized([stop.title, stop.description, stop.time].filter(Boolean).join(" "));
+      let score = 0;
+
+      if (!title) score -= 80;
+      if (text.includes("evening") || text.includes("dinner")) score += 26;
+      if (text.includes("restaurant") || text.includes("kitchen") || text.includes("bistro")) {
+        score += 18;
+      }
+      if (text.includes("coffee") || text.includes("bakery") || text.includes("breakfast")) {
+        score -= 12;
+      }
+
+      return { title, score };
+    })
+    .filter((item) => item.title)
+    .sort((left, right) => right.score - left.score);
+
+  return scored[0]?.score && scored[0].score >= 10 ? scored[0].title : undefined;
+}
+
 export function getPromptConstraintFitSummary(
   trip: PromptFitTripLike,
   input?: Partial<TripInput> | null
@@ -753,8 +1028,28 @@ export function getPromptAwareTripSummary(trip: PromptSummaryTripLike) {
       : "";
 
     return isTwoDayCompromise
-      ? `${baseName} now centers the trip around ${anchorName} as the main hike, with an easy arrival night, a lighter final-day flow, and ${mealClause}.${distanceClause}`
-      : `${baseName} now uses ${anchorName} as the main hike anchor, with recovery-friendly pacing and ${mealClause}.${distanceClause}`;
+      ? `${baseName} centers the trip around ${anchorName} as the main hike, with an easy arrival night, a lighter final-day flow, and ${mealClause}.${distanceClause}`
+      : `${baseName} uses ${anchorName} as the main hike anchor, with recovery-friendly pacing and ${mealClause}.${distanceClause}`;
+  }
+
+  if (promptRequestsQuietCulturalTrip(trip.tripPrompt)) {
+    const culturalAnchor = findCulturalAnchorStopName(trip);
+    const sunsetStop = findSunsetViewpointStopName(trip);
+    const dinnerStop = findLowKeyDinnerStopName(trip);
+    const scenicDriveClause = promptRequestsScenicDrive(trip.tripPrompt)
+      ? ", with the route kept scenic and practical"
+      : ", with the route kept practical";
+    const culturalText = culturalAnchor
+      ? normalizePlaceDisplayName(culturalAnchor)
+      : "one cultural anchor";
+    const sunsetClause = sunsetStop
+      ? `, adds an easy sunset stop at ${normalizePlaceDisplayName(sunsetStop)}`
+      : "";
+    const dinnerClause = dinnerStop
+      ? `, and lands the low-key dinner at ${normalizePlaceDisplayName(dinnerStop)}`
+      : "";
+
+    return `${baseName} centers the trip on ${culturalText}${sunsetClause}${dinnerClause}${scenicDriveClause} so the pacing stays quiet and unhurried.`;
   }
 
   const wantsHikingBrief =
@@ -763,33 +1058,60 @@ export function getPromptAwareTripSummary(trip: PromptSummaryTripLike) {
     ((trip.tripPrompt?.toLowerCase().includes("hike") ?? false) &&
       promptIntent.softPreferences.wantsScenery);
   if (wantsHikingBrief && promptIntent.hardConstraints.activityAnchor !== "summit_hike") {
+    const itineraryHikeName = findItineraryScenicActivityName(trip);
     const namedHike = bestScenicHikeCandidate({
       topActivities: (trip as RecommendationTripLike).topActivities,
     });
+    const relaxedFinishName = findFinalDayRelaxedScenicStopName(trip);
+    const morningCoffeeCount = countMorningCoffeeStops(trip);
     const coffeeStop = bestCoffeeCandidate({
       foodSpots: (trip as RecommendationTripLike).foodSpots,
     });
     const namedHikeText =
-      namedHike?.name?.trim() &&
+      itineraryHikeName ??
+      (namedHike?.name?.trim() &&
       scenicHikeSpecificityScore(namedHike) >= 55 &&
       !activityMentionsDifferentDestinationContext(
         namedHike,
         trip as RecommendationTripLike
       )
         ? normalizePlaceDisplayName(namedHike.name)
-        : "one named scenic hike";
+        : "one named scenic hike");
     const coffeeClause =
-      promptExplicitlyWantsCoffee(trip.tripPrompt) &&
-      coffeeStop?.name?.trim() &&
-      coffeeStopSpecificityScore(coffeeStop) >= 45
-        ? `, plus a real coffee stop at ${normalizePlaceDisplayName(coffeeStop.name)}`
+      promptRequestsCoffeeEachMorning(trip.tripPrompt) && morningCoffeeCount >= 2
+        ? ", plus coffee both mornings"
+        : promptExplicitlyWantsCoffee(trip.tripPrompt) &&
+          coffeeStop?.name?.trim() &&
+          coffeeStopSpecificityScore(coffeeStop) >= 45
+        ? `, plus coffee at ${normalizePlaceDisplayName(coffeeStop.name)}`
         : promptExplicitlyWantsCoffee(trip.tripPrompt)
           ? ", with a coffee stop still needing a more convincing pick"
           : "";
+    const relaxedFinishClause = relaxedFinishName
+      ? `, and a relaxed scenic finish at ${relaxedFinishName}`
+      : "";
+    const destinationText = normalized(
+      [
+        baseName,
+        trip.destinationName,
+        trip.destination,
+        trip.name,
+        ...((trip as RecommendationTripLike).topActivities ?? []).map(
+          (activity) => activity.shortDescription ?? activity.name
+        ),
+      ].join(" ")
+    );
+    const tripShapeLabel =
+      destinationText.includes("coast") ||
+      destinationText.includes("ocean") ||
+      destinationText.includes("beach") ||
+      destinationText.includes("island")
+        ? "coastal road trip"
+        : "mountain weekend";
 
     return isTwoDayCompromise
-      ? `${baseName} now keeps the trip centered on ${namedHikeText} as the main scenic hike${coffeeClause}, with an easy arrival and a lighter drive-back finish.`
-      : `${baseName} now uses ${namedHikeText} as the main scenic hike${coffeeClause}, with the rest of the plan paced around a simpler mountain weekend.`;
+      ? `${baseName} keeps the trip centered on ${namedHikeText} as the main scenic hike${coffeeClause}${relaxedFinishClause}, with an easy arrival and a lighter drive-back finish.`
+      : `${baseName} uses ${namedHikeText} as the main scenic hike${coffeeClause}${relaxedFinishClause}, with the rest of the plan paced around a simpler ${tripShapeLabel}.`;
   }
 
   if (promptIntent.activityFocus === "skiing") {
@@ -802,15 +1124,15 @@ export function getPromptAwareTripSummary(trip: PromptSummaryTripLike) {
 
     return isTwoDayCompromise
       ? hasNamedSkiAnchor
-        ? `${baseName} now frames the trip around ${anchorName} as the main ski day, with an easy arrival night and a lighter drive-back finish.`
-        : `${baseName} now frames the trip around one main ski day, with an easy arrival night and a lighter drive-back finish.`
+        ? `${baseName} frames the trip around ${anchorName} as the main ski day, with an easy arrival night and a lighter drive-back finish.`
+        : `${baseName} frames the trip around one main ski day, with an easy arrival night and a lighter drive-back finish.`
       : skiDayCount >= 2
         ? hasNamedSkiAnchor
-          ? `${baseName} now uses ${anchorName} as the main ski anchor, with skiing carrying across ${skiDayCount} days instead of collapsing into one short winter-sports window.`
-          : `${baseName} now keeps skiing spread across ${skiDayCount} days instead of collapsing the trip into one short winter-sports window.`
+          ? `${baseName} uses ${anchorName} as the main ski anchor, with skiing carrying across ${skiDayCount} days instead of collapsing into one short winter-sports window.`
+          : `${baseName} keeps skiing spread across ${skiDayCount} days instead of collapsing the trip into one short winter-sports window.`
         : hasNamedSkiAnchor
-          ? `${baseName} now uses ${anchorName} as the main ski anchor, with the rest of the trip paced around one clear winter-sports day.`
-          : `${baseName} now keeps one clear ski day as the main winter-sports anchor for the trip.`;
+          ? `${baseName} uses ${anchorName} as the main ski anchor, with the rest of the trip paced around one clear winter-sports day.`
+          : `${baseName} keeps one clear ski day as the main winter-sports anchor for the trip.`;
   }
 
   if (promptIntent.hardConstraints.activityAnchor !== "summit_hike") {

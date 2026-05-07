@@ -138,6 +138,17 @@ function joinLabels(labels: string[]) {
   return `${labels.slice(0, -1).join(", ")}, and ${labels[labels.length - 1]}`;
 }
 
+function isFeaturedPhotoUrl(value?: string) {
+  const url = value?.trim();
+  if (!url) return false;
+
+  return (
+    /^https?:\/\//i.test(url) &&
+    !url.toLowerCase().includes("/destinations/theme/") &&
+    !url.toLowerCase().includes("data:image/svg+xml")
+  );
+}
+
 function plannerErrorMessage(
   payload: { error?: string } | null | undefined,
   fallback: string
@@ -153,11 +164,7 @@ function buildHeroCandidates() {
   return DESTINATION_SOURCE
     .filter(
       (destination) =>
-        Boolean(
-          destination.image_url ||
-            destination.image_url_light ||
-            destination.image_url_dark
-        ) &&
+        isFeaturedPhotoUrl(destination.image_url) &&
         !destination.is_staycation &&
         destination.vibes.some((vibe) =>
           ["nature", "adventure", "relax", "winter_fun"].includes(vibe)
@@ -166,12 +173,9 @@ function buildHeroCandidates() {
     .map((destination) => {
       const imageSet = normalizeTripImageSet(
         {
-          imageUrl: destination.image_url_light ?? destination.image_url,
-          imageUrlLight: destination.image_url_light ?? destination.image_url,
-          imageUrlDark:
-            destination.image_url_dark ??
-            destination.image_url_light ??
-            destination.image_url,
+          imageUrl: destination.image_url,
+          imageUrlLight: destination.image_url,
+          imageUrlDark: destination.image_url,
         },
         destination.name
       );
@@ -198,15 +202,25 @@ function buildHeroCandidates() {
 }
 
 const HERO_CANDIDATES = buildHeroCandidates();
-const DEFAULT_HERO_IMAGE_SET = normalizeTripImageSet({}, "Canada");
+const DEFAULT_HERO_IMAGE_SET = normalizeTripImageSet(
+  {
+    imageUrl:
+      "https://commons.wikimedia.org/wiki/Special:Redirect/file/Lake_Louise%2C_Canada%2C_Banff.jpg",
+    imageUrlLight:
+      "https://commons.wikimedia.org/wiki/Special:Redirect/file/Lake_Louise%2C_Canada%2C_Banff.jpg",
+    imageUrlDark:
+      "https://commons.wikimedia.org/wiki/Special:Redirect/file/Lake_Louise%2C_Canada%2C_Banff.jpg",
+  },
+  "Banff"
+);
 const DEFAULT_HERO: FeaturedHero = HERO_CANDIDATES[0] ?? {
-  name: "Canada",
+  name: "Banff",
   imageUrl: DEFAULT_HERO_IMAGE_SET.defaultUrl,
   imageUrlLight: DEFAULT_HERO_IMAGE_SET.lightUrl,
   imageUrlDark: DEFAULT_HERO_IMAGE_SET.darkUrl,
-  eyebrow: "Daily Canada feature",
-  caption: "A cinematic Canadian escape, refreshed each day.",
-  detail: "Curated for the planner",
+  eyebrow: "Alberta",
+  caption: "A cinematic Canadian mountain escape, refreshed into the planner as a reliable featured pick.",
+  detail: "Lake views and mountain town base",
 };
 
 function getDestinationById(destinationId: string) {

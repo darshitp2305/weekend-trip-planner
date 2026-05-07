@@ -293,11 +293,121 @@ type DefaultActivitySelectionOptions = {
   tripPrompt?: string;
   hotelName?: string;
   hotels?: HotelOption[];
+  blockedNames?: Set<string>;
   fallbackCenter?: {
     latitude?: number;
     longitude?: number;
   };
 };
+
+type DefaultFoodSelectionOptions = {
+  day?: Pick<ItineraryDayData, "title" | "summary">;
+  tripPrompt?: string;
+  hotelName?: string;
+  hotels?: HotelOption[];
+  blockedNames?: Set<string>;
+  fallbackCenter?: {
+    latitude?: number;
+    longitude?: number;
+  };
+};
+
+function foodDistanceScore(
+  food: FoodSpot,
+  baseCoordinate: { latitude: number; longitude: number } | undefined,
+  wantsNearby: boolean
+) {
+  if (
+    !baseCoordinate ||
+    typeof food.latitude !== "number" ||
+    typeof food.longitude !== "number"
+  ) {
+    return wantsNearby ? -10 : 0;
+  }
+
+  const distanceKm = distanceBetweenCoordinatesInKm(baseCoordinate, {
+    latitude: food.latitude,
+    longitude: food.longitude,
+  });
+
+  if (distanceKm <= 8) return 45;
+  if (distanceKm <= 18) return 32;
+  if (distanceKm <= 35) return 16;
+  if (distanceKm <= 55) return wantsNearby ? -16 : -4;
+  if (distanceKm <= 80) return wantsNearby ? -60 : -22;
+  return wantsNearby ? -150 : -75;
+}
+
+export function pickDefaultFoodForStop(
+  stop: ItineraryStop,
+  foodSpots: FoodSpot[],
+  options: DefaultFoodSelectionOptions = {}
+) {
+  if (foodSpots.length === 0) return undefined;
+
+  const blockedNames = options.blockedNames ?? new Set<string>();
+  const candidates = foodSpots.filter((spot) => !blockedNames.has(normalized(spot.name)));
+  const pool = candidates.length > 0 ? candidates : foodSpots;
+  const exactTitleMatch = matchByTitle(pool, stop.title);
+  const exactMatchScore = titleMatchScore(exactTitleMatch?.name, stop.title);
+  const intent = stopIntentText(
+    stop,
+    [options.day?.title, options.day?.summary, options.tripPrompt]
+      .filter(Boolean)
+      .join(" ")
+  );
+  const wantsCoffee = ["coffee", "cafe", "bakery", "breakfast", "brunch"].some((term) =>
+    intent.includes(term)
+  );
+  const wantsMeal = ["dinner", "restaurant", "bistro", "bar", "grill", "tavern"].some(
+    (term) => intent.includes(term)
+  );
+  const wantsNearby =
+    intent.includes("nearby") ||
+    intent.includes("close") ||
+    intent.includes("before you leave") ||
+    intent.includes("before the return") ||
+    intent.includes("before the drive") ||
+    intent.includes("light") ||
+    intent.includes("easy");
+  const baseCoordinate = resolveBaseCoordinate(
+    options.hotels ?? [],
+    options.hotelName,
+    options.fallbackCenter
+  );
+
+  if (
+    exactTitleMatch &&
+    exactMatchScore >= 80 &&
+    foodDistanceScore(exactTitleMatch, baseCoordinate, wantsNearby) > -50
+  ) {
+    return exactTitleMatch;
+  }
+
+  const ranked = [...pool]
+    .map((spot) => {
+      let score = titleMatchScore(spot.name, stop.title);
+      const distanceScore = foodDistanceScore(spot, baseCoordinate, wantsNearby);
+
+      if (wantsCoffee) score += isCafeLikeFood(spot) ? 55 : -20;
+      if (wantsMeal) score += isMealLikeFood(spot) ? 48 : -24;
+      if (!wantsMeal && !wantsCoffee && isCafeLikeFood(spot)) score += 8;
+
+      score += distanceScore;
+      if (distanceScore <= -70) score -= 100;
+      score += Math.min((spot.rating ?? 0) * 2, 10);
+
+      return { spot, score };
+    })
+    .sort((left, right) => {
+      if (right.score !== left.score) return right.score - left.score;
+      return (right.spot.rating ?? 0) - (left.spot.rating ?? 0);
+    });
+
+  const best = ranked[0];
+  if (!best || best.score < (wantsNearby ? -30 : -55)) return undefined;
+  return best.spot;
+}
 
 export function pickDefaultActivityForStop(
   stop: ItineraryStop,
@@ -306,7 +416,12 @@ export function pickDefaultActivityForStop(
 ) {
   if (activities.length === 0) return undefined;
 
-  const exactTitleMatch = matchByTitle(activities, stop.title);
+  const blockedNames = options.blockedNames ?? new Set<string>();
+  const candidates = activities.filter(
+    (activity) => !blockedNames.has(normalized(activity.name))
+  );
+  const pool = candidates.length > 0 ? candidates : activities;
+  const exactTitleMatch = matchByTitle(pool, stop.title);
   if (exactTitleMatch && titleMatchScore(exactTitleMatch.name, stop.title) >= 80) {
     return exactTitleMatch;
   }
@@ -342,7 +457,7 @@ export function pickDefaultActivityForStop(
     options.fallbackCenter
   );
 
-  return [...activities]
+  return [...pool]
     .map((activity) => {
       let score = titleMatchScore(activity.name, stop.title);
 
@@ -508,29 +623,42 @@ export function buildDefaultSelectionState(
     customStops: {},
     addedStops: {},
   };
+  const usedFoodNames = new Set<string>();
+  const usedActivityNames = new Set<string>();
 
   days.forEach((day, dayIndex) => {
     (day.stops ?? []).forEach((stop, stopIndex) => {
       const key = stopKey(dayIndex, stopIndex);
 
       if (stop.kind === "food") {
-        const match = foodSpots.find(
-          (spot) => normalized(spot.name) === normalized(stop.title)
-        );
-        if (match?.name) initial.foods[key] = match.name;
+        const match = pickDefaultFoodForStop(stop, foodSpots, {
+          day,
+          tripPrompt: options?.tripPrompt,
+          hotelName: initial.hotelName,
+          hotels,
+          blockedNames: usedFoodNames,
+          fallbackCenter: options?.fallbackCenter,
+        });
+        if (match?.name) {
+          initial.foods[key] = match.name;
+          usedFoodNames.add(normalized(match.name));
+        }
       }
 
       if (stop.kind === "activity") {
         const match =
-          activities.find((item) => normalized(item.name) === normalized(stop.title)) ??
           pickDefaultActivityForStop(stop, activities, {
             day,
             tripPrompt: options?.tripPrompt,
             hotelName: initial.hotelName,
             hotels,
+            blockedNames: usedActivityNames,
             fallbackCenter: options?.fallbackCenter,
           });
-        if (match?.name) initial.activities[key] = match.name;
+        if (match?.name) {
+          initial.activities[key] = match.name;
+          usedActivityNames.add(normalized(match.name));
+        }
       }
 
       if (stop.kind === "stay") {

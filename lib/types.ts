@@ -274,6 +274,11 @@ export interface ItineraryStop {
   websiteUrl?: string;
   allTrailsUrl?: string;
   estimatedCost?: number;
+  photoRef?: string;
+  photoUrl?: string;
+  rating?: number;
+  latitude?: number;
+  longitude?: number;
   kind?: "travel" | "stay" | "food" | "activity";
 }
 

@@ -245,6 +245,135 @@ function buildTests(): TestResult[] {
 
   {
     const prompt =
+      "Plan a 3-day weekend trip from Edmonton for 4 adults in early July with a total budget around $1,600 CAD. We want a mountain or lake destination within about 5 hours of driving, with one scenic hike that feels worth the drive, one relaxed waterfront or viewpoint stop, good coffee, one memorable dinner, and enough downtime that it does not feel packed.";
+    const budget = extractPromptBudget(prompt);
+    const draft = buildConversationalDraft(prompt, {}, new Date("2026-04-19"), {
+      preferPromptSignals: true,
+    });
+    const nextQuestion = getNextIntakeQuestion(draft);
+
+    tests.push({
+      id: "PI09D",
+      passed:
+        budget?.amount === 1600 &&
+        budget.scope === "group_total" &&
+        budget.approximate &&
+        draft.intent.requestedActivityName === undefined &&
+        draft.intent.hardConstraints.activityAnchor === undefined &&
+        draft.intent.softPreferences.wantsLowEffort &&
+        draft.intent.softPreferences.wantsRecoveryDays &&
+        draft.intent.strictBudget === false &&
+        draft.hasExplicitBudget &&
+        draft.budgetPerTraveler === 400 &&
+        nextQuestion === null,
+      details: `budget=${budget?.amount ?? "none"} scope=${budget?.scope ?? "none"} approx=${budget?.approximate ?? "none"} requested=${draft.intent.requestedActivityName ?? "none"} anchor=${draft.intent.hardConstraints.activityAnchor ?? "none"} lowEffort=${draft.intent.softPreferences.wantsLowEffort} recovery=${draft.intent.softPreferences.wantsRecoveryDays} strict=${draft.intent.strictBudget} explicit=${draft.hasExplicitBudget} draftBudget=${draft.budgetPerTraveler} next=${nextQuestion ?? "none"}`,
+    });
+  }
+
+  {
+    const prompt =
+      "Plan a 3-day summer outdoors trip from Corner Brook for 2 adults with a total budget around 1000 CAD. We want Gros Morne scenery, one scenic hike or viewpoint, casual seafood, a practical Rocky Harbour base, and enough downtime that it does not feel packed.";
+    const budget = extractPromptBudget(prompt);
+    const intent = deriveTripIntentFromPrompt(prompt);
+
+    tests.push({
+      id: "PI09E",
+      passed:
+        budget?.amount === 1000 &&
+        budget.scope === "group_total" &&
+        budget.approximate &&
+        intent.preferredDestination === "Gros Morne" &&
+        intent.activityFocus === "hiking" &&
+        intent.requestedActivityName === undefined,
+      details: `budget=${budget?.amount ?? "none"} scope=${budget?.scope ?? "none"} approx=${budget?.approximate ?? "none"} destination=${intent.preferredDestination ?? "none"} activity=${intent.activityFocus ?? "none"} requested=${intent.requestedActivityName ?? "none"}`,
+    });
+  }
+
+  {
+    const prompt =
+      "Plan a 3-day summer trip from Vancouver to Tofino or Ucluelet for 2 travelers with a 1200 CAD total budget. We want beach time, one coastal walk, good coffee, casual seafood, and not too many stops.";
+    const budget = extractPromptBudget(prompt);
+    const intent = deriveTripIntentFromPrompt(prompt);
+
+    tests.push({
+      id: "PI09F",
+      passed:
+        budget?.amount === 1200 &&
+        budget.scope === "group_total" &&
+        budget.approximate === false &&
+        intent.style === "chill" &&
+        intent.requestedActivityName === undefined,
+      details: `budget=${budget?.amount ?? "none"} scope=${budget?.scope ?? "none"} approx=${budget?.approximate ?? "none"} style=${intent.style} requested=${intent.requestedActivityName ?? "none"}`,
+    });
+  }
+
+  {
+    const prompt =
+      "Plan a 2-day solo reset in Whitehorse in summer with a 450 CAD budget. I want a Yukon River walk, good coffee, one low-key dinner, and no long drive.";
+    const budget = extractPromptBudget(prompt);
+    const intent = deriveTripIntentFromPrompt(prompt);
+
+    tests.push({
+      id: "PI09G",
+      passed:
+        budget?.amount === 450 &&
+        budget.scope === "group_total" &&
+        budget.approximate === false &&
+        intent.style === "solo reset" &&
+        intent.requestedActivityName === undefined,
+      details: `budget=${budget?.amount ?? "none"} scope=${budget?.scope ?? "none"} approx=${budget?.approximate ?? "none"} style=${intent.style} requested=${intent.requestedActivityName ?? "none"}`,
+    });
+  }
+
+  {
+    const prompt =
+      "Plan a 2-day hidden gems trip from Saskatoon to Prince Albert National Park for 2 travelers with about 650 CAD total. Keep it practical, include one quiet lake or forest stop, one simple dinner, and no tourist-trap filler.";
+    const intent = deriveTripIntentFromPrompt(prompt);
+
+    tests.push({
+      id: "PI09H",
+      passed:
+        intent.style === "hidden gems" &&
+        intent.preferredDestination === "Prince Albert National Park",
+      details: `style=${intent.style} destination=${intent.preferredDestination ?? "none"}`,
+    });
+  }
+
+  {
+    const prompt =
+      "Plan a 2-day winter ski overnight from Calgary to Banff for 2 people with about 750 CAD total. Make skiing the main event on day 2, include a cozy dinner on arrival night, and keep the rest easy.";
+    const intent = deriveTripIntentFromPrompt(prompt);
+
+    tests.push({
+      id: "PI09I",
+      passed:
+        intent.style === "adventure" &&
+        intent.activityFocus === "skiing" &&
+        intent.hardConstraints.activityAnchor === "ski_trip",
+      details: `style=${intent.style} activity=${intent.activityFocus ?? "none"} anchor=${intent.hardConstraints.activityAnchor ?? "none"}`,
+    });
+  }
+
+  {
+    const prompt =
+      "Plan a 2-day must-see trip from Moncton to Hopewell Rocks for 2 adults with 600 CAD total. Include the tide rocks, one easy coastal stop, seafood, and a relaxed pace.";
+    const budget = extractPromptBudget(prompt);
+    const intent = deriveTripIntentFromPrompt(prompt);
+
+    tests.push({
+      id: "PI09J",
+      passed:
+        budget?.amount === 600 &&
+        budget.scope === "group_total" &&
+        budget.approximate === false &&
+        intent.style === "must see" &&
+        intent.preferredDestination === "Hopewell Rocks",
+      details: `budget=${budget?.amount ?? "none"} scope=${budget?.scope ?? "none"} approx=${budget?.approximate ?? "none"} style=${intent.style} destination=${intent.preferredDestination ?? "none"}`,
+    });
+  }
+
+  {
+    const prompt =
       "Plan a 3-day relaxed mountain weekend from Calgary to Canmore in early summer for 2 travelers with a $400 per-person budget. We want one beginner-friendly scenic hike or lake walk, good coffee each morning, one relaxing spa or hot springs-style recovery stop, and no packed schedule. Keep drives between stops short, avoid steep summit hikes, include practical parking or shuttle advice, and make sure the must-haves include layers, water, sun protection, and bear spray.";
     const intent = deriveTripIntentFromPrompt(prompt);
 

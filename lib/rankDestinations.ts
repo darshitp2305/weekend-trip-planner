@@ -101,10 +101,12 @@ function destinationMatchesPreference(
 function getJoinedSignals(destination: ReturnType<typeof mapRawDestination>): string {
   return [
     destination.name,
+    destination.homeBaseCity,
     destination.summary,
     ...(destination.rawVibes ?? []),
     ...((destination.topActivities ?? []).map((a) => a.name)),
     ...((destination.topActivities ?? []).map((a) => a.type)),
+    ...((destination.hotelOptions ?? []).map((h) => h.name)),
     ...((destination.foodSpots ?? []).map((f) => f.name)),
     ...((destination.foodSpots ?? []).flatMap((f) => f.tags ?? [])),
   ]
@@ -565,6 +567,46 @@ function rankingFoodScore(food: FoodCandidate, input: TripInput): number {
   return score;
 }
 
+function promptWantsCoffeeSupport(input: TripInput): boolean {
+  return /\b(coffee|cafe|cafes|espresso|latte|bakery|roaster|roasters)\b/.test(
+    normalizeSearchText(input.tripPrompt)
+  );
+}
+
+function promptWantsDinnerSupport(input: TripInput): boolean {
+  return /\b(dinner|restaurant|restaurants|dining|supper)\b/.test(
+    normalizeSearchText(input.tripPrompt)
+  );
+}
+
+function hasCoffeeSupport(food?: FoodCandidate): boolean {
+  const text = foodSignalText(food);
+
+  return (
+    coffeeStopSpecificityScore(food) >= 45 ||
+    /\b(coffee|cafe|cafes|espresso|latte|bakery|roaster|roasters)\b/.test(text)
+  );
+}
+
+function destinationCoffeeSupportScore(destination: MappedDestination): number {
+  return (destination.foodSpots ?? []).reduce(
+    (best, food) => Math.max(best, hasCoffeeSupport(food) ? coffeeStopSpecificityScore(food) || 55 : 0),
+    0
+  );
+}
+
+function hasDinnerSupport(food?: FoodCandidate): boolean {
+  const text = foodSignalText(food);
+
+  return /\b(dinner|restaurant|restaurants|dining|bistro|pub|tavern|supper|main street)\b/.test(
+    text
+  );
+}
+
+function destinationDinnerSupportCount(destination: MappedDestination): number {
+  return (destination.foodSpots ?? []).filter(hasDinnerSupport).length;
+}
+
 function sanitizeDestinationCatalog(
   destination: MappedDestination,
   input: TripInput
@@ -842,6 +884,204 @@ function getGetawaySignal(destination: ReturnType<typeof mapRawDestination>): nu
   return countMatches(text, keywords);
 }
 
+function promptPrefersNearbyTrip(input: TripInput): boolean {
+  const text = normalizeSearchText(input.tripPrompt);
+
+  return countMatches(text, [
+    "close",
+    "nearby",
+    "easy drive",
+    "short drive",
+    "minimal driving",
+    "quick getaway",
+    "local",
+  ]) >= 1;
+}
+
+function promptFramesRoadTrip(input: TripInput): boolean {
+  const promptIntent = deriveTripIntentFromPrompt(input.tripPrompt);
+  const text = normalizeSearchText(input.tripPrompt);
+
+  return (
+    input.tripLengthDays >= 4 ||
+    promptIntent.softPreferences.wantsGetawayFeel ||
+    countMatches(text, [
+      "road trip",
+      "weekend away",
+      "worth the drive",
+      "within about",
+      "within around",
+      "within roughly",
+    ]) >= 1
+  );
+}
+
+function promptIsValueConscious(input: TripInput): boolean {
+  const text = normalizeSearchText(input.tripPrompt);
+
+  return (
+    input.budget > 0 &&
+    countMatches(text, [
+      "not overly expensive",
+      "not too expensive",
+      "avoid expensive",
+      "avoid very expensive",
+      "skip luxury",
+      "no luxury",
+      "budget",
+      "affordable",
+      "good value",
+      "value",
+    ]) >= 1
+  );
+}
+
+function promptAvoidsTouristTrapEnergy(input: TripInput): boolean {
+  const text = normalizeSearchText(input.tripPrompt);
+
+  return (
+    countMatches(text, [
+      "avoid tourist trap",
+      "avoid tourist traps",
+      "tourist trap",
+      "tourist traps",
+      "not touristy",
+      "too touristy",
+      "avoid touristy",
+      "avoid packed",
+      "avoid crowds",
+      "avoid crowded",
+      "packed itinerary",
+      "packed tourist",
+      "skip luxury",
+      "avoid luxury",
+      "luxury resort",
+      "expensive resort",
+      "skip resorts",
+      "avoid resorts",
+    ]) >= 1
+  );
+}
+
+function getRoadTripDepthSignal(destination: MappedDestination): number {
+  const text = getJoinedSignals(destination);
+
+  return countMatches(text, [
+    "road trip",
+    "ferry",
+    "coast",
+    "coastal",
+    "island",
+    "corridor",
+    "day drive",
+    "scenic driving",
+    "small town",
+    "lake",
+    "mountain",
+    "mountains",
+  ]);
+}
+
+function getTouristTrapSignal(destination: MappedDestination): number {
+  const text = getJoinedSignals(destination);
+  let score = 0;
+
+  score += countMatches(text, [
+    "whistler",
+    "village",
+    "resort",
+    "gondola",
+    "ski",
+    "tourist",
+    "iconic",
+    "must see",
+    "peak 2 peak",
+    "luxury",
+  ]);
+
+  if (destination.budgetLevel === "high") score += 3;
+  if (destination.homeBaseCity.toLowerCase().includes("village")) score += 2;
+
+  return score;
+}
+
+function getLowTouristRoadTripSignal(destination: MappedDestination): number {
+  const text = getJoinedSignals(destination);
+  return countMatches(text, [
+    "coast",
+    "coastal",
+    "island",
+    "forest",
+    "road trip",
+    "small town",
+    "local",
+    "relaxed",
+    "quiet",
+    "beach",
+    "lake",
+    "corridor",
+  ]);
+}
+
+function calculateTouristTrapFitScore(
+  destination: MappedDestination,
+  input: TripInput
+): {
+  score: number;
+  warnings: string[];
+  rankingReasons: RankingReason[];
+  constraintStrength: number;
+} {
+  const warnings: string[] = [];
+  const rankingReasons: RankingReason[] = [];
+
+  if (!promptAvoidsTouristTrapEnergy(input)) {
+    return { score: 0, warnings, rankingReasons, constraintStrength: 0 };
+  }
+
+  const touristSignal = getTouristTrapSignal(destination);
+  const lowTouristSignal = getLowTouristRoadTripSignal(destination);
+  let score = 0;
+  let constraintStrength = 0;
+
+  if (touristSignal >= 7) {
+    score -= 28;
+    constraintStrength -= 4;
+    warnings.push("Resort or tourist-heavy fit conflicts with the brief");
+    rankingReasons.push({
+      label: "Too resort/tourist-heavy for the brief",
+      impact: "negative",
+    });
+  } else if (touristSignal >= 4) {
+    score -= 16;
+    constraintStrength -= 2;
+    warnings.push("May feel too tourist-oriented for this prompt");
+    rankingReasons.push({
+      label: "More tourist-oriented than the brief asks for",
+      impact: "negative",
+    });
+  }
+
+  if (lowTouristSignal >= 5 && touristSignal < 6) {
+    score += 12;
+    constraintStrength += 3;
+    rankingReasons.push({
+      label: "Better fit for avoiding tourist-trap energy",
+      impact: "positive",
+    });
+  } else if (lowTouristSignal >= 3 && touristSignal < 5) {
+    score += 6;
+    constraintStrength += 1;
+  }
+
+  return {
+    score: round2(score),
+    warnings,
+    rankingReasons,
+    constraintStrength,
+  };
+}
+
 function getVeganSignal(destination: ReturnType<typeof mapRawDestination>): number {
   if (destination.veganFriendly) return 2;
 
@@ -1010,7 +1250,11 @@ function estimateDestinationCost(
 ): number {
   const travelerCount = Math.max(1, input.travelerCount);
   const nights = Math.max(1, input.tripLengthDays - 1);
-  const nightlyHotel = destination.isStaycation
+  const promptText = normalizeSearchText(input.tripPrompt);
+  const localNoHotelTrip =
+    destination.driveHoursFromStart <= 0.5 &&
+    /\b(?:staycation|staycation style|no long drive|local)\b/.test(promptText);
+  const nightlyHotel = destination.isStaycation || localNoHotelTrip
     ? 0
     : destination.hotelOptions?.[0]?.pricePerNight ?? 150;
 
@@ -1433,6 +1677,11 @@ function calculatePromptConstraintScore(
   const vegetarianSignal = getVegetarianFoodSignal(destination);
   const foodieSignal = getFoodieSignal(destination);
   const getawaySignal = getGetawaySignal(destination);
+  const wantsCoffeeSupport = promptWantsCoffeeSupport(input);
+  const wantsDinnerSupport = promptWantsDinnerSupport(input);
+  const coffeeSupportScore = destinationCoffeeSupportScore(destination);
+  const dinnerSupportCount = destinationDinnerSupportCount(destination);
+  const foodStopCount = destination.foodSpots?.length ?? 0;
   const hasRequestedActivity = destinationHasRequestedActivity(
     destination,
     promptIntent.requestedActivityName
@@ -1593,6 +1842,51 @@ function calculatePromptConstraintScore(
     }
   }
 
+  if (wantsCoffeeSupport) {
+    promptConstraintStrength += 1;
+
+    if (coffeeSupportScore >= 45) {
+      score += 14;
+      matchReasons.push("Clear coffee or cafe support for the food brief");
+      rankingReasons.push({
+        label: "Coffee or cafe support is clearer",
+        impact: "positive",
+      });
+    } else {
+      score -= 16;
+      warnings.push("Coffee or cafe support is thin for this brief");
+      rankingReasons.push({
+        label: "Coffee or cafe support is thin for this brief",
+        impact: "negative",
+      });
+    }
+  }
+
+  if (wantsDinnerSupport) {
+    promptConstraintStrength += 1;
+
+    if (dinnerSupportCount > 0) {
+      score += 8;
+      matchReasons.push("Dinner-style food support is available");
+    } else {
+      score -= 8;
+      warnings.push("Dinner-style food support is thin for this brief");
+    }
+  }
+
+  if (wantsCoffeeSupport && wantsDinnerSupport) {
+    if (foodStopCount >= 2 && coffeeSupportScore >= 45 && dinnerSupportCount > 0) {
+      score += 6;
+      rankingReasons.push({
+        label: "Food options can cover both coffee and dinner",
+        impact: "positive",
+      });
+    } else if (foodStopCount < 2) {
+      score -= 6;
+      warnings.push("Food list is thin for both coffee and dinner stops");
+    }
+  }
+
   if (promptIntent.softPreferences.wantsGetawayFeel) {
     if (!destination.isStaycation && getawaySignal >= 4) {
       score += 5;
@@ -1693,13 +1987,20 @@ function calculateBudgetScore(
 
   const ratio = estimatedCost / input.budget;
   const overBudget = estimatedCost - input.budget;
+  const valueConscious = promptIsValueConscious(input);
 
   let score = 0;
 
   if (ratio <= 1) {
     score = clamp((1 - ratio) * 18, 0, 12);
+    if (valueConscious) {
+      score += ratio <= 0.9 ? 3 : 1;
+    }
   } else {
     score = clamp(-8 - (ratio - 1) * 35, -40, -8);
+    if (valueConscious) {
+      score -= 8;
+    }
   }
 
   if (ratio <= 0.75) {
@@ -1711,6 +2012,10 @@ function calculateBudgetScore(
     warnings.push(`Slightly over budget by about ${formatMoney(overBudget)}`);
   } else {
     warnings.push(`Over budget by about ${formatMoney(overBudget)}`);
+  }
+
+  if (valueConscious && ratio > 1) {
+    warnings.push("Pushes against the value-conscious budget brief");
   }
 
   return {
@@ -1886,6 +2191,89 @@ function calculateShortTripPenalty(
   }
 
   return { score: 0, warnings };
+}
+
+function calculateTripShapeScore(
+  destination: MappedDestination,
+  input: TripInput
+): {
+  score: number;
+  warnings: string[];
+  rankingReasons: RankingReason[];
+  tripShapeStrength: number;
+} {
+  const warnings: string[] = [];
+  const rankingReasons: RankingReason[] = [];
+
+  if (
+    input.preferredDestination?.trim() ||
+    input.maxDriveHours < 3.5 ||
+    !promptFramesRoadTrip(input) ||
+    promptPrefersNearbyTrip(input)
+  ) {
+    return { score: 0, warnings, rankingReasons, tripShapeStrength: 0 };
+  }
+
+  const driveRatio =
+    input.maxDriveHours > 0
+      ? destination.driveHoursFromStart / input.maxDriveHours
+      : 1;
+  const depthSignal = getRoadTripDepthSignal(destination);
+  let score = 0;
+  let tripShapeStrength = 0;
+
+  if (destination.isStaycation) {
+    score -= 12;
+    warnings.push("This reads more like a home-base option than a road-trip plan");
+    rankingReasons.push({
+      label: "Too local for the road-trip brief",
+      impact: "negative",
+    });
+    return { score, warnings, rankingReasons, tripShapeStrength: -2 };
+  }
+
+  if (driveRatio < 0.35) {
+    score -= input.tripLengthDays >= 4 ? 22 : 14;
+    warnings.push("Uses very little of the requested road-trip radius");
+    rankingReasons.push({
+      label: "Too close for the requested road-trip shape",
+      impact: "negative",
+    });
+    tripShapeStrength -= 2;
+  } else if (driveRatio >= 0.55 && driveRatio <= 0.95) {
+    score += input.tripLengthDays >= 4 ? 10 : 5;
+    rankingReasons.push({
+      label: "Makes better use of the requested road-trip window",
+      impact: "positive",
+    });
+    tripShapeStrength += 2;
+  } else if (driveRatio >= 0.4) {
+    score += 4;
+    tripShapeStrength += 1;
+  }
+
+  if (depthSignal >= 5) {
+    score += 18;
+    rankingReasons.push({
+      label: "Richer route-and-destination shape for a longer trip",
+      impact: "positive",
+    });
+    tripShapeStrength += 2;
+  } else if (depthSignal >= 3) {
+    score += 8;
+    tripShapeStrength += 1;
+  } else if (input.tripLengthDays >= 4 && driveRatio < 0.5) {
+    score -= 6;
+    warnings.push("Trip depth looks thin for four days");
+    tripShapeStrength -= 1;
+  }
+
+  return {
+    score: round2(score),
+    warnings,
+    rankingReasons,
+    tripShapeStrength,
+  };
 }
 
 function calculateLiveDataScore(
@@ -2288,7 +2676,10 @@ function buildRankingReasons(args: {
 
     const lower = item.label.toLowerCase();
 
-    if (
+    if (lower.includes("tourist") || lower.includes("resort")) {
+      priority = 1;
+      weight = 96;
+    } else if (
       lower.includes("adventure") ||
       lower.includes("foodie") ||
       lower.includes("calm") ||
@@ -2299,7 +2690,10 @@ function buildRankingReasons(args: {
     } else if (
       lower.includes("getaway") ||
       lower.includes("limits") ||
-      lower.includes("staycation")
+      lower.includes("staycation") ||
+      lower.includes("road-trip") ||
+      lower.includes("road trip") ||
+      lower.includes("route-and-destination")
     ) {
       priority = 2;
       weight = 76;
@@ -2477,6 +2871,8 @@ export function rankDestinations(
       const staycationPart = calculateStaycationAdjustment(destination, input);
       const getawayValuePart = calculateGetawayValueScore(destination, input);
       const shortTripPart = calculateShortTripPenalty(destination, input);
+      const tripShapePart = calculateTripShapeScore(destination, input);
+      const touristTrapPart = calculateTouristTrapFitScore(destination, input);
       const liveDataPart = calculateLiveDataScore(destination, input);
 
       const styleMatchStrength = getStyleMatchStrength(
@@ -2500,6 +2896,8 @@ export function rankDestinations(
         ...veganPart.warnings,
         ...staycationPart.warnings,
         ...shortTripPart.warnings,
+        ...tripShapePart.warnings,
+        ...touristTrapPart.warnings,
       ]);
 
       const extraReasonItems: RankingReason[] = [
@@ -2509,6 +2907,8 @@ export function rankDestinations(
         ...veganPart.rankingReasons,
         ...(staycationPart.extraReason ? [staycationPart.extraReason] : []),
         ...getawayValuePart.rankingReasons,
+        ...tripShapePart.rankingReasons,
+        ...touristTrapPart.rankingReasons,
       ];
 
       const budgetRatio = input.budget > 0 ? estimatedCost / input.budget : 1;
@@ -2529,6 +2929,8 @@ export function rankDestinations(
         staycationPart.score +
         getawayValuePart.score +
         shortTripPart.score +
+        tripShapePart.score +
+        touristTrapPart.score +
         liveDataPart.score +
         tinyDeterministicTieBreaker(destination.name);
 

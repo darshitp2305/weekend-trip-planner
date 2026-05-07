@@ -19,11 +19,17 @@ import {
 } from "./placeMappers";
 import { sortHotelOptions } from "./hotelAvailability";
 import { fetchHotelsDotComHotelData } from "./hotelsDotComHotelProvider";
-import { fetchPlacesProviderData } from "./placesProvider";
+import {
+  fetchPlacesProviderData,
+  type PlacesProviderResult,
+} from "./placesProvider";
 import { reportProviderEvent } from "./providerTelemetry";
 import { searchHotelsWithSerpApi } from "./serpApiHotels";
 import { deriveTripIntentFromPrompt } from "./tripIntent";
-import { isGenericActivityDisplayName } from "./tripSpecificity";
+import {
+  isGenericActivityDisplayName,
+  scenicHikeSpecificityScore,
+} from "./tripSpecificity";
 
 const ENRICH_CACHE_TTL_MS = 1000 * 60 * 20;
 
@@ -33,6 +39,35 @@ type EnrichmentCacheEntry = {
 };
 
 const enrichCache = new Map<string, EnrichmentCacheEntry>();
+
+function buildPlacePhotoUrl(photoRef?: string) {
+  const ref = photoRef?.trim();
+  if (!ref) return undefined;
+
+  return `/api/place-photo?ref=${encodeURIComponent(ref)}&w=1600&h=1200`;
+}
+
+function pickLiveHeroImage(options: {
+  activities: Activity[];
+  restaurants: ReturnType<typeof mapGooglePlaceToFoodSpot>[];
+  cafes: ReturnType<typeof mapGooglePlaceToFoodSpot>[];
+  hotels: HotelOption[];
+}) {
+  const candidates = [
+    ...options.activities,
+    ...options.hotels,
+    ...options.restaurants,
+    ...options.cafes,
+  ];
+
+  for (const candidate of candidates) {
+    const photoUrl =
+      buildPlacePhotoUrl(candidate.photoRef) ?? candidate.photoUrl?.trim();
+    if (photoUrl) return photoUrl;
+  }
+
+  return undefined;
+}
 
 // Use averages only as a supporting signal for ranking copy and confidence.
 // Missing ratings are common in provider responses, so undefined is meaningful.
@@ -115,11 +150,13 @@ function promptRequestsOneEasyScenicHike(input: TripInput) {
   const wantsGentlePacing =
     promptIntent.softPreferences.wantsLowEffort ||
     promptIntent.softPreferences.wantsRecoveryDays ||
-    /\b(?:beginner friendly|easy|relaxing|relax|no packed schedule|not packed|not hectic|not overplanned)\b/.test(
+    /\b(?:beginner friendly|easy|relaxing|relax|downtime|does not feel rushed|doesn t feel rushed|not rushed|avoid packed|avoid packed tourist|no packed schedule|not packed|not hectic|not overplanned)\b/.test(
       promptText
     );
+  const asksForStandoutScenicHike =
+    /\b(?:standout scenic hike|standout hike|scenic hike)\b/.test(promptText);
 
-  return wantsHike && asksForOneHike && wantsGentlePacing;
+  return wantsHike && asksForOneHike && (wantsGentlePacing || asksForStandoutScenicHike);
 }
 
 function promptExplicitlyWantsWellness(prompt?: string) {
@@ -163,6 +200,86 @@ function isBridgeOnlyActivity(
   );
 }
 
+function isViewpointOnlyActivity(
+  activity?: Pick<Activity, "name" | "type" | "shortDescription">
+) {
+  const nameText = normalizeActivityName(activity?.name);
+  const fullText = activitySignalText(activity);
+  const nameLooksLikeViewpoint =
+    nameText.includes("viewpoint") ||
+    nameText.includes("view point") ||
+    nameText.includes("lookout") ||
+    nameText.includes("vista");
+  const routeSignal =
+    fullText.includes("trail") ||
+    fullText.includes("hike") ||
+    fullText.includes("loop") ||
+    fullText.includes("walk") ||
+    fullText.includes("coast trail") ||
+    fullText.includes("coastal trail");
+
+  return nameLooksLikeViewpoint && !routeSignal;
+}
+
+function hasMainScenicHikeRouteSignal(
+  activity?: Pick<Activity, "name" | "type" | "shortDescription">
+) {
+  const text = activitySignalText(activity);
+
+  return (
+    text.includes("trail") ||
+    text.includes("hike") ||
+    text.includes("loop") ||
+    text.includes("backcountry") ||
+    text.includes("coast trail") ||
+    text.includes("coastal trail")
+  );
+}
+
+function hasStandoutScenicHikeSignal(
+  activity?: Pick<Activity, "name" | "type" | "shortDescription">
+) {
+  const text = activitySignalText(activity);
+
+  return (
+    text.includes("coast") ||
+    text.includes("coastal") ||
+    text.includes("ocean") ||
+    text.includes("bluff") ||
+    text.includes("waterfall") ||
+    text.includes("canyon") ||
+    text.includes("lake") ||
+    text.includes("mountain") ||
+    text.includes("forest") ||
+    text.includes("scenic")
+  );
+}
+
+function isRelaxedScenicOnlyActivity(
+  activity?: Pick<Activity, "name" | "type" | "shortDescription">
+) {
+  const text = activitySignalText(activity);
+  const relaxedSignal =
+    text.includes("shoreline") ||
+    text.includes("waterfront") ||
+    text.includes("wharf") ||
+    text.includes("spit") ||
+    text.includes("potholes") ||
+    text.includes("beach") ||
+    text.includes("viewpoint") ||
+    text.includes("view point") ||
+    text.includes("lookout");
+  const routeSignal =
+    text.includes("trail") ||
+    text.includes("hike") ||
+    text.includes("loop") ||
+    text.includes("coast trail") ||
+    text.includes("coastal trail") ||
+    text.includes("bluff");
+
+  return relaxedSignal && !routeSignal;
+}
+
 function isPromptMatchedEasyScenicActivity(
   activity?: Pick<Activity, "name" | "type" | "shortDescription">
 ) {
@@ -180,15 +297,27 @@ function isPromptMatchedEasyScenicActivity(
     return false;
   }
 
+  if (isViewpointOnlyActivity(activity)) {
+    return false;
+  }
+
+  if (isRelaxedScenicOnlyActivity(activity)) {
+    return false;
+  }
+
+  if (
+    !hasMainScenicHikeRouteSignal(activity) ||
+    !hasStandoutScenicHikeSignal(activity)
+  ) {
+    return false;
+  }
+
   return (
-    text.includes("trail") ||
-    text.includes("hike") ||
-    text.includes("lake") ||
-    text.includes("boardwalk") ||
-    text.includes("walk") ||
-    text.includes("loop") ||
-    text.includes("falls") ||
-    text.includes("canyon")
+    scenicHikeSpecificityScore(activity) >= 65 ||
+    text.includes("coast trail") ||
+    text.includes("coastal trail") ||
+    text.includes("bluff trail") ||
+    text.includes("shoreline trail")
   );
 }
 
@@ -214,7 +343,33 @@ function mergeNamedPlaces<T extends { name?: string }>(
   fallback: T[],
   limit: number
 ) {
-  return dedupeByName([...preferred, ...fallback]).slice(0, limit);
+  const merged = new Map<string, T>();
+
+  for (const item of [...preferred, ...fallback]) {
+    const key = normalizeName(item.name);
+    if (!key) continue;
+
+    const existing = merged.get(key);
+    if (!existing) {
+      merged.set(key, item);
+      continue;
+    }
+
+    merged.set(key, {
+      ...existing,
+      ...Object.fromEntries(
+        Object.entries(item as Record<string, unknown>).filter(([field, value]) => {
+          return (
+            value !== undefined &&
+            value !== "" &&
+            (existing as Record<string, unknown>)[field] === undefined
+          );
+        })
+      ),
+    });
+  }
+
+  return Array.from(merged.values()).slice(0, limit);
 }
 
 function normalizeLocationText(value?: string) {
@@ -233,6 +388,13 @@ const GENERIC_LOCATION_TERMS = new Set([
   "national",
   "provincial",
   "park",
+  "island",
+  "coast",
+  "valley",
+  "mountains",
+  "mountain",
+  "river",
+  "lake",
   "county",
   "district",
   "town",
@@ -261,13 +423,23 @@ function uniqueStrings(values: Array<string | undefined>) {
   ) as string[];
 }
 
+function locationPhraseVariants(value?: string) {
+  const normalized = normalizeLocationText(value);
+  if (!normalized) return [];
+
+  const splitPhrases = (value ?? "")
+    .split(/\s*(?:\/|\+|&|\band\b|\bor\b|,)\s*/iu)
+    .map(normalizeLocationText)
+    .filter((phrase) => phrase.length >= 3);
+
+  return uniqueStrings([normalized, ...splitPhrases]);
+}
+
 function destinationLocationContext(
   trip: RankedDestination
 ): DestinationLocationContext {
-  const primaryPhrases = uniqueStrings([normalizeLocationText(trip.name)]);
-  const secondaryPhrases = uniqueStrings([
-    normalizeLocationText(trip.homeBaseCity),
-  ]);
+  const primaryPhrases = locationPhraseVariants(trip.name);
+  const secondaryPhrases = locationPhraseVariants(trip.homeBaseCity);
 
   return {
     primaryPhrases,
@@ -347,6 +519,27 @@ function placeSearchText(place: GooglePlace) {
       place.primaryType,
     ].join(" ")
   );
+}
+
+function dedupeGooglePlaces(places: GooglePlace[]) {
+  const seen = new Set<string>();
+  const result: GooglePlace[] = [];
+
+  for (const place of places) {
+    const key = [
+      place.id?.trim().toLowerCase(),
+      place.displayName?.text?.trim().toLowerCase(),
+      place.formattedAddress?.trim().toLowerCase(),
+    ]
+      .filter(Boolean)
+      .join("|");
+
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    result.push(place);
+  }
+
+  return result;
 }
 
 function placeDisplayName(place: GooglePlace) {
@@ -1051,7 +1244,7 @@ async function fetchSerpApiHotelInventory(options: {
 
 function createEnrichCacheKey(trip: RankedDestination, input: TripInput) {
   return JSON.stringify({
-    plannerVersion: "canmore-quality-v3",
+    plannerVersion: "south-island-quality-v2",
     name: trip.name,
     province: trip.province,
     startCity: input.startCity,
@@ -1109,6 +1302,39 @@ function deriveProviderOutcome(options: {
   if (options.attempted) return "live_unavailable" as const;
   if (options.usedFallback) return "fallback_used" as const;
   return "fallback_used" as const;
+}
+
+function splitSearchBase(value?: string) {
+  return (value ?? "")
+    .split(/\s*(?:\/|\+|&|\band\b|\bor\b|,)\s*/iu)
+    .map((item) => item.trim())
+    .filter((item) => item.length >= 3);
+}
+
+function buildPlaceSearchDestinations(trip: RankedDestination) {
+  const province = trip.province;
+  const homeBases = splitSearchBase(trip.homeBaseCity);
+  const homeBaseDestinations = homeBases
+    .filter((base) => !normalizeLocationText(base).includes("staycation"))
+    .map((base) => `${base}, ${province}`);
+
+  const destinations = uniqueStrings([
+    ...homeBaseDestinations,
+    `${trip.name}, ${province}`,
+  ]);
+
+  return destinations.slice(0, homeBaseDestinations.length > 0 ? 3 : 1);
+}
+
+function mergePlacesProviderResults(
+  results: PlacesProviderResult[]
+): PlacesProviderResult {
+  return {
+    restaurants: dedupeGooglePlaces(results.flatMap((result) => result.restaurants)),
+    cafes: dedupeGooglePlaces(results.flatMap((result) => result.cafes)),
+    activities: dedupeGooglePlaces(results.flatMap((result) => result.activities)),
+    hotels: dedupeGooglePlaces(results.flatMap((result) => result.hotels)),
+  };
 }
 
 function evaluateLivePromptFit(
@@ -1218,23 +1444,30 @@ export async function enrichRankedTrip(
 
   const destinationQuery = `${trip.name}, ${trip.province}`;
   const hotelDestinationQuery = `${trip.homeBaseCity || trip.name}, ${trip.province}`;
+  const placeSearchDestinations = buildPlaceSearchDestinations(trip);
   const sourceCheckedAt = new Date().toISOString();
 
   try {
     const locationContext = destinationLocationContext(trip);
     const [placesData, hotelsDotComHotels, serpApiHotels] =
       await Promise.all([
-        fetchPlacesProviderData({
-          destination: destinationQuery,
-          style: input.style,
-          activityFocus: input.activityFocus,
-          veganFriendly: input.veganFriendly,
-          tripPrompt: input.tripPrompt,
-          tripStartDate: input.tripStartDate,
-          tripEndDate: input.tripEndDate,
-          latitude: trip.latitude,
-          longitude: trip.longitude,
-        }),
+        Promise.all(
+          placeSearchDestinations.map((destination) =>
+            fetchPlacesProviderData({
+              destination,
+              style: input.style,
+              activityFocus: input.activityFocus,
+              veganFriendly: input.veganFriendly,
+              tripPrompt: input.tripPrompt,
+              tripStartDate: input.tripStartDate,
+              tripEndDate: input.tripEndDate,
+              latitude:
+                placeSearchDestinations.length === 1 ? trip.latitude : undefined,
+              longitude:
+                placeSearchDestinations.length === 1 ? trip.longitude : undefined,
+            })
+          )
+        ).then(mergePlacesProviderResults),
         fetchHotelsDotComHotelData({
           destination: hotelDestinationQuery,
           tripStartDate: input.tripStartDate,
@@ -1310,9 +1543,16 @@ export async function enrichRankedTrip(
       interleaveArrays(liveRestaurants, liveCafes)
     );
 
+    const shouldPreserveCuratedFood =
+      /\b(coffee|cafe|espresso|latte|bakery|dinner|restaurant|meal|food)\b/i.test(
+        input.tripPrompt ?? ""
+      );
+    const curatedFoodSpots = (trip.foodSpots ?? []).filter(hasName);
     const mergedFoodSpots =
       balancedFoodSpots.length > 0
-        ? balancedFoodSpots.slice(0, 12)
+        ? shouldPreserveCuratedFood
+          ? mergeNamedPlaces(curatedFoodSpots, balancedFoodSpots, 12)
+          : mergeNamedPlaces(balancedFoodSpots, curatedFoodSpots, 12)
         : trip.foodSpots;
 
     const promptIntent = deriveTripIntentFromPrompt(input.tripPrompt);
@@ -1336,9 +1576,16 @@ export async function enrichRankedTrip(
           : liveActivities.slice(0, 12)
         : trip.topActivities;
 
+    const promptWantsPracticalBase =
+      promptRequestsOneEasyScenicHike(input) ||
+      /\b(route|lodging|practical|make practical sense|avoid packed|not rushed|downtime|skip luxury|luxury resorts)\b/i.test(
+        input.tripPrompt ?? ""
+      );
     const mergedHotels =
       liveHotels.length > 0
-        ? liveHotels.slice(0, 6)
+        ? promptWantsPracticalBase && staticHotels.length > 0
+          ? mergeHotelCollections(staticHotels, liveHotels).slice(0, 6)
+          : liveHotels.slice(0, 6)
         : sortHotelOptions(trip.hotelOptions ?? []);
 
     const hasLiveResults =
@@ -1384,6 +1631,12 @@ export async function enrichRankedTrip(
       mergedFoodSpots,
       input
     );
+    const liveHeroImageUrl = pickLiveHeroImage({
+      activities: liveActivities,
+      restaurants: liveRestaurants,
+      cafes: liveCafes,
+      hotels: liveHotels as HotelOption[],
+    });
 
     const rankingReasons: RankingReason[] = Array.isArray(trip.rankingReasons)
       ? [...trip.rankingReasons]
@@ -1428,6 +1681,10 @@ export async function enrichRankedTrip(
       foodSpots: mergedFoodSpots,
       topActivities: promptShapedActivities,
       hotelOptions: mergedHotels as HotelOption[],
+      imageUrl: liveHeroImageUrl ?? trip.imageUrl,
+      imageUrlLight: liveHeroImageUrl ?? trip.imageUrlLight ?? trip.imageUrl,
+      imageUrlDark:
+        liveHeroImageUrl ?? trip.imageUrlDark ?? trip.imageUrlLight ?? trip.imageUrl,
       liveDataSummary,
       sourceCheckedAt,
       providerStatus,

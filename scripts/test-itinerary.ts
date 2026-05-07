@@ -17,6 +17,7 @@ type Evaluation = {
   stylePassed: boolean;
   budgetPassed: boolean;
   lengthPassed: boolean;
+  qualityPassed: boolean;
   chosenDestination?: string;
   totalExpected?: number;
   notes: string[];
@@ -48,6 +49,9 @@ function makeInput(partial: Partial<TripInput> & Pick<TripInput, "style">): Trip
     includeStaycations: partial.includeStaycations ?? true,
     strictBudget: partial.strictBudget ?? false,
     preferredDestination: partial.preferredDestination,
+    tripPrompt: partial.tripPrompt,
+    activityFocus: partial.activityFocus,
+    departureTime: partial.departureTime,
     tripStartDate,
     tripEndDate: deriveTripEndDate(tripStartDate, tripLengthDays),
   };
@@ -76,6 +80,25 @@ function buildCases(): TestCase[] {
     { id: "T19", input: makeInput({ style: "hidden gems", startCity: "Edmonton", budgetPerTraveler: 380, budget: 760, tripLengthDays: 4, maxDriveHours: 5 }) },
     { id: "T20", input: makeInput({ style: "adventure", startCity: "Calgary", budgetPerTraveler: 275, budget: 550, tripLengthDays: 2, maxDriveHours: 3, strictBudget: true, includeStaycations: false }) },
     { id: "T21", input: makeInput({ style: "must see", startCity: "Calgary", budgetPerTraveler: 475, budget: 950, tripLengthDays: 3, maxDriveHours: 4, preferredDestination: "Banff" }) },
+    { id: "T22", input: makeInput({ style: "foodie", startCity: "Vancouver", budgetPerTraveler: 300, budget: 600, tripLengthDays: 2, maxDriveHours: 3, veganFriendly: true }) },
+    { id: "T23", input: makeInput({ style: "chill", startCity: "Victoria", budgetPerTraveler: 300, budget: 600, tripLengthDays: 3, maxDriveHours: 3.5 }) },
+    { id: "T24", input: makeInput({ style: "outdoors", startCity: "Kelowna", budgetPerTraveler: 375, budget: 750, tripLengthDays: 3, maxDriveHours: 4.5 }) },
+    { id: "T25", input: makeInput({ style: "adventure", startCity: "Kamloops", budgetPerTraveler: 325, budget: 650, tripLengthDays: 2, maxDriveHours: 4, includeStaycations: false }) },
+    { id: "T26", input: makeInput({ style: "hidden gems", startCity: "Saskatoon", budgetPerTraveler: 325, budget: 650, tripLengthDays: 3, maxDriveHours: 4.5 }) },
+    { id: "T27", input: makeInput({ style: "must see", startCity: "Winnipeg", budgetPerTraveler: 350, budget: 700, tripLengthDays: 3, maxDriveHours: 4.5 }) },
+    { id: "T28", input: makeInput({ style: "foodie", startCity: "Toronto", budgetPerTraveler: 375, budget: 750, tripLengthDays: 2, maxDriveHours: 3, veganFriendly: true }) },
+    { id: "T29", input: makeInput({ style: "chill", startCity: "Ottawa", budgetPerTraveler: 375, budget: 750, tripLengthDays: 3, maxDriveHours: 3.5 }) },
+    { id: "T30", input: makeInput({ style: "must see", startCity: "Montreal", budgetPerTraveler: 400, budget: 800, tripLengthDays: 3, maxDriveHours: 4 }) },
+    { id: "T31", input: makeInput({ style: "hidden gems", startCity: "Quebec City", budgetPerTraveler: 350, budget: 700, tripLengthDays: 3, maxDriveHours: 4 }) },
+    { id: "T32", input: makeInput({ style: "outdoors", startCity: "Halifax", budgetPerTraveler: 425, budget: 850, tripLengthDays: 3, maxDriveHours: 4.5 }) },
+    { id: "T33", input: makeInput({ style: "must see", startCity: "St. John's", budgetPerTraveler: 450, budget: 900, tripLengthDays: 3, maxDriveHours: 4 }) },
+    { id: "T34", input: makeInput({ style: "solo reset", startCity: "Whitehorse", travelerCount: 1, budgetPerTraveler: 450, budget: 450, tripLengthDays: 2, maxDriveHours: 2.5, strictBudget: true }) },
+    { id: "T35", input: makeInput({ style: "chill", startCity: "Yellowknife", travelerCount: 1, budgetPerTraveler: 500, budget: 500, tripLengthDays: 2, maxDriveHours: 2.5 }) },
+    { id: "T36", input: makeInput({ style: "outdoors", startCity: "Iqaluit", travelerCount: 1, budgetPerTraveler: 500, budget: 500, tripLengthDays: 2, maxDriveHours: 2 }) },
+    { id: "T37", input: makeInput({ style: "foodie", startCity: "Moncton", budgetPerTraveler: 325, budget: 650, tripLengthDays: 2, maxDriveHours: 3 }) },
+    { id: "T38", input: makeInput({ style: "chill", startCity: "Charlottetown", budgetPerTraveler: 350, budget: 700, tripLengthDays: 3, maxDriveHours: 3.5 }) },
+    { id: "T39", input: makeInput({ style: "adventure", startCity: "Prince George", budgetPerTraveler: 425, budget: 850, tripLengthDays: 3, maxDriveHours: 5 }) },
+    { id: "T40", input: makeInput({ style: "hidden gems", startCity: "Nanaimo", budgetPerTraveler: 350, budget: 700, tripLengthDays: 2, maxDriveHours: 3.5, includeStaycations: false }) },
   ];
 }
 
@@ -187,6 +210,96 @@ function evaluateBudget(plan: TripPlan, input: TripInput): { passed: boolean; no
   };
 }
 
+function normalizeStopName(value?: string): string {
+  return (value ?? "")
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function evaluatePlanQuality(plan: TripPlan, input: TripInput): { passed: boolean; notes: string[] } {
+  const notes: string[] = [];
+  const itineraryText = joinedItineraryText(plan);
+  const activityStops = plan.itineraryDays.flatMap((day) =>
+    day.stops.filter((stop) => stop.kind === "activity")
+  );
+  const foodStops = plan.itineraryDays.flatMap((day) =>
+    day.stops.filter((stop) => stop.kind === "food")
+  );
+  const namedStops = [...activityStops, ...foodStops]
+    .map((stop) => normalizeStopName(stop.title))
+    .filter(Boolean);
+  const duplicateStopNames = namedStops.filter(
+    (name, index) => namedStops.indexOf(name) !== index
+  );
+  const emptyDayTitles = plan.itineraryDays
+    .filter((day) => day.stops.length === 0)
+    .map((day) => day.title ?? "Untitled day");
+  const placeholderPatterns = [
+    /\bpick a nearby activity\b/,
+    /\bkeep this activity close\b/,
+    /\bactivity in [a-z\s]+$/,
+    /\bgrab\s*(?:&|and)\s*go\b/,
+  ];
+
+  if (emptyDayTitles.length > 0) {
+    notes.push(`Empty itinerary day(s): ${emptyDayTitles.join(", ")}.`);
+  }
+
+  if (placeholderPatterns.some((pattern) => pattern.test(itineraryText))) {
+    notes.push("Itinerary contains fallback or placeholder stop wording.");
+  }
+
+  if (duplicateStopNames.length > 0) {
+    notes.push(`Repeated named stop(s): ${Array.from(new Set(duplicateStopNames)).join(", ")}.`);
+  }
+
+  if (
+    typeof plan.driveHoursFromStart === "number" &&
+    !plan.isStaycation &&
+    plan.driveHoursFromStart > input.maxDriveHours + 0.15
+  ) {
+    notes.push(
+      `Drive limit miss: ${plan.driveHoursFromStart}h vs max ${input.maxDriveHours}h.`
+    );
+  }
+
+  if (!Number.isFinite(plan.budgetBreakdown.totalExpected)) {
+    notes.push("Budget estimate is not finite.");
+  }
+
+  if (shouldHaveFoodCoverage(input) && foodStops.length < 1) {
+    notes.push("Expected at least one food stop for this trip shape.");
+  }
+
+  if (shouldHaveActivityCoverage(input) && activityStops.length < 1) {
+    notes.push("Expected at least one activity stop for this trip shape.");
+  }
+
+  if (input.tripLengthDays >= 2 && !plan.isStaycation && countKind(plan, "stay") < 1) {
+    notes.push("Expected an overnight stay stop for a non-staycation multi-day trip.");
+  }
+
+  return {
+    passed: notes.length === 0,
+    notes,
+  };
+}
+
+function shouldHaveFoodCoverage(input: TripInput): boolean {
+  return (
+    input.style === "foodie" ||
+    input.style === "chill" ||
+    input.style === "solo reset" ||
+    input.tripLengthDays >= 2
+  );
+}
+
+function shouldHaveActivityCoverage(input: TripInput): boolean {
+  return input.style !== "foodie" || input.tripLengthDays >= 3;
+}
+
 function evaluateCase(testCase: TestCase): Evaluation {
   const ranked = rankDestinations(testCase.input, 1);
   const winner = ranked[0];
@@ -197,6 +310,7 @@ function evaluateCase(testCase: TestCase): Evaluation {
       stylePassed: false,
       budgetPassed: false,
       lengthPassed: false,
+      qualityPassed: false,
       notes: ["No destination matched the hard filters."],
     };
   }
@@ -204,8 +318,9 @@ function evaluateCase(testCase: TestCase): Evaluation {
   const plan = buildTripPlan(winner, testCase.input, "static-ranking");
   const style = scoreStyle(plan, testCase.input.style);
   const budget = evaluateBudget(plan, testCase.input);
+  const quality = evaluatePlanQuality(plan, testCase.input);
   const lengthPassed = plan.itineraryDays.length === testCase.input.tripLengthDays;
-  const notes = [...style.notes];
+  const notes = [...style.notes, ...quality.notes];
 
   if (!lengthPassed) {
     notes.push(
@@ -220,6 +335,7 @@ function evaluateCase(testCase: TestCase): Evaluation {
     stylePassed: style.passed,
     budgetPassed: budget.passed,
     lengthPassed,
+    qualityPassed: quality.passed,
     chosenDestination: winner.name,
     totalExpected: plan.budgetBreakdown.totalExpected,
     notes,
@@ -1371,6 +1487,803 @@ function evaluatePreferredDestinationBudgetNearMissRegression(): RegressionCheck
   };
 }
 
+function evaluateEdmontonScenicWeekendRegression(): RegressionCheck {
+  const tripPrompt =
+    "Plan a 3-day weekend trip from Edmonton for 4 adults in early July with a total budget around $1,600 CAD. We want a mountain or lake destination within about 5 hours of driving, with one scenic hike that feels worth the drive, one relaxed waterfront or viewpoint stop, good coffee, one memorable dinner, and enough downtime that it does not feel packed. Avoid tourist-trap days, avoid very expensive resorts, and prioritize places where the route, meals, and activities make practical sense together.";
+
+  const input: TripInput = {
+    ...makeInput({
+      style: "outdoors",
+      startCity: "Edmonton",
+      travelerCount: 4,
+      budgetPerTraveler: 400,
+      budget: 1600,
+      tripLengthDays: 3,
+      maxDriveHours: 5,
+      maxDriveMinutesBetweenStops: 45,
+    }),
+    activityFocus: "hiking",
+    tripPrompt,
+  };
+
+  const winner = rankDestinations(input, 1)[0];
+  if (!winner) {
+    return {
+      id: "R14",
+      passed: false,
+      notes: ["No destination matched the Edmonton scenic weekend regression case."],
+    };
+  }
+
+  const plan = buildTripPlan(winner, input, "static-ranking");
+  const itineraryText = joinedItineraryText(plan);
+  const activityStops = plan.itineraryDays.flatMap((day) =>
+    day.stops.filter((stop) => stop.kind === "activity")
+  );
+  const foodStops = plan.itineraryDays.flatMap((day) =>
+    day.stops.filter((stop) => stop.kind === "food")
+  );
+  const notes: string[] = [];
+
+  if (plan.itineraryDays.length !== 3) {
+    notes.push(`Expected 3 itinerary days, got ${plan.itineraryDays.length}.`);
+  }
+  if (itineraryText.includes("summit")) {
+    notes.push("Expected a generic scenic-hike prompt not to become a summit-hike itinerary.");
+  }
+  if (!/scenic hike day|beginner-friendly scenic hike|planned scenic hike/.test(itineraryText)) {
+    notes.push("Expected the itinerary copy to frame the main activity as one lighter scenic hike.");
+  }
+  if (activityStops.length > 2) {
+    notes.push(`Expected the downtime brief to keep activity count low, got ${activityStops.length}.`);
+  }
+  if (!/coffee|cafe|cafes|cafés|bakery/.test(itineraryText)) {
+    notes.push("Expected a visible coffee or cafe-style stop.");
+  }
+  if (!/dinner|restaurant|main street/.test(itineraryText)) {
+    notes.push("Expected a visible dinner-style stop.");
+  }
+  if (foodStops.length < 2) {
+    notes.push("Expected at least two food stops across the 3-day weekend.");
+  }
+
+  const liveLikePlan = buildTripPlan(
+    {
+      ...winner,
+      foodSpots: [
+        {
+          name: "ankor restaurants",
+          category: "Restaurant",
+          tags: ["restaurant"],
+          rating: 4.5,
+          latitude: 51.089,
+          longitude: -115.356,
+        },
+        {
+          name: "Eclipse Coffee Roasters",
+          category: "Cafe",
+          tags: ["coffee", "cafe"],
+          rating: 4.7,
+          latitude: 51.091,
+          longitude: -115.354,
+        },
+        {
+          name: "Communitea Cafe",
+          category: "Restaurant",
+          tags: ["restaurant", "cafe"],
+          rating: 4.6,
+          latitude: 51.09,
+          longitude: -115.357,
+        },
+      ],
+      topActivities: [
+        {
+          name: "Policeman's Creek Boardwalk",
+          type: "Scenic Walk",
+          costEstimate: 0,
+          rating: 4.6,
+          shortDescription: "Easy creekside boardwalk in Canmore.",
+          latitude: 51.086,
+          longitude: -115.352,
+        },
+        {
+          name: "Quarry Lake Park loop",
+          type: "Scenic Walk",
+          costEstimate: 0,
+          rating: 4.7,
+          shortDescription:
+            "Low-effort lake walk close to Canmore with mountain views and an easy recovery-day feel.",
+          latitude: 51.083,
+          longitude: -115.384,
+        },
+      ],
+    },
+    input,
+    "live-google-places"
+  );
+  const liveFoodTitles = liveLikePlan.itineraryDays
+    .flatMap((day) => day.stops)
+    .filter((stop) => stop.kind === "food")
+    .map((stop) => stop.title.toLowerCase());
+  const liveLikeActivityStops = liveLikePlan.itineraryDays.flatMap((day) =>
+    day.stops.filter((stop) => stop.kind === "activity")
+  );
+  const liveFinalDay = liveLikePlan.itineraryDays.at(-1);
+  const liveFinalDayActivityStops =
+    liveFinalDay?.stops.filter((stop) => stop.kind === "activity") ?? [];
+  const liveFinalDaySummary = liveFinalDay?.summary?.toLowerCase() ?? "";
+  const duplicatedLiveFoodTitles = liveFoodTitles.filter(
+    (title, index) => liveFoodTitles.indexOf(title) !== index
+  );
+  const liveSummary = getPromptAwareTripSummary({
+    summary: winner.summary,
+    tripPrompt,
+    tripLengthDays: input.tripLengthDays,
+    destinationName: winner.name,
+    destination: winner.name,
+    homeBaseCity: winner.homeBaseCity,
+    name: winner.name,
+    foodSpots: liveLikePlan.foodSpots,
+    topActivities: liveLikePlan.topActivities,
+    itineraryDays: liveLikePlan.itineraryDays,
+  })?.toLowerCase();
+
+  if (duplicatedLiveFoodTitles.length > 0) {
+    notes.push(`Expected live-like food stops not to repeat, got ${duplicatedLiveFoodTitles.join(", ")}.`);
+  }
+  if (!liveSummary?.includes("quarry lake park loop")) {
+    notes.push("Expected the recommendation summary to follow the itinerary's selected scenic hike.");
+  }
+  if (!liveSummary?.includes("policeman's creek boardwalk")) {
+    notes.push("Expected the recommendation summary to include the relaxed final scenic stop when it is part of the itinerary.");
+  }
+  if ((liveSummary ?? "").includes(" now ")) {
+    notes.push("Expected the recommendation summary to avoid update-oriented 'now' wording.");
+  }
+  if (liveLikeActivityStops.length < 2) {
+    notes.push("Expected the relaxed waterfront/viewpoint request to produce a second light scenic stop when one is available.");
+  }
+  if (liveFinalDaySummary.includes("scenic stop") && liveFinalDayActivityStops.length === 0) {
+    notes.push("Expected the final-day summary not to promise a scenic stop unless the final day has an activity stop.");
+  }
+
+  return {
+    id: "R14",
+    passed:
+      plan.itineraryDays.length === 3 &&
+      !itineraryText.includes("summit") &&
+      /scenic hike day|beginner-friendly scenic hike|planned scenic hike/.test(itineraryText) &&
+      activityStops.length <= 2 &&
+      /coffee|cafe|cafes|cafés|bakery/.test(itineraryText) &&
+      /dinner|restaurant|main street/.test(itineraryText) &&
+      foodStops.length >= 2 &&
+      duplicatedLiveFoodTitles.length === 0 &&
+      liveLikeActivityStops.length >= 2 &&
+      (!liveFinalDaySummary.includes("scenic stop") ||
+        liveFinalDayActivityStops.length > 0) &&
+      Boolean(liveSummary?.includes("quarry lake park loop")) &&
+      Boolean(liveSummary?.includes("policeman's creek boardwalk")) &&
+      !(liveSummary ?? "").includes(" now "),
+    notes,
+  };
+}
+
+function evaluateLateArrivalSingleHikeRegression(): RegressionCheck {
+  const tripPrompt =
+    "Plan a 3-day weekend trip from Edmonton for 4 adults starting Friday, April 24, 2026, with a total budget around $1,600 CAD. We can't leave until 5:45 pm, so night 1 should be just check-in and a casual late dinner. Choose a mountain or lake destination within 5 hours. Include one scenic moderate hike, one relaxed waterfront or viewpoint stop, great coffee each morning, one memorable dinner, calm pacing, and no luxury-resort or tourist-trap filler.";
+
+  const input: TripInput = {
+    ...makeInput({
+      style: "outdoors",
+      startCity: "Edmonton",
+      travelerCount: 4,
+      budgetPerTraveler: 400,
+      budget: 1600,
+      tripLengthDays: 3,
+      maxDriveHours: 5,
+      maxDriveMinutesBetweenStops: 45,
+      tripStartDate: "2026-04-24",
+    }),
+    activityFocus: "hiking",
+    departureTime: "17:45",
+    tripPrompt,
+  };
+
+  const winner = rankDestinations(input, 1)[0];
+  if (!winner) {
+    return {
+      id: "R15",
+      passed: false,
+      notes: ["No destination matched the late-arrival single-hike regression case."],
+    };
+  }
+
+  const plan = buildTripPlan(winner, input, "static-ranking");
+  const [dayOne, dayTwo, dayThree] = plan.itineraryDays;
+  const dayOneFoodStops = dayOne?.stops.filter((stop) => stop.kind === "food") ?? [];
+  const dayTwoActivityStops = dayTwo?.stops.filter((stop) => stop.kind === "activity") ?? [];
+  const dayThreeFoodStops = dayThree?.stops.filter((stop) => stop.kind === "food") ?? [];
+  const dayThreeActivityStops =
+    dayThree?.stops.filter((stop) => stop.kind === "activity") ?? [];
+  const activityStops = plan.itineraryDays.flatMap((day) =>
+    day.stops.filter((stop) => stop.kind === "activity")
+  );
+  const hikeLikeStops = activityStops.filter((stop) =>
+    /\b(hike|trail|trailhead|summit|peak|ridge|scramble|loop)\b/.test(
+      [stop.title, stop.description ?? ""].join(" ").toLowerCase()
+    )
+  );
+  const relaxedFinalStopText = dayThreeActivityStops
+    .flatMap((stop) => [stop.title, stop.description ?? ""])
+    .join(" ")
+    .toLowerCase();
+  const dayThreeFoodText = dayThreeFoodStops
+    .flatMap((stop) => [stop.title, stop.description ?? ""])
+    .join(" ")
+    .toLowerCase();
+  const summary = getPromptAwareTripSummary({
+    summary: winner.summary,
+    tripPrompt,
+    tripLengthDays: input.tripLengthDays,
+    destinationName: winner.name,
+    destination: winner.name,
+    homeBaseCity: winner.homeBaseCity,
+    name: winner.name,
+    foodSpots: plan.foodSpots,
+    topActivities: plan.topActivities,
+    itineraryDays: plan.itineraryDays,
+  })?.toLowerCase();
+  const liveLikePlan = buildTripPlan(
+    {
+      ...winner,
+      foodSpots: [
+        {
+          name: "ankor restaurants",
+          category: "Restaurant",
+          tags: ["restaurant"],
+          rating: 4.5,
+          latitude: 51.089,
+          longitude: -115.356,
+        },
+        {
+          name: "Eclipse Coffee Roasters",
+          category: "Cafe",
+          tags: ["coffee", "cafe"],
+          rating: 4.7,
+          latitude: 51.091,
+          longitude: -115.354,
+        },
+        {
+          name: "Communitea Cafe",
+          category: "Restaurant",
+          tags: ["restaurant", "cafe"],
+          rating: 4.6,
+          latitude: 51.09,
+          longitude: -115.357,
+        },
+        {
+          name: "Rocky Mountain Bagel Company",
+          category: "Bakery",
+          tags: ["bakery", "breakfast"],
+          rating: 4.7,
+          latitude: 51.089,
+          longitude: -115.35,
+        },
+      ],
+      topActivities: [
+        {
+          name: "Grassi Lakes",
+          type: "Hike",
+          costEstimate: 0,
+          rating: 4.8,
+          shortDescription: "Popular moderate lake hike with bright water and mountain views.",
+          latitude: 51.089,
+          longitude: -115.406,
+        },
+        {
+          name: "Quarry Lake Park",
+          type: "Scenic Walk",
+          costEstimate: 0,
+          rating: 4.7,
+          shortDescription: "Easy lakeside walk close to Canmore.",
+          latitude: 51.083,
+          longitude: -115.384,
+        },
+      ],
+    },
+    input,
+    "live-google-places"
+  );
+  const liveLikeSummary = getPromptAwareTripSummary({
+    summary: winner.summary,
+    tripPrompt,
+    tripLengthDays: input.tripLengthDays,
+    destinationName: winner.name,
+    destination: winner.name,
+    homeBaseCity: winner.homeBaseCity,
+    name: winner.name,
+    foodSpots: liveLikePlan.foodSpots,
+    topActivities: liveLikePlan.topActivities,
+    itineraryDays: liveLikePlan.itineraryDays,
+  })?.toLowerCase();
+  const notes: string[] = [];
+
+  if (!winner.name.toLowerCase().includes("canmore")) {
+    notes.push(`Expected Canmore to win, got ${winner.name}.`);
+  }
+  if (plan.itineraryDays.length !== 3) {
+    notes.push(`Expected 3 itinerary days, got ${plan.itineraryDays.length}.`);
+  }
+  if (dayOneFoodStops.length < 1) {
+    notes.push("Expected the explicit late-arrival brief to preserve a day-1 dinner stop.");
+  }
+  if (dayTwoActivityStops.length > 1) {
+    notes.push(`Expected the single-hike brief to keep day 2 to one main activity, got ${dayTwoActivityStops.length}.`);
+  }
+  if (dayThreeActivityStops.length > 1) {
+    notes.push(`Expected the final day to stay light with at most one scenic stop, got ${dayThreeActivityStops.length}.`);
+  }
+  if (dayThreeActivityStops.length < 1) {
+    notes.push("Expected the relaxed waterfront/viewpoint request to keep one light scenic stop on the final day.");
+  }
+  if (dayThreeFoodStops.length < 1) {
+    notes.push("Expected the coffee-each-morning brief to keep a visible final-morning food stop.");
+  }
+  if (hikeLikeStops.length !== 1) {
+    notes.push(`Expected exactly one hike-like activity stop, got ${hikeLikeStops.length}.`);
+  }
+  if (
+    dayThreeActivityStops.length > 0 &&
+    !/\b(boardwalk|waterfront|shoreline|lakeside|lakefront|viewpoint|lookout|overlook|creek|river|lake|park)\b/.test(
+      relaxedFinalStopText
+    )
+  ) {
+    notes.push("Expected the final-day activity to read like a relaxed scenic stop.");
+  }
+  if (/\b(trailhead|summit|peak|ridge|scramble)\b/.test(relaxedFinalStopText)) {
+    notes.push("Expected the final-day scenic stop to avoid strenuous hike markers.");
+  }
+  if (
+    dayThreeFoodStops.length > 0 &&
+    !/\b(coffee|cafe|bakery|espresso|latte)\b/.test(dayThreeFoodText)
+  ) {
+    notes.push("Expected the final-morning food stop to read like a real coffee stop.");
+  }
+  if (
+    dayOne?.summary?.toLowerCase().includes("hotel near") ||
+    dayOne?.summary?.toLowerCase().includes("left after arrival")
+  ) {
+    notes.push("Expected the pre-route arrival summary copy to avoid precise timing wording.");
+  }
+  if (!summary?.includes("coffee both mornings")) {
+    notes.push("Expected the recommendation summary to reflect the coffee-each-morning brief.");
+  }
+  if (
+    dayThreeActivityStops.length > 0 &&
+    !summary?.includes(dayThreeActivityStops[0].title.toLowerCase())
+  ) {
+    notes.push("Expected the recommendation summary to name the relaxed final scenic stop.");
+  }
+  if (!liveLikeSummary?.includes("coffee both mornings")) {
+    notes.push("Expected the live-data summary to treat a morning bagel/bakery stop as satisfying the coffee-each-morning brief.");
+  }
+
+  return {
+    id: "R15",
+    passed:
+      winner.name.toLowerCase().includes("canmore") &&
+      plan.itineraryDays.length === 3 &&
+      dayOneFoodStops.length >= 1 &&
+      dayTwoActivityStops.length <= 1 &&
+      dayThreeFoodStops.length >= 1 &&
+      dayThreeActivityStops.length >= 1 &&
+      dayThreeActivityStops.length <= 1 &&
+      hikeLikeStops.length === 1 &&
+      (dayThreeFoodStops.length === 0 ||
+        /\b(coffee|cafe|bakery|espresso|latte)\b/.test(dayThreeFoodText)) &&
+      (!dayThreeActivityStops.length ||
+        /\b(boardwalk|waterfront|shoreline|lakeside|lakefront|viewpoint|lookout|overlook|creek|river|lake|park)\b/.test(
+          relaxedFinalStopText
+        )) &&
+      !dayOne?.summary?.toLowerCase().includes("hotel near") &&
+      !dayOne?.summary?.toLowerCase().includes("left after arrival") &&
+      !/\b(trailhead|summit|peak|ridge|scramble)\b/.test(relaxedFinalStopText) &&
+      Boolean(summary?.includes("coffee both mornings")) &&
+      Boolean(liveLikeSummary?.includes("coffee both mornings")) &&
+      (dayThreeActivityStops.length === 0 ||
+        Boolean(summary?.includes(dayThreeActivityStops[0].title.toLowerCase()))),
+    notes,
+  };
+}
+
+function evaluateQuietBadlandsRegression(): RegressionCheck {
+  const tripPrompt =
+    "Plan a 4-day trip from Edmonton for 2 adults in late September with a total budget around $1,100 CAD. Choose Drumheller or a similar Alberta badlands destination. Include exactly 1 scenic drive, exactly 1 museum or main-street stop, exactly 1 easy sunset viewpoint, and exactly 1 memorable low-key dinner. Keep the pace quiet and unhurried, avoid extra filler stops, avoid luxury stays, and make sure the route feels practical.";
+
+  const input: TripInput = {
+    ...makeInput({
+      style: "chill",
+      startCity: "Edmonton",
+      travelerCount: 2,
+      tripLengthDays: 4,
+      budget: 1100,
+      budgetPerTraveler: 550,
+      season: "fall",
+      tripPrompt,
+    }),
+  };
+
+  const winner = rankDestinations(input, 12).find((candidate) =>
+    candidate.name.toLowerCase().includes("drumheller")
+  );
+  if (!winner) {
+    return {
+      id: "R16",
+      passed: false,
+      notes: ["No Drumheller-style destination was available for the quiet badlands regression case."],
+    };
+  }
+
+  const liveLikePlan = buildTripPlan(
+    {
+      ...winner,
+      foodSpots: [
+        {
+          name: "Black Mountain Roasters Drumheller",
+          category: "Cafe",
+          tags: ["coffee", "cafe"],
+          rating: 4.7,
+          latitude: 51.461,
+          longitude: -112.71,
+        },
+        {
+          name: "Sam's Kitchen -An Indian Restaurant -Drumheller",
+          category: "Restaurant",
+          tags: ["restaurant", "dinner"],
+          rating: 4.6,
+          latitude: 51.462,
+          longitude: -112.707,
+        },
+        {
+          name: "Cafe Ole",
+          category: "Cafe",
+          tags: ["coffee", "breakfast"],
+          rating: 4.5,
+          latitude: 51.466,
+          longitude: -112.708,
+        },
+        {
+          name: "Prairie Modern Kitchen & Prairie Pop Dirty Soda Shop",
+          category: "Restaurant",
+          tags: ["restaurant", "dinner"],
+          rating: 4.6,
+          latitude: 51.468,
+          longitude: -112.706,
+        },
+        {
+          name: "WHIFS Flapjack House",
+          category: "Diner",
+          tags: ["breakfast"],
+          rating: 4.4,
+          latitude: 51.469,
+          longitude: -112.704,
+        },
+      ],
+      topActivities: [
+        {
+          name: "Royal Tyrrell Museum Lookout",
+          type: "Museum",
+          costEstimate: 0,
+          rating: 4.8,
+          shortDescription: "Museum-area lookout tied to Drumheller's signature cultural stop.",
+          latitude: 51.473,
+          longitude: -112.79,
+        },
+        {
+          name: "Midland Provincial Park",
+          type: "Historic Park",
+          costEstimate: 0,
+          rating: 4.7,
+          shortDescription: "Historic badlands park with interpretive value near Drumheller.",
+          latitude: 51.474,
+          longitude: -112.784,
+        },
+        {
+          name: "Miners Memorial Park",
+          type: "Memorial Park",
+          costEstimate: 0,
+          rating: 4.4,
+          shortDescription: "Local heritage stop in town.",
+          latitude: 51.466,
+          longitude: -112.713,
+        },
+        {
+          name: "Newcastle Beach",
+          type: "Scenic Stop",
+          costEstimate: 0,
+          rating: 4.6,
+          shortDescription: "Easy riverside stop that works well for a quieter sunset view.",
+          latitude: 51.458,
+          longitude: -112.702,
+        },
+        {
+          name: "Drumheller Welcome Sign",
+          type: "Landmark",
+          costEstimate: 0,
+          rating: 4.3,
+          shortDescription: "Quick landmark photo stop on the way out of town.",
+          latitude: 51.47,
+          longitude: -112.69,
+        },
+      ],
+    },
+    input,
+    "live-google-places"
+  );
+
+  const dayTwo = liveLikePlan.itineraryDays[1];
+  const dayThree = liveLikePlan.itineraryDays[2];
+  const dayFour = liveLikePlan.itineraryDays[3];
+  const dayTwoActivityStops = dayTwo?.stops.filter((stop) => stop.kind === "activity") ?? [];
+  const dayThreeActivityStops = dayThree?.stops.filter((stop) => stop.kind === "activity") ?? [];
+  const dayThreeFoodStops = dayThree?.stops.filter((stop) => stop.kind === "food") ?? [];
+  const dayFourActivityStops = dayFour?.stops.filter((stop) => stop.kind === "activity") ?? [];
+  const totalActivityStops = liveLikePlan.itineraryDays.flatMap((day) =>
+    day.stops.filter((stop) => stop.kind === "activity")
+  );
+  const dayTwoActivityText = dayTwoActivityStops
+    .flatMap((stop) => [stop.title, stop.description ?? ""])
+    .join(" ")
+    .toLowerCase();
+  const dayThreeActivityText = dayThreeActivityStops
+    .flatMap((stop) => [stop.title, stop.description ?? ""])
+    .join(" ")
+    .toLowerCase();
+  const summary = getPromptAwareTripSummary({
+    summary: winner.summary,
+    tripPrompt,
+    tripLengthDays: input.tripLengthDays,
+    destinationName: winner.name,
+    destination: winner.name,
+    homeBaseCity: winner.homeBaseCity,
+    name: winner.name,
+    foodSpots: liveLikePlan.foodSpots,
+    topActivities: liveLikePlan.topActivities,
+    itineraryDays: liveLikePlan.itineraryDays,
+  })?.toLowerCase();
+  const notes: string[] = [];
+
+  if (liveLikePlan.itineraryDays.length !== 4) {
+    notes.push(`Expected a 4-day itinerary, got ${liveLikePlan.itineraryDays.length}.`);
+  }
+  if (dayTwoActivityStops.length > 1) {
+    notes.push(`Expected the museum/main-street day to stay near one activity, got ${dayTwoActivityStops.length}.`);
+  }
+  if (dayThreeActivityStops.length > 1) {
+    notes.push(`Expected the sunset day to stay near one activity, got ${dayThreeActivityStops.length}.`);
+  }
+  if (dayThreeFoodStops.length > 1) {
+    notes.push(`Expected the sunset day to stay near one food stop, got ${dayThreeFoodStops.length}.`);
+  }
+  if (dayFourActivityStops.length > 0) {
+    notes.push(`Expected the final drive-back day to avoid extra filler activities, got ${dayFourActivityStops.length}.`);
+  }
+  if (!/\b(museum|historic|heritage|main street|downtown)\b/.test(dayTwoActivityText)) {
+    notes.push("Expected day 2 to carry the museum or main-street style anchor.");
+  }
+  if (!/\b(sunset|viewpoint|lookout|overlook|beach|river|riverside|park)\b/.test(dayThreeActivityText)) {
+    notes.push("Expected day 3 to carry the easy sunset/viewpoint-style stop.");
+  }
+  if (totalActivityStops.length > 3) {
+    notes.push(`Expected the quiet badlands trip to avoid stacking too many activity stops, got ${totalActivityStops.length}.`);
+  }
+  if ((summary ?? "").includes("culture, family, adventure, and scenic")) {
+    notes.push("Expected the recommendation summary to avoid generic stock destination copy.");
+  }
+  if (!summary?.includes("royal tyrrell museum lookout")) {
+    notes.push("Expected the recommendation summary to mention the chosen cultural anchor.");
+  }
+  if (!summary?.includes("newcastle beach")) {
+    notes.push("Expected the recommendation summary to mention the easy sunset stop.");
+  }
+
+  return {
+    id: "R16",
+    passed:
+      liveLikePlan.itineraryDays.length === 4 &&
+      dayTwoActivityStops.length <= 1 &&
+      dayThreeActivityStops.length <= 1 &&
+      dayThreeFoodStops.length <= 1 &&
+      dayFourActivityStops.length === 0 &&
+      /\b(museum|historic|heritage|main street|downtown)\b/.test(dayTwoActivityText) &&
+      /\b(sunset|viewpoint|lookout|overlook|beach|river|riverside|park)\b/.test(dayThreeActivityText) &&
+      totalActivityStops.length <= 3 &&
+      !(summary ?? "").includes("culture, family, adventure, and scenic") &&
+      Boolean(summary?.includes("royal tyrrell museum lookout")) &&
+      Boolean(summary?.includes("newcastle beach")),
+    notes,
+  };
+}
+
+function evaluateWhitehorseStaycationNonEmptyRegression(): RegressionCheck {
+  const tripPrompt =
+    "Plan a 2-day solo reset in Whitehorse in summer with a 450 CAD budget. I want a Yukon River walk, good coffee, one low-key dinner, and no long drive.";
+
+  const input: TripInput = {
+    ...makeInput({
+      style: "solo reset",
+      startCity: "Whitehorse",
+      travelerCount: 1,
+      budget: 450,
+      budgetPerTraveler: 450,
+      tripLengthDays: 2,
+      maxDriveHours: 2,
+      season: "summer",
+      preferredDestination: "Whitehorse",
+      tripPrompt,
+    }),
+    tripPrompt,
+  };
+
+  const winner = rankDestinations(input, 1)[0];
+  if (!winner) {
+    return {
+      id: "R17",
+      passed: false,
+      notes: ["No destination matched the Whitehorse staycation regression case."],
+    };
+  }
+
+  const plan = buildTripPlan(winner, input, "static-ranking");
+  const emptyDayTitles = plan.itineraryDays
+    .filter((day) => day.stops.length === 0)
+    .map((day) => day.title);
+  const itineraryText = joinedItineraryText(plan);
+  const notes: string[] = [];
+
+  if (!winner.name.toLowerCase().includes("whitehorse")) {
+    notes.push(`Expected Whitehorse to win, got ${winner.name}.`);
+  }
+  if (emptyDayTitles.length > 0) {
+    notes.push(`Expected no empty itinerary days, got empty days: ${emptyDayTitles.join(", ")}.`);
+  }
+  if (!itineraryText.includes("yukon river")) {
+    notes.push("Expected the Yukon River walk request to remain visible in the itinerary.");
+  }
+
+  return {
+    id: "R17",
+    passed:
+      winner.name.toLowerCase().includes("whitehorse") &&
+      emptyDayTitles.length === 0 &&
+      itineraryText.includes("yukon river"),
+    notes,
+  };
+}
+
+function evaluateHopewellTwoDayMustSeeRegression(): RegressionCheck {
+  const tripPrompt =
+    "Plan a 2-day must-see trip from Moncton to Hopewell Rocks for 2 adults with 600 CAD total. Include the tide rocks, one easy coastal stop, seafood, and a relaxed pace.";
+
+  const input: TripInput = {
+    ...makeInput({
+      style: "must see",
+      startCity: "Moncton",
+      travelerCount: 2,
+      budget: 600,
+      budgetPerTraveler: 300,
+      tripLengthDays: 2,
+      maxDriveHours: 2,
+      season: "summer",
+      preferredDestination: "Hopewell Rocks",
+      tripPrompt,
+    }),
+    tripPrompt,
+  };
+
+  const winner = rankDestinations(input, 1)[0];
+  if (!winner) {
+    return {
+      id: "R18",
+      passed: false,
+      notes: ["No destination matched the Hopewell Rocks two-day regression case."],
+    };
+  }
+
+  const plan = buildTripPlan(winner, input, "static-ranking");
+  const activityStops = plan.itineraryDays.flatMap((day) =>
+    day.stops.filter((stop) => stop.kind === "activity")
+  );
+  const itineraryText = joinedItineraryText(plan);
+  const notes: string[] = [];
+
+  if (!winner.name.toLowerCase().includes("hopewell")) {
+    notes.push(`Expected Hopewell Rocks to win, got ${winner.name}.`);
+  }
+  if (activityStops.length < 1) {
+    notes.push("Expected at least one activity stop for the tide-rocks/coastal-stop brief.");
+  }
+  if (!/\b(hopewell|fundy|tide|rocks|coast)\b/.test(itineraryText)) {
+    notes.push("Expected the itinerary to keep the Bay of Fundy / Hopewell coastal signal visible.");
+  }
+
+  return {
+    id: "R18",
+    passed:
+      winner.name.toLowerCase().includes("hopewell") &&
+      activityStops.length >= 1 &&
+      /\b(hopewell|fundy|tide|rocks|coast)\b/.test(itineraryText),
+    notes,
+  };
+}
+
+function evaluateIqaluitLocalNatureRegression(): RegressionCheck {
+  const tripPrompt =
+    "Plan a 2-day chill staycation-style trip from Iqaluit to Sylvia Grinnell or Apex for 1 traveler with a 350 CAD budget. Include one tundra walk, one viewpoint, simple food, and no long drive.";
+
+  const input: TripInput = {
+    ...makeInput({
+      style: "chill",
+      startCity: "Iqaluit",
+      travelerCount: 1,
+      budget: 350,
+      budgetPerTraveler: 350,
+      tripLengthDays: 2,
+      maxDriveHours: 1,
+      season: "summer",
+      preferredDestination: "Sylvia Grinnell",
+      tripPrompt,
+    }),
+    tripPrompt,
+  };
+
+  const winner = rankDestinations(input, 1)[0];
+  if (!winner) {
+    return {
+      id: "R19",
+      passed: false,
+      notes: ["No destination matched the Iqaluit local nature regression case."],
+    };
+  }
+
+  const plan = buildTripPlan(winner, input, "static-ranking");
+  const activityStops = plan.itineraryDays.flatMap((day) =>
+    day.stops.filter((stop) => stop.kind === "activity")
+  );
+  const stayStops = plan.itineraryDays.flatMap((day) =>
+    day.stops.filter((stop) => stop.kind === "stay")
+  );
+  const itineraryText = joinedItineraryText(plan);
+  const notes: string[] = [];
+
+  if (!winner.name.toLowerCase().includes("sylvia grinnell")) {
+    notes.push(`Expected Sylvia Grinnell / Apex to win, got ${winner.name}.`);
+  }
+  if (stayStops.length > 0) {
+    notes.push("Expected the staycation-style no-long-drive brief to avoid a hotel check-in stop.");
+  }
+  if (activityStops.length < 1) {
+    notes.push("Expected at least one activity stop for the tundra walk/viewpoint brief.");
+  }
+  if (plan.budgetBreakdown.totalExpected > input.budget) {
+    notes.push(`Expected the local no-hotel version to fit the budget, got ${plan.budgetBreakdown.totalExpected}.`);
+  }
+  if (!/\b(tundra|sylvia grinnell|apex|viewpoint)\b/.test(itineraryText)) {
+    notes.push("Expected the local Arctic nature stop to remain visible in the itinerary.");
+  }
+
+  return {
+    id: "R19",
+    passed:
+      winner.name.toLowerCase().includes("sylvia grinnell") &&
+      stayStops.length === 0 &&
+      activityStops.length >= 1 &&
+      plan.budgetBreakdown.totalExpected <= input.budget &&
+      /\b(tundra|sylvia grinnell|apex|viewpoint)\b/.test(itineraryText),
+    notes,
+  };
+}
+
 function main() {
   const cases = buildCases();
   const evaluations = cases.map((testCase) => {
@@ -1391,10 +2304,20 @@ function main() {
     evaluateFarOnlyActivityFallbackRegression(),
     evaluateBanffGentleHikeWellnessRegression(),
     evaluatePreferredDestinationBudgetNearMissRegression(),
+    evaluateEdmontonScenicWeekendRegression(),
+    evaluateLateArrivalSingleHikeRegression(),
+    evaluateQuietBadlandsRegression(),
+    evaluateWhitehorseStaycationNonEmptyRegression(),
+    evaluateHopewellTwoDayMustSeeRegression(),
+    evaluateIqaluitLocalNatureRegression(),
   ];
 
   const passCount = evaluations.filter(
-    ({ result }) => result.stylePassed && result.budgetPassed && result.lengthPassed
+    ({ result }) =>
+      result.stylePassed &&
+      result.budgetPassed &&
+      result.lengthPassed &&
+      result.qualityPassed
   ).length;
   const regressionPassCount = regressionChecks.filter((check) => check.passed).length;
 
@@ -1405,7 +2328,12 @@ function main() {
 
   for (const { testCase, result } of evaluations) {
     const status =
-      result.stylePassed && result.budgetPassed && result.lengthPassed ? "PASS" : "FAIL";
+      result.stylePassed &&
+      result.budgetPassed &&
+      result.lengthPassed &&
+      result.qualityPassed
+        ? "PASS"
+        : "FAIL";
     console.log(
       [
         status,
@@ -1417,6 +2345,7 @@ function main() {
         `styleScore=${result.styleScore}`,
         `budgetOk=${result.budgetPassed}`,
         `lengthOk=${result.lengthPassed}`,
+        `qualityOk=${result.qualityPassed}`,
       ].join(" | ")
     );
 
@@ -1429,7 +2358,13 @@ function main() {
 
   console.log("");
   const failed = evaluations.filter(
-    ({ result }) => !(result.stylePassed && result.budgetPassed && result.lengthPassed)
+    ({ result }) =>
+      !(
+        result.stylePassed &&
+        result.budgetPassed &&
+        result.lengthPassed &&
+        result.qualityPassed
+      )
   );
   const failedRegressions = regressionChecks.filter((check) => !check.passed);
 

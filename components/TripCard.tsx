@@ -40,7 +40,30 @@ type Props = {
   isSaved?: boolean;
 };
 
-function strengthLabel(strength: RankedDestination["styleMatchStrength"]) {
+function promptShowsQuietCulturalMatch(summary?: string, prompt?: string) {
+  const normalizedPrompt = (prompt ?? "").toLowerCase();
+  const normalizedSummary = (summary ?? "").toLowerCase();
+
+  const quietCulturalPrompt =
+    /\b(badlands|prairie|museum|main street|sunset|quiet|unhurried)\b/.test(
+      normalizedPrompt
+    );
+  const quietCulturalSummary =
+    /\b(quiet and unhurried|museum|main street|sunset stop|sunset-viewpoint|scenic and practical)\b/.test(
+      normalizedSummary
+    );
+
+  return quietCulturalPrompt && quietCulturalSummary;
+}
+
+function strengthLabel(
+  strength: RankedDestination["styleMatchStrength"],
+  options?: { prompt?: string; summary?: string }
+) {
+  if (strength === "weak" && promptShowsQuietCulturalMatch(options?.summary, options?.prompt)) {
+    return "Good fit";
+  }
+
   switch (strength) {
     case "strong":
       return "Strong fit";
@@ -73,9 +96,14 @@ function cleanItineraryLine(line: string) {
   return line.replace(/^day\s*\d+\s*:\s*/i, "").trim();
 }
 
+function previewItemLimit(total: number) {
+  if (total <= 4) return Math.max(0, total);
+  return 3;
+}
+
 function getItineraryPreviewItems(trip: RankedDestination, itineraryDays: unknown[]) {
   if (itineraryDays.length) {
-    return itineraryDays.slice(0, 2).map((day, index) => {
+    return itineraryDays.slice(0, previewItemLimit(itineraryDays.length)).map((day, index) => {
       const typedDay = day as {
         summary?: string;
         title?: string;
@@ -98,7 +126,7 @@ function getItineraryPreviewItems(trip: RankedDestination, itineraryDays: unknow
   }
 
   if (trip.aiItinerary?.length) {
-    return trip.aiItinerary.slice(0, 2).map((line, index) => ({
+    return trip.aiItinerary.slice(0, previewItemLimit(trip.aiItinerary.length)).map((line, index) => ({
       label: `Day ${index + 1}`,
       text: cleanItineraryLine(line),
     }));
@@ -295,6 +323,7 @@ export default function TripCard({
     name: previewTrip.name,
     foodSpots: previewTrip.foodSpots,
     topActivities: previewTrip.topActivities,
+    itineraryDays: previewPlan.itineraryDays,
   });
   const titleContext = getRecommendationContextLabel(
     {
@@ -306,6 +335,14 @@ export default function TripCard({
     },
     displayTitle
   );
+  const itineraryGridClass =
+    itineraryPreviewItems.length >= 4
+      ? "mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4"
+      : "mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3";
+  const fitDetailLabel = strengthLabel(previewTrip.styleMatchStrength, {
+    prompt: tripPrompt,
+    summary: displaySummary ?? previewTrip.aiSummary ?? previewTrip.summary,
+  });
 
   async function handleSaveTrip() {
     try {
@@ -434,7 +471,7 @@ export default function TripCard({
           <Stat
             label="Drive and fit"
             value={previewPlan.driveTimeText}
-            detail={[strengthLabel(previewTrip.styleMatchStrength), driveTrustDetail]
+            detail={[fitDetailLabel, driveTrustDetail]
               .filter(Boolean)
               .join(" · ")}
           />
@@ -445,7 +482,7 @@ export default function TripCard({
             <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-white/46">
               Trip shape
             </div>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <div className={itineraryGridClass}>
               {itineraryPreviewItems.map((item) => (
                 <div
                   key={`${item.label}-${item.text}`}

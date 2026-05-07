@@ -117,9 +117,9 @@ export function driveTimeSourceLabel(item: DriveTimeSignalLike) {
 export function driveTimeTrustNote(item: DriveTimeSignalLike) {
   switch (item.driveTimeSource) {
     case "catalog_exact":
-      return "Exact catalog drive data.";
+      return "Catalog drive baseline.";
     case "catalog_hub":
-      return "Based on the nearest planning hub.";
+      return "Hub-based drive baseline.";
     case "estimated_coordinates":
       return "Estimated from map coordinates.";
     default:

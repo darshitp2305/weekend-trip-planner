@@ -667,6 +667,10 @@ export default function TripPage() {
     const hotels = hotelOptions;
     const foodSpots = trip.foodSpots ?? [];
     const activities = trip.topActivities ?? [];
+    const destinationPhotoUrl =
+      trip.imageUrlLight ?? trip.imageUrl ?? trip.imageUrlDark;
+    const stopPhotoUrl = (photoRef?: string, photoUrl?: string) =>
+      buildPlacePhotoUrl(photoRef, photoUrl) ?? destinationPhotoUrl;
     const pins: Array<{
       id: string;
       label: string;
@@ -690,6 +694,7 @@ export default function TripPage() {
     }> = [];
     let missingLocationCount = 0;
     const missingLocationCountByDay: Record<number, number> = {};
+    const usedFoodPinNames = new Set<string>();
     const incrementMissingLocationCount = (dayNumber: number) => {
       missingLocationCount += 1;
       missingLocationCountByDay[dayNumber] =
@@ -731,7 +736,7 @@ export default function TripPage() {
               subtitle: selectedHotel.shortDescription,
               mapsUrl: selectedHotel.mapsUrl || selectedHotel.bookingLink,
               rating: selectedHotel.rating,
-              photoUrl: buildPlacePhotoUrl(
+              photoUrl: stopPhotoUrl(
                 selectedHotel.photoRef,
                 selectedHotel.photoUrl
               ),
@@ -754,6 +759,11 @@ export default function TripPage() {
               typeof customStop.latitude === "number" &&
               typeof customStop.longitude === "number"
             ) {
+              if (usedFoodPinNames.has(normalized(customStop.title))) {
+                return;
+              }
+
+              usedFoodPinNames.add(normalized(customStop.title));
               pins.push({
                 id: `food-${key}-${customStop.id}`,
                 label: customStop.title,
@@ -764,7 +774,7 @@ export default function TripPage() {
                 subtitle: customStop.description,
                 mapsUrl: customStop.mapsUrl || customStop.websiteUrl,
                 rating: customStop.rating,
-                photoUrl: buildPlacePhotoUrl(
+                photoUrl: stopPhotoUrl(
                   customStop.photoRef,
                   customStop.photoUrl
                 ),
@@ -787,6 +797,30 @@ export default function TripPage() {
           const selectedFood = foodSpots.find((spot) => spot.name === selectedName);
 
           if (!selectedFood) {
+            if (
+              typeof stop.latitude === "number" &&
+              typeof stop.longitude === "number" &&
+              !usedFoodPinNames.has(normalized(stop.title))
+            ) {
+              usedFoodPinNames.add(normalized(stop.title));
+              pins.push({
+                id: `food-${key}-${stop.title}`,
+                label: stop.title,
+                day: dayNumber,
+                type: "food",
+                latitude: stop.latitude,
+                longitude: stop.longitude,
+                subtitle: stop.description,
+                mapsUrl: stop.mapsUrl || stop.websiteUrl,
+                rating: stop.rating,
+                photoUrl: stopPhotoUrl(stop.photoRef, stop.photoUrl),
+              });
+
+              routePoints.push({
+                latitude: stop.latitude,
+                longitude: stop.longitude,
+              });
+            }
             return;
           }
 
@@ -794,6 +828,11 @@ export default function TripPage() {
             typeof selectedFood.latitude === "number" &&
             typeof selectedFood.longitude === "number"
           ) {
+            if (usedFoodPinNames.has(normalized(selectedFood.name))) {
+              return;
+            }
+
+            usedFoodPinNames.add(normalized(selectedFood.name));
             pins.push({
               id: `food-${key}-${selectedFood.name}`,
               label: selectedFood.name,
@@ -804,7 +843,7 @@ export default function TripPage() {
               subtitle: selectedFood.shortDescription,
               mapsUrl: selectedFood.mapsUrl || selectedFood.websiteUrl || selectedFood.link,
               rating: selectedFood.rating,
-              photoUrl: buildPlacePhotoUrl(
+              photoUrl: stopPhotoUrl(
                 selectedFood.photoRef,
                 selectedFood.photoUrl
               ),
@@ -837,7 +876,7 @@ export default function TripPage() {
                 subtitle: customStop.description,
                 mapsUrl: customStop.mapsUrl || customStop.websiteUrl,
                 rating: customStop.rating,
-                photoUrl: buildPlacePhotoUrl(
+                photoUrl: stopPhotoUrl(
                   customStop.photoRef,
                   customStop.photoUrl
                 ),
@@ -891,7 +930,7 @@ export default function TripPage() {
                 selectedActivity.websiteUrl ||
                 selectedActivity.bookingLink,
               rating: selectedActivity.rating,
-              photoUrl: buildPlacePhotoUrl(
+              photoUrl: stopPhotoUrl(
                 selectedActivity.photoRef,
                 selectedActivity.photoUrl
               ),
@@ -922,7 +961,7 @@ export default function TripPage() {
             subtitle: addedStop.description,
             mapsUrl: addedStop.mapsUrl || addedStop.websiteUrl,
             rating: addedStop.rating,
-            photoUrl: buildPlacePhotoUrl(addedStop.photoRef, addedStop.photoUrl),
+            photoUrl: stopPhotoUrl(addedStop.photoRef, addedStop.photoUrl),
           });
 
           routePoints.push({

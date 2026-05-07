@@ -173,8 +173,10 @@ function formatFinalizedAt(value?: string) {
 
 function formatDriveHours(hours?: number) {
   if (hours === undefined || !Number.isFinite(hours)) return "-";
-  if (hours < 1) return `${Math.round(hours * 60)} min`;
-  return `${Math.round(hours * 10) / 10} hours`;
+  if (hours < 1) return `About ${Math.round(hours * 60)} min`;
+
+  const roundedHours = Math.round(hours * 10) / 10;
+  return `About ${roundedHours} hour${roundedHours === 1 ? "" : "s"}`;
 }
 
 function formatDurationFromSeconds(seconds?: number) {

@@ -349,7 +349,7 @@ function buildMapSvg(mapData: Props["mapData"]) {
       <rect x="0" y="0" width="${width}" height="${height}" rx="18" fill="url(#grid)" opacity="0.65" />
       <path d="M 48 286 C 206 250 362 286 520 244 S 722 232 878 264" fill="none" stroke="#d9edf5" stroke-width="30" opacity="0.92" />
       <path d="M 70 102 C 222 72 354 132 512 84 S 728 78 858 132" fill="none" stroke="#d7e7d3" stroke-width="34" opacity="0.72" />
-      <text x="28" y="34" font-family="Arial" font-size="12" font-weight="700" fill="#475569">Static coordinate overview</text>
+      <text x="28" y="34" font-family="Arial" font-size="12" font-weight="700" fill="#475569">Mapped stop overview</text>
       <text x="28" y="54" font-family="Arial" font-size="10" fill="#64748b">${html(areaLabel)}</text>
       <g>${routes}</g>
       <g>${pins}</g>
@@ -459,6 +459,24 @@ function buildTripSummaryHtml({
           </td>
         </tr>
       `
+    )
+    .join("");
+  const travelContext = days
+    .flatMap((day) =>
+      day.stops
+        .filter((stop) => stop.sourceKind === "travel")
+        .map(
+          (stop) => `
+            <tr>
+              <td>Day ${day.dayNumber}</td>
+              <td>${html(stop.time ?? "")}</td>
+              <td>
+                <strong>${html(stop.title)}</strong>
+                ${stop.description ? `<div class="muted">${html(stop.description)}</div>` : ""}
+              </td>
+            </tr>
+          `
+        )
     )
     .join("");
 
@@ -606,6 +624,12 @@ function buildTripSummaryHtml({
             color: #64748b;
             font-size: 11px;
           }
+          .map-subhead {
+            margin-top: 14px;
+            color: #334155;
+            font-size: 12px;
+            font-weight: 800;
+          }
           .must-haves {
             display: grid;
             grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -667,7 +691,7 @@ function buildTripSummaryHtml({
 
           <section class="section map-wrap">
             <div class="eyebrow">Route map</div>
-            <p class="legend-note">The export uses saved stop coordinates and straight-line route segments so the PDF is stable. Use the interactive app map for live roads and map tiles.</p>
+            <p class="legend-note">The export plots saved stay, meal, and activity coordinates only. Travel rows such as the outbound and return drive are listed here and in the day-by-day itinerary; straight segments are visual guides, not live roads.</p>
             ${buildMapSvg(mapData)}
             ${
               mapData.missingLocationCount
@@ -675,8 +699,13 @@ function buildTripSummaryHtml({
                 : ""
             }
             ${
+              travelContext
+                ? `<div class="map-subhead">Travel context</div><table><thead><tr><th>Day</th><th>Time</th><th>Travel</th></tr></thead><tbody>${travelContext}</tbody></table>`
+                : ""
+            }
+            ${
               mapLegend
-                ? `<table><thead><tr><th>#</th><th>Day</th><th>Type</th><th>Stop</th></tr></thead><tbody>${mapLegend}</tbody></table>`
+                ? `<div class="map-subhead">Mapped stop index</div><table><thead><tr><th>#</th><th>Day</th><th>Type</th><th>Stop</th></tr></thead><tbody>${mapLegend}</tbody></table>`
                 : ""
             }
           </section>

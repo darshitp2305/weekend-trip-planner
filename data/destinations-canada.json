@@ -335,6 +335,12 @@
         "type": "food",
         "description": "Easy density for coffee, dinner, and a more design-forward urban feel.",
         "link": "https://www.google.com/maps/search/?api=1&query=Mount+Pleasant+Vancouver+restaurants"
+      },
+      {
+        "title": "Granville Island market and seawall loop",
+        "type": "food",
+        "description": "Distinct market-and-waterfront block that adds a second real food area without adding drive time.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Granville+Island+Vancouver+market"
       }
     ],
     "neighborhoods": [
@@ -373,6 +379,16 @@
         ],
         "link": "https://www.google.com/maps/search/?api=1&query=Mount+Pleasant+Vancouver+coffee",
         "description": "Best neighborhood if the brief mentions good coffee and easy food density."
+      },
+      {
+        "name": "Granville Island / False Creek",
+        "tags": [
+          "market",
+          "cafes",
+          "waterfront"
+        ],
+        "link": "https://www.google.com/maps/search/?api=1&query=Granville+Island+Vancouver+food",
+        "description": "Second food-forward area that pairs naturally with a low-friction Vancouver weekend."
       }
     ],
     "image_url_light": "/destinations/theme/vancouver_staycation_bc-light.webp",
@@ -730,6 +746,16 @@
         ],
         "link": "https://www.google.com/maps/search/?api=1&query=North+End+Halifax",
         "description": "Best area if the brief mentions good food with a local feel."
+      },
+      {
+        "name": "Downtown Halifax waterfront",
+        "tags": [
+          "restaurants",
+          "cafes",
+          "walkable"
+        ],
+        "link": "https://www.google.com/maps/search/?api=1&query=Downtown+Halifax+waterfront+restaurants",
+        "description": "Second food-forward area that pairs naturally with the boardwalk."
       }
     ],
     "image_url_light": "/destinations/theme/halifax_staycation_ns-light.webp",
@@ -1036,6 +1062,12 @@
         "type": "food",
         "description": "Good density for coffee, brunch, and a lighter urban weekend.",
         "link": "https://www.google.com/maps/search/?api=1&query=James+Bay+Victoria+coffee"
+      },
+      {
+        "title": "Beacon Hill Park and Dallas Road waterfront",
+        "type": "scenic",
+        "description": "Easy waterfront-and-park block that gives a second distinct Victoria reset stop.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Beacon+Hill+Park+Dallas+Road+Victoria"
       }
     ],
     "neighborhoods": [
@@ -1063,6 +1095,16 @@
         ],
         "link": "https://www.google.com/maps/search/?api=1&query=Restaurants+Downtown+Victoria",
         "description": "Best zone if the trip brief mentions coffee and easy neighborhood wandering."
+      },
+      {
+        "name": "Cook Street Village",
+        "tags": [
+          "cafes",
+          "brunch",
+          "neighborhood"
+        ],
+        "link": "https://www.google.com/maps/search/?api=1&query=Cook+Street+Village+Victoria+restaurants",
+        "description": "Useful second food area for a low-friction Victoria staycation."
       }
     ],
     "image_url_light": "/destinations/theme/victoria_staycation_bc-light.webp",
@@ -1108,22 +1150,28 @@
     },
     "anchor_experiences": [
       {
-        "title": "Juan de Fuca coastal hike",
+        "title": "East Sooke Regional Park Coast Trail",
         "type": "hiking",
-        "description": "Big ocean payoff and true west-coast adventure energy without needing a full expedition setup.",
-        "link": "https://www.google.com/maps/search/?api=1&query=Juan+de+Fuca+Trail"
+        "description": "A real coastal trail hike with bluff, forest, and ocean-view payoff that fits a Sooke-based first full day.",
+        "link": "https://www.google.com/maps/search/?api=1&query=East+Sooke+Regional+Park+Coast+Trail",
+        "latitude": 48.3227,
+        "longitude": -123.6368
       },
       {
-        "title": "East Sooke bluff walk",
-        "type": "scenic",
-        "description": "Reliable cliff-and-ocean payoff for a shorter active day with a strong view reward.",
-        "link": "https://www.google.com/maps/search/?api=1&query=East+Sooke+Park"
+        "title": "Whiffin Spit Park shoreline walk",
+        "type": "scenic walk",
+        "description": "Easy waterfront walking near Sooke for the relaxed beach or ocean-view stop without turning the day into a second hike.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Whiffin+Spit+Park+Sooke",
+        "latitude": 48.3537,
+        "longitude": -123.739
       },
       {
-        "title": "Pacific Marine Road day drive",
-        "type": "road trip",
-        "description": "Useful if the group wants the island-road-trip feel instead of staying inside one urban pocket.",
-        "link": "https://www.google.com/maps/search/?api=1&query=Pacific+Marine+Road+British+Columbia"
+        "title": "Sooke Potholes Provincial Park",
+        "type": "scenic park",
+        "description": "A low-pressure river canyon and swimming-hole stop that keeps the island-road-trip feel close to the Sooke base.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Sooke+Potholes+Provincial+Park",
+        "latitude": 48.4346,
+        "longitude": -123.7127
       }
     ],
     "neighborhoods": [
@@ -1140,22 +1188,52 @@
     ],
     "hotel_options": [
       {
-        "name": "South Island lodge base",
-        "price_per_night": 265,
-        "booking_link": "https://www.google.com/maps/search/?api=1&query=Hotels+Sooke+British+Columbia",
-        "description": "Best fit if the group wants coastal access and an outdoors-first base."
+        "name": "Sooke Harbour Resort & Marina",
+        "price_per_night": 215,
+        "booking_link": "https://www.google.com/maps/search/?api=1&query=Sooke+Harbour+Resort+and+Marina",
+        "description": "Practical Sooke base for East Sooke, Whiffin Spit, and relaxed coastal meals.",
+        "latitude": 48.3673,
+        "longitude": -123.7276
       }
     ],
     "food_spots": [
       {
-        "name": "Victoria and Sooke casual food stops",
+        "name": "Stick in the Mud Coffee House",
         "tags": [
-          "cafes",
-          "casual",
-          "road trip"
+          "coffee",
+          "cafe",
+          "breakfast",
+          "sooke"
         ],
-        "link": "https://www.google.com/maps/search/?api=1&query=Restaurants+Sooke+British+Columbia",
-        "description": "Good enough food support for an adventure-first island trip without turning it into a foodie weekend."
+        "link": "https://www.google.com/maps/search/?api=1&query=Stick+in+the+Mud+Coffee+House+Sooke",
+        "description": "Concrete Sooke coffee anchor that keeps the hike morning practical.",
+        "latitude": 48.3742,
+        "longitude": -123.7272
+      },
+      {
+        "name": "WILD MOUNTAIN Food & Drink",
+        "tags": [
+          "restaurant",
+          "dinner",
+          "local",
+          "sooke"
+        ],
+        "link": "https://www.google.com/maps/search/?api=1&query=WILD+MOUNTAIN+Food+and+Drink+Sooke",
+        "description": "Memorable but not luxury-leaning Sooke dinner for the main hike day.",
+        "latitude": 48.3741,
+        "longitude": -123.7258
+      },
+      {
+        "name": "Il Terrazzo",
+        "tags": [
+          "restaurant",
+          "dinner",
+          "victoria"
+        ],
+        "link": "https://www.google.com/maps/search/?api=1&query=Il+Terrazzo+Victoria",
+        "description": "Victoria dinner option that works best for arrival night or ferry-side routing.",
+        "latitude": 48.4283,
+        "longitude": -123.3686
       }
     ],
     "image_url_light": "/destinations/theme/vancouver_island_bc-light.webp",
@@ -1296,6 +1374,18 @@
         "type": "food",
         "description": "Useful if the brief wants a simpler food-led city weekend.",
         "link": "https://www.google.com/maps/search/?api=1&query=Exchange+District+Winnipeg"
+      },
+      {
+        "title": "Assiniboine Park and Leo Mol garden",
+        "type": "culture",
+        "description": "Distinct easy green-space and garden block for a second local day.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Assiniboine+Park+Leo+Mol+Winnipeg"
+      },
+      {
+        "title": "St. Boniface Cathedral and Provencher walk",
+        "type": "culture",
+        "description": "Distinct heritage-and-neighborhood block for a longer Winnipeg staycation.",
+        "link": "https://www.google.com/maps/search/?api=1&query=St+Boniface+Cathedral+Provencher+Winnipeg"
       }
     ],
     "neighborhoods": [
@@ -1323,6 +1413,26 @@
         ],
         "link": "https://www.google.com/maps/search/?api=1&query=Restaurants+Exchange+District+Winnipeg",
         "description": "Best dense zone for an easy dinner-first plan."
+      },
+      {
+        "name": "Corydon / Osborne Village",
+        "tags": [
+          "restaurants",
+          "cafes",
+          "walkable"
+        ],
+        "link": "https://www.google.com/maps/search/?api=1&query=Corydon+Osborne+Village+Winnipeg+restaurants",
+        "description": "Second food area for a longer Winnipeg staycation."
+      },
+      {
+        "name": "St. Boniface cafes",
+        "tags": [
+          "cafes",
+          "casual",
+          "neighborhood"
+        ],
+        "link": "https://www.google.com/maps/search/?api=1&query=St+Boniface+Winnipeg+cafes",
+        "description": "Third local food area that pairs with the Provencher heritage stop."
       }
     ],
     "image_url_light": "/destinations/theme/winnipeg_staycation_mb-light.webp",
@@ -1783,6 +1893,18 @@
         "type": "culture",
         "description": "Adds strong place-specific payoff without needing a long driving day.",
         "link": "https://www.google.com/maps/search/?api=1&query=Charlottetown+waterfront"
+      },
+      {
+        "title": "Confederation Landing waterfront walk",
+        "type": "scenic",
+        "description": "Distinct easy harbor stop that works as a calmer second local-day anchor.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Confederation+Landing+Charlottetown"
+      },
+      {
+        "title": "Beaconsfield Historic House and boardwalk",
+        "type": "culture",
+        "description": "Compact heritage-and-waterfront block for a longer Charlottetown staycation.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Beaconsfield+Historic+House+Charlottetown"
       }
     ],
     "neighborhoods": [
@@ -1810,6 +1932,26 @@
         ],
         "link": "https://www.google.com/maps/search/?api=1&query=Victoria+Row+Charlottetown",
         "description": "Best dense option for a short food-led staycation."
+      },
+      {
+        "name": "Downtown Charlottetown waterfront",
+        "tags": [
+          "restaurants",
+          "cafes",
+          "walkable"
+        ],
+        "link": "https://www.google.com/maps/search/?api=1&query=Downtown+Charlottetown+waterfront+restaurants",
+        "description": "Second walkable food area for a longer island-capital staycation."
+      },
+      {
+        "name": "Queen Street cafes",
+        "tags": [
+          "cafes",
+          "casual",
+          "walkable"
+        ],
+        "link": "https://www.google.com/maps/search/?api=1&query=Queen+Street+Charlottetown+cafes",
+        "description": "Another compact food area for a longer downtown stay."
       }
     ],
     "image_url_light": "/destinations/theme/charlottetown_staycation_pe-light.webp",
@@ -1864,6 +2006,12 @@
         "type": "scenic",
         "description": "Big visual payoff if the trip wants must-see Atlantic nature.",
         "link": "https://www.google.com/maps/search/?api=1&query=Western+Brook+Pond+Gros+Morne"
+      },
+      {
+        "title": "Lobster Cove Head lighthouse sunset",
+        "type": "scenic",
+        "description": "Easy sunset-friendly coastal stop that fits a slower Gros Morne day.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Lobster+Cove+Head+Lighthouse+Gros+Morne"
       }
     ],
     "neighborhoods": [
@@ -1943,6 +2091,12 @@
         "link": "https://www.google.com/maps/search/?api=1&query=Wascana+Lake+Regina"
       },
       {
+        "title": "Royal Saskatchewan Museum and Wascana park loop",
+        "type": "culture",
+        "description": "Distinct local culture-and-park block that gives a longer Regina staycation another real stop.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Royal+Saskatchewan+Museum+Regina"
+      },
+      {
         "title": "Warehouse District dinner run",
         "type": "food",
         "description": "Good fit if the brief wants a casual dinner-led city reset.",
@@ -1953,6 +2107,12 @@
         "type": "food",
         "description": "Adds a more explicitly food-led daytime anchor for a short city weekend.",
         "link": "https://www.google.com/maps/search/?api=1&query=Cathedral+Regina+coffee"
+      },
+      {
+        "title": "Government House and Lakeview heritage drive",
+        "type": "culture",
+        "description": "Distinct heritage stop that gives a longer Regina staycation another real local anchor.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Government+House+Regina+Lakeview"
       }
     ],
     "neighborhoods": [
@@ -1990,6 +2150,16 @@
         ],
         "link": "https://www.google.com/maps/search/?api=1&query=Restaurants+Cathedral+Regina",
         "description": "Useful if the brief wants a coffee-and-brunch heavy city reset."
+      },
+      {
+        "name": "Downtown Regina cafes",
+        "tags": [
+          "cafes",
+          "casual",
+          "central"
+        ],
+        "link": "https://www.google.com/maps/search/?api=1&query=Downtown+Regina+cafes",
+        "description": "Third simple food area for a longer Regina staycation."
       }
     ],
     "image_url_light": "/destinations/theme/regina_staycation_sk-light.webp",
@@ -2107,6 +2277,36 @@
         "type": "scenic",
         "description": "Easy northern-city payoff without needing a long expedition drive.",
         "link": "https://www.google.com/maps/search/?api=1&query=Yukon+River+Whitehorse"
+      },
+      {
+        "title": "Miles Canyon and river viewpoint",
+        "type": "scenic",
+        "description": "Distinct local nature stop that gives a Whitehorse reset a second real place.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Miles+Canyon+Whitehorse"
+      },
+      {
+        "title": "SS Klondike and waterfront trail",
+        "type": "culture",
+        "description": "Compact heritage-and-river block for a slower Whitehorse local day.",
+        "link": "https://www.google.com/maps/search/?api=1&query=SS+Klondike+Whitehorse"
+      },
+      {
+        "title": "Yukon Wildlife Preserve half-day",
+        "type": "scenic",
+        "description": "Distinct low-complexity northern outing for longer Whitehorse staycations.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Yukon+Wildlife+Preserve"
+      },
+      {
+        "title": "MacBride Museum and Main Street walk",
+        "type": "culture",
+        "description": "Compact heritage-and-downtown block for a slower Whitehorse day.",
+        "link": "https://www.google.com/maps/search/?api=1&query=MacBride+Museum+Whitehorse"
+      },
+      {
+        "title": "Rotary Peace Park Yukon River loop",
+        "type": "scenic",
+        "description": "Easy Yukon River walking option for a longer local reset.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Rotary+Peace+Park+Whitehorse"
       }
     ],
     "neighborhoods": [
@@ -2134,6 +2334,26 @@
         ],
         "link": "https://www.google.com/maps/search/?api=1&query=Restaurants+Downtown+Whitehorse",
         "description": "Compact food option for a city-based Yukon weekend."
+      },
+      {
+        "name": "Main Street Whitehorse cafes",
+        "tags": [
+          "cafes",
+          "casual",
+          "central"
+        ],
+        "link": "https://www.google.com/maps/search/?api=1&query=Main+Street+Whitehorse+cafes",
+        "description": "Second simple food area for a longer Whitehorse staycation."
+      },
+      {
+        "name": "Waterfront Whitehorse casual stops",
+        "tags": [
+          "casual",
+          "cafes",
+          "walkable"
+        ],
+        "link": "https://www.google.com/maps/search/?api=1&query=Whitehorse+waterfront+cafes",
+        "description": "Additional low-friction food area for riverfront local days."
       }
     ],
     "image_url_light": "/destinations/theme/whitehorse_staycation_yt-light.webp",
@@ -2264,6 +2484,24 @@
         "type": "scenic",
         "description": "High-payoff northern-city experience even on a short timeline.",
         "link": "https://www.google.com/maps/search/?api=1&query=Great+Slave+Lake+Yellowknife"
+      },
+      {
+        "title": "Bush Pilots Monument and Old Town lookout",
+        "type": "scenic",
+        "description": "Distinct short viewpoint stop that fits a low-drive Yellowknife staycation.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Bush+Pilots+Monument+Yellowknife"
+      },
+      {
+        "title": "Frame Lake trail and downtown reset",
+        "type": "scenic",
+        "description": "Easy local walking loop that gives longer Yellowknife staycations another real activity.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Frame+Lake+Trail+Yellowknife"
+      },
+      {
+        "title": "Niven Lake trail and quiet viewpoint",
+        "type": "scenic",
+        "description": "Low-key local trail option for a longer Yellowknife reset.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Niven+Lake+Trail+Yellowknife"
       }
     ],
     "neighborhoods": [
@@ -2291,6 +2529,26 @@
         ],
         "link": "https://www.google.com/maps/search/?api=1&query=Restaurants+Yellowknife",
         "description": "Practical food support for a scenery-first northern stay."
+      },
+      {
+        "name": "Downtown Yellowknife cafes",
+        "tags": [
+          "cafes",
+          "casual",
+          "local"
+        ],
+        "link": "https://www.google.com/maps/search/?api=1&query=Downtown+Yellowknife+cafes",
+        "description": "Second simple food area for a compact Yellowknife staycation."
+      },
+      {
+        "name": "Old Airport Road cafes",
+        "tags": [
+          "cafes",
+          "casual",
+          "local"
+        ],
+        "link": "https://www.google.com/maps/search/?api=1&query=Old+Airport+Road+Yellowknife+cafes",
+        "description": "Additional practical food area for longer local Yellowknife plans."
       }
     ],
     "image_url_light": "/destinations/theme/yellowknife_staycation_nt-light.webp",
@@ -2336,6 +2594,30 @@
         "type": "scenic",
         "description": "Distinctive Arctic payoff even on a simple local weekend.",
         "link": "https://www.google.com/maps/search/?api=1&query=Frobisher+Bay+Iqaluit"
+      },
+      {
+        "title": "Apex shoreline and bay viewpoint",
+        "type": "scenic",
+        "description": "Distinct low-drive shoreline stop that gives an Iqaluit staycation another real anchor.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Apex+Iqaluit+shoreline"
+      },
+      {
+        "title": "Nunatta Sunakkutaangit Museum stop",
+        "type": "culture",
+        "description": "Compact local culture anchor for a slower town-based Arctic weekend.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Nunatta+Sunakkutaangit+Museum+Iqaluit"
+      },
+      {
+        "title": "Road to Nowhere tundra viewpoint",
+        "type": "scenic",
+        "description": "Distinct local viewpoint option for a longer Iqaluit staycation.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Road+to+Nowhere+Iqaluit"
+      },
+      {
+        "title": "Legislative Assembly and local art stop",
+        "type": "culture",
+        "description": "Compact town-based cultural block that adds another real place without a long drive.",
+        "link": "https://www.google.com/maps/search/?api=1&query=Legislative+Assembly+Iqaluit+art"
       }
     ],
     "neighborhoods": [
@@ -2363,6 +2645,26 @@
         ],
         "link": "https://www.google.com/maps/search/?api=1&query=Restaurants+Iqaluit",
         "description": "Practical food support around a town-based Arctic weekend."
+      },
+      {
+        "name": "Central Iqaluit cafes",
+        "tags": [
+          "cafes",
+          "casual",
+          "local"
+        ],
+        "link": "https://www.google.com/maps/search/?api=1&query=Iqaluit+cafes",
+        "description": "Second simple food area for a compact Iqaluit staycation."
+      },
+      {
+        "name": "Astro Hill cafe area",
+        "tags": [
+          "cafes",
+          "casual",
+          "central"
+        ],
+        "link": "https://www.google.com/maps/search/?api=1&query=Astro+Hill+Iqaluit+cafe",
+        "description": "Additional simple food area for longer local Iqaluit plans."
       }
     ],
     "image_url_light": "/destinations/theme/iqaluit_staycation_nu-light.webp",

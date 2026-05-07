@@ -213,6 +213,10 @@ function normalizeExistingReason(reason: RankingReason, index: number): Prioriti
     return { ...reason, priority: 4, weight: 8, family: "source_fallback" };
   }
 
+  if (lower.includes("tourist") || lower.includes("resort")) {
+    return { ...reason, priority: 1, weight: 92 - index, family: "tourist_trap_fit" };
+  }
+
   if (lower.includes("budget") || lower.includes("value")) {
     return { ...reason, priority: 2, weight: 66 - index, family: "budget_value" };
   }
@@ -260,12 +264,95 @@ function mergeAndRankReasons(
 function joinedTripText(trip: RankedDestination): string {
   return [
     trip.name,
+    trip.homeBaseCity,
     trip.summary,
+    trip.budgetLevel,
     ...(trip.rawVibes ?? []),
     ...(trip.matchReasons ?? []),
+    ...((trip.topActivities ?? []).flatMap((activity) => [
+      activity.name,
+      activity.type,
+      activity.shortDescription,
+    ])),
+    ...((trip.hotelOptions ?? []).map((hotel) => hotel.name)),
+    ...((trip.foodSpots ?? []).flatMap((spot) => [
+      spot.name,
+      spot.category,
+      ...(spot.tags ?? []),
+    ])),
   ]
+    .filter(Boolean)
     .join(" ")
     .toLowerCase();
+}
+
+function countKeywordMatches(text: string, keywords: string[]): number {
+  return keywords.reduce((count, keyword) => {
+    return count + (text.includes(keyword.toLowerCase()) ? 1 : 0);
+  }, 0);
+}
+
+function promptAvoidsTouristTrapEnergy(input: TripInput): boolean {
+  const text = (input.tripPrompt ?? "").toLowerCase();
+
+  return countKeywordMatches(text, [
+    "avoid tourist trap",
+    "avoid tourist traps",
+    "tourist trap",
+    "tourist traps",
+    "not touristy",
+    "too touristy",
+    "avoid touristy",
+    "avoid packed",
+    "avoid crowds",
+    "avoid crowded",
+    "packed itinerary",
+    "packed tourist",
+    "skip luxury",
+    "avoid luxury",
+    "luxury resort",
+    "expensive resort",
+    "skip resorts",
+    "avoid resorts",
+  ]) >= 1;
+}
+
+function getTouristTrapSignal(trip: RankedDestination): number {
+  const joined = joinedTripText(trip);
+  let score = countKeywordMatches(joined, [
+    "whistler",
+    "village",
+    "resort",
+    "gondola",
+    "ski",
+    "tourist",
+    "iconic",
+    "must see",
+    "peak 2 peak",
+    "luxury",
+  ]);
+
+  if (trip.budgetLevel === "high") score += 3;
+  if ((trip.homeBaseCity ?? "").toLowerCase().includes("village")) score += 2;
+
+  return score;
+}
+
+function getLowTouristRoadTripSignal(trip: RankedDestination): number {
+  return countKeywordMatches(joinedTripText(trip), [
+    "coast",
+    "coastal",
+    "island",
+    "forest",
+    "road trip",
+    "small town",
+    "local",
+    "relaxed",
+    "quiet",
+    "beach",
+    "lake",
+    "corridor",
+  ]);
 }
 
 function getGetawaySignal(trip: RankedDestination): number {
@@ -294,6 +381,65 @@ function getGetawaySignal(trip: RankedDestination): number {
   if (!trip.isStaycation && trip.driveHoursFromStart <= 4.5) score += 1;
 
   return score;
+}
+
+function calculateTouristTrapLiveAdjustment(
+  trip: RankedDestination,
+  input: TripInput
+): { boost: number; reasons: PrioritizedReason[] } {
+  if (!promptAvoidsTouristTrapEnergy(input)) {
+    return { boost: 0, reasons: [] };
+  }
+
+  const touristSignal = getTouristTrapSignal(trip);
+  const lowTouristSignal = getLowTouristRoadTripSignal(trip);
+
+  if (touristSignal >= 7) {
+    return {
+      boost: -20,
+      reasons: [
+        makeReason(
+          "Too resort/tourist-heavy for the brief",
+          "negative",
+          1,
+          99,
+          "tourist_trap_fit"
+        ),
+      ],
+    };
+  }
+
+  if (touristSignal >= 4) {
+    return {
+      boost: -12,
+      reasons: [
+        makeReason(
+          "More tourist-oriented than the brief asks for",
+          "negative",
+          1,
+          90,
+          "tourist_trap_fit"
+        ),
+      ],
+    };
+  }
+
+  if (lowTouristSignal >= 5) {
+    return {
+      boost: 6,
+      reasons: [
+        makeReason(
+          "Better fit for avoiding tourist-trap energy",
+          "positive",
+          1,
+          88,
+          "tourist_trap_fit"
+        ),
+      ],
+    };
+  }
+
+  return { boost: 0, reasons: [] };
 }
 
 function getMountainAccessSignal(trip: RankedDestination): number {
@@ -658,6 +804,10 @@ function applyLiveBoosts(
       reasons.push(makeReason("Backed by live Google Places results", "positive", 4, 10, "source_live_places"));
     }
 
+    const touristTrapFit = calculateTouristTrapLiveAdjustment(trip, input);
+    boost += touristTrapFit.boost;
+    reasons = reasons.concat(touristTrapFit.reasons);
+
     const reasonPool = mergeAndRankReasons(trip.rankingReasons, reasons);
 
     return {
@@ -768,6 +918,7 @@ function getPreferredFamiliesForStyle(style: TripInput["style"]): string[] {
   switch (style) {
     case "foodie":
       return [
+        "tourist_trap_fit",
         "home_city_fit",
         "live_restaurant_coverage",
         "restaurant_ratings",
@@ -782,6 +933,7 @@ function getPreferredFamiliesForStyle(style: TripInput["style"]): string[] {
     case "adventure":
     case "outdoors":
       return [
+        "tourist_trap_fit",
         "live_activity_coverage",
         "activity_ratings",
         "getaway_adventure",
@@ -794,6 +946,7 @@ function getPreferredFamiliesForStyle(style: TripInput["style"]): string[] {
     case "chill":
     case "solo reset":
       return [
+        "tourist_trap_fit",
         "home_city_fit",
         "hotel_coverage",
         "style_fit",
@@ -803,7 +956,14 @@ function getPreferredFamiliesForStyle(style: TripInput["style"]): string[] {
         "drive_fit",
       ];
     default:
-      return ["style_fit", "budget_value", "general", "source_live_places", "drive_fit"];
+      return [
+        "tourist_trap_fit",
+        "style_fit",
+        "budget_value",
+        "general",
+        "source_live_places",
+        "drive_fit",
+      ];
   }
 }
 
@@ -955,9 +1115,13 @@ export function recalculateConfidence(
   const needsCoffeeProof =
     promptIntent.softPreferences.wantsGoodFood &&
     /\b(coffee|cafe|espresso|latte|bakery)\b/.test(promptText);
+  const avoidsTouristTrapEnergy = promptAvoidsTouristTrapEnergy(input);
 
   return trips.map((trip, index) => {
     let score = 0;
+    const touristTrapSignal = avoidsTouristTrapEnergy
+      ? getTouristTrapSignal(trip)
+      : 0;
 
     if (trip.styleMatchStrength === "strong") score += 3;
     else if (trip.styleMatchStrength === "medium") score += 2;
@@ -986,6 +1150,8 @@ export function recalculateConfidence(
     if (isTwoDaySummitCompromise) score -= 2;
 
     if (isCrossCityStaycation(trip, input.startCity)) score -= 3;
+    if (touristTrapSignal >= 7) score -= 4;
+    else if (touristTrapSignal >= 4) score -= 2;
 
     if (index === 2) score -= 2;
     else if (index === 1) score -= 1;
@@ -1032,6 +1198,16 @@ export function recalculateConfidence(
     ) {
       confidence = "medium";
       confidenceLabel = "Good match";
+    }
+
+    if (confidence === "high" && touristTrapSignal >= 4) {
+      confidence = "medium";
+      confidenceLabel = "Good match";
+    }
+
+    if (confidence === "medium" && touristTrapSignal >= 7) {
+      confidence = "low";
+      confidenceLabel = "Promising";
     }
 
     return {

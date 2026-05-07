@@ -59,14 +59,31 @@ export type PromptBudgetMatch = {
 
 type StyleSignals = Record<TripStyle, number>;
 
-const APPROXIMATE_PER_TRAVELER_BUDGET_PATTERN =
-  /(?:budget(?:\s+of|\s+is)?\s*)?(?:around|about|roughly|approx(?:imately)?)\s*\$?\s*(\d{2,5})\s*(?:cad|dollars?)?\s*(?:each|per[-\s]?person|per[-\s]?traveler|per[-\s]?traveller|pp)\b/i;
-const EXACT_PER_TRAVELER_BUDGET_PATTERN =
-  /(?:budget(?:\s+of|\s+is)?\s*)?\$?\s*(\d{2,5})\s*(?:cad|dollars?)?\s*(?:each|per[-\s]?person|per[-\s]?traveler|per[-\s]?traveller|pp)\b/i;
-const APPROXIMATE_GROUP_BUDGET_PATTERN =
-  /(?:our\s+)?(?:total|overall|trip|weekend|all[\s-]?in)?\s*budget(?:\s+of|\s+is)?\s*(?:around|about|roughly|approx(?:imately)?)\s*\$?\s*(\d{2,5})\s*(?:cad|dollars?)?(?=\b|[.!?,]|$)(?:\s*(?:total|overall|for the trip|for this trip|for the weekend|all in|between us|for us|for both of us|for all of us)\b)?/i;
-const EXACT_GROUP_BUDGET_PATTERN =
-  /(?:our\s+)?(?:total|overall|trip|weekend|all[\s-]?in)?\s*budget(?:\s+of|\s+is)?\s*\$?\s*(\d{2,5})\s*(?:cad|dollars?)?(?=\b|[.!?,]|$)(?:\s*(?:total|overall|for the trip|for this trip|for the weekend|all in|between us|for us|for both of us|for all of us)\b)?/i;
+const BUDGET_AMOUNT_PATTERN = String.raw`((?:\d{1,3}(?:,\d{3})+)|(?:\d{2,5}))`;
+const APPROXIMATE_PER_TRAVELER_BUDGET_PATTERN = new RegExp(
+  String.raw`(?:budget(?:\s+of|\s+is)?\s*)?(?:around|about|roughly|approx(?:imately)?)\s*\$?\s*${BUDGET_AMOUNT_PATTERN}\s*(?:cad|dollars?)?\s*(?:each|per[-\s]?person|per[-\s]?traveler|per[-\s]?traveller|pp)\b`,
+  "i"
+);
+const EXACT_PER_TRAVELER_BUDGET_PATTERN = new RegExp(
+  String.raw`(?:budget(?:\s+of|\s+is)?\s*)?\$?\s*${BUDGET_AMOUNT_PATTERN}\s*(?:cad|dollars?)?\s*(?:each|per[-\s]?person|per[-\s]?traveler|per[-\s]?traveller|pp)\b`,
+  "i"
+);
+const APPROXIMATE_GROUP_BUDGET_PATTERN = new RegExp(
+  String.raw`(?:our|a|an|the)?\s*(?:total|overall|trip|weekend|all[\s-]?in)?\s*budget(?:\s+of|\s+is)?\s*(?:around|about|roughly|approx(?:imately)?)\s*\$?\s*${BUDGET_AMOUNT_PATTERN}\s*(?:cad|dollars?)?(?=\b|[.!?,]|$)(?:\s*(?:total|overall|for the trip|for this trip|for the weekend|all in|between us|for us|for both of us|for all of us)\b)?`,
+  "i"
+);
+const EXACT_GROUP_BUDGET_PATTERN = new RegExp(
+  String.raw`(?:our|a|an|the)?\s*(?:total|overall|trip|weekend|all[\s-]?in)?\s*budget(?:\s+of|\s+is)?\s*\$?\s*${BUDGET_AMOUNT_PATTERN}\s*(?:cad|dollars?)?(?=\b|[.!?,]|$)(?:\s*(?:total|overall|for the trip|for this trip|for the weekend|all in|between us|for us|for both of us|for all of us)\b)?`,
+  "i"
+);
+const APPROXIMATE_REVERSE_GROUP_BUDGET_PATTERN = new RegExp(
+  String.raw`(?:around|about|roughly|approx(?:imately)?)\s*\$?\s*${BUDGET_AMOUNT_PATTERN}\s*(?:cad|dollars?)?\s*(?:(?:total|overall|trip|weekend|all[\s-]?in)(?:\s+budget)?|budget)\b`,
+  "i"
+);
+const EXACT_REVERSE_GROUP_BUDGET_PATTERN = new RegExp(
+  String.raw`\$?\s*${BUDGET_AMOUNT_PATTERN}\s*(?:cad|dollars?)?\s*(?:(?:total|overall|trip|weekend|all[\s-]?in)(?:\s+budget)?|budget)\b`,
+  "i"
+);
 const TRAVELER_COUNT_PATTERNS = [
   /\bwe(?:'re|\s+are)?\s+(\d{1,2})\s+(?:people|travellers|travelers)\b/i,
   /\b(\d{1,2})\s+of\s+us\b/i,
@@ -241,6 +258,13 @@ function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
 }
 
+function parseBudgetAmount(value?: string) {
+  const amount = Number.parseInt((value ?? "").replace(/,/g, ""), 10);
+  return Number.isFinite(amount) && amount >= 75 && amount <= 10000
+    ? amount
+    : undefined;
+}
+
 function normalizeDepartureTimeMatch(
   hourText?: string,
   minuteText?: string,
@@ -376,19 +400,24 @@ type NamedActivityCandidate = {
 const GENERIC_ACTIVITY_SEARCH_PHRASES = new Set([
   "adventure",
   "beach",
+  "beach time",
   "canyon",
   "cafe",
   "coffee",
   "dinner",
   "forest",
   "food",
+  "harbor",
+  "harbour",
   "lake",
   "lakes",
+  "lakeside trail",
   "lookout",
   "mountain",
   "mountains",
   "park",
   "parks",
+  "river walk",
   "scenic",
   "shops",
   "stroll",
@@ -398,6 +427,9 @@ const GENERIC_ACTIVITY_SEARCH_PHRASES = new Set([
   "views",
   "viewpoint",
   "viewpoints",
+  "yukon river",
+  "waterfront",
+  "shoreline",
   "waterfall",
   "waterfalls",
 ]);
@@ -406,14 +438,24 @@ function buildActivitySearchPhrases(name: string) {
   const normalizedName = normalizeText(name);
   const phrases = new Set<string>();
 
-  const addPhrase = (value?: string) => {
+  const addPhrase = (
+    value?: string,
+    options?: { allowSingleWord?: boolean }
+  ) => {
     const normalizedValue = normalizeText(value);
     if (!normalizedValue || normalizedValue.length < 6) return;
     if (GENERIC_ACTIVITY_SEARCH_PHRASES.has(normalizedValue)) return;
+    if (
+      !options?.allowSingleWord &&
+      !normalizedValue.includes(" ") &&
+      normalizedValue !== normalizedName
+    ) {
+      return;
+    }
     phrases.add(normalizedValue);
   };
 
-  addPhrase(normalizedName);
+  addPhrase(normalizedName, { allowSingleWord: true });
   addPhrase(normalizedName.replace(/\bto\s+upper\s+falls\b/g, ""));
   addPhrase(normalizedName.replace(/\bto\s+lower\s+falls\b/g, ""));
   addPhrase(normalizedName.replace(/\bto\s+falls\b/g, ""));
@@ -609,6 +651,8 @@ function inferStyle(text: string, activityFocus?: ActivityFocus): TripStyle {
     "romantic",
     "cozy",
     "casual",
+    "calm pace",
+    "calm pacing",
     "cozier",
     "low effort",
     "low effort",
@@ -617,9 +661,12 @@ function inferStyle(text: string, activityFocus?: ActivityFocus): TripStyle {
     "planning friction",
     "cozy trip",
     "keep the rest of the trip easy",
+    "not packed",
+    "not too many stops",
   ]);
 
   signals["solo reset"] += countMatches(text, [
+    "solo reset",
     "solo",
     "alone",
     "myself",
@@ -629,6 +676,11 @@ function inferStyle(text: string, activityFocus?: ActivityFocus): TripStyle {
     "reflection",
     "peaceful",
   ]);
+
+  if (/\bsolo\s+reset\b/i.test(text)) {
+    signals["solo reset"] += 5;
+    signals.foodie -= 2;
+  }
 
   signals["hidden gems"] += countMatches(text, [
     "hidden gem",
@@ -641,6 +693,12 @@ function inferStyle(text: string, activityFocus?: ActivityFocus): TripStyle {
     "small town",
     "off the beaten path",
   ]);
+
+  if (/\bhidden\s+gems?\b/i.test(text)) {
+    signals["hidden gems"] += 5;
+    signals.outdoors -= 1;
+    signals.adventure -= 1;
+  }
 
   signals["must see"] += countMatches(text, [
     "must see",
@@ -688,7 +746,6 @@ function inferStyle(text: string, activityFocus?: ActivityFocus): TripStyle {
     "adventure",
     "active",
     "thrill",
-    "road trip",
     "packed",
     "full day",
     "explore",
@@ -699,6 +756,10 @@ function inferStyle(text: string, activityFocus?: ActivityFocus): TripStyle {
     "peak",
     "ridge",
   ]);
+
+  if (/\broad trip\b/i.test(text) && !/\b(?:calm|quiet|relaxed|slow|unhurried|not packed)\b/i.test(text)) {
+    signals.adventure += 1;
+  }
 
   if (
     /\bcozy\s+more\s+than\s+intense\b/i.test(text) ||
@@ -722,8 +783,13 @@ function inferStyle(text: string, activityFocus?: ActivityFocus): TripStyle {
   }
 
   if (activityFocus === "skiing") {
-    signals.adventure += 3;
+    signals.adventure += 5;
     signals.outdoors += 2;
+
+    if (/\b(?:ski(?:ing)?\s+(?:day|overnight|trip)|main event|lift time)\b/i.test(text)) {
+      signals.adventure += 5;
+      signals.chill -= 1;
+    }
   }
 
   if (
@@ -794,8 +860,8 @@ export function extractPromptBudget(prompt: string): PromptBudgetMatch | null {
     APPROXIMATE_PER_TRAVELER_BUDGET_PATTERN
   );
   if (approximatePerTravelerMatch) {
-    const amount = Number.parseInt(approximatePerTravelerMatch[1] ?? "", 10);
-    if (Number.isFinite(amount) && amount >= 75 && amount <= 10000) {
+    const amount = parseBudgetAmount(approximatePerTravelerMatch[1]);
+    if (amount) {
       return {
         amount,
         scope: "per_traveler",
@@ -806,8 +872,8 @@ export function extractPromptBudget(prompt: string): PromptBudgetMatch | null {
 
   const exactPerTravelerMatch = prompt.match(EXACT_PER_TRAVELER_BUDGET_PATTERN);
   if (exactPerTravelerMatch) {
-    const amount = Number.parseInt(exactPerTravelerMatch[1] ?? "", 10);
-    if (Number.isFinite(amount) && amount >= 75 && amount <= 10000) {
+    const amount = parseBudgetAmount(exactPerTravelerMatch[1]);
+    if (amount) {
       return {
         amount,
         scope: "per_traveler",
@@ -818,8 +884,22 @@ export function extractPromptBudget(prompt: string): PromptBudgetMatch | null {
 
   const approximateGroupMatch = prompt.match(APPROXIMATE_GROUP_BUDGET_PATTERN);
   if (approximateGroupMatch) {
-    const amount = Number.parseInt(approximateGroupMatch[1] ?? "", 10);
-    if (Number.isFinite(amount) && amount >= 75 && amount <= 10000) {
+    const amount = parseBudgetAmount(approximateGroupMatch[1]);
+    if (amount) {
+      return {
+        amount,
+        scope: "group_total",
+        approximate: true,
+      };
+    }
+  }
+
+  const approximateReverseGroupMatch = prompt.match(
+    APPROXIMATE_REVERSE_GROUP_BUDGET_PATTERN
+  );
+  if (approximateReverseGroupMatch) {
+    const amount = parseBudgetAmount(approximateReverseGroupMatch[1]);
+    if (amount) {
       return {
         amount,
         scope: "group_total",
@@ -830,8 +910,20 @@ export function extractPromptBudget(prompt: string): PromptBudgetMatch | null {
 
   const exactGroupMatch = prompt.match(EXACT_GROUP_BUDGET_PATTERN);
   if (exactGroupMatch) {
-    const amount = Number.parseInt(exactGroupMatch[1] ?? "", 10);
-    if (Number.isFinite(amount) && amount >= 75 && amount <= 10000) {
+    const amount = parseBudgetAmount(exactGroupMatch[1]);
+    if (amount) {
+      return {
+        amount,
+        scope: "group_total",
+        approximate: false,
+      };
+    }
+  }
+
+  const exactReverseGroupMatch = prompt.match(EXACT_REVERSE_GROUP_BUDGET_PATTERN);
+  if (exactReverseGroupMatch) {
+    const amount = parseBudgetAmount(exactReverseGroupMatch[1]);
+    if (amount) {
       return {
         amount,
         scope: "group_total",
@@ -941,6 +1033,13 @@ function inferBudget(prompt: string, normalizedPrompt: string) {
   if (explicitBudget?.scope === "per_traveler") {
     return {
       suggestedBudgetPerTraveler: explicitBudget.amount,
+      strictBudget: !explicitBudget.approximate,
+    };
+  }
+
+  if (explicitBudget) {
+    return {
+      suggestedBudgetPerTraveler: undefined,
       strictBudget: !explicitBudget.approximate,
     };
   }
@@ -1095,11 +1194,11 @@ function inferHardConstraints(
       ]) >= 1 ||
       ((normalizedPrompt.includes("mountain") ||
         normalizedPrompt.includes("mountains")) &&
-        (normalizedPrompt.includes("top") ||
-          normalizedPrompt.includes("summit") ||
-          normalizedPrompt.includes("peak") ||
-          normalizedPrompt.includes("scenic view at the top") ||
-          normalizedPrompt.includes("view at the top")))
+        (hasKeywordMatch(normalizedPrompt, "top") ||
+          hasKeywordMatch(normalizedPrompt, "summit") ||
+          hasKeywordMatch(normalizedPrompt, "peak") ||
+          hasKeywordMatch(normalizedPrompt, "scenic view at the top") ||
+          hasKeywordMatch(normalizedPrompt, "view at the top")))
     );
 
   let activityAnchor: PromptActivityAnchor | undefined;
@@ -1183,6 +1282,11 @@ function inferSoftPreferences(
         "low-effort",
         "easy",
         "easygoing",
+        "unhurried",
+        "quiet",
+        "slow paced",
+        "slow-paced",
+        "unrushed",
         "beginner friendly",
         "beginner-friendly",
         "light",
@@ -1195,9 +1299,18 @@ function inferSoftPreferences(
         "avoid overplanned",
         "not overplanned",
         "not too much planning",
+        "does not feel packed",
+        "doesnt feel packed",
+        "doesn't feel packed",
+        "not feel packed",
+        "enough downtime",
+        "downtime",
         "simple",
         "low key",
         "low-key",
+        "avoid filler",
+        "avoid extra filler stops",
+        "avoid repetitive roadside filler",
       ]) >= 1,
     wantsRecoveryDays:
       countMatches(normalizedPrompt, [
@@ -1213,6 +1326,8 @@ function inferSoftPreferences(
         "rest days",
         "recovery day",
         "recovery days",
+        "enough downtime",
+        "downtime",
         "keep the other days light",
         "keep the rest of the trip light",
         "rest of the trip i just want to relax",
